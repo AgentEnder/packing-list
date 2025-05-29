@@ -100,6 +100,21 @@ export const PackingList: React.FC = () => {
           ),
         }));
 
+  const renderQuantity = (item: PackingListItem) => {
+    const isPerDay = item.applicableDays.length === 1;
+    const isPerPerson = item.applicablePersons.length === 1;
+    const quantity =
+      viewState.viewMode === 'by-day' && !isPerDay
+        ? item.perUnitCount
+        : viewState.viewMode === 'by-person' && !isPerPerson
+        ? item.perUnitCount
+        : item.totalCount;
+
+    return `${quantity}${
+      item.totalCount !== item.perUnitCount ? ` (${item.totalCount} total)` : ''
+    }`;
+  };
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
@@ -198,7 +213,7 @@ export const PackingList: React.FC = () => {
                         className="hover:underline"
                         onClick={() => handleOpenOverrideDialog(item)}
                       >
-                        {item.name} ({item.count})
+                        {item.name} ({renderQuantity(item)})
                       </button>
                     </span>
                     {item.isOverridden && (

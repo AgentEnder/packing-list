@@ -104,16 +104,22 @@ export const calculatePackingListHandler = (
             ? [override.dayIndex]
             : applicableDays;
 
+        const totalCount =
+          override.overrideCount ??
+          calculateRuleTotal(
+            rule,
+            [state.people.find((p) => p.id === override.personId)!],
+            state.trip.days
+          );
+        const perUnitCount = rule.calculation.perDay
+          ? Math.ceil(totalCount / personDays.length)
+          : totalCount;
+
         packingListItems.push({
           id: `${rule.id}-${override.personId}-${Date.now()}`,
           name: rule.name,
-          count:
-            override.overrideCount ??
-            calculateRuleTotal(
-              rule,
-              [state.people.find((p) => p.id === override.personId)!],
-              state.trip.days
-            ),
+          totalCount,
+          perUnitCount,
           ruleId: rule.id,
           ruleHash,
           isPacked: false,
@@ -128,14 +134,21 @@ export const calculatePackingListHandler = (
         if (!applicableDays.includes(override.dayIndex)) {
           continue;
         }
+
+        const totalCount =
+          override.overrideCount ??
+          calculateRuleTotal(rule, state.people, [
+            state.trip.days[override.dayIndex],
+          ]);
+        const perUnitCount = rule.calculation.perPerson
+          ? Math.ceil(totalCount / applicablePeople.length)
+          : totalCount;
+
         packingListItems.push({
           id: `${rule.id}-day${override.dayIndex}-${Date.now()}`,
           name: rule.name,
-          count:
-            override.overrideCount ??
-            calculateRuleTotal(rule, state.people, [
-              state.trip.days[override.dayIndex],
-            ]),
+          totalCount,
+          perUnitCount,
           ruleId: rule.id,
           ruleHash,
           isPacked: false,
@@ -147,12 +160,20 @@ export const calculatePackingListHandler = (
       }
       // Handle global override
       else {
+        const totalCount =
+          override.overrideCount ??
+          calculateRuleTotal(rule, state.people, state.trip.days);
+        const perUnitCount = rule.calculation.perDay
+          ? Math.ceil(totalCount / applicableDays.length)
+          : rule.calculation.perPerson
+          ? Math.ceil(totalCount / applicablePeople.length)
+          : totalCount;
+
         packingListItems.push({
           id: `${rule.id}-global-${Date.now()}`,
           name: rule.name,
-          count:
-            override.overrideCount ??
-            calculateRuleTotal(rule, state.people, state.trip.days),
+          totalCount,
+          perUnitCount,
           ruleId: rule.id,
           ruleHash,
           isPacked: false,
@@ -168,10 +189,20 @@ export const calculatePackingListHandler = (
         // Create separate items for each applicable person
         for (const personId of applicablePeople) {
           const person = state.people.find((p) => p.id === personId)!;
+          const totalCount = calculateRuleTotal(
+            rule,
+            [person],
+            state.trip.days
+          );
+          const perUnitCount = rule.calculation.perDay
+            ? Math.ceil(totalCount / applicableDays.length)
+            : totalCount;
+
           packingListItems.push({
             id: `${rule.id}-${personId}-${Date.now()}`,
             name: `${rule.name} (${person.name})`,
-            count: calculateRuleTotal(rule, [person], state.trip.days),
+            totalCount,
+            perUnitCount,
             ruleId: rule.id,
             ruleHash,
             isPacked: false,
@@ -184,12 +215,18 @@ export const calculatePackingListHandler = (
       } else if (rule.calculation.perDay) {
         // Create separate items for each applicable day
         for (const dayIndex of applicableDays) {
+          const totalCount = calculateRuleTotal(rule, state.people, [
+            state.trip.days[dayIndex],
+          ]);
+          const perUnitCount = rule.calculation.perPerson
+            ? Math.ceil(totalCount / applicablePeople.length)
+            : totalCount;
+
           packingListItems.push({
             id: `${rule.id}-day${dayIndex}-${Date.now()}`,
             name: `${rule.name} (Day ${dayIndex + 1})`,
-            count: calculateRuleTotal(rule, state.people, [
-              state.trip.days[dayIndex],
-            ]),
+            totalCount,
+            perUnitCount,
             ruleId: rule.id,
             ruleHash,
             isPacked: false,
@@ -201,10 +238,18 @@ export const calculatePackingListHandler = (
         }
       } else {
         // Create a single item for the rule
+        const totalCount = calculateRuleTotal(
+          rule,
+          state.people,
+          state.trip.days
+        );
+        const perUnitCount = totalCount;
+
         packingListItems.push({
           id: `${rule.id}-${Date.now()}`,
           name: rule.name,
-          count: calculateRuleTotal(rule, state.people, state.trip.days),
+          totalCount,
+          perUnitCount,
           ruleId: rule.id,
           ruleHash,
           isPacked: false,
