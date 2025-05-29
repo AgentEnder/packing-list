@@ -1,7 +1,11 @@
 import React, { ChangeEvent, FormEvent, ReactNode, useState } from 'react';
 
 import { Person } from '@packing-list/model';
-import { selectPeople, useAppSelector, useStore } from '@packing-list/state';
+import {
+  selectPeople,
+  useAppDispatch,
+  useAppSelector,
+} from '@packing-list/state';
 
 import { uuid } from '../../utils/uuid';
 
@@ -120,7 +124,7 @@ function Modal({ open, onClose, children }: ModalProps) {
 }
 
 export default function PeoplePage() {
-  const [store, dispatch] = useStore();
+  const dispatch = useAppDispatch();
   const people = useAppSelector(selectPeople);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalForm, setModalForm] = useState({

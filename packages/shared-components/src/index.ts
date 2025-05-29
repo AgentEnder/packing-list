@@ -1,1 +1,1 @@
-export * from './lib/shared-components.js';
+export * from './lib/Timeline.js';

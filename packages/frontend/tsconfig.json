@@ -18,6 +18,9 @@
   "exclude": ["dist"],
   "references": [
     {
+      "path": "../shared-components"
+    },
+    {
       "path": "../model"
     },
     {

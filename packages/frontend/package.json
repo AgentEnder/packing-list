@@ -9,6 +9,7 @@
   "type": "module",
   "dependencies": {
     "@packing-list/state": "workspace:*",
-    "@packing-list/model": "workspace:*"
+    "@packing-list/model": "workspace:*",
+    "@packing-list/shared-components": "workspace:*"
   }
 }

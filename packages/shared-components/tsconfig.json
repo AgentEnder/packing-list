@@ -2,7 +2,11 @@
   "extends": "../../tsconfig.base.json",
   "files": [],
   "include": [],
+  "compilerOptions": {},
   "references": [
+    {
+      "path": "../model"
+    },
     {
       "path": "./tsconfig.lib.json"
     },

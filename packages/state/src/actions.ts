@@ -3,6 +3,10 @@ import {
   addPersonHandler,
 } from './action-handlers/add-person.js';
 import {
+  CalculateDaysAction,
+  calculateDaysHandler,
+} from './action-handlers/calculate-days.js';
+import {
   CalculateDefaultItemsAction,
   calculateDefaultItems,
 } from './action-handlers/calculate-default-items.js';
@@ -26,19 +30,23 @@ export type AllActions =
   | RemovePersonAction
   | UpdatePersonAction
   | CalculateDefaultItemsAction
-  | UpdateTripEventsAction;
+  | UpdateTripEventsAction
+  | CalculateDaysAction;
 
 export type StoreActions = AllActions['type'];
 
+export type ActionHandler<T extends AllActions> = (
+  state: StoreType,
+  action: T
+) => StoreType;
+
 export const Mutations: {
-  [Action in AllActions as Action['type']]: (
-    state: StoreType,
-    action: Action
-  ) => StoreType;
+  [Action in AllActions as Action['type']]: ActionHandler<Action>;
 } = {
   ADD_PERSON: addPersonHandler,
   REMOVE_PERSON: removePersonHandler,
   UPDATE_PERSON: updatePersonHandler,
   CALCULATE_DEFAULT_ITEMS: calculateDefaultItems,
   UPDATE_TRIP_EVENTS: updateTripEventsHandler,
+  CALCULATE_DAYS: calculateDaysHandler,
 };

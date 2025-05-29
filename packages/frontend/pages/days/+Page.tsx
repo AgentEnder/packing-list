@@ -1,7 +1,11 @@
 import React, { useState, ChangeEvent, FormEvent, ReactNode } from 'react';
-import { useAppDispatch, useAppSelector } from '@packing-list/state';
+import { useAppDispatch, useAppSelector, StoreType } from '@packing-list/state';
 import { uuid } from '../../utils/uuid';
 import { createSelector } from '@reduxjs/toolkit';
+import { TripEvent } from '@packing-list/model';
+import { Timeline } from '@packing-list/shared-components';
+import { TripWizard } from './TripWizard';
+import { TripDays } from './TripDays';
 
 // Event types
 const eventTypes = [
@@ -10,14 +14,6 @@ const eventTypes = [
   { value: 'leave_destination', label: 'Leave Destination' },
   { value: 'arrive_home', label: 'Arrive Home' },
 ];
-
-type TripEvent = {
-  id: string;
-  type: string;
-  date: string;
-  location?: string;
-  notes?: string;
-};
 
 // Modal component
 function Modal({
@@ -47,22 +43,17 @@ function Modal({
   );
 }
 
-// Helper for event label
-function getEventLabel(type: string) {
-  return eventTypes.find((e) => e.value === type)?.label || type;
-}
-
 // Selector for tripEvents
 const selectTripEvents = createSelector(
-  (state: any) => state.trip.tripEvents,
-  (tripEvents) => tripEvents || []
+  (state: StoreType) => state.trip,
+  (trip) => trip.tripEvents ?? []
 );
 
 export default function DaysPage() {
   const tripEvents: TripEvent[] = useAppSelector(selectTripEvents);
-  // You will need to get dispatch from useDispatch (assuming Redux)
   const dispatch = useAppDispatch();
   const [modalOpen, setModalOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<TripEvent>({
     id: '',
@@ -115,16 +106,43 @@ export default function DaysPage() {
     dispatch({ type: 'UPDATE_TRIP_EVENTS', payload: newEvents });
   };
 
-  // Sort events by date
-  const sortedEvents = [...tripEvents].sort((a, b) =>
-    a.date.localeCompare(b.date)
-  );
+  const handleWizardSave = (events: TripEvent[]) => {
+    dispatch({ type: 'UPDATE_TRIP_EVENTS', payload: events });
+  };
+
+  const handleEventClick = (event: TripEvent) => {
+    openEditModal(event);
+  };
 
   return (
     <div className="max-w-2xl mx-auto p-4">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Trip Timeline</h1>
+        <div className="flex gap-2">
+          <button
+            className="btn btn-primary"
+            onClick={() => setWizardOpen(true)}
+          >
+            Configure Trip
+          </button>
+          <button
+            className="btn btn-outline btn-primary"
+            onClick={openAddModal}
+          >
+            Add Event
+          </button>
+        </div>
       </div>
+
+      {/* Trip Wizard */}
+      <TripWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onSave={handleWizardSave}
+        currentEvents={tripEvents}
+      />
+
+      {/* Manual Event Modal */}
       <Modal open={modalOpen} onClose={closeModal}>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <select
@@ -169,58 +187,28 @@ export default function DaysPage() {
           </button>
         </form>
       </Modal>
-      <ul className="timeline timeline-vertical timeline-snap-icon max-w-xl mx-auto">
-        {sortedEvents.length === 0 && (
-          <li className="text-gray-500">No events added yet.</li>
-        )}
-        {sortedEvents.map((event, idx) => (
-          <li key={event.id} className="timeline-item">
-            <div className="timeline-middle">
-              <span className="badge badge-primary">{idx + 1}</span>
-            </div>
-            <div className="timeline-start md:text-end mb-10">
-              <div className="font-semibold">{getEventLabel(event.type)}</div>
-              <div className="text-gray-500 text-sm">{event.date}</div>
-              {event.location && (
-                <div className="text-gray-500">{event.location}</div>
-              )}
-              {event.notes && (
-                <div className="text-xs text-gray-400 mt-1">{event.notes}</div>
-              )}
-              <div className="flex gap-2 mt-2 justify-end">
-                <button
-                  className="btn btn-outline btn-primary btn-xs"
-                  onClick={() => openEditModal(event)}
-                >
-                  Edit
-                </button>
-                <button
-                  className="btn btn-outline btn-error btn-xs"
-                  onClick={() => handleDelete(event.id)}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </li>
-        ))}
-        {/* Skeleton Add Event */}
-        <li className="timeline-item">
-          <div className="timeline-middle">
-            <button
-              className="btn btn-circle btn-outline btn-primary text-3xl"
-              onClick={openAddModal}
-              type="button"
-              aria-label="Add event"
-            >
-              +
-            </button>
-          </div>
-          <div className="timeline-end mb-10">
-            <span className="font-semibold">Add Event</span>
-          </div>
-        </li>
-      </ul>
+
+      {/* Timeline Display */}
+      {tripEvents.length > 0 ? (
+        <div className="mb-6">
+          <Timeline
+            events={tripEvents}
+            onEventClick={handleEventClick}
+            className="max-w-xl mx-auto"
+          />
+          <TripDays />
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <div className="text-gray-500 mb-4">No trip configured yet</div>
+          <button
+            className="btn btn-primary"
+            onClick={() => setWizardOpen(true)}
+          >
+            Configure Your Trip
+          </button>
+        </div>
+      )}
     </div>
   );
 }

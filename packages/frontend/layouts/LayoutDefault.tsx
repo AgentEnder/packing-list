@@ -1,6 +1,5 @@
-import './style.css';
-
 import './tailwind.css';
+import './style.css';
 
 import logoUrl from '../assets/logo.svg';
 import { Link } from '../components/Link.js';
@@ -18,7 +17,7 @@ export default function LayoutDefault({
         <Link href="/people">People</Link>
         <Link href="/days">Days</Link>
         <Link href="/defaults">Default Items</Link>
-        <Link href="/packed">Packed Items</Link>
+        <Link href="/packing-list">Packed List</Link>
         {''}
       </Sidebar>
       <Content>{children}</Content>
