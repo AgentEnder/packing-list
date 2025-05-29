@@ -128,25 +128,22 @@ importers:
       '@packing-list/shared-components':
         specifier: workspace:*
         version: link:../shared-components
+      '@packing-list/shared-utils':
+        specifier: workspace:*
+        version: link:../shared-utils
       '@packing-list/state':
         specifier: workspace:*
         version: link:../state
-
-  packages/frontend-state:
-    dependencies:
-      '@packing-list/model':
-        specifier: workspace:*
-        version: link:../model
-      '@packing-list/state':
-        specifier: workspace:*
-        version: link:../state
-      '@reduxjs/toolkit':
-        specifier: ^2.0.1
-        version: 2.8.2(react-redux@9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@5.0.1))(react@19.1.0)
 
   packages/model: {}
 
   packages/shared-components:
+    dependencies:
+      '@packing-list/model':
+        specifier: workspace:*
+        version: link:../model
+
+  packages/shared-utils:
     dependencies:
       '@packing-list/model':
         specifier: workspace:*
@@ -157,6 +154,15 @@ importers:
       '@packing-list/model':
         specifier: workspace:*
         version: link:../model
+      '@packing-list/shared-utils':
+        specifier: workspace:*
+        version: link:../shared-utils
+      '@reduxjs/toolkit':
+        specifier: ^2.8.2
+        version: 2.8.2(react-redux@9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@5.0.1))(react@19.1.0)
+      react-redux:
+        specifier: ^9.2.0
+        version: 9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@5.0.1)
 
 packages:
 

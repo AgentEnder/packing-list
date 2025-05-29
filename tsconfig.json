@@ -11,6 +11,9 @@
     },
     {
       "path": "./packages/state"
+    },
+    {
+      "path": "./packages/shared-utils"
     }
   ]
 }

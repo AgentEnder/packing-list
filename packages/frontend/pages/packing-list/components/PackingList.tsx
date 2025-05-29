@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from '@packing-list/state';
 import {
   PackingListViewState,
@@ -29,11 +29,19 @@ export const PackingList: React.FC = () => {
   const items = useAppSelector((state) => state.calculated.packingListItems);
   const people = useAppSelector((state) => state.people);
   const days = useAppSelector((state) => state.trip.days);
+  const defaultItemRules = useAppSelector((state) => state.defaultItemRules);
 
   const [selectedItem, setSelectedItem] = useState<PackingListItem | null>(
     null
   );
   const [isOverrideDialogOpen, setIsOverrideDialogOpen] = useState(false);
+
+  useEffect(() => {
+    // Calculate default items first
+    dispatch({ type: 'CALCULATE_DEFAULT_ITEMS' });
+    // Then calculate the packing list based on those items and any overrides
+    dispatch({ type: 'CALCULATE_PACKING_LIST' });
+  }, [dispatch, defaultItemRules, people, days]);
 
   const handleViewModeChange = (mode: PackingListViewState['viewMode']) => {
     dispatch({
@@ -50,7 +58,10 @@ export const PackingList: React.FC = () => {
   };
 
   const handleTogglePacked = (item: PackingListItem) => {
-    // TODO: Implement toggle packed status action
+    dispatch({
+      type: 'TOGGLE_ITEM_PACKED',
+      payload: { itemId: item.id },
+    });
   };
 
   const handleOpenOverrideDialog = (item: PackingListItem) => {

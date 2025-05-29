@@ -1,4 +1,103 @@
-import { DefaultItemRule, Person, Day } from '@packing-list/model';
+import {
+  DefaultItemRule,
+  Person,
+  Day,
+  DayCalculation,
+  Condition,
+  Item,
+} from '@packing-list/model';
+
+type CompareValue = string | number | boolean | Item[];
+
+const compare = (
+  a: CompareValue,
+  operator: string,
+  b: CompareValue
+): boolean => {
+  switch (operator) {
+    case '==':
+      return a === b;
+    case '!=':
+      return a !== b;
+    case '<':
+      return typeof a === 'number' && typeof b === 'number' ? a < b : false;
+    case '>':
+      return typeof a === 'number' && typeof b === 'number' ? a > b : false;
+    case '<=':
+      return typeof a === 'number' && typeof b === 'number' ? a <= b : false;
+    case '>=':
+      return typeof a === 'number' && typeof b === 'number' ? a >= b : false;
+    default:
+      return false;
+  }
+};
+
+const calculateDaysQuantity = (
+  daysCount: number,
+  pattern?: DayCalculation
+): number => {
+  if (!pattern) return daysCount;
+
+  const result = daysCount / pattern.every;
+  return pattern.roundUp ? Math.ceil(result) : Math.floor(result);
+};
+
+export const calculateItemQuantity = (
+  baseQuantity: number,
+  perPerson = false,
+  perDay = false,
+  daysPattern: { every: number; roundUp: boolean } | undefined,
+  peopleCount: number,
+  daysCount: number
+): number => {
+  let itemCount = baseQuantity;
+
+  if (perPerson || peopleCount === 0) {
+    itemCount *= peopleCount;
+  }
+
+  if (perDay || daysCount === 0) {
+    itemCount *= calculateDaysQuantity(daysCount, daysPattern);
+  }
+
+  return itemCount;
+};
+
+export function calculateNumPeopleMeetingCondition(
+  people: Person[],
+  conditions: Condition[]
+): number {
+  return people.filter((person) =>
+    conditions.every((condition) => {
+      if (condition.type === 'person') {
+        return compare(
+          person[condition.field as keyof Person],
+          condition.operator,
+          condition.value
+        );
+      }
+      return true;
+    })
+  ).length;
+}
+
+export function calculateNumDaysMeetingCondition(
+  days: Day[],
+  conditions: Condition[]
+): number {
+  return days.filter((day) =>
+    conditions.every((condition) => {
+      if (condition.type === 'day') {
+        return compare(
+          day[condition.field as keyof Day],
+          condition.operator,
+          condition.value
+        );
+      }
+      return true;
+    })
+  ).length;
+}
 
 export const calculateRuleTotal = (
   rule: DefaultItemRule,
@@ -65,53 +164,3 @@ export const calculateRuleTotal = (
 
   return Math.ceil(baseItemCount + extraItemCount);
 };
-
-export const calculateItemQuantity = (
-  quantity: number,
-  perPerson: boolean,
-  perDay: boolean,
-  daysPattern?: number[],
-  peopleCount: number = 1,
-  daysCount: number = 1
-): number => {
-  let total = quantity;
-
-  if (perPerson) {
-    total *= peopleCount;
-  }
-
-  if (perDay) {
-    if (daysPattern && daysPattern.length > 0) {
-      total *= daysPattern.length;
-    } else {
-      total *= daysCount;
-    }
-  }
-
-  return total;
-};
-
-function compare(value: any, operator: string, conditionValue: any): boolean {
-  if (operator === '==') {
-    return value === conditionValue;
-  }
-  if (operator === '!=') {
-    return value !== conditionValue;
-  }
-  if (typeof value !== 'number' || typeof conditionValue !== 'number') {
-    throw new Error('Value is not a number');
-  }
-  if (operator === '<') {
-    return value < conditionValue;
-  }
-  if (operator === '>') {
-    return value > conditionValue;
-  }
-  if (operator === '<=') {
-    return value <= conditionValue;
-  }
-  if (operator === '>=') {
-    return value >= conditionValue;
-  }
-  throw new Error('Invalid operator');
-}

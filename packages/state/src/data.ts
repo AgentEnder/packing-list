@@ -72,6 +72,15 @@ export const DEMO_DATA: StoreType = {
       gender: 'male',
     },
   ],
+  ruleOverrides: [],
+  packingListView: {
+    viewMode: 'by-day',
+    filters: {
+      packed: false,
+      unpacked: false,
+      excluded: false,
+    },
+  },
   defaultItemRules: [
     {
       id: 'underwear-rule',
@@ -297,10 +306,12 @@ export const DEMO_DATA: StoreType = {
     },
   ],
   trip: {
+    id: 'trip-1',
     days: enumerateTripDays(tripEvents),
     tripEvents,
   },
   calculated: {
     defaultItems: [],
+    packingListItems: [],
   },
 };

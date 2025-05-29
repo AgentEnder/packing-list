@@ -4,7 +4,7 @@ import {
   calculateItemQuantity,
   calculateNumPeopleMeetingCondition,
   calculateNumDaysMeetingCondition,
-} from '../utils';
+} from '@packing-list/shared-utils';
 import { ReactNode } from 'react';
 
 type RuleCardProps = {

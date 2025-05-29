@@ -57,7 +57,7 @@ This plan outlines the implementation of the core packing list functionality, in
     applicablePersons: string[];
   }
   ```
-- Add basic styling and layout using shadcn components
+- Add basic styling and layout using DaisyUI components
 
 ### Commit 3: Rule Override System
 
