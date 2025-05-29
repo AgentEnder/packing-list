@@ -101,11 +101,6 @@ export default function DaysPage() {
     setModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    const newEvents = tripEvents.filter((ev) => ev.id !== id);
-    dispatch({ type: 'UPDATE_TRIP_EVENTS', payload: newEvents });
-  };
-
   const handleWizardSave = (events: TripEvent[]) => {
     dispatch({ type: 'UPDATE_TRIP_EVENTS', payload: events });
   };

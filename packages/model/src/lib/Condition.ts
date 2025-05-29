@@ -1,13 +1,15 @@
-export type PersonCondition = {
-  type: 'person';
-  field: 'age' | 'gender';
-  operator: '<' | '>' | '==' | '>=' | '<=';
-  value: number | string;
+export type Condition = {
+  type: 'person' | 'day';
+  field: string;
+  operator: '==' | '>' | '<' | '>=' | '<=';
+  value: any;
+  notes?: string;
 };
 
-export type DayCondition = {
+export type PersonCondition = Condition & {
+  type: 'person';
+};
+
+export type DayCondition = Condition & {
   type: 'day';
-  field: 'location' | 'expectedClimate';
-  operator: '==' | '!=';
-  value: string;
 };

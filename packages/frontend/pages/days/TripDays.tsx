@@ -1,4 +1,3 @@
-import { TripEvent } from '@packing-list/model';
 import { StoreType, useAppSelector } from '@packing-list/state';
 import { createSelector } from '@reduxjs/toolkit';
 import { useMemo } from 'react';

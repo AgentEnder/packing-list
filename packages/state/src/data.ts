@@ -73,12 +73,238 @@ export const DEMO_DATA: StoreType = {
     },
   ],
   itemOverrides: [],
-  defaultItemRules: [],
+  defaultItemRules: [
+    {
+      id: 'underwear-rule',
+      name: 'Underwear',
+      calculation: {
+        baseQuantity: 1,
+        perDay: true,
+        perPerson: true,
+        extraItems: {
+          quantity: 2,
+          perDay: false,
+          perPerson: true,
+        },
+      },
+      conditions: [
+        {
+          type: 'person',
+          field: 'age',
+          operator: '>=',
+          value: 3,
+        },
+      ],
+    },
+    {
+      id: 'socks-rule',
+      name: 'Socks',
+      calculation: {
+        baseQuantity: 1,
+        perDay: true,
+        perPerson: true,
+        extraItems: {
+          quantity: 1,
+          perDay: false,
+          perPerson: true,
+        },
+      },
+      conditions: [],
+    },
+    {
+      id: 'tshirt-rule',
+      name: 'T-Shirts',
+      calculation: {
+        baseQuantity: 1,
+        perDay: true,
+        perPerson: true,
+        extraItems: {
+          quantity: 1,
+          perDay: false,
+          perPerson: true,
+        },
+      },
+      conditions: [],
+    },
+    {
+      id: 'jeans-rule',
+      name: 'Jeans/Pants',
+      calculation: {
+        baseQuantity: 1,
+        perDay: true,
+        perPerson: true,
+        daysPattern: {
+          every: 2,
+          roundUp: true,
+        },
+        extraItems: {
+          quantity: 1,
+          perDay: false,
+          perPerson: true,
+        },
+      },
+      notes:
+        "Most people can wear jeans multiple times. We'll pack one pair for every 2 days plus an extra pair per person.",
+      conditions: [],
+    },
+    {
+      id: 'pajamas-rule',
+      name: 'Pajamas',
+      calculation: {
+        baseQuantity: 1,
+        perDay: true,
+        perPerson: true,
+        daysPattern: {
+          every: 3,
+          roundUp: true,
+        },
+      },
+      notes:
+        'Pajamas can usually be worn for a few nights before needing a wash.',
+      conditions: [],
+    },
+    {
+      id: 'swimsuit-rule',
+      name: 'Swimsuit',
+      calculation: {
+        baseQuantity: 1,
+        perDay: false,
+        perPerson: true,
+      },
+      conditions: [
+        {
+          type: 'day',
+          field: 'expectedClimate',
+          operator: '==',
+          value: 'beach',
+          notes: 'Only needed for beach destinations or hotels with pools',
+        },
+      ],
+    },
+    {
+      id: 'jacket-rule',
+      name: 'Warm Jacket',
+      calculation: {
+        baseQuantity: 1,
+        perDay: false,
+        perPerson: true,
+      },
+      notes:
+        'A single warm jacket per person is usually sufficient for cold weather.',
+      conditions: [
+        {
+          type: 'day',
+          field: 'expectedClimate',
+          operator: '==',
+          value: 'cold',
+          notes: 'Pack if any destination has cold weather',
+        },
+      ],
+    },
+    {
+      id: 'toothbrush-rule',
+      name: 'Toothbrush',
+      calculation: {
+        baseQuantity: 1,
+        perDay: false,
+        perPerson: true,
+      },
+      conditions: [],
+    },
+    {
+      id: 'toothpaste-rule',
+      name: 'Toothpaste',
+      calculation: {
+        baseQuantity: 1,
+        perDay: false,
+        perPerson: false,
+      },
+      conditions: [],
+    },
+    {
+      id: 'shampoo-rule',
+      name: 'Travel Shampoo',
+      calculation: {
+        baseQuantity: 1,
+        perDay: false,
+        perPerson: false,
+        daysPattern: {
+          every: 7,
+          roundUp: true,
+        },
+      },
+      conditions: [],
+    },
+    {
+      id: 'laundry-rule',
+      name: 'Travel Laundry Detergent',
+      calculation: {
+        baseQuantity: 1,
+        perDay: false,
+        perPerson: false,
+        daysPattern: {
+          every: 7,
+          roundUp: true,
+        },
+      },
+      conditions: [],
+    },
+    {
+      id: 'diaper-rule',
+      name: 'Diapers',
+      calculation: {
+        baseQuantity: 6,
+        perDay: true,
+        perPerson: true,
+        extraItems: {
+          quantity: 4,
+          perDay: false,
+          perPerson: true,
+        },
+      },
+      notes:
+        'Pack 6 diapers per day plus 4 extra per child for unexpected needs.',
+      conditions: [
+        {
+          type: 'person',
+          field: 'age',
+          operator: '<=',
+          value: 3,
+          notes: 'Only needed for toddlers and babies',
+        },
+      ],
+    },
+    {
+      id: 'charger-rule',
+      name: 'Phone Charger',
+      calculation: {
+        baseQuantity: 1,
+        perDay: false,
+        perPerson: true,
+        extraItems: {
+          quantity: 2,
+          perDay: false,
+          perPerson: true,
+        },
+      },
+      conditions: [
+        {
+          type: 'person',
+          field: 'age',
+          operator: '>',
+          value: 12,
+        },
+      ],
+    },
+  ],
   trip: {
     days: enumerateTripDays(tripEvents),
     tripEvents,
   },
   calculated: {
     defaultItems: [],
+  },
+  ruleEditing: {
+    editingRuleId: null,
   },
 };
