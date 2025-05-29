@@ -4,22 +4,36 @@ import {
   Day,
   DayCalculation,
   Condition,
+  Item,
 } from '@packing-list/model';
 
-const compare = (a: any, operator: string, b: any): boolean => {
+type CompareValue = string | number | boolean | Item[];
+
+const compare = (
+  a: CompareValue,
+  operator: string,
+  b: CompareValue
+): boolean => {
+  // Handle arrays (items) separately
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (operator === '==') return JSON.stringify(a) === JSON.stringify(b);
+    if (operator === '!=') return JSON.stringify(a) !== JSON.stringify(b);
+    return false;
+  }
+
   switch (operator) {
     case '==':
       return a === b;
     case '!=':
       return a !== b;
     case '<':
-      return a < b;
+      return typeof a === 'number' && typeof b === 'number' ? a < b : false;
     case '>':
-      return a > b;
+      return typeof a === 'number' && typeof b === 'number' ? a > b : false;
     case '<=':
-      return a <= b;
+      return typeof a === 'number' && typeof b === 'number' ? a <= b : false;
     case '>=':
-      return a >= b;
+      return typeof a === 'number' && typeof b === 'number' ? a >= b : false;
     default:
       return false;
   }

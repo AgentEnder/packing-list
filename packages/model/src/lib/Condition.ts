@@ -1,8 +1,12 @@
+import { Item } from './Item.js';
+
+export type ConditionValue = string | number | boolean | Item[];
+
 export type Condition = {
   type: 'person' | 'day';
   field: string;
   operator: '==' | '>' | '<' | '>=' | '<=';
-  value: any;
+  value: ConditionValue;
   notes?: string;
 };
 
