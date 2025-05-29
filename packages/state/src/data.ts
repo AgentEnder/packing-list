@@ -304,7 +304,4 @@ export const DEMO_DATA: StoreType = {
   calculated: {
     defaultItems: [],
   },
-  ruleEditing: {
-    editingRuleId: null,
-  },
 };

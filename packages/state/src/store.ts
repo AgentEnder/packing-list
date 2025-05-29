@@ -1,5 +1,5 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { Mutations, AllActions } from './actions.js';
+import { configureStore, Reducer, UnknownAction } from '@reduxjs/toolkit';
+import { Mutations, AllActions, ActionHandler } from './actions.js';
 import {
   Item,
   DefaultItemRule,
@@ -7,9 +7,7 @@ import {
   Person,
   ItemOverride,
 } from '@packing-list/model';
-import { RuleEditingState } from './rule-editing/types.js';
 import { DEMO_DATA } from './data.js';
-import ruleEditingReducer from './rule-editing/slice.js';
 
 export type StoreType = {
   people: Person[];
@@ -19,7 +17,6 @@ export type StoreType = {
   calculated: {
     defaultItems: Item[];
   };
-  ruleEditing: RuleEditingState;
 };
 
 export const initialState: StoreType = DEMO_DATA || {
@@ -33,31 +30,35 @@ export const initialState: StoreType = DEMO_DATA || {
   calculated: {
     defaultItems: [],
   },
-  ruleEditing: {
-    editingRuleId: null,
-    editingConditions: {},
-    editingConditionIndex: {},
-  },
 };
 
-type ActionType = keyof typeof Mutations;
-
-const createReducer = <T>(
-  key: keyof StoreType,
-  initialValue: T
-): ((state: T | undefined, action: { type: string }) => T) => {
-  return (state = initialValue, action) => {
-    const mutation = Mutations[action.type as ActionType];
-    if (mutation) {
+const createReducer = <T extends keyof StoreType>(
+  key: T,
+  initialValue: StoreType[T]
+): Reducer<StoreType[T]> => {
+  return <T2 extends UnknownAction>(
+    state = initialValue,
+    action: T2
+  ): StoreType[T] => {
+    if (isStoreAction(action)) {
+      const actionType = action.type;
+      const mutation = Mutations[actionType] as ActionHandler<AllActions>;
       const fullState = { ...initialState, [key]: state };
-      const result = mutation(fullState, action as any);
-      return result[key] as T;
+      const result = mutation(fullState, action);
+      return result[key] as StoreType[T];
     }
     return state;
   };
 };
 
-export function createStore(pageContext: any) {
+type PageContext = {
+  isClient?: boolean;
+  redux?: {
+    ssrState?: StoreType;
+  };
+};
+
+export function createStore(pageContext: PageContext) {
   const preloadedState =
     DEMO_DATA ||
     ('isClient' in pageContext && pageContext.isClient
@@ -70,7 +71,6 @@ export function createStore(pageContext: any) {
         'defaultItemRules',
         preloadedState.defaultItemRules
       ),
-      ruleEditing: ruleEditingReducer,
       people: createReducer('people', preloadedState.people),
       itemOverrides: createReducer(
         'itemOverrides',
@@ -80,4 +80,10 @@ export function createStore(pageContext: any) {
       calculated: createReducer('calculated', preloadedState.calculated),
     },
   });
+}
+
+function isStoreAction<T extends UnknownAction>(
+  action: T
+): action is Extract<AllActions, T> {
+  return action.type in Mutations;
 }

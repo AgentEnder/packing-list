@@ -6,6 +6,9 @@ import { TripEvent } from '@packing-list/model';
 import { Timeline } from '@packing-list/shared-components';
 import { TripWizard } from './TripWizard';
 import { TripDays } from './TripDays';
+import { PageHeader } from '../../components/PageHeader';
+import { PageContainer } from '../../components/PageContainer';
+import { HelpBlurb } from '../../components/HelpBlurb';
 
 // Event types
 const eventTypes = [
@@ -110,24 +113,46 @@ export default function DaysPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Trip Timeline</h1>
-        <div className="flex gap-2">
-          <button
-            className="btn btn-primary"
-            onClick={() => setWizardOpen(true)}
-          >
-            Configure Trip
-          </button>
-          <button
-            className="btn btn-outline btn-primary"
-            onClick={openAddModal}
-          >
-            Add Event
-          </button>
+    <PageContainer>
+      <PageHeader
+        title="Trip Timeline"
+        actions={
+          <>
+            <button
+              className="btn btn-primary"
+              onClick={() => setWizardOpen(true)}
+            >
+              Configure Trip
+            </button>
+            <button
+              className="btn btn-outline btn-primary"
+              onClick={openAddModal}
+            >
+              Add Event
+            </button>
+          </>
+        }
+      />
+
+      <HelpBlurb storageKey="trip-timeline" title="Planning Your Trip">
+        <p>
+          Create a timeline of your trip to help calculate the right amount of
+          items to pack. Add key events to track your journey and automatically
+          determine the trip duration.
+        </p>
+
+        <div className="bg-base-200 rounded-lg p-4 my-4">
+          <h3 className="text-sm font-medium mb-2">How It Works</h3>
+          <p className="text-sm text-base-content/70 m-0">
+            Your trip timeline helps calculate packing needs:
+            <br />
+            • Total trip duration determines quantities for daily items
+            <br />
+            • Multiple destinations can affect what you need to pack
+            <br />• Travel dates help plan for seasonal items
+          </p>
         </div>
-      </div>
+      </HelpBlurb>
 
       {/* Trip Wizard */}
       <TripWizard
@@ -204,6 +229,6 @@ export default function DaysPage() {
           </button>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

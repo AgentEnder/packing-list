@@ -17,10 +17,12 @@ const DEFAULT_CONDITION: Condition = {
 };
 
 export const RuleEditForm = ({
-  rule,
+  rule: initialRule,
   onUpdateRule,
   onCancel,
 }: RuleEditFormProps) => {
+  // Local state for the rule being edited
+  const [editedRule, setEditedRule] = useState<DefaultItemRule>(initialRule);
   const [showCondition, setShowCondition] = useState(false);
   const [editingConditionIndex, setEditingConditionIndex] = useState<
     number | null
@@ -35,15 +37,25 @@ export const RuleEditForm = ({
   };
 
   const handleRemoveCondition = (index: number) => {
-    onUpdateRule({
-      conditions: rule.conditions?.filter((_, i) => i !== index),
-    });
+    setEditedRule((prev) => ({
+      ...prev,
+      conditions: prev.conditions?.filter((_, i) => i !== index),
+    }));
   };
 
   const handleCancelCondition = () => {
     setShowCondition(false);
     setEditingConditionIndex(null);
     setEditingCondition(DEFAULT_CONDITION);
+  };
+
+  const handleSave = () => {
+    onUpdateRule(editedRule);
+    onCancel();
+  };
+
+  const handleCancel = () => {
+    onCancel();
   };
 
   return (
@@ -55,8 +67,10 @@ export const RuleEditForm = ({
         <input
           type="text"
           className="input input-bordered w-full"
-          value={rule.name}
-          onChange={(e) => onUpdateRule({ name: e.target.value })}
+          value={editedRule.name}
+          onChange={(e) =>
+            setEditedRule((prev) => ({ ...prev, name: e.target.value }))
+          }
         />
       </div>
 
@@ -66,8 +80,10 @@ export const RuleEditForm = ({
         </label>
         <textarea
           className="textarea textarea-bordered w-full h-24"
-          value={rule.notes || ''}
-          onChange={(e) => onUpdateRule({ notes: e.target.value })}
+          value={editedRule.notes || ''}
+          onChange={(e) =>
+            setEditedRule((prev) => ({ ...prev, notes: e.target.value }))
+          }
           placeholder="Add any helpful notes about this rule..."
         />
       </div>
@@ -79,46 +95,50 @@ export const RuleEditForm = ({
         <input
           type="number"
           className="input input-bordered w-full"
-          value={rule.calculation.baseQuantity}
+          value={editedRule.calculation.baseQuantity}
           onChange={(e) =>
-            onUpdateRule({
+            setEditedRule((prev) => ({
+              ...prev,
               calculation: {
-                ...rule.calculation,
+                ...prev.calculation,
                 baseQuantity: parseInt(e.target.value) || 0,
               },
-            })
+            }))
           }
         />
       </div>
 
       <ToggleGroup
-        perDay={rule.calculation.perDay || false}
-        perPerson={rule.calculation.perPerson || false}
-        daysPattern={rule.calculation.daysPattern}
+        perDay={editedRule.calculation.perDay || false}
+        perPerson={editedRule.calculation.perPerson || false}
+        daysPattern={editedRule.calculation.daysPattern}
         onPerDayChange={(checked) =>
-          onUpdateRule({
+          setEditedRule((prev) => ({
+            ...prev,
             calculation: {
-              ...rule.calculation,
+              ...prev.calculation,
               perDay: checked,
-              daysPattern: checked ? rule.calculation.daysPattern : undefined,
+              daysPattern: checked ? prev.calculation.daysPattern : undefined,
             },
-          })
+          }))
         }
         onPerPersonChange={(checked) =>
-          onUpdateRule({
+          setEditedRule((prev) => ({
+            ...prev,
             calculation: {
-              ...rule.calculation,
+              ...prev.calculation,
               perPerson: checked,
             },
-          })
+          }))
         }
         onDaysPatternChange={(pattern) =>
-          onUpdateRule({
+          setEditedRule((prev) => ({
+            ...prev,
             calculation: {
-              ...rule.calculation,
+              ...prev.calculation,
               daysPattern: pattern,
             },
-          })
+          }))
         }
       />
 
@@ -131,64 +151,68 @@ export const RuleEditForm = ({
         <input
           type="number"
           className="input input-bordered w-full"
-          value={rule.calculation.extraItems?.quantity || 0}
+          value={editedRule.calculation.extraItems?.quantity || 0}
           onChange={(e) =>
-            onUpdateRule({
+            setEditedRule((prev) => ({
+              ...prev,
               calculation: {
-                ...rule.calculation,
+                ...prev.calculation,
                 extraItems: {
-                  ...(rule.calculation.extraItems || {}),
+                  ...(prev.calculation.extraItems || {}),
                   quantity: parseInt(e.target.value) || 0,
                 },
               },
-            })
+            }))
           }
         />
       </div>
 
-      {rule.calculation.extraItems?.quantity ? (
+      {editedRule.calculation.extraItems?.quantity ? (
         <ToggleGroup
-          perDay={rule.calculation.extraItems?.perDay || false}
-          perPerson={rule.calculation.extraItems?.perPerson || false}
-          daysPattern={rule.calculation.extraItems?.daysPattern}
+          perDay={editedRule.calculation.extraItems?.perDay || false}
+          perPerson={editedRule.calculation.extraItems?.perPerson || false}
+          daysPattern={editedRule.calculation.extraItems?.daysPattern}
           onPerDayChange={(checked) =>
-            onUpdateRule({
+            setEditedRule((prev) => ({
+              ...prev,
               calculation: {
-                ...rule.calculation,
+                ...prev.calculation,
                 extraItems: {
-                  ...(rule.calculation.extraItems || {}),
-                  quantity: rule.calculation.extraItems?.quantity || 0,
+                  ...(prev.calculation.extraItems || {}),
+                  quantity: prev.calculation.extraItems?.quantity || 0,
                   perDay: checked,
                   daysPattern: checked
-                    ? rule.calculation.extraItems?.daysPattern
+                    ? prev.calculation.extraItems?.daysPattern
                     : undefined,
                 },
               },
-            })
+            }))
           }
           onPerPersonChange={(checked) =>
-            onUpdateRule({
+            setEditedRule((prev) => ({
+              ...prev,
               calculation: {
-                ...rule.calculation,
+                ...prev.calculation,
                 extraItems: {
-                  ...(rule.calculation.extraItems || {}),
-                  quantity: rule.calculation.extraItems?.quantity || 0,
+                  ...(prev.calculation.extraItems || {}),
+                  quantity: prev.calculation.extraItems?.quantity || 0,
                   perPerson: checked,
                 },
               },
-            })
+            }))
           }
           onDaysPatternChange={(pattern) =>
-            onUpdateRule({
+            setEditedRule((prev) => ({
+              ...prev,
               calculation: {
-                ...rule.calculation,
+                ...prev.calculation,
                 extraItems: {
-                  ...(rule.calculation.extraItems || {}),
-                  quantity: rule.calculation.extraItems?.quantity || 0,
+                  ...(prev.calculation.extraItems || {}),
+                  quantity: prev.calculation.extraItems?.quantity || 0,
                   daysPattern: pattern,
                 },
               },
-            })
+            }))
           }
           label="Extra Items Calculation"
         />
@@ -196,13 +220,18 @@ export const RuleEditForm = ({
 
       <div className="divider">Conditions</div>
 
-      {rule.conditions?.map((condition, index) => (
+      {editedRule.conditions?.map((condition, index) => (
         <div
           key={index}
           className="alert flex flex-col items-stretch gap-2 mb-2"
         >
           <div className="flex items-center justify-between w-full">
-            <div className="badge badge-outline gap-1">
+            <div
+              className={`badge badge-outline gap-1 ${
+                condition.notes ? 'tooltip tooltip-right' : ''
+              }`}
+              data-tip={condition.notes}
+            >
               {condition.type === 'person' ? '👤' : '📅'} {condition.field}{' '}
               {condition.operator} {condition.value}
             </div>
@@ -257,15 +286,17 @@ export const RuleEditForm = ({
           initialCondition={editingCondition}
           onSave={(newCondition) => {
             if (editingConditionIndex !== null) {
-              onUpdateRule({
-                conditions: rule.conditions?.map((c, i) =>
+              setEditedRule((prev) => ({
+                ...prev,
+                conditions: prev.conditions?.map((c, i) =>
                   i === editingConditionIndex ? newCondition : c
                 ),
-              });
+              }));
             } else {
-              onUpdateRule({
-                conditions: [...(rule.conditions || []), newCondition],
-              });
+              setEditedRule((prev) => ({
+                ...prev,
+                conditions: [...(prev.conditions || []), newCondition],
+              }));
             }
             handleCancelCondition();
           }}
@@ -285,10 +316,10 @@ export const RuleEditForm = ({
       <div className="divider"></div>
 
       <div className="flex justify-end gap-2">
-        <button type="button" className="btn" onClick={onCancel}>
+        <button type="button" className="btn" onClick={handleCancel}>
           Cancel
         </button>
-        <button type="button" className="btn btn-primary" onClick={onCancel}>
+        <button type="button" className="btn btn-primary" onClick={handleSave}>
           Save
         </button>
       </div>

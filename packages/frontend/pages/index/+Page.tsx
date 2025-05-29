@@ -1,5 +1,8 @@
 import { useAppSelector } from '@packing-list/state';
 import { Link } from '../../components/Link';
+import { PageHeader } from '../../components/PageHeader';
+import { PageContainer } from '../../components/PageContainer';
+import { HelpBlurb } from '../../components/HelpBlurb';
 
 export default function Page() {
   const people = useAppSelector((state) => state.people);
@@ -11,38 +14,35 @@ export default function Page() {
   const hasDefaultItems = defaultItems.length > 0;
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="font-bold text-3xl mb-6">Smart Packing List</h1>
+    <PageContainer>
+      <PageHeader title="Smart Packing List" />
 
-      <div className="card bg-base-100 shadow-xl mb-6">
-        <div className="card-body prose">
-          <h2 className="card-title">How It Works</h2>
-          <p>
-            Create the perfect packing list for your trip in three easy steps:
-          </p>
-          <ol>
-            <li>
-              <strong>Configure Your Trip</strong> - Add your travel dates and
-              destinations to automatically calculate the number of days you'll
-              be away.
-            </li>
-            <li>
-              <strong>Add Travelers</strong> - Include everyone going on the
-              trip, with their age and preferences to personalize packing
-              recommendations.
-            </li>
-            <li>
-              <strong>Set Packing Rules</strong> - Use smart rules to
-              automatically calculate quantities (e.g., "1 shirt per person per
-              2 days + 1 extra").
-            </li>
-          </ol>
-          <p className="text-sm text-base-content/70">
-            Your packing list will automatically update as you modify any of
-            these details!
-          </p>
-        </div>
-      </div>
+      <HelpBlurb storageKey="overview" title="How It Works">
+        <p>
+          Create the perfect packing list for your trip in three easy steps:
+        </p>
+        <ol>
+          <li>
+            <strong>Configure Your Trip</strong> - Add your travel dates and
+            destinations to automatically calculate the number of days you'll be
+            away.
+          </li>
+          <li>
+            <strong>Add Travelers</strong> - Include everyone going on the trip,
+            with their age and preferences to personalize packing
+            recommendations.
+          </li>
+          <li>
+            <strong>Set Packing Rules</strong> - Use smart rules to
+            automatically calculate quantities (e.g., "1 shirt per person per 2
+            days + 1 extra").
+          </li>
+        </ol>
+        <p className="text-sm text-base-content/70">
+          Your packing list will automatically update as you modify any of these
+          details!
+        </p>
+      </HelpBlurb>
 
       <div className="card bg-base-100 shadow-xl mb-6">
         <div className="card-body">
@@ -127,6 +127,6 @@ export default function Page() {
           </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

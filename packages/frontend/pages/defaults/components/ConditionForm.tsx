@@ -1,5 +1,5 @@
 import { Condition } from '@packing-list/model';
-import { useState, MouseEvent, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 type ConditionFormProps = {
   initialCondition?: Condition;

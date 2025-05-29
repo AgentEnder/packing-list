@@ -56,7 +56,7 @@ export type ActionHandler<T extends AllActions> = (
 ) => StoreType;
 
 export const Mutations: {
-  [Action in AllActions as Action['type']]: ActionHandler<Action>;
+  [K in StoreActions]: ActionHandler<Extract<AllActions, { type: K }>>;
 } = {
   ADD_PERSON: addPersonHandler,
   REMOVE_PERSON: removePersonHandler,

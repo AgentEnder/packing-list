@@ -1,12 +1,5 @@
 import { Calculation } from './Calculation.js';
-
-export type Condition = {
-  type: 'person' | 'day';
-  field: string;
-  operator: '==' | '>' | '<' | '>=' | '<=';
-  value: any;
-  notes?: string; // Optional notes explaining the condition
-};
+import { Condition } from './Condition.js';
 
 export type DefaultItemRule = {
   id: string;

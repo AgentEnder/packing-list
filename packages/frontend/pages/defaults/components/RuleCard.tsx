@@ -298,15 +298,15 @@ export const RuleCard = ({
             <div className="space-y-1">
               {rule.conditions.map((condition, index) => (
                 <div key={index} className="flex flex-col gap-1">
-                  <div className="badge badge-outline gap-1">
+                  <div
+                    className={`badge badge-outline gap-1 ${
+                      condition.notes ? 'tooltip tooltip-right' : ''
+                    }`}
+                    data-tip={condition.notes}
+                  >
                     {condition.type === 'person' ? '👤' : '📅'}{' '}
                     {condition.field} {condition.operator} {condition.value}
                   </div>
-                  {condition.notes && (
-                    <div className="text-xs text-base-content/70 ml-1">
-                      {condition.notes}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>

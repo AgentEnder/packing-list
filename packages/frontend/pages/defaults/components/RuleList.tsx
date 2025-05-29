@@ -1,10 +1,8 @@
 import { DefaultItemRule, Person, Day } from '@packing-list/model';
-import { useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useCallback, useState } from 'react';
 import { RuleCard } from './RuleCard';
 import { RuleEditForm } from './RuleEditForm';
-import { StoreType } from '@packing-list/state';
-import { startEditingRule, stopEditingRule } from '@packing-list/state';
+import { useAppDispatch } from '@packing-list/state';
 
 type RuleListProps = {
   rules: DefaultItemRule[];
@@ -13,8 +11,8 @@ type RuleListProps = {
 };
 
 export const RuleList = ({ rules, people, days }: RuleListProps) => {
-  const dispatch = useDispatch();
-  const editingState = useSelector((state: StoreType) => state.ruleEditing);
+  const dispatch = useAppDispatch();
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
 
   const handleUpdateRule = useCallback(
     (id: string, updates: Partial<DefaultItemRule>) => {
@@ -55,13 +53,6 @@ export const RuleList = ({ rules, people, days }: RuleListProps) => {
     [dispatch]
   );
 
-  const handleStartEditing = useCallback(
-    (rule: DefaultItemRule) => {
-      dispatch(startEditingRule(rule.id));
-    },
-    [dispatch]
-  );
-
   return (
     <div className="card bg-base-100 shadow-xl">
       <div className="card-body">
@@ -70,20 +61,20 @@ export const RuleList = ({ rules, people, days }: RuleListProps) => {
           {rules.map((rule) => (
             <div key={rule.id} className="card bg-base-200">
               <div className="card-body">
-                {editingState.editingRuleId === rule.id ? (
+                {editingRuleId === rule.id ? (
                   <RuleEditForm
                     rule={rule}
                     onUpdateRule={(updates) =>
                       handleUpdateRule(rule.id, updates)
                     }
-                    onCancel={() => dispatch(stopEditingRule(null))}
+                    onCancel={() => setEditingRuleId(null)}
                   />
                 ) : (
                   <RuleCard
                     rule={rule}
                     people={people}
                     days={days}
-                    onEdit={() => handleStartEditing(rule)}
+                    onEdit={() => setEditingRuleId(rule.id)}
                     onDelete={() => handleDeleteRule(rule.id)}
                   />
                 )}
