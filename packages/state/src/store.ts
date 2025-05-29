@@ -5,23 +5,26 @@ import {
   DefaultItemRule,
   Trip,
   Person,
-  ItemOverride,
+  RuleOverride,
+  PackingListViewState,
+  PackingListItem,
 } from '@packing-list/model';
 import { DEMO_DATA } from './data.js';
 
 export type StoreType = {
   people: Person[];
-  itemOverrides: ItemOverride[];
   defaultItemRules: DefaultItemRule[];
   trip: Trip;
   calculated: {
     defaultItems: Item[];
+    packingListItems: PackingListItem[];
   };
+  ruleOverrides: RuleOverride[];
+  packingListView: PackingListViewState;
 };
 
 export const initialState: StoreType = DEMO_DATA || {
   people: [],
-  itemOverrides: [],
   defaultItemRules: [],
   trip: {
     days: [],
@@ -29,6 +32,16 @@ export const initialState: StoreType = DEMO_DATA || {
   },
   calculated: {
     defaultItems: [],
+    packingListItems: [],
+  },
+  ruleOverrides: [],
+  packingListView: {
+    viewMode: 'by-day',
+    filters: {
+      packed: true,
+      unpacked: true,
+      excluded: false,
+    },
   },
 };
 
@@ -72,12 +85,16 @@ export function createStore(pageContext: PageContext) {
         preloadedState.defaultItemRules
       ),
       people: createReducer('people', preloadedState.people),
-      itemOverrides: createReducer(
-        'itemOverrides',
-        preloadedState.itemOverrides
-      ),
       trip: createReducer('trip', preloadedState.trip),
       calculated: createReducer('calculated', preloadedState.calculated),
+      ruleOverrides: createReducer(
+        'ruleOverrides',
+        preloadedState.ruleOverrides
+      ),
+      packingListView: createReducer(
+        'packingListView',
+        preloadedState.packingListView
+      ),
     },
   });
 }

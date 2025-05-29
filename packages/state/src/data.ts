@@ -72,7 +72,6 @@ export const DEMO_DATA: StoreType = {
       gender: 'male',
     },
   ],
-  itemOverrides: [],
   defaultItemRules: [
     {
       id: 'underwear-rule',

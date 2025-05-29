@@ -34,6 +34,18 @@ import {
   DeleteItemRuleAction,
   deleteItemRuleHandler,
 } from './action-handlers/delete-item-rule.js';
+import {
+  AddRuleOverrideAction,
+  addRuleOverrideHandler,
+} from './action-handlers/add-rule-override.js';
+import {
+  UpdatePackingListViewAction,
+  updatePackingListViewHandler,
+} from './action-handlers/update-packing-list-view.js';
+import {
+  CalculatePackingListAction,
+  calculatePackingListHandler,
+} from './action-handlers/calculate-packing-list.js';
 
 import { StoreType } from './store.js';
 
@@ -46,7 +58,10 @@ export type AllActions =
   | CalculateDaysAction
   | CreateItemRuleAction
   | UpdateItemRuleAction
-  | DeleteItemRuleAction;
+  | DeleteItemRuleAction
+  | AddRuleOverrideAction
+  | UpdatePackingListViewAction
+  | CalculatePackingListAction;
 
 export type StoreActions = AllActions['type'];
 
@@ -67,4 +82,7 @@ export const Mutations: {
   CREATE_ITEM_RULE: createItemRuleHandler,
   UPDATE_ITEM_RULE: updateItemRuleHandler,
   DELETE_ITEM_RULE: deleteItemRuleHandler,
+  ADD_RULE_OVERRIDE: addRuleOverrideHandler,
+  UPDATE_PACKING_LIST_VIEW: updatePackingListViewHandler,
+  CALCULATE_PACKING_LIST: calculatePackingListHandler,
 };

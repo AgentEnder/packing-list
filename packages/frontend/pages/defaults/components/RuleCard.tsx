@@ -244,7 +244,7 @@ export const RuleCard = ({
           </div>
         ) : (
           showMath && (
-            <div className="text-xs text-base-content/50 space-y-0.5 mb-auto">
+            <div className="hidden md:block text-xs text-base-content/50 space-y-0.5 mb-auto">
               {renderMultiplierRow(baseQuantity, baseParts)}
               {extraItems?.quantity &&
                 extraItemsTotal > 0 &&
@@ -254,7 +254,7 @@ export const RuleCard = ({
         )}
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2 md:col-start-1 col-span-2 md:col-span-1">
         {(perPerson || perDay || extraItems?.quantity) && (
           <p className="text-base-content/70">
             {baseQuantity}
