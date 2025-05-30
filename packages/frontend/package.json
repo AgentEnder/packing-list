@@ -12,5 +12,24 @@
     "@packing-list/model": "workspace:*",
     "@packing-list/shared-components": "workspace:*",
     "@packing-list/shared-utils": "workspace:*"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "outputs": [
+          "{projectRoot}/dist"
+        ],
+        "cache": true
+      },
+      "deploy": {
+        "executor": "nx-github-pages:deploy",
+        "options": {
+          "directory": "{projectRoot}/dist/client"
+        },
+        "dependsOn": [
+          "build"
+        ]
+      }
+    }
   }
 }

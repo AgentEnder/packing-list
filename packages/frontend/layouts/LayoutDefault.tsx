@@ -55,37 +55,37 @@ export default function LayoutDefault({
         <label htmlFor="drawer" className="drawer-overlay"></label>
         <div className="menu p-4 w-80 min-h-full bg-base-200 text-base-content">
           <div className="hidden lg:flex mb-8">
-            <Link href="/" className="btn btn-ghost normal-case text-xl">
+            <Link href="./" className="btn btn-ghost normal-case text-xl">
               Packing List
             </Link>
           </div>
           <ul className="menu menu-lg gap-2">
             <li>
-              <Link href="/" className="flex items-center gap-2">
+              <Link href="./" className="flex items-center gap-2">
                 <Home className="w-5 h-5" />
                 Overview
               </Link>
             </li>
             <li>
-              <Link href="/people" className="flex items-center gap-2">
+              <Link href="./people" className="flex items-center gap-2">
                 <Users className="w-5 h-5" />
                 People
               </Link>
             </li>
             <li>
-              <Link href="/days" className="flex items-center gap-2">
+              <Link href="./days" className="flex items-center gap-2">
                 <Calendar className="w-5 h-5" />
                 Days
               </Link>
             </li>
             <li>
-              <Link href="/defaults" className="flex items-center gap-2">
+              <Link href="./defaults" className="flex items-center gap-2">
                 <ClipboardList className="w-5 h-5" />
                 Default Items
               </Link>
             </li>
             <li>
-              <Link href="/packing-list" className="flex items-center gap-2">
+              <Link href="./packing-list" className="flex items-center gap-2">
                 <CheckSquare className="w-5 h-5" />
                 Packing List
               </Link>

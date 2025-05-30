@@ -90,6 +90,9 @@ importers:
       nx:
         specifier: 21.1.2
         version: 21.1.2(@swc-node/register@1.9.1(@swc/core@1.5.7(@swc/helpers@0.5.11))(@swc/types@0.1.21)(typescript@5.8.3))(@swc/core@1.5.7(@swc/helpers@0.5.11))
+      nx-github-pages:
+        specifier: ^1.0.0
+        version: 1.0.0(nx@21.1.2(@swc-node/register@1.9.1(@swc/core@1.5.7(@swc/helpers@0.5.11))(@swc/types@0.1.21)(typescript@5.8.3))(@swc/core@1.5.7(@swc/helpers@0.5.11)))
       prettier:
         specifier: ^2.6.2
         version: 2.6.2
@@ -184,7 +187,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: ^1.0.0
-        version: 1.6.1(@types/node@20.17.54)(@vitest/ui@3.0.0)(lightningcss@1.30.1)
+        version: 1.6.1(@types/node@20.17.54)(@vitest/ui@3.0.0(vitest@3.0.0))(lightningcss@1.30.1)
 
 packages:
 
@@ -1170,6 +1173,14 @@ packages:
   '@nodelib/fs.walk@1.2.8':
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
+
+  '@nrwl/devkit@19.5.3':
+    resolution: {integrity: sha512-kd6eIQjWuFHdO14wVu0rzGtoPbO3EdYM/3gATOupxBzlqD+7dmkvv1Olbri9v598mDApXQNo8q81L2masTAhvg==}
+
+  '@nx/devkit@19.5.3':
+    resolution: {integrity: sha512-OUi8OJkoT+y3LwXACO6ugF9l6QppUyHrBIZYOTffBa1ZrnkpJrw03smy+GhAt+BDoeNGEuOPHGvOSV4AmRxnmg==}
+    peerDependencies:
+      nx: '>= 17 <= 20'
 
   '@nx/devkit@21.1.2':
     resolution: {integrity: sha512-1dgjwSsNDdp/VXydZnSfzfVwySEB3C9yjzeIw6+3+nRvZfH16a7ggZE7MF5sJTq4d+01hAgIDz3KyvGa6Jf73g==}
@@ -2163,6 +2174,10 @@ packages:
     resolution: {integrity: sha512-yjNnPr315/FjS4zIsUxYguYUPP2e1NK4d7E7ZOLiyYCcbFBiTMyID+2wvm2w6+pZ/odMA7cRkjhsPbltwBOrLg==}
     engines: {node: '>=8.6'}
 
+  enquirer@2.4.1:
+    resolution: {integrity: sha512-rRqJg/6gd538VHvR3PSrdRBb/1Vy2YfzHqzvbhGIQpDRKIa4FgV/54b5Q1xYSxOOwKvjXweS26E0Q+nAMwp2pQ==}
+    engines: {node: '>=8.6'}
+
   error-ex@1.3.2:
     resolution: {integrity: sha512-7dFHNmqeFSEt2ZBsCriorKnn3Z2pj+fd9kmI6QoWw4//DL+icEBfc0U7qJCisqrTsKTjw4fNFy2pW9OqStD84g==}
 
@@ -3051,6 +3066,9 @@ packages:
   npm-run-path@5.3.0:
     resolution: {integrity: sha512-ppwTtiJZq0O/ai0z7yfudtBpWIoxM8yE6nHi1X47eFR2EWORqfbu6CnPlNsjeN683eT0qG6H/Pyf9fCcvjnnnQ==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+
+  nx-github-pages@1.0.0:
+    resolution: {integrity: sha512-eJs4sN5zgcV7icWITuW9+mFF0YJ0d694jD/nA6RYfb1VV26MSMj/lLjzczC8wN4dE0AcnvzPkB7hRqE+BuuXRQ==}
 
   nx@21.1.2:
     resolution: {integrity: sha512-oczAEOOkQHElxCXs2g2jXDRabDRsmub/h5SAgqAUDSJ2CRnYGVVlgZX7l+o+A9kSqfONyLy5FlJ1pSWlvPuG4w==}
@@ -5001,6 +5019,25 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.19.1
 
+  '@nrwl/devkit@19.5.3(nx@21.1.2(@swc-node/register@1.9.1(@swc/core@1.5.7(@swc/helpers@0.5.11))(@swc/types@0.1.21)(typescript@5.8.3))(@swc/core@1.5.7(@swc/helpers@0.5.11)))':
+    dependencies:
+      '@nx/devkit': 19.5.3(nx@21.1.2(@swc-node/register@1.9.1(@swc/core@1.5.7(@swc/helpers@0.5.11))(@swc/types@0.1.21)(typescript@5.8.3))(@swc/core@1.5.7(@swc/helpers@0.5.11)))
+    transitivePeerDependencies:
+      - nx
+
+  '@nx/devkit@19.5.3(nx@21.1.2(@swc-node/register@1.9.1(@swc/core@1.5.7(@swc/helpers@0.5.11))(@swc/types@0.1.21)(typescript@5.8.3))(@swc/core@1.5.7(@swc/helpers@0.5.11)))':
+    dependencies:
+      '@nrwl/devkit': 19.5.3(nx@21.1.2(@swc-node/register@1.9.1(@swc/core@1.5.7(@swc/helpers@0.5.11))(@swc/types@0.1.21)(typescript@5.8.3))(@swc/core@1.5.7(@swc/helpers@0.5.11)))
+      ejs: 3.1.10
+      enquirer: 2.3.6
+      ignore: 5.3.2
+      minimatch: 9.0.3
+      nx: 21.1.2(@swc-node/register@1.9.1(@swc/core@1.5.7(@swc/helpers@0.5.11))(@swc/types@0.1.21)(typescript@5.8.3))(@swc/core@1.5.7(@swc/helpers@0.5.11))
+      semver: 7.7.2
+      tmp: 0.2.3
+      tslib: 2.8.1
+      yargs-parser: 21.1.1
+
   '@nx/devkit@21.1.2(nx@21.1.2(@swc-node/register@1.9.1(@swc/core@1.5.7(@swc/helpers@0.5.11))(@swc/types@0.1.21)(typescript@5.8.3))(@swc/core@1.5.7(@swc/helpers@0.5.11)))':
     dependencies:
       ejs: 3.1.10
@@ -6118,6 +6155,11 @@ snapshots:
     dependencies:
       ansi-colors: 4.1.3
 
+  enquirer@2.4.1:
+    dependencies:
+      ansi-colors: 4.1.3
+      strip-ansi: 6.0.1
+
   error-ex@1.3.2:
     dependencies:
       is-arrayish: 0.2.1
@@ -7156,6 +7198,14 @@ snapshots:
     dependencies:
       path-key: 4.0.0
 
+  nx-github-pages@1.0.0(nx@21.1.2(@swc-node/register@1.9.1(@swc/core@1.5.7(@swc/helpers@0.5.11))(@swc/types@0.1.21)(typescript@5.8.3))(@swc/core@1.5.7(@swc/helpers@0.5.11))):
+    dependencies:
+      '@nx/devkit': 19.5.3(nx@21.1.2(@swc-node/register@1.9.1(@swc/core@1.5.7(@swc/helpers@0.5.11))(@swc/types@0.1.21)(typescript@5.8.3))(@swc/core@1.5.7(@swc/helpers@0.5.11)))
+      enquirer: 2.4.1
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - nx
+
   nx@21.1.2(@swc-node/register@1.9.1(@swc/core@1.5.7(@swc/helpers@0.5.11))(@swc/types@0.1.21)(typescript@5.8.3))(@swc/core@1.5.7(@swc/helpers@0.5.11)):
     dependencies:
       '@napi-rs/wasm-runtime': 0.2.4
@@ -8027,7 +8077,7 @@ snapshots:
       lightningcss: 1.30.1
       yaml: 2.8.0
 
-  vitest@1.6.1(@types/node@20.17.54)(@vitest/ui@3.0.0)(lightningcss@1.30.1):
+  vitest@1.6.1(@types/node@20.17.54)(@vitest/ui@3.0.0(vitest@3.0.0))(lightningcss@1.30.1):
     dependencies:
       '@vitest/expect': 1.6.1
       '@vitest/runner': 1.6.1

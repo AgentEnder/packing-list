@@ -36,7 +36,7 @@ export const initialState: StoreType = DEMO_DATA || {
   },
   ruleOverrides: [],
   packingListView: {
-    viewMode: 'by-day',
+    viewMode: 'by-person',
     filters: {
       packed: true,
       unpacked: true,
