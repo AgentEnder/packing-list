@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@packing-list/state';
 import { PackingListViewState } from '@packing-list/model';
 import { RuleOverrideDialog } from './RuleOverrideDialog';
@@ -11,6 +11,7 @@ import {
   ItemGroup,
   GroupedItemsResult,
 } from '@packing-list/state';
+import { PackagePlus, Info, AlertTriangle, Check } from 'lucide-react';
 
 export const PackingList: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -25,13 +26,6 @@ export const PackingList: React.FC = () => {
   const [selectedGroupForPacking, setSelectedGroupForPacking] =
     useState<GroupedItem | null>(null);
   const [isPackDialogOpen, setIsPackDialogOpen] = useState(false);
-
-  useEffect(() => {
-    // Calculate default items first
-    dispatch({ type: 'CALCULATE_DEFAULT_ITEMS' });
-    // Then calculate the packing list based on those items and any overrides
-    dispatch({ type: 'CALCULATE_PACKING_LIST' });
-  }, [dispatch]);
 
   const handleViewModeChange = (mode: PackingListViewState['viewMode']) => {
     dispatch({
@@ -73,35 +67,47 @@ export const PackingList: React.FC = () => {
     return (
       <li
         key={groupedItem.baseItem.id}
-        className="relative overflow-hidden bg-base-100 rounded"
+        className="relative overflow-hidden bg-base-100 rounded-lg border border-base-200 hover:border-primary transition-colors duration-200"
       >
         {/* Progress bar background */}
         <div
-          className="absolute inset-0 bg-success/20 transition-all duration-300 ease-in-out"
+          className="absolute inset-0 bg-success/30 transition-all duration-300 ease-in-out"
           style={{ width: `${progress}%` }}
         />
 
         {/* Content */}
-        <div className="relative flex items-center justify-between p-2">
-          <div className="flex items-center gap-2">
+        <div className="relative flex items-center justify-between p-3">
+          <div className="flex items-center gap-3">
             <button
-              className="btn btn-sm btn-ghost"
+              className="btn btn-sm btn-square"
               onClick={() => handleOpenPackDialog(groupedItem)}
             >
-              <span className={progress === 100 ? 'text-success' : ''}>
-                {groupedItem.packedCount}/{groupedItem.totalCount}
-              </span>
+              <PackagePlus className="w-4 h-4" />
             </button>
             <button
-              className="hover:underline"
+              className="hover:text-primary transition-colors duration-200"
               onClick={() => handleOpenOverrideDialog(groupedItem)}
             >
               {groupedItem.displayName}
+              {groupedItem.baseItem.notes && (
+                <div
+                  className="tooltip tooltip-right ml-2"
+                  data-tip={groupedItem.baseItem.notes}
+                >
+                  <Info className="w-4 h-4 stroke-current opacity-60" />
+                </div>
+              )}
             </button>
           </div>
           {groupedItem.baseItem.isOverridden && (
-            <span className="badge badge-warning">Modified</span>
+            <div className="badge badge-warning gap-1">
+              <AlertTriangle className="w-4 h-4 stroke-current" />
+              Modified
+            </div>
           )}
+          <span className={progress === 100 ? 'text-success' : ''}>
+            {groupedItem.packedCount}/{groupedItem.totalCount}
+          </span>
         </div>
       </li>
     );
@@ -109,12 +115,12 @@ export const PackingList: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Packing List</h1>
-        <div className="flex gap-4">
-          <div className="btn-group">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="join">
             <button
-              className={`btn ${
+              className={`btn join-item ${
                 viewState.viewMode === 'by-day' ? 'btn-active' : ''
               }`}
               onClick={() => handleViewModeChange('by-day')}
@@ -122,7 +128,7 @@ export const PackingList: React.FC = () => {
               By Day
             </button>
             <button
-              className={`btn ${
+              className={`btn join-item ${
                 viewState.viewMode === 'by-person' ? 'btn-active' : ''
               }`}
               onClick={() => handleViewModeChange('by-person')}
@@ -130,12 +136,12 @@ export const PackingList: React.FC = () => {
               By Person
             </button>
           </div>
-          <div className="flex gap-2">
-            <label className="cursor-pointer label">
-              <span className="label-text mr-2">Packed</span>
+
+          <div className="join">
+            <label className="join-item btn gap-2">
               <input
                 type="checkbox"
-                className="checkbox"
+                className="toggle toggle-success toggle-sm"
                 checked={viewState.filters.packed}
                 onChange={(e) =>
                   handleFilterChange({
@@ -144,12 +150,12 @@ export const PackingList: React.FC = () => {
                   })
                 }
               />
+              <span>Packed</span>
             </label>
-            <label className="cursor-pointer label">
-              <span className="label-text mr-2">Unpacked</span>
+            <label className="join-item btn gap-2">
               <input
                 type="checkbox"
-                className="checkbox"
+                className="toggle toggle-success toggle-sm"
                 checked={viewState.filters.unpacked}
                 onChange={(e) =>
                   handleFilterChange({
@@ -158,12 +164,12 @@ export const PackingList: React.FC = () => {
                   })
                 }
               />
+              <span>Unpacked</span>
             </label>
-            <label className="cursor-pointer label">
-              <span className="label-text mr-2">Excluded</span>
+            <label className="join-item btn gap-2">
               <input
                 type="checkbox"
-                className="checkbox"
+                className="toggle toggle-success toggle-sm"
                 checked={viewState.filters.excluded}
                 onChange={(e) =>
                   handleFilterChange({
@@ -172,6 +178,7 @@ export const PackingList: React.FC = () => {
                   })
                 }
               />
+              <span>Excluded</span>
             </label>
           </div>
         </div>
@@ -181,59 +188,56 @@ export const PackingList: React.FC = () => {
         title="How to use this packing list"
         storageKey="packing-list-help"
       >
-        <p>
-          Your packing list automatically updates based on your trip details and
-          rules. Use these features to stay organized:
-        </p>
+        <div className="alert alert-info shadow-lg">
+          <Info className="w-6 h-6 stroke-current shrink-0" />
+          <div>
+            <h3 className="font-bold">Key Features</h3>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 mt-2">
+              <dt className="font-medium">Views:</dt>
+              <dd>Switch between organizing by day or by person</dd>
+              <dt className="font-medium">Progress:</dt>
+              <dd>Track what's packed with progress bars and counts</dd>
+              <dt className="font-medium">Filters:</dt>
+              <dd>Show/hide packed items or find specific things</dd>
+            </dl>
+          </div>
+        </div>
 
-        <h3 className="text-base mt-4 mb-2">Key Features</h3>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 my-4">
-          <dt className="font-bold">Views:</dt>
-          <dd>Switch between organizing by day or by person</dd>
-
-          <dt className="font-bold">Progress:</dt>
-          <dd>Track what's packed with progress bars and counts</dd>
-
-          <dt className="font-bold">Filters:</dt>
-          <dd>Show/hide packed items or find specific things</dd>
-
-          <dt className="font-bold">Quantities:</dt>
-          <dd>See exactly how many of each item you need</dd>
-
-          <dt className="font-bold">Extras:</dt>
-          <dd>Additional items are grouped with their base items</dd>
-
-          <dt className="font-bold">General Items:</dt>
-          <dd>Shared items not tied to specific people</dd>
-        </dl>
-
-        <div className="bg-base-200 rounded-lg p-4 my-4">
-          <h3 className="text-sm font-medium mb-2">Pro Tips</h3>
-          <p className="text-sm text-base-content/70 m-0">
-            Pack efficiently by:
-            <br />
-            • Grouping similar items together
-            <br />
-            • Using search to find related items
-            <br />
-            • Checking off items as you pack
-            <br />• Reviewing the list before departure
-          </p>
+        <div className="alert alert-success mt-4">
+          <Check className="w-6 h-6 stroke-current shrink-0" />
+          <div>
+            <h3 className="font-bold">Pro Tips</h3>
+            <ul className="list-disc list-inside mt-1 space-y-1">
+              <li>Group similar items together</li>
+              <li>Use search to find related items</li>
+              <li>Check off items as you pack</li>
+              <li>Review the list before departure</li>
+            </ul>
+          </div>
         </div>
       </HelpBlurb>
 
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-8 mt-8">
         {/* View-specific items */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {groupedItems.map((group, index) => (
-            <div key={index} className="card bg-base-200">
+            <div key={index} className="card bg-base-200 shadow-lg">
               <div className="card-body">
-                <h2 className="card-title">
-                  {group.type === 'day'
-                    ? `Day ${group.index + 1} - ${group.day.location}`
-                    : group.person.name}
+                <h2 className="card-title flex justify-between items-center">
+                  {group.type === 'day' ? (
+                    <>
+                      <span>Day {group.index + 1}</span>
+                      {group.day.location && (
+                        <div className="badge badge-primary/20">
+                          {group.day.location}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    group.person.name
+                  )}
                 </h2>
-                <ul className="space-y-2">
+                <ul className="space-y-2 mt-2">
                   {group.items.map(renderGroupedItem)}
                 </ul>
               </div>
@@ -243,7 +247,7 @@ export const PackingList: React.FC = () => {
 
         {/* General items */}
         {groupedGeneralItems.length > 0 && (
-          <div className="card bg-base-200">
+          <div className="card bg-base-200 shadow-lg">
             <div className="card-body">
               <h2 className="card-title">General Items</h2>
               <p className="text-sm text-base-content/70 mb-4">

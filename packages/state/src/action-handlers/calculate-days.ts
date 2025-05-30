@@ -1,6 +1,7 @@
 import { Day, Trip, TripEvent } from '@packing-list/model';
 import { StoreType } from '../store.js';
 import { ActionHandler } from '../actions.js';
+import { addDays, parseISO, isSameDay, compareAsc } from 'date-fns';
 
 export type CalculateDaysAction = {
   type: 'CALCULATE_DAYS';
@@ -26,92 +27,88 @@ export function enumerateTripDays(tripEvents: TripEvent[]): Day[] {
   }
 
   // Sort events by date, and then by departure / arrival.
-  // Its assumed that if both are present, the departure will come first.
   const sortedEvents = [...tripEvents].sort((a, b) => {
-    if (a.date === b.date) {
+    const aDate = parseISO(a.date);
+    const bDate = parseISO(b.date);
+    aDate.setHours(0, 0, 0, 0);
+    bDate.setHours(0, 0, 0, 0);
+    const dateCompare = compareAsc(aDate, bDate);
+    if (dateCompare === 0) {
+      // For same day events, departures should come before arrivals
+      if (a.type.includes('leave') && b.type.includes('arrive')) return -1;
+      if (a.type.includes('arrive') && b.type.includes('leave')) return 1;
       return a.type.localeCompare(b.type);
     }
-    return new Date(a.date).getTime() - new Date(b.date).getTime();
+    return dateCompare;
   });
 
-  const startDate = new Date(sortedEvents[0].date);
-  const endDate = new Date(sortedEvents[sortedEvents.length - 1].date);
+  const startDate = parseISO(sortedEvents[0].date);
+  startDate.setHours(0, 0, 0, 0);
+  const endDate = parseISO(sortedEvents[sortedEvents.length - 1].date);
+  endDate.setHours(0, 0, 0, 0);
 
   const days: Day[] = [];
-  const currentDate = new Date(startDate);
-
-  // Create a map of events by date for quick lookup
-  const eventsByDate = new Map<string, TripEvent[]>();
-  sortedEvents.forEach((event) => {
-    const arr = eventsByDate.get(event.date) || [];
-    arr.push(event);
-    eventsByDate.set(event.date, arr);
-  });
-
-  function getEventsOnDate(date: string): TripEvent[] | undefined {
-    const events = eventsByDate.get(date);
-    if (!events) {
-      return [];
-    }
-    return events;
-  }
+  let currentDate = startDate;
 
   // Track current state
   let currentLocation = 'home';
   let traveling = false;
 
-  while (currentDate <= endDate) {
-    const dateString = currentDate.toISOString().split('T')[0];
-    const eventsOnThisDay = getEventsOnDate(dateString);
+  while (compareAsc(currentDate, endDate) <= 0) {
+    const eventsOnThisDay = sortedEvents.filter((event) => {
+      const eventDate = parseISO(event.date);
+      eventDate.setHours(0, 0, 0, 0);
+      return isSameDay(currentDate, eventDate);
+    });
 
     // Create day object
     const day: Day = {
       location: currentLocation,
       expectedClimate: getClimateForLocation(currentLocation),
       items: [],
-      travel: traveling,
+      travel: false, // Start with no travel
       date: currentDate.getTime(),
     };
 
-    if (eventsOnThisDay) {
+    if (eventsOnThisDay.length > 0) {
       for (const event of eventsOnThisDay) {
-        // All days that have an event are travel days...
-        // You either just left, or are arriving.
-        day.travel = true;
-
         switch (event?.type) {
           case 'leave_home':
-            currentLocation = 'Home';
-            traveling = true;
             day.location = 'Home';
+            day.travel = true; // Mark as travel when leaving
+            currentLocation = 'Traveling';
+            traveling = true;
             break;
           case 'leave_destination':
             day.location = currentLocation;
+            day.travel = true; // Mark as travel when leaving
             currentLocation = 'Traveling';
             traveling = true;
             break;
           case 'arrive_destination':
             currentLocation = event.location || 'destination';
-            traveling = false;
             day.location = currentLocation;
+            day.travel = traveling; // Keep travel status from previous state
+            traveling = false;
             break;
           case 'arrive_home':
             currentLocation = 'Home';
-            traveling = false;
             day.location = 'Home';
+            day.travel = traveling; // Keep travel status from previous state
+            traveling = false;
             break;
         }
       }
     } else {
-      day.travel = traveling;
       day.location = currentLocation;
+      day.travel = traveling;
     }
-    day.expectedClimate = getClimateForLocation(currentLocation);
 
+    day.expectedClimate = getClimateForLocation(day.location);
     days.push(day);
 
     // Move to next day
-    currentDate.setDate(currentDate.getDate() + 1);
+    currentDate = addDays(currentDate, 1);
   }
 
   return days;

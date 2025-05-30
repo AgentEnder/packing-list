@@ -8,19 +8,21 @@ export type ModalProps = {
 
 export const Modal = ({ open, onClose, children }: ModalProps) => {
   if (!open) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="modal modal-open">
-        <div className="modal-box relative">
-          <button
-            className="btn btn-sm btn-circle absolute right-2 top-2"
-            onClick={onClose}
-          >
-            ✕
-          </button>
-          {children}
-        </div>
+    <dialog className={`modal ${open ? 'modal-open' : ''}`}>
+      <div className="modal-box relative">
+        <button
+          className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+          onClick={onClose}
+        >
+          ✕
+        </button>
+        {children}
       </div>
-    </div>
+      <form method="dialog" className="modal-backdrop" onClick={onClose}>
+        <button>close</button>
+      </form>
+    </dialog>
   );
 };

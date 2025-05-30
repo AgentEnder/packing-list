@@ -1,23 +1,32 @@
 import { DefaultItemRule } from '@packing-list/model';
-import { ActionHandler } from '../actions.js';
 import { StoreType } from '../store.js';
+import { calculateDefaultItems } from './calculate-default-items.js';
+import { calculatePackingListHandler } from './calculate-packing-list.js';
 
 export type UpdateItemRuleAction = {
   type: 'UPDATE_ITEM_RULE';
-  payload: {
-    id: string;
-    rule: Partial<DefaultItemRule>;
-  };
+  payload: DefaultItemRule;
 };
 
-export const updateItemRuleHandler: ActionHandler<UpdateItemRuleAction> = (
+export const updateItemRuleHandler = (
   state: StoreType,
   action: UpdateItemRuleAction
 ): StoreType => {
-  return {
+  // First update the rule
+  const stateWithUpdatedRule = {
     ...state,
     defaultItemRules: state.defaultItemRules.map((rule) =>
-      rule.id === action.payload.id ? { ...rule, ...action.payload.rule } : rule
+      rule.id === action.payload.id ? action.payload : rule
     ),
   };
+
+  // Then recalculate default items
+  const stateWithDefaultItems = calculateDefaultItems(stateWithUpdatedRule, {
+    type: 'CALCULATE_DEFAULT_ITEMS',
+  });
+
+  // Finally recalculate packing list
+  return calculatePackingListHandler(stateWithDefaultItems, {
+    type: 'CALCULATE_PACKING_LIST',
+  });
 };

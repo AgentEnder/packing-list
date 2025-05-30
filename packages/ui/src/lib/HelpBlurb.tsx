@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 
-interface HelpBlurbProps {
+export interface HelpBlurbProps {
   title: string;
   children: React.ReactNode;
 }
@@ -14,21 +15,11 @@ export const HelpBlurb: React.FC<HelpBlurbProps> = ({ title, children }) => {
         className="flex items-center gap-2 text-base-content/70 hover:text-base-content"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <svg
+        <ChevronDown
           className={`w-4 h-4 transition-transform ${
             isExpanded ? 'rotate-180' : ''
           }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
+        />
         <span className="font-medium">{title}</span>
       </button>
 

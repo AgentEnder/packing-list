@@ -1,31 +1,72 @@
-import { StoreType, useAppSelector } from '@packing-list/state';
+import { StoreType, useAppSelector, useAppDispatch } from '@packing-list/state';
 import { createSelector } from '@reduxjs/toolkit';
 import { useMemo } from 'react';
+import { Calendar } from 'lucide-react';
+import { TripEvent, PackingListItem } from '@packing-list/model';
+import { format, isSameMonth, parseISO } from 'date-fns';
+import { TripDayRow } from './TripDayRow';
 
 const selectTripInfo = createSelector(
   (state: StoreType) => state.trip,
-  (trip) => ({
+  (state: StoreType) => state.calculated.packingListItems,
+  (trip, packingListItems) => ({
     days: trip.days,
     tripEvents: trip.tripEvents || [],
+    packingListItems,
   })
 );
 
-function formatDayLabel(date: Date, allDates: Date[]): string {
+function formatDayLabel(timestamp: number, allDates: number[]): string {
+  const date = new Date(timestamp);
+  const allDateObjects = allDates.map((ts) => new Date(ts));
+
   // Check if all dates are in the same month
-  const months = [...new Set(allDates.map((d) => d.getMonth()))];
-  const sameMonth = months.length === 1;
+  const sameMonth = allDateObjects.every((d) => isSameMonth(d, date));
 
   if (sameMonth) {
-    // Add 1 to the date to start at 1 instead of 0
-    return date.getDate().toString();
+    return format(date, 'd');
   } else {
-    date.setTime(date.getTime() + date.getTimezoneOffset() * 60000);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return format(date, 'MMM d');
   }
 }
 
-export function TripDays() {
-  const { days } = useAppSelector(selectTripInfo);
+function formatEventDescription(event: TripEvent): string {
+  switch (event.type) {
+    case 'leave_home':
+      return 'Departing';
+    case 'arrive_home':
+      return 'Returning Home';
+    case 'leave_destination':
+      return 'Departing';
+    case 'arrive_destination':
+      return 'Arriving';
+    default:
+      return '';
+  }
+}
+
+function calculatePackingProgress(dayIndex: number, items: PackingListItem[]) {
+  if (!items) return 0;
+  const dayItems = items.filter((item) => item.dayIndex === dayIndex);
+  if (dayItems.length === 0) return 0;
+  const packedItems = dayItems.filter((item) => item.isPacked).length;
+  return Math.round((packedItems / dayItems.length) * 100);
+}
+
+interface TripDaysProps {
+  onEventClick?: (event: TripEvent) => void;
+}
+
+export function TripDays({ onEventClick }: TripDaysProps) {
+  const dispatch = useAppDispatch();
+  const { days, tripEvents, packingListItems } = useAppSelector(selectTripInfo);
+
+  const handleToggleItem = (itemId: string) => {
+    dispatch({
+      type: 'TOGGLE_ITEM_PACKED',
+      payload: { itemId },
+    });
+  };
 
   if (days.length === 0) {
     return (
@@ -35,66 +76,40 @@ export function TripDays() {
     );
   }
 
-  if (!days.length) {
-    return (
-      <div className="text-center text-gray-500 py-8">No trip dates found</div>
-    );
-  }
-
   const dates = useMemo(() => {
-    return days.map((day) => new Date(day.date));
+    return days.map((day) => day.date);
   }, [days]);
 
   return (
     <ul className="list bg-base-100 rounded-box shadow-md">
-      <li className="p-4 pb-2 text-xs opacity-60 tracking-wide">Day by day</li>
+      <li className="p-4 pb-2 text-xs opacity-60 tracking-wide flex items-center gap-2">
+        <Calendar className="w-4 h-4" />
+        Trip Schedule
+      </li>
 
       {days.map((day, index) => {
-        const date = dates[index];
-        const dayLabel = formatDayLabel(date, dates);
-        const paddedIndex = dayLabel.toString().padStart(2, '0');
+        const dayLabel = formatDayLabel(day.date, dates);
+        const dayDate = format(new Date(day.date), 'yyyy-MM-dd');
+        const dayEvents = tripEvents.filter(
+          (event) => format(parseISO(event.date), 'yyyy-MM-dd') === dayDate
+        );
+        const dayItems =
+          packingListItems?.filter((item) => item.dayIndex === index) || [];
 
         return (
-          <li key={index} className="list-row">
-            <div className="text-4xl font-thin opacity-30 tabular-nums">
-              {paddedIndex}
-            </div>
-            <div className="flex flex-col items-center">
-              {day.travel && (
-                <div className="text-xs text-blue-600 font-semibold">
-                  Travel
-                </div>
-              )}
-            </div>
-            <div className="list-col-grow">
-              <div className="font-medium">{day.location}</div>
-              <div className="text-xs uppercase font-semibold opacity-60">
-                {day.expectedClimate}
-              </div>
-              {day.items.length > 0 && (
-                <div className="text-xs text-gray-500">
-                  {day.items.length} item{day.items.length !== 1 ? 's' : ''}
-                </div>
-              )}
-            </div>
-            <button className="btn btn-square btn-ghost">
-              <svg
-                className="size-[1.2em]"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-              >
-                <g
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  strokeWidth="2"
-                  fill="none"
-                  stroke="currentColor"
-                >
-                  <path d="M6 3L20 12 6 21 6 3z"></path>
-                </g>
-              </svg>
-            </button>
-          </li>
+          <TripDayRow
+            key={index}
+            index={index}
+            dayLabel={dayLabel}
+            date={day.date}
+            location={day.location}
+            expectedClimate={day.expectedClimate}
+            isTravel={day.travel}
+            events={dayEvents}
+            packingListItems={dayItems}
+            onEventClick={onEventClick}
+            onToggleItem={handleToggleItem}
+          />
         );
       })}
     </ul>

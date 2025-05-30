@@ -6,6 +6,7 @@ import {
   calculateNumDaysMeetingCondition,
 } from '@packing-list/shared-utils';
 import { ReactNode } from 'react';
+import { Info } from 'lucide-react';
 
 type RuleCardProps = {
   rule: DefaultItemRule;
@@ -276,19 +277,7 @@ export const RuleCard = ({
         )}
         {rule.notes && (
           <div className="text-sm text-base-content/70 flex gap-2 items-start">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              className="stroke-base-content/50 shrink-0 w-4 h-4 mt-0.5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+            <Info className="stroke-base-content/50 shrink-0 w-4 h-4 mt-0.5" />
             <span>{rule.notes}</span>
           </div>
         )}

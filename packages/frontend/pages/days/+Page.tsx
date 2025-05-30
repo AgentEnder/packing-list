@@ -3,7 +3,6 @@ import { useAppDispatch, useAppSelector, StoreType } from '@packing-list/state';
 import { uuid } from '../../utils/uuid';
 import { createSelector } from '@reduxjs/toolkit';
 import { TripEvent } from '@packing-list/model';
-import { Timeline } from '@packing-list/shared-components';
 import { TripWizard } from './TripWizard';
 import { TripDays } from './TripDays';
 import { PageHeader } from '../../components/PageHeader';
@@ -30,19 +29,20 @@ function Modal({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="modal modal-open">
-        <div className="modal-box relative">
-          <button
-            className="btn btn-sm btn-circle absolute right-2 top-2"
-            onClick={onClose}
-          >
-            ✕
-          </button>
-          {children}
-        </div>
+    <dialog className={`modal ${open ? 'modal-open' : ''}`}>
+      <div className="modal-box relative">
+        <button
+          className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+          onClick={onClose}
+        >
+          ✕
+        </button>
+        {children}
       </div>
-    </div>
+      <form method="dialog" className="modal-backdrop" onClick={onClose}>
+        <button>close</button>
+      </form>
+    </dialog>
   );
 }
 
@@ -71,11 +71,13 @@ export default function DaysPage() {
     setEditId(null);
     setModalOpen(true);
   };
+
   const openEditModal = (event: TripEvent) => {
     setForm(event);
     setEditId(event.id);
     setModalOpen(true);
   };
+
   const closeModal = () => setModalOpen(false);
 
   const handleChange = (
@@ -108,14 +110,10 @@ export default function DaysPage() {
     dispatch({ type: 'UPDATE_TRIP_EVENTS', payload: events });
   };
 
-  const handleEventClick = (event: TripEvent) => {
-    openEditModal(event);
-  };
-
   return (
     <PageContainer>
       <PageHeader
-        title="Trip Timeline"
+        title="Trip Schedule"
         actions={
           <>
             <button
@@ -136,15 +134,15 @@ export default function DaysPage() {
 
       <HelpBlurb storageKey="trip-timeline" title="Planning Your Trip">
         <p>
-          Create a timeline of your trip to help calculate the right amount of
-          items to pack. Add key events to track your journey and automatically
-          determine the trip duration.
+          Plan your trip schedule to help calculate the right amount of items to
+          pack. Add key events to track your journey and automatically determine
+          the trip duration.
         </p>
 
         <div className="bg-base-200 rounded-lg p-4 my-4">
           <h3 className="text-sm font-medium mb-2">How It Works</h3>
           <p className="text-sm text-base-content/70 m-0">
-            Your trip timeline helps calculate packing needs:
+            Your trip schedule helps calculate packing needs:
             <br />
             • Total trip duration determines quantities for daily items
             <br />
@@ -208,15 +206,10 @@ export default function DaysPage() {
         </form>
       </Modal>
 
-      {/* Timeline Display */}
+      {/* Trip Days Display */}
       {tripEvents.length > 0 ? (
         <div className="mb-6">
-          <Timeline
-            events={tripEvents}
-            onEventClick={handleEventClick}
-            className="max-w-xl mx-auto"
-          />
-          <TripDays />
+          <TripDays onEventClick={openEditModal} />
         </div>
       ) : (
         <div className="text-center py-8">

@@ -2,6 +2,7 @@ import { Condition, DefaultItemRule } from '@packing-list/model';
 import { useState } from 'react';
 import { ToggleGroup } from './ToggleGroup';
 import { ConditionForm } from './ConditionForm';
+import { Pencil, X } from 'lucide-react';
 
 type RuleEditFormProps = {
   rule: DefaultItemRule;
@@ -241,40 +242,14 @@ export const RuleEditForm = ({
                 className="btn btn-ghost btn-xs"
                 onClick={() => handleStartEditingCondition(index, condition)}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                  />
-                </svg>
+                <Pencil className="h-4 w-4" />
               </button>
               <button
                 type="button"
                 className="btn btn-ghost btn-xs text-error"
                 onClick={() => handleRemoveCondition(index)}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <X className="h-4 w-4" />
               </button>
             </div>
           </div>

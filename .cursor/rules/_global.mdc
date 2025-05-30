@@ -52,7 +52,7 @@ ls . docs
 
 ## Testing Standards
 
-- **Execution:** Always run tests in single-run mode (no watch mode).
+- **Execution:** Always run tests in single-run mode (no watch mode). Execute tests via `nx test {projectName} --watch=false`
 - **Failure:** Prefer to fail-fast (e.g., "bail=1" or equivalent).
 
 ## Git Practices
@@ -74,4 +74,10 @@ ls . docs
     - `pnpm dlx typescript tsc --init` (Corrected example)
     - `pnpm create cloudflare@latest . --framework=next --platform=pages`
 
+## Icons
+
+- When needing an icon within a react component, strongly prefer using something within lucide-react. If one is not available, you can fall back on react-icons.
+- Avoid embedding raw svg tags at all costs.
+
 **REMEMBER: These are your global directives. Adhere to them strictly in all operations.**
+

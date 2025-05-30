@@ -12,7 +12,7 @@ const tripEvents: TripEvent[] = [
   {
     id: 'event-2',
     type: 'arrive_destination',
-    date: '2024-07-26',
+    date: '2024-07-25',
     location: 'Houston, TX',
     notes: 'Stay at Hotel ZaZa Houston Memorial City',
   },

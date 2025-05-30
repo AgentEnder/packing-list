@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { useAppDispatch, useAppSelector } from '@packing-list/state';
-import { PackingListItem, RuleOverride } from '@packing-list/model';
+import { useState } from 'react';
+import { useAppDispatch } from '@packing-list/state';
+import { PackingListItem } from '@packing-list/model';
 
-interface RuleOverrideDialogProps {
+export type RuleOverrideDialogProps = {
   item: PackingListItem;
   isOpen: boolean;
   onClose: () => void;
-}
+};
 
 export const RuleOverrideDialog: React.FC<RuleOverrideDialogProps> = ({
   item,
@@ -14,99 +14,54 @@ export const RuleOverrideDialog: React.FC<RuleOverrideDialogProps> = ({
   onClose,
 }) => {
   const dispatch = useAppDispatch();
-  const people = useAppSelector((state) => state.people);
-  const days = useAppSelector((state) => state.trip.days);
-  const trip = useAppSelector((state) => state.trip);
-
-  const [overrideCount, setOverrideCount] = useState<number>(item.count);
-  const [selectedPersonId, setSelectedPersonId] = useState<
-    string | undefined
-  >();
-  const [selectedDayIndex, setSelectedDayIndex] = useState<
-    number | undefined
-  >();
-  const [isExcluded, setIsExcluded] = useState(false);
+  const [quantity, setQuantity] = useState(item.quantity);
+  const [isExcluded, setIsExcluded] = useState(item.isOverridden);
 
   const handleSave = () => {
-    const override: RuleOverride = {
-      ruleId: item.ruleId,
-      tripId: trip.id,
-      personId: selectedPersonId,
-      dayIndex: selectedDayIndex,
-      overrideCount: overrideCount !== item.count ? overrideCount : undefined,
-      isExcluded,
-    };
-
     dispatch({
-      type: 'ADD_RULE_OVERRIDE',
-      payload: override,
+      type: 'UPDATE_ITEM_OVERRIDE',
+      payload: {
+        itemId: item.id,
+        quantity,
+        isExcluded,
+      },
     });
-
-    dispatch({
-      type: 'CALCULATE_PACKING_LIST',
-    });
-
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="modal modal-open">
+    <dialog className={`modal ${isOpen ? 'modal-open' : ''}`}>
       <div className="modal-box">
-        <h3 className="font-bold text-lg mb-4">Modify {item.name}</h3>
+        <h3 className="font-bold text-lg mb-4">Override {item.name}</h3>
 
-        <div className="form-control w-full mb-4">
+        <div className="form-control w-full mb-6">
           <label className="label">
             <span className="label-text">Quantity</span>
+            <span className="label-text-alt">Original: {item.quantity}</span>
           </label>
-          <input
-            type="number"
-            className="input input-bordered w-full"
-            value={overrideCount}
-            onChange={(e) => setOverrideCount(parseInt(e.target.value, 10))}
-            min={0}
-          />
-        </div>
-
-        <div className="form-control w-full mb-4">
-          <label className="label">
-            <span className="label-text">Apply to Person (Optional)</span>
-          </label>
-          <select
-            className="select select-bordered w-full"
-            value={selectedPersonId || ''}
-            onChange={(e) => setSelectedPersonId(e.target.value || undefined)}
-          >
-            <option value="">All People</option>
-            {people.map((person) => (
-              <option key={person.id} value={person.id}>
-                {person.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="form-control w-full mb-4">
-          <label className="label">
-            <span className="label-text">Apply to Day (Optional)</span>
-          </label>
-          <select
-            className="select select-bordered w-full"
-            value={selectedDayIndex?.toString() || ''}
-            onChange={(e) =>
-              setSelectedDayIndex(
-                e.target.value ? parseInt(e.target.value, 10) : undefined
-              )
-            }
-          >
-            <option value="">All Days</option>
-            {days.map((day, index) => (
-              <option key={index} value={index}>
-                Day {index + 1} - {day.location}
-              </option>
-            ))}
-          </select>
+          <div className="join">
+            <button
+              className="btn join-item"
+              onClick={() => setQuantity(Math.max(0, quantity - 1))}
+            >
+              -
+            </button>
+            <input
+              type="number"
+              className="input input-bordered join-item w-20 text-center"
+              value={quantity}
+              onChange={(e) =>
+                setQuantity(Math.max(0, parseInt(e.target.value) || 0))
+              }
+              min="0"
+            />
+            <button
+              className="btn join-item"
+              onClick={() => setQuantity(quantity + 1)}
+            >
+              +
+            </button>
+          </div>
         </div>
 
         <div className="form-control mb-6">
@@ -114,22 +69,33 @@ export const RuleOverrideDialog: React.FC<RuleOverrideDialogProps> = ({
             <span className="label-text">Exclude this item</span>
             <input
               type="checkbox"
-              className="checkbox"
+              className="toggle toggle-error"
               checked={isExcluded}
               onChange={(e) => setIsExcluded(e.target.checked)}
             />
           </label>
+          {isExcluded && (
+            <span className="label-text-alt text-error mt-1">
+              This item will be removed from your packing list
+            </span>
+          )}
         </div>
 
         <div className="modal-action">
-          <button className="btn" onClick={onClose}>
+          <button className="btn btn-ghost" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn btn-primary" onClick={handleSave}>
-            Save Changes
+          <button
+            className={`btn ${isExcluded ? 'btn-error' : 'btn-primary'}`}
+            onClick={handleSave}
+          >
+            {isExcluded ? 'Exclude Item' : 'Save Changes'}
           </button>
         </div>
       </div>
-    </div>
+      <form method="dialog" className="modal-backdrop" onClick={onClose}>
+        <button>close</button>
+      </form>
+    </dialog>
   );
 };
