@@ -1,4 +1,3 @@
-import React from 'react';
 import { selectPeople, useAppSelector } from '@packing-list/state';
 import { PersonList } from './components/PersonList';
 import { PageHeader } from '../../components/PageHeader';
@@ -13,9 +12,9 @@ export default function PeoplePage() {
       <PageHeader title="People on this Trip" />
       <HelpBlurb storageKey="travelers" title="Managing Travelers">
         <p>
-          Add everyone who's going on the trip to help calculate the right
-          amount of items to pack. Each person's details help customize packing
-          recommendations:
+          Add everyone who&apos;s going on the trip to help calculate the right
+          amount of items to pack. Each person&apos;s details help customize
+          packing recommendations:
         </p>
 
         <h3 className="text-base mt-4 mb-2">Person Details</h3>
@@ -33,7 +32,7 @@ export default function PeoplePage() {
         <div className="bg-base-200 rounded-lg p-4 my-4">
           <h3 className="text-sm font-medium mb-2">How It Works</h3>
           <p className="text-sm text-base-content/70 m-0">
-            Your packing list will automatically adjust based on who's
+            Your packing list will automatically adjust based on who&apos;s
             traveling:
             <br />
             • Items can be multiplied per person
@@ -44,6 +43,9 @@ export default function PeoplePage() {
         </div>
       </HelpBlurb>
       <PersonList people={people} />
+      <p>You haven&apos;t added any travelers yet.</p>
+      <p>Let&apos;s add some people to your trip.</p>
+      <p>You&apos;ll need to add at least one person.</p>
     </PageContainer>
   );
 }

@@ -20,7 +20,7 @@ export function DemoBanner() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-primary text-primary-content p-4 flex items-center justify-center gap-4 shadow-lg z-[9999]">
-      <span>You're currently using demo data</span>
+      <span>You&apos;re currently using demo data</span>
       <button onClick={handleClearDemo} className="btn btn-sm btn-ghost gap-2">
         <XCircle className="w-4 h-4" />
         Clear Demo Data

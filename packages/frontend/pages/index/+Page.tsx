@@ -26,8 +26,8 @@ export default function Page() {
         <ol>
           <li>
             <strong>Configure Your Trip</strong> - Add your travel dates and
-            destinations to automatically calculate the number of days you'll be
-            away.
+            destinations to automatically calculate the number of days
+            you&apos;ll be away.
           </li>
           <li>
             <strong>Add Travelers</strong> - Include everyone going on the trip,
@@ -36,8 +36,8 @@ export default function Page() {
           </li>
           <li>
             <strong>Set Packing Rules</strong> - Use smart rules to
-            automatically calculate quantities (e.g., "1 shirt per person per 2
-            days + 1 extra").
+            automatically calculate quantities (e.g., &quot;1 shirt per person
+            per 2 days + 1 extra&quot;).
           </li>
         </ol>
         <p className="text-sm text-base-content/70">
@@ -129,6 +129,16 @@ export default function Page() {
           </div>
         </div>
       )}
+
+      <p>
+        Let&apos;s get started by creating a new trip or loading one you&apos;ve
+        already started.
+      </p>
+
+      <button className="btn btn-primary">
+        &quot;Try it out with demo data&quot;
+      </button>
+      <button className="btn btn-primary">&quot;Start fresh&quot;</button>
     </PageContainer>
   );
 }

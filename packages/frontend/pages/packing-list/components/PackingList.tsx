@@ -30,7 +30,7 @@ export const PackingList: React.FC = () => {
   const defaultItemRules = useAppSelector((state) => state.defaultItemRules);
 
   const [selectedItem, setSelectedItem] = useState<
-    GroupedItem['baseItem'] | 
+    GroupedItem['baseItem'] | null
   >(null);
   const [isOverrideDialogOpen, setIsOverrideDialogOpen] = useState(false);
   const [selectedGroupForPacking, setSelectedGroupForPacking] =
@@ -153,7 +153,7 @@ export const PackingList: React.FC = () => {
                   <h3 className="font-medium">1. Configure Your Trip</h3>
                   <p className="text-sm text-base-content/70 mb-2">
                     Add your travel dates and destinations to calculate how many
-                    days you'll be away.
+                    days you&apos;ll be away.
                   </p>
                   {!hasTrip && (
                     <Link href="/days" className="btn btn-primary btn-sm">
@@ -213,8 +213,8 @@ export const PackingList: React.FC = () => {
                 <div>
                   <h3 className="font-medium">3. Create Packing Rules</h3>
                   <p className="text-sm text-base-content/70 mb-2">
-                    Set up rules for what to pack (e.g., "1 shirt per day + 1
-                    extra").
+                    Set up rules for what to pack (e.g., &quot;1 shirt per day +
+                    1 extra&quot;).
                   </p>
                   {!hasRules && hasTrip && hasPeople && (
                     <Link href="/defaults" className="btn btn-primary btn-sm">
@@ -335,7 +335,7 @@ export const PackingList: React.FC = () => {
               <dt className="font-medium">Views:</dt>
               <dd>Switch between organizing by day or by person</dd>
               <dt className="font-medium">Progress:</dt>
-              <dd>Track what's packed with progress bars and counts</dd>
+              <dd>Track what&apos;s packed with progress bars and counts</dd>
               <dt className="font-medium">Filters:</dt>
               <dd>Show/hide packed items or find specific things</dd>
             </dl>
@@ -416,6 +416,12 @@ export const PackingList: React.FC = () => {
           onClose={handleClosePackDialog}
         />
       )}
+
+      <p>You haven&apos;t added any custom items yet.</p>
+
+      <button className="btn btn-primary">&quot;Add Custom Item&quot;</button>
+
+      <button className="btn btn-primary">&quot;Start Fresh&quot;</button>
     </div>
   );
 };

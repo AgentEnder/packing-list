@@ -1,227 +1,77 @@
-import React, { useState, ChangeEvent, FormEvent, ReactNode } from 'react';
-import { useAppDispatch, useAppSelector, StoreType } from '@packing-list/state';
-import { uuid } from '../../utils/uuid';
-import { createSelector } from '@reduxjs/toolkit';
-import { TripEvent } from '@packing-list/model';
-import { TripWizard } from './TripWizard';
-import { TripDays } from './TripDays';
+import { useAppSelector } from '@packing-list/state';
+import { Link } from '../../components/Link';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
 
-// Event types
-const eventTypes = [
-  { value: 'leave_home', label: 'Leave Home' },
-  { value: 'arrive_destination', label: 'Arrive at Destination' },
-  { value: 'leave_destination', label: 'Leave Destination' },
-  { value: 'arrive_home', label: 'Arrive Home' },
-];
-
-// Modal component
-function Modal({
-  open,
-  onClose,
-  children,
-}: {
-  open: boolean;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  if (!open) return null;
-  return (
-    <dialog className={`modal ${open ? 'modal-open' : ''}`}>
-      <div className="modal-box relative">
-        <button
-          className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-          onClick={onClose}
-        >
-          ✕
-        </button>
-        {children}
-      </div>
-      <form method="dialog" className="modal-backdrop" onClick={onClose}>
-        <button>close</button>
-      </form>
-    </dialog>
-  );
-}
-
-// Selector for tripEvents
-const selectTripEvents = createSelector(
-  (state: StoreType) => state.trip,
-  (trip) => trip.tripEvents ?? []
-);
-
 export default function DaysPage() {
-  const tripEvents: TripEvent[] = useAppSelector(selectTripEvents);
-  const dispatch = useAppDispatch();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [wizardOpen, setWizardOpen] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState<TripEvent>({
-    id: '',
-    type: 'leave_home',
-    date: '',
-    location: '',
-    notes: '',
-  });
-
-  const openAddModal = () => {
-    setForm({ id: '', type: 'leave_home', date: '', location: '', notes: '' });
-    setEditId(null);
-    setModalOpen(true);
-  };
-
-  const openEditModal = (event: TripEvent) => {
-    setForm(event);
-    setEditId(event.id);
-    setModalOpen(true);
-  };
-
-  const closeModal = () => setModalOpen(false);
-
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if (
-      !form.type ||
-      !form.date ||
-      (form.type !== 'arrive_home' && !form.location)
-    )
-      return;
-    let newEvents = [...tripEvents];
-    if (editId) {
-      newEvents = newEvents.map((ev) =>
-        ev.id === editId ? { ...form, id: editId } : ev
-      );
-    } else {
-      newEvents.push({ ...form, id: uuid() });
-    }
-    dispatch({ type: 'UPDATE_TRIP_EVENTS', payload: newEvents });
-    setModalOpen(false);
-  };
-
-  const handleWizardSave = (events: TripEvent[]) => {
-    dispatch({ type: 'UPDATE_TRIP_EVENTS', payload: events });
-  };
+  const trip = useAppSelector((state) => state.trip);
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Trip Schedule"
-        actions={
-          <>
-            <button
-              className="btn btn-primary"
-              onClick={() => setWizardOpen(true)}
-            >
-              Configure Trip
-            </button>
-            <button
-              className="btn btn-outline btn-primary"
-              onClick={openAddModal}
-            >
-              Add Event
-            </button>
-          </>
-        }
-      />
-
-      <HelpBlurb storageKey="trip-timeline" title="Planning Your Trip">
+      <PageHeader title="Configure Your Trip" />
+      <HelpBlurb storageKey="trip-wizard" title="How to Configure Your Trip">
         <p>
-          Plan your trip schedule to help calculate the right amount of items to
-          pack. Add key events to track your journey and automatically determine
-          the trip duration.
+          Add your travel dates and destinations to help calculate how many
+          items you need to pack.
         </p>
-
-        <div className="bg-base-200 rounded-lg p-4 my-4">
-          <h3 className="text-sm font-medium mb-2">How It Works</h3>
-          <p className="text-sm text-base-content/70 m-0">
-            Your trip schedule helps calculate packing needs:
-            <br />
-            • Total trip duration determines quantities for daily items
-            <br />
-            • Multiple destinations can affect what you need to pack
-            <br />• Travel dates help plan for seasonal items
-          </p>
+        <div className="alert alert-info mt-4">
+          <div>
+            <h3 className="font-bold">Pro Tips</h3>
+            <ul className="list-disc list-inside mt-1 space-y-1">
+              <li>Add each day of your trip</li>
+              <li>Include locations to help with packing suggestions</li>
+              <li>Mark travel days to adjust packing needs</li>
+              <li>Review and adjust before proceeding</li>
+            </ul>
+          </div>
         </div>
       </HelpBlurb>
 
-      {/* Trip Wizard */}
-      <TripWizard
-        open={wizardOpen}
-        onClose={() => setWizardOpen(false)}
-        onSave={handleWizardSave}
-        currentEvents={tripEvents}
-      />
-
-      {/* Manual Event Modal */}
-      <Modal open={modalOpen} onClose={closeModal}>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <select
-            className="select select-bordered"
-            name="type"
-            value={form.type}
-            onChange={handleChange}
-          >
-            {eventTypes.map((e) => (
-              <option key={e.value} value={e.value}>
-                {e.label}
-              </option>
-            ))}
-          </select>
-          <input
-            className="input input-bordered"
-            name="date"
-            type="date"
-            value={form.date}
-            onChange={handleChange}
-            required
-          />
-          {form.type !== 'arrive_home' && (
-            <input
-              className="input input-bordered"
-              name="location"
-              placeholder="Location"
-              value={form.location}
-              onChange={handleChange}
-              required
-            />
-          )}
-          <textarea
-            className="textarea textarea-bordered"
-            name="notes"
-            placeholder="Notes (optional)"
-            value={form.notes}
-            onChange={handleChange}
-          />
-          <button type="submit" className="btn btn-primary">
-            {editId ? 'Update Event' : 'Add Event'}
-          </button>
-        </form>
-      </Modal>
-
-      {/* Trip Days Display */}
-      {tripEvents.length > 0 ? (
-        <div className="mb-6">
-          <TripDays onEventClick={openEditModal} />
+      <div className="card bg-base-100 shadow-xl">
+        <div className="card-body">
+          <h2 className="card-title">Trip Days</h2>
+          <div className="overflow-x-auto">
+            <table className="table table-zebra">
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Date</th>
+                  <th>Location</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trip.days.map((day, index) => (
+                  <tr key={index}>
+                    <td>{index + 1}</td>
+                    <td>{day.date}</td>
+                    <td>{day.location}</td>
+                    <td>
+                      <button className="btn btn-sm btn-ghost">Edit</button>
+                      <button className="btn btn-sm btn-ghost text-error">
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="card-actions justify-end mt-4">
+            <button className="btn btn-primary">Add Day</button>
+          </div>
         </div>
-      ) : (
-        <div className="text-center py-8">
-          <div className="text-gray-500 mb-4">No trip configured yet</div>
-          <button
-            className="btn btn-primary"
-            onClick={() => setWizardOpen(true)}
-          >
-            Configure Your Trip
-          </button>
-        </div>
-      )}
+      </div>
+
+      <div className="mt-8 flex justify-end gap-4">
+        <Link href="/" className="btn">
+          Cancel
+        </Link>
+        <Link href="/people" className="btn btn-primary">
+          Next: Add People
+        </Link>
+      </div>
     </PageContainer>
   );
 }

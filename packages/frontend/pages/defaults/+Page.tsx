@@ -20,9 +20,9 @@ export default function DefaultsPage() {
       <HelpBlurb storageKey="packing-rules" title="How Default Rules Work">
         <p>
           Default packing rules help you automatically calculate how many items
-          to pack based on your trip details. We've included some common items
-          to get you started, like clothes and toiletries, but you can easily
-          edit or remove these and add your own rules.
+          to pack based on your trip details. We&apos;ve included some common
+          items to get you started, like clothes and toiletries, but you can
+          easily edit or remove these and add your own rules.
         </p>
 
         <h3 className="text-base mt-4 mb-2">Available Rule Options</h3>
@@ -54,8 +54,8 @@ export default function DefaultsPage() {
         <div className="bg-base-200 rounded-lg p-4 my-4">
           <h3 className="text-sm font-medium mb-2">Example Calculation</h3>
           <p className="text-sm text-base-content/70 m-0">
-            For the rule "1 shirt per person every 2 days + 1 extra per person"
-            with 4 people on a 7-day trip:
+            For the rule &quot;1 shirt per person every 2 days + 1 extra per
+            person&quot; with 4 people on a 7-day trip:
             <br />
             Base: (1 × 4 people × 4 two-day periods) = 16 shirts
             <br />
