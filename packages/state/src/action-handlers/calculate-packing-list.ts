@@ -10,7 +10,6 @@ import {
   calculateRuleHash,
   calculateItemQuantity,
 } from '@packing-list/shared-utils';
-import { ActionHandler } from '../actions.js';
 
 export type CalculatePackingListAction = {
   type: 'CALCULATE_PACKING_LIST';
@@ -20,33 +19,57 @@ function getApplicablePeople(
   rule: DefaultItemRule,
   people: Person[]
 ): string[] {
-  return people
+  console.log(`[getApplicablePeople] Processing rule: ${rule.name}`);
+  const applicablePeople = people
     .filter(
       (person) =>
         rule.conditions?.every((condition) => {
           if (condition.type === 'person') {
             const value = person[condition.field as keyof Person];
-            return compare(value, condition.operator, condition.value);
+            const matches = compare(value, condition.operator, condition.value);
+            console.log(
+              `[getApplicablePeople] Checking condition for ${person.name}: ${condition.field} ${condition.operator} ${condition.value} = ${matches}`
+            );
+            return matches;
           }
           return true;
         }) ?? true
     )
     .map((p) => p.id);
+
+  console.log(
+    `[getApplicablePeople] Found ${applicablePeople.length} applicable people for rule ${rule.name}`
+  );
+  return applicablePeople;
 }
 
 function getApplicableDays(rule: DefaultItemRule, days: Day[]): number[] {
-  return days
+  console.log(`[getApplicableDays] Processing rule: ${rule.name}`);
+  const applicableDays = days
     .map((_, index) => index)
     .filter(
       (dayIndex) =>
         rule.conditions?.every((condition) => {
           if (condition.type === 'day') {
             const value = days[dayIndex][condition.field as keyof Day];
-            return compare(value, condition.operator, condition.value);
+            const matches = compare(value, condition.operator, condition.value);
+            console.log(
+              `[getApplicableDays] Checking condition for day ${
+                dayIndex + 1
+              }: ${condition.field} ${condition.operator} ${
+                condition.value
+              } = ${matches}`
+            );
+            return matches;
           }
           return true;
         }) ?? true
     );
+
+  console.log(
+    `[getApplicableDays] Found ${applicableDays.length} applicable days for rule ${rule.name}`
+  );
+  return applicableDays;
 }
 
 function createItemInstances(
@@ -284,22 +307,57 @@ function createItemInstances(
   return items;
 }
 
-export const calculatePackingListHandler: ActionHandler<
-  CalculatePackingListAction
-> = (state: StoreType): StoreType => {
+export const calculatePackingListHandler = (state: StoreType): StoreType => {
+  console.log(
+    '[calculatePackingListHandler] Starting packing list calculation'
+  );
+  console.log(
+    `[calculatePackingListHandler] Processing ${state.defaultItemRules.length} rules`
+  );
+  console.log(
+    `[calculatePackingListHandler] Current people: ${state.people
+      .map((p) => p.name)
+      .join(', ')}`
+  );
+  console.log(
+    `[calculatePackingListHandler] Trip days: ${state.trip.days.length}`
+  );
+
   const packingListItems: PackingListItem[] = [];
 
   // Process each default item rule
   for (const rule of state.defaultItemRules) {
+    console.log(
+      `\n[calculatePackingListHandler] Processing rule: ${rule.name}`
+    );
     const ruleHash = calculateRuleHash(rule);
+    console.log(`[calculatePackingListHandler] Rule hash: ${ruleHash}`);
+
     const override = state.ruleOverrides.find((o) => o.ruleId === rule.id);
+    if (override) {
+      console.log(
+        `[calculatePackingListHandler] Found override for rule ${rule.name}:`,
+        override
+      );
+    }
 
     if (override?.isExcluded) {
-      continue; // Skip excluded rules
+      console.log(
+        `[calculatePackingListHandler] Skipping excluded rule ${rule.name}`
+      );
+      continue;
     }
 
     const applicablePeople = getApplicablePeople(rule, state.people);
     const applicableDays = getApplicableDays(rule, state.trip.days);
+
+    console.log(`[calculatePackingListHandler] Rule ${rule.name} applies to:
+    - People: ${applicablePeople.length} (${applicablePeople
+      .map((id) => state.people.find((p) => p.id === id)?.name)
+      .join(', ')})
+    - Days: ${applicableDays.length} (${applicableDays
+      .map((d) => d + 1)
+      .join(', ')})`);
 
     if (override) {
       // Handle person-specific override
@@ -378,8 +436,16 @@ export const calculatePackingListHandler: ActionHandler<
     }
   }
 
+  console.log(
+    `[calculatePackingListHandler] Generated ${packingListItems.length} total items`
+  );
+
   // Preserve packed status from existing items
   const existingItems = state.calculated.packingListItems;
+  console.log(
+    `[calculatePackingListHandler] Preserving packed status from ${existingItems.length} existing items`
+  );
+
   const updatedItems = packingListItems.map((item) => {
     const existing = existingItems.find(
       (e) =>
@@ -388,6 +454,11 @@ export const calculatePackingListHandler: ActionHandler<
         e.dayIndex === item.dayIndex &&
         e.personId === item.personId
     );
+    if (existing?.isPacked) {
+      console.log(
+        `[calculatePackingListHandler] Preserving packed status for item: ${item.name}`
+      );
+    }
     return existing ? { ...item, isPacked: existing.isPacked } : item;
   });
 

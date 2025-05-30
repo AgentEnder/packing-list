@@ -11,9 +11,7 @@ export function DemoDataModal() {
   useEffect(() => {
     // Check if user has made a choice this session
     const sessionChoice = sessionStorage.getItem(SESSION_DEMO_CHOICE_KEY);
-    if (sessionChoice === 'demo') {
-      // If they chose demo data this session, load it
-      dispatch({ type: 'LOAD_DEMO_DATA' });
+    if (sessionChoice) {
       return;
     }
 
@@ -25,10 +23,7 @@ export function DemoDataModal() {
       localStorage.setItem(HAS_SEEN_DEMO_KEY, 'true');
     } else {
       // Returning visitor in a new session, show modal again
-      const sessionChoice = sessionStorage.getItem(SESSION_DEMO_CHOICE_KEY);
-      if (!sessionChoice) {
-        setIsOpen(true);
-      }
+      setIsOpen(true);
     }
   }, [dispatch]);
 

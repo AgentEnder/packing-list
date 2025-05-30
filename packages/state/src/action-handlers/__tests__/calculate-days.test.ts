@@ -219,7 +219,7 @@ describe('enumerateTripDays', () => {
     expect(days[0]).toMatchObject({
       date: parseISO('2024-07-25').setHours(0, 0, 0, 0),
       travel: true,
-      location: 'Traveling',
+      location: 'Home',
     });
 
     // Second day - still traveling
@@ -249,7 +249,7 @@ describe('enumerateTripDays', () => {
     expect(days[5]).toMatchObject({
       date: parseISO('2024-07-30').setHours(0, 0, 0, 0),
       travel: true,
-      location: 'Traveling',
+      location: 'Grand Canyon',
     });
 
     // July 31 - Still traveling

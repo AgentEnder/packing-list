@@ -4,6 +4,7 @@ import { RuleList } from './components/RuleList';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
+import { RulePackSelector } from '../../components/RulePackSelector';
 
 export default function DefaultsPage() {
   const defaultRules = useAppSelector(
@@ -65,6 +66,7 @@ export default function DefaultsPage() {
         </div>
       </HelpBlurb>
 
+      <RulePackSelector className="mb-8" />
       <CreateRuleForm />
       <RuleList rules={defaultRules} people={people} days={days} />
     </PageContainer>

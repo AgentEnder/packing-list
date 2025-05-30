@@ -19,25 +19,25 @@ export const RuleList = ({ rules, people, days }: RuleListProps) => {
       const existingRule = rules.find((rule) => rule.id === id);
       if (!existingRule) return;
 
-      const mergedRule = {
-        ...existingRule,
-        ...updates,
+      // Ensure we have a complete rule with all required fields
+      const mergedRule: DefaultItemRule = {
+        id,
+        name: updates.name || existingRule.name,
         calculation: {
           ...existingRule.calculation,
           ...(updates.calculation || {}),
+          // Ensure baseQuantity exists and is a number
+          baseQuantity:
+            updates.calculation?.baseQuantity ??
+            existingRule.calculation.baseQuantity,
         },
-        conditions:
-          updates.conditions !== undefined
-            ? updates.conditions
-            : existingRule.conditions,
+        conditions: updates.conditions ?? existingRule.conditions,
+        notes: updates.notes ?? existingRule.notes,
       };
 
       dispatch({
         type: 'UPDATE_ITEM_RULE',
-        payload: {
-          id,
-          rule: mergedRule,
-        },
+        payload: mergedRule,
       });
     },
     [dispatch, rules]

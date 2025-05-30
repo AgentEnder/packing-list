@@ -21,12 +21,8 @@ export const updateItemRuleHandler = (
   };
 
   // Then recalculate default items
-  const stateWithDefaultItems = calculateDefaultItems(stateWithUpdatedRule, {
-    type: 'CALCULATE_DEFAULT_ITEMS',
-  });
+  const stateWithDefaultItems = calculateDefaultItems(stateWithUpdatedRule);
 
   // Finally recalculate packing list
-  return calculatePackingListHandler(stateWithDefaultItems, {
-    type: 'CALCULATE_PACKING_LIST',
-  });
+  return calculatePackingListHandler(stateWithDefaultItems);
 };

@@ -1,15 +1,8 @@
+import { StoreType } from './store.js';
 import {
-  AddPersonAction,
   addPersonHandler,
+  AddPersonAction,
 } from './action-handlers/add-person.js';
-import {
-  CalculateDaysAction,
-  calculateDaysHandler,
-} from './action-handlers/calculate-days.js';
-import {
-  CalculateDefaultItemsAction,
-  calculateDefaultItems,
-} from './action-handlers/calculate-default-items.js';
 import {
   removePersonHandler,
   RemovePersonAction,
@@ -19,43 +12,80 @@ import {
   UpdatePersonAction,
 } from './action-handlers/update-person.js';
 import {
+  calculateDefaultItems,
+  CalculateDefaultItemsAction,
+} from './action-handlers/calculate-default-items.js';
+import {
   updateTripEventsHandler,
   UpdateTripEventsAction,
 } from './action-handlers/update-trip-events.js';
 import {
-  CreateItemRuleAction,
+  calculateDaysHandler,
+  CalculateDaysAction,
+} from './action-handlers/calculate-days.js';
+import {
   createItemRuleHandler,
+  CreateItemRuleAction,
 } from './action-handlers/create-item-rule.js';
 import {
-  UpdateItemRuleAction,
   updateItemRuleHandler,
+  UpdateItemRuleAction,
 } from './action-handlers/update-item-rule.js';
 import {
-  DeleteItemRuleAction,
   deleteItemRuleHandler,
+  DeleteItemRuleAction,
 } from './action-handlers/delete-item-rule.js';
 import {
-  AddRuleOverrideAction,
   addRuleOverrideHandler,
+  AddRuleOverrideAction,
 } from './action-handlers/add-rule-override.js';
 import {
-  UpdatePackingListViewAction,
   updatePackingListViewHandler,
+  UpdatePackingListViewAction,
 } from './action-handlers/update-packing-list-view.js';
 import {
-  CalculatePackingListAction,
   calculatePackingListHandler,
+  CalculatePackingListAction,
 } from './action-handlers/calculate-packing-list.js';
 import {
-  ToggleItemPackedAction,
   toggleItemPackedHandler,
+  ToggleItemPackedAction,
 } from './action-handlers/toggle-item-packed.js';
 import {
-  LoadDemoDataAction,
   loadDemoDataHandler,
+  LoadDemoDataAction,
 } from './action-handlers/load-demo-data.js';
+import {
+  clearTripDataHandler,
+  ClearTripDataAction,
+} from './action-handlers/clear-trip-data.js';
+import {
+  toggleRulePackHandler,
+  ToggleRulePackAction,
+} from './action-handlers/toggle-rule-pack.js';
 
-import { StoreType } from './store.js';
+export type ActionHandler<T extends AllActions> = (
+  state: StoreType,
+  action: T
+) => StoreType;
+
+export type StoreActions =
+  | 'ADD_PERSON'
+  | 'REMOVE_PERSON'
+  | 'UPDATE_PERSON'
+  | 'CALCULATE_DEFAULT_ITEMS'
+  | 'UPDATE_TRIP_EVENTS'
+  | 'CALCULATE_DAYS'
+  | 'CREATE_ITEM_RULE'
+  | 'UPDATE_ITEM_RULE'
+  | 'DELETE_ITEM_RULE'
+  | 'ADD_RULE_OVERRIDE'
+  | 'UPDATE_PACKING_LIST_VIEW'
+  | 'CALCULATE_PACKING_LIST'
+  | 'TOGGLE_ITEM_PACKED'
+  | 'LOAD_DEMO_DATA'
+  | 'CLEAR_TRIP_DATA'
+  | 'TOGGLE_RULE_PACK';
 
 export type AllActions =
   | AddPersonAction
@@ -71,14 +101,9 @@ export type AllActions =
   | UpdatePackingListViewAction
   | CalculatePackingListAction
   | ToggleItemPackedAction
-  | LoadDemoDataAction;
-
-export type StoreActions = AllActions['type'];
-
-export type ActionHandler<T extends AllActions> = (
-  state: StoreType,
-  action: T
-) => StoreType;
+  | LoadDemoDataAction
+  | ClearTripDataAction
+  | ToggleRulePackAction;
 
 export const Mutations: {
   [K in StoreActions]: ActionHandler<Extract<AllActions, { type: K }>>;
@@ -97,4 +122,6 @@ export const Mutations: {
   CALCULATE_PACKING_LIST: calculatePackingListHandler,
   TOGGLE_ITEM_PACKED: toggleItemPackedHandler,
   LOAD_DEMO_DATA: loadDemoDataHandler,
+  CLEAR_TRIP_DATA: clearTripDataHandler,
+  TOGGLE_RULE_PACK: toggleRulePackHandler,
 };

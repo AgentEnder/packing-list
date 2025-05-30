@@ -22,7 +22,5 @@ export const createItemRuleHandler = (
   const stateWithDefaultItems = calculateDefaultItems(stateWithNewRule);
 
   // Finally recalculate packing list
-  return calculatePackingListHandler(stateWithDefaultItems, {
-    type: 'CALCULATE_PACKING_LIST',
-  });
+  return calculatePackingListHandler(stateWithDefaultItems);
 };

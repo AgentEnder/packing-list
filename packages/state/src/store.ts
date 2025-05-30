@@ -8,7 +8,10 @@ import {
   RuleOverride,
   PackingListViewState,
   PackingListItem,
+  TripEvent,
+  RulePack,
 } from '@packing-list/model';
+import { DEFAULT_RULE_PACKS } from './default-rule-packs.js';
 
 export type StoreType = {
   people: Person[];
@@ -20,6 +23,7 @@ export type StoreType = {
   };
   ruleOverrides: RuleOverride[];
   packingListView: PackingListViewState;
+  rulePacks: RulePack[];
 };
 
 export const initialState: StoreType = {
@@ -43,20 +47,21 @@ export const initialState: StoreType = {
       excluded: false,
     },
   },
+  rulePacks: DEFAULT_RULE_PACKS,
 };
 
-function createReducer<K extends keyof StoreType>(
-  key: K,
-  initialValue: StoreType[K]
-): Reducer<StoreType[K]> {
-  return (state = initialValue, action: UnknownAction) => {
+function createReducer(preloadedState: StoreType): Reducer<StoreType> {
+  return (
+    state: StoreType = preloadedState,
+    action: UnknownAction
+  ): StoreType => {
     if ('type' in action && action.type in Mutations) {
       const mutation = Mutations[action.type as keyof typeof Mutations];
-      const newState = mutation(
-        { ...initialState, [key]: state } as StoreType,
-        action as any
-      );
-      return newState[key];
+      if (mutation) {
+        return mutation(state, action as any);
+      }
+      console.warn(`Unknown action: ${action.type}`);
+      return state;
     }
     return state;
   };
@@ -76,22 +81,6 @@ export function createStore(pageContext: PageContext) {
       : initialState;
 
   return configureStore({
-    reducer: {
-      defaultItemRules: createReducer(
-        'defaultItemRules',
-        preloadedState.defaultItemRules
-      ),
-      people: createReducer('people', preloadedState.people),
-      trip: createReducer('trip', preloadedState.trip),
-      calculated: createReducer('calculated', preloadedState.calculated),
-      ruleOverrides: createReducer(
-        'ruleOverrides',
-        preloadedState.ruleOverrides
-      ),
-      packingListView: createReducer(
-        'packingListView',
-        preloadedState.packingListView
-      ),
-    },
+    reducer: createReducer(preloadedState),
   });
 }

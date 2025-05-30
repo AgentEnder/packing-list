@@ -9,6 +9,7 @@ import { StoreType } from './store.js';
 import { enumerateTripDays } from './action-handlers/calculate-days.js';
 import { calculateDefaultItems } from './action-handlers/calculate-default-items.js';
 import { calculatePackingListHandler } from './action-handlers/calculate-packing-list.js';
+import { DEFAULT_RULE_PACKS } from './default-rule-packs.js';
 
 const tripEvents: TripEvent[] = [
   {
@@ -315,22 +316,23 @@ const packingListView: PackingListViewState = {
 };
 
 const trip: Trip = {
-  id: 'trip-1',
+  id: 'DEMO_TRIP',
   days: enumerateTripDays(tripEvents),
   tripEvents,
 };
 
-export const DEMO_DATA: StoreType = calculatePackingListHandler(
-  calculateDefaultItems({
-    people,
-    ruleOverrides: [],
-    packingListView,
-    defaultItemRules,
-    trip,
-    calculated: {
-      defaultItems: [],
-      packingListItems: [],
-    },
-  }),
-  { type: 'CALCULATE_PACKING_LIST' }
-);
+export const CREATE_DEMO_DATA: StoreType = () =>
+  calculatePackingListHandler(
+    calculateDefaultItems({
+      people,
+      ruleOverrides: [],
+      packingListView,
+      defaultItemRules,
+      trip,
+      calculated: {
+        defaultItems: [],
+        packingListItems: [],
+      },
+      rulePacks: DEFAULT_RULE_PACKS,
+    })
+  );

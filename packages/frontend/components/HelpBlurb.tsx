@@ -6,27 +6,37 @@ interface HelpBlurbProps {
   title: string;
 }
 
+export const HELP_ALL_KEY = 'help-all';
+
+// Helper function to check if help is hidden
+const isHelpHidden = (storageKey: string): boolean => {
+  if (typeof window === 'undefined') return false;
+  const localStorageKey = `help-${storageKey}`;
+  const isIndividuallyHidden =
+    localStorage.getItem(localStorageKey) === 'hidden';
+  const isGloballyHidden = localStorage.getItem(HELP_ALL_KEY) === 'hidden';
+  return isIndividuallyHidden || isGloballyHidden;
+};
+
 export const HelpBlurb = ({
   title,
   children,
   storageKey,
 }: PropsWithChildren<HelpBlurbProps>) => {
-  const [isVisible, setIsVisible] = useState(true);
-  const fullStorageKey = `help-blurb-${storageKey}`;
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isVisible, setIsVisible] = useState(!isHelpHidden(storageKey));
+  const localStorageKey = `help-${storageKey}`;
 
   useEffect(() => {
-    const dismissed = localStorage.getItem(fullStorageKey);
-    if (dismissed === 'true') {
-      setIsVisible(false);
-    }
-  }, [fullStorageKey]);
+    setIsLoaded(true);
+  }, []);
 
   const handleDismiss = () => {
-    localStorage.setItem(fullStorageKey, 'true');
+    localStorage.setItem(localStorageKey, 'hidden');
     setIsVisible(false);
   };
 
-  if (!isVisible) return null;
+  if (!isLoaded || !isVisible) return null;
 
   return (
     <div className="card bg-base-100 shadow-xl mb-6">

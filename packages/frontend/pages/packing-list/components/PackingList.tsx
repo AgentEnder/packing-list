@@ -30,7 +30,7 @@ export const PackingList: React.FC = () => {
   const defaultItemRules = useAppSelector((state) => state.defaultItemRules);
 
   const [selectedItem, setSelectedItem] = useState<
-    GroupedItem['baseItem'] | null
+    GroupedItem['baseItem'] | 
   >(null);
   const [isOverrideDialogOpen, setIsOverrideDialogOpen] = useState(false);
   const [selectedGroupForPacking, setSelectedGroupForPacking] =

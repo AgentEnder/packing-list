@@ -1,8 +1,11 @@
 import './tailwind.css';
 import './style.css';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 // import logoUrl from '../assets/logo.svg';
 import { Link } from '../components/Link';
+import { DemoBanner } from '../components/DemoBanner';
+import { ToastContainer } from '../components/Toast';
+import { useAppDispatch } from '@packing-list/state';
 import {
   Menu,
   Home,
@@ -10,7 +13,10 @@ import {
   Calendar,
   ClipboardList,
   CheckSquare,
+  Settings,
 } from 'lucide-react';
+
+const SESSION_DEMO_CHOICE_KEY = 'session-demo-choice';
 
 export default function LayoutDefault({
   children,
@@ -18,6 +24,18 @@ export default function LayoutDefault({
   children: React.ReactNode;
 }) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    // Check if user has made a choice this session
+    if (typeof window !== 'undefined') {
+      const sessionChoice = sessionStorage.getItem(SESSION_DEMO_CHOICE_KEY);
+      if (sessionChoice === 'demo') {
+        // If they chose demo data this session, load it
+        dispatch({ type: 'LOAD_DEMO_DATA' });
+      }
+    }
+  }, [dispatch]);
 
   return (
     <div className="drawer lg:drawer-open">
@@ -47,7 +65,13 @@ export default function LayoutDefault({
         </div>
 
         {/* Page content */}
-        <main className="flex-1 p-4">{children}</main>
+        <main className="flex-1 p-4 pb-20">{children}</main>
+
+        {/* Demo Banner */}
+        <DemoBanner />
+
+        {/* Toast Container */}
+        <ToastContainer />
       </div>
 
       {/* Sidebar */}
@@ -88,6 +112,13 @@ export default function LayoutDefault({
               <Link href="/packing-list" className="flex items-center gap-2">
                 <CheckSquare className="w-5 h-5" />
                 Packing List
+              </Link>
+            </li>
+            <div className="divider"></div>
+            <li>
+              <Link href="/settings" className="flex items-center gap-2">
+                <Settings className="w-5 h-5" />
+                Settings
               </Link>
             </li>
           </ul>

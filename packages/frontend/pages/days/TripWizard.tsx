@@ -2,6 +2,8 @@ import React, { useState, ChangeEvent, useEffect } from 'react';
 import { TripEvent } from '@packing-list/model';
 import { Timeline } from '@packing-list/shared-components';
 import { uuid } from '../../utils/uuid';
+import { RulePackSelector } from '../../components/RulePackSelector';
+import { useAppDispatch, useAppSelector, StoreType } from '@packing-list/state';
 
 interface Destination {
   id: string;
@@ -23,6 +25,7 @@ const steps = [
   { id: 1, title: 'Trip Duration' },
   { id: 2, title: 'Destinations' },
   { id: 3, title: 'Review' },
+  { id: 4, title: 'Packing Rules', optional: true },
 ];
 
 function parseExistingEvents(events: TripEvent[]) {
@@ -67,6 +70,11 @@ export function TripWizard({
   onSave,
   currentEvents = [],
 }: TripWizardProps) {
+  const dispatch = useAppDispatch();
+  const people = useAppSelector((state: StoreType) => state.people);
+  const defaultItemRules = useAppSelector(
+    (state: StoreType) => state.defaultItemRules
+  );
   const [currentStep, setCurrentStep] = useState(1);
   const [tripData, setTripData] = useState({
     leaveHomeDate: '',
@@ -86,6 +94,7 @@ export function TripWizard({
   const [editingDestinationId, setEditingDestinationId] = useState<
     string | null
   >(null);
+  const [pendingSave, setPendingSave] = useState(false);
 
   useEffect(() => {
     if (currentEvents.length > 0) {
@@ -232,6 +241,15 @@ export function TripWizard({
     onClose();
   };
 
+  const handleRulesApplied = () => {
+    if (pendingSave) {
+      // If we were waiting to save, do it now
+      const events = generateTripEvents();
+      onSave(events);
+      onClose();
+    }
+  };
+
   const handleClose = () => {
     onClose();
     // Reset form when closing
@@ -246,98 +264,135 @@ export function TripWizard({
     setCurrentStep(1);
   };
 
-  const canProceedToStep2 = tripData.leaveHomeDate && tripData.arriveHomeDate;
+  const canAccessStep = (stepId: number): boolean => {
+    switch (stepId) {
+      case 1:
+        return true;
+      case 2:
+        return Boolean(tripData.leaveHomeDate && tripData.arriveHomeDate);
+      case 3:
+        return (
+          Boolean(tripData.leaveHomeDate && tripData.arriveHomeDate) &&
+          destinations.length > 0
+        );
+      case 4:
+        return (
+          Boolean(tripData.leaveHomeDate && tripData.arriveHomeDate) &&
+          destinations.length > 0
+        );
+      default:
+        return false;
+    }
+  };
+
+  const handleStepClick = (stepId: number) => {
+    if (canAccessStep(stepId)) {
+      setCurrentStep(stepId);
+    }
+  };
+
+  const canProceedToStep2 = Boolean(
+    tripData.leaveHomeDate && tripData.arriveHomeDate
+  );
   const canProceedToStep3 = destinations.length > 0;
 
-  if (!open) return null;
-
-  return (
-    <dialog className={`modal ${open ? 'modal-open' : ''}`}>
-      <div className="modal-box w-11/12 max-w-2xl">
-        <button
-          className="btn btn-sm btn-circle absolute right-2 top-2"
-          onClick={handleClose}
-        >
-          ✕
+  const renderStepNavigation = (
+    backStep: number | null,
+    nextStep: number | null,
+    canProceed = true,
+    showSave = false
+  ) => (
+    <div className="flex justify-between mt-6">
+      {backStep ? (
+        <button className="btn" onClick={() => setCurrentStep(backStep)}>
+          Back
         </button>
+      ) : (
+        <div /> // Empty div for spacing
+      )}
+      <div className="flex gap-2">
+        {showSave && (
+          <button className="btn btn-primary" onClick={handleSave}>
+            {currentEvents.length > 0 ? 'Update Trip' : 'Save Trip'}
+          </button>
+        )}
+        {nextStep && (
+          <button
+            className="btn btn-primary"
+            onClick={() => setCurrentStep(nextStep)}
+            disabled={!canProceed}
+          >
+            Next
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
-        <h3 className="font-bold text-lg mb-4">
-          {currentEvents.length > 0 ? 'Edit Trip' : 'Configure Trip'}
-        </h3>
+  const getStepClasses = (step: {
+    id: number;
+    title: string;
+    optional?: boolean;
+  }) => {
+    const isAccessible = canAccessStep(step.id);
+    return `step ${currentStep >= step.id ? 'step-primary' : ''} ${
+      isAccessible ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+    }`;
+  };
 
-        {/* Steps indicator */}
-        <ul className="steps steps-horizontal w-full mb-6">
-          {steps.map((step) => (
-            <li
-              key={step.id}
-              className={`step ${currentStep >= step.id ? 'step-primary' : ''}`}
-            >
-              {step.title}
-            </li>
-          ))}
-        </ul>
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Trip Duration</h2>
 
-        {/* Step 1: Trip Duration */}
-        {currentStep === 1 && (
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold">When is your trip?</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="grid gap-4">
+              <div>
                 <label className="label">
-                  <span className="label-text">Leave Home Date</span>
+                  <span className="label-text">When do you leave home?</span>
                 </label>
                 <input
                   type="date"
                   name="leaveHomeDate"
-                  className="input input-bordered w-full"
                   value={tripData.leaveHomeDate}
                   onChange={handleTripDataChange}
-                  required
+                  className="input input-bordered w-full"
                 />
                 <textarea
                   name="leaveHomeNotes"
-                  placeholder="Departure notes (optional)"
-                  className="textarea textarea-bordered w-full"
                   value={tripData.leaveHomeNotes}
                   onChange={handleTripDataChange}
+                  placeholder="Notes (e.g., flight details)"
+                  className="textarea textarea-bordered w-full mt-2"
                 />
               </div>
-              <div className="space-y-2">
+
+              <div>
                 <label className="label">
-                  <span className="label-text">Arrive Home Date</span>
+                  <span className="label-text">When do you return home?</span>
                 </label>
                 <input
                   type="date"
                   name="arriveHomeDate"
-                  className="input input-bordered w-full"
                   value={tripData.arriveHomeDate}
                   onChange={handleTripDataChange}
-                  min={tripData.leaveHomeDate}
-                  required
+                  className="input input-bordered w-full"
                 />
                 <textarea
                   name="arriveHomeNotes"
-                  placeholder="Return notes (optional)"
-                  className="textarea textarea-bordered w-full"
                   value={tripData.arriveHomeNotes}
                   onChange={handleTripDataChange}
+                  placeholder="Notes (e.g., flight details)"
+                  className="textarea textarea-bordered w-full mt-2"
                 />
               </div>
             </div>
-            <div className="flex justify-end">
-              <button
-                className="btn btn-primary"
-                disabled={!canProceedToStep2}
-                onClick={() => setCurrentStep(2)}
-              >
-                Next
-              </button>
-            </div>
+            {renderStepNavigation(null, 2, canProceedToStep2)}
           </div>
-        )}
-
-        {/* Step 2: Destinations */}
-        {currentStep === 2 && (
+        );
+      case 2:
+        return (
           <div className="space-y-4">
             <h4 className="text-lg font-semibold">Add Destinations</h4>
 
@@ -488,24 +543,11 @@ export function TripWizard({
                 )}
               </div>
             </div>
-
-            <div className="flex justify-between">
-              <button className="btn" onClick={() => setCurrentStep(1)}>
-                Back
-              </button>
-              <button
-                className="btn btn-primary"
-                disabled={!canProceedToStep3}
-                onClick={() => setCurrentStep(3)}
-              >
-                Next
-              </button>
-            </div>
+            {renderStepNavigation(1, 3, Boolean(canProceedToStep3))}
           </div>
-        )}
-
-        {/* Step 3: Review */}
-        {currentStep === 3 && (
+        );
+      case 3:
+        return (
           <div className="space-y-4">
             <h4 className="text-lg font-semibold">Review Your Trip</h4>
             <div className="max-h-96 overflow-y-auto">
@@ -514,16 +556,62 @@ export function TripWizard({
                 className="max-w-xl mx-auto"
               />
             </div>
-            <div className="flex justify-between">
-              <button className="btn" onClick={() => setCurrentStep(2)}>
-                Back
-              </button>
-              <button className="btn btn-primary" onClick={handleSave}>
-                {currentEvents.length > 0 ? 'Update Trip' : 'Save Trip'}
-              </button>
-            </div>
+            {renderStepNavigation(2, 4, true, true)}
           </div>
-        )}
+        );
+      case 4:
+        return (
+          <div className="space-y-4">
+            <h4 className="text-lg font-semibold">Suggested Packing Rules</h4>
+            <p className="text-base-content/70">
+              Based on your trip details, here are some suggested rule packs
+              that might be helpful. You can always modify these later from the
+              Defaults page.
+            </p>
+            <RulePackSelector onRulesApplied={handleRulesApplied} />
+            {renderStepNavigation(3, null, true, true)}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <dialog className={`modal ${open ? 'modal-open' : ''}`}>
+      <div className="modal-box w-11/12 max-w-2xl">
+        <button
+          className="btn btn-sm btn-circle absolute right-2 top-2"
+          onClick={handleClose}
+        >
+          ✕
+        </button>
+
+        <h3 className="font-bold text-lg mb-4">
+          {currentEvents.length > 0 ? 'Edit Trip' : 'Configure Trip'}
+        </h3>
+
+        {/* Steps indicator */}
+        <ul className="steps steps-horizontal w-full mb-6">
+          {steps.map((step) => (
+            <li
+              key={step.id}
+              className={getStepClasses(step)}
+              onClick={() => handleStepClick(step.id)}
+            >
+              {step.title}
+              {step.optional && (
+                <span className="text-xs text-base-content/60 ml-1">
+                  (Optional)
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+
+        {renderStep()}
       </div>
       <form method="dialog" className="modal-backdrop" onClick={handleClose}>
         <button>close</button>

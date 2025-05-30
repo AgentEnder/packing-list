@@ -27,12 +27,8 @@ export const updateTripEventsHandler = (
   };
 
   // Then recalculate default items
-  const stateWithDefaultItems = calculateDefaultItems(stateWithUpdatedTrip, {
-    type: 'CALCULATE_DEFAULT_ITEMS',
-  });
+  const stateWithDefaultItems = calculateDefaultItems(stateWithUpdatedTrip);
 
   // Finally recalculate packing list
-  return calculatePackingListHandler(stateWithDefaultItems, {
-    type: 'CALCULATE_PACKING_LIST',
-  });
+  return calculatePackingListHandler(stateWithDefaultItems);
 };

@@ -19,12 +19,8 @@ export const addPersonHandler = (
   };
 
   // Then recalculate default items
-  const stateWithDefaultItems = calculateDefaultItems(stateWithNewPerson, {
-    type: 'CALCULATE_DEFAULT_ITEMS',
-  });
+  const stateWithDefaultItems = calculateDefaultItems(stateWithNewPerson);
 
   // Finally recalculate packing list
-  return calculatePackingListHandler(stateWithDefaultItems, {
-    type: 'CALCULATE_PACKING_LIST',
-  });
+  return calculatePackingListHandler(stateWithDefaultItems);
 };
