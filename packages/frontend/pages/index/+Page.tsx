@@ -3,6 +3,7 @@ import { Link } from '../../components/Link';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
+import { DemoDataModal } from '../../components/DemoDataModal';
 
 export default function Page() {
   const people = useAppSelector((state) => state.people);
@@ -15,6 +16,7 @@ export default function Page() {
 
   return (
     <PageContainer>
+      <DemoDataModal />
       <PageHeader title="Smart Packing List" />
 
       <HelpBlurb storageKey="overview" title="How It Works">

@@ -1,7 +1,7 @@
 import './tailwind.css';
 import './style.css';
 import { useState } from 'react';
-import logoUrl from '../assets/logo.svg';
+// import logoUrl from '../assets/logo.svg';
 import { Link } from '../components/Link';
 import {
   Menu,
@@ -61,31 +61,31 @@ export default function LayoutDefault({
           </div>
           <ul className="menu menu-lg gap-2">
             <li>
-              <Link href="./" className="flex items-center gap-2">
+              <Link href="/" className="flex items-center gap-2">
                 <Home className="w-5 h-5" />
                 Overview
               </Link>
             </li>
             <li>
-              <Link href="./people" className="flex items-center gap-2">
+              <Link href="/people" className="flex items-center gap-2">
                 <Users className="w-5 h-5" />
                 People
               </Link>
             </li>
             <li>
-              <Link href="./days" className="flex items-center gap-2">
+              <Link href="/days" className="flex items-center gap-2">
                 <Calendar className="w-5 h-5" />
                 Days
               </Link>
             </li>
             <li>
-              <Link href="./defaults" className="flex items-center gap-2">
+              <Link href="/defaults" className="flex items-center gap-2">
                 <ClipboardList className="w-5 h-5" />
                 Default Items
               </Link>
             </li>
             <li>
-              <Link href="./packing-list" className="flex items-center gap-2">
+              <Link href="/packing-list" className="flex items-center gap-2">
                 <CheckSquare className="w-5 h-5" />
                 Packing List
               </Link>
@@ -97,12 +97,12 @@ export default function LayoutDefault({
   );
 }
 
-function Logo({ className = '' }: { className?: string }) {
-  return (
-    <div className={`mb-2 ${className}`}>
-      <a href="/">
-        <img src={logoUrl} height={64} width={64} alt="logo" />
-      </a>
-    </div>
-  );
-}
+// function Logo({ className = '' }: { className?: string }) {
+//   return (
+//     <div className={`mb-2 ${className}`}>
+//       <a href="/">
+//         <img src={logoUrl} height={64} width={64} alt="logo" />
+//       </a>
+//     </div>
+//   );
+// }

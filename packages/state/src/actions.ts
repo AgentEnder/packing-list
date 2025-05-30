@@ -50,6 +50,10 @@ import {
   ToggleItemPackedAction,
   toggleItemPackedHandler,
 } from './action-handlers/toggle-item-packed.js';
+import {
+  LoadDemoDataAction,
+  loadDemoDataHandler,
+} from './action-handlers/load-demo-data.js';
 
 import { StoreType } from './store.js';
 
@@ -66,7 +70,8 @@ export type AllActions =
   | AddRuleOverrideAction
   | UpdatePackingListViewAction
   | CalculatePackingListAction
-  | ToggleItemPackedAction;
+  | ToggleItemPackedAction
+  | LoadDemoDataAction;
 
 export type StoreActions = AllActions['type'];
 
@@ -91,4 +96,5 @@ export const Mutations: {
   UPDATE_PACKING_LIST_VIEW: updatePackingListViewHandler,
   CALCULATE_PACKING_LIST: calculatePackingListHandler,
   TOGGLE_ITEM_PACKED: toggleItemPackedHandler,
+  LOAD_DEMO_DATA: loadDemoDataHandler,
 };

@@ -12,11 +12,20 @@ export function Link({
 }) {
   const pageContext = usePageContext();
   const { urlPathname } = pageContext;
+
+  const hrefWithBaseUrl =
+    import.meta.env.PUBLIC_ENV__BASE_URL === '/' ||
+    !import.meta.env.PUBLIC_ENV__BASE_URL
+      ? href
+      : import.meta.env.PUBLIC_ENV__BASE_URL + href;
+
+  // The urlPathname from vike's pageContext does not include the base url.
   const isActive =
     href === '/' ? urlPathname === href : urlPathname.startsWith(href);
+
   return (
     <a
-      href={href}
+      href={hrefWithBaseUrl}
       className={`${isActive ? 'is-active' : ''} ${className || ''}`}
     >
       {children}

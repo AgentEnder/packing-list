@@ -2,7 +2,7 @@ import { StoreType, useAppSelector, useAppDispatch } from '@packing-list/state';
 import { createSelector } from '@reduxjs/toolkit';
 import { useMemo } from 'react';
 import { Calendar } from 'lucide-react';
-import { TripEvent, PackingListItem } from '@packing-list/model';
+import { TripEvent } from '@packing-list/model';
 import { format, isSameMonth, parseISO } from 'date-fns';
 import { TripDayRow } from './TripDayRow';
 
@@ -16,41 +16,17 @@ const selectTripInfo = createSelector(
   })
 );
 
-function formatDayLabel(timestamp: number, allDates: number[]): string {
+function formatDayLabel(timestamp: number, allDates: Date[]): string {
   const date = new Date(timestamp);
-  const allDateObjects = allDates.map((ts) => new Date(ts));
 
   // Check if all dates are in the same month
-  const sameMonth = allDateObjects.every((d) => isSameMonth(d, date));
+  const sameMonth = allDates.every((d) => isSameMonth(d, date));
 
   if (sameMonth) {
-    return format(date, 'd');
+    return format(date, 'dd');
   } else {
-    return format(date, 'MMM d');
+    return format(date, 'MMM dd');
   }
-}
-
-function formatEventDescription(event: TripEvent): string {
-  switch (event.type) {
-    case 'leave_home':
-      return 'Departing';
-    case 'arrive_home':
-      return 'Returning Home';
-    case 'leave_destination':
-      return 'Departing';
-    case 'arrive_destination':
-      return 'Arriving';
-    default:
-      return '';
-  }
-}
-
-function calculatePackingProgress(dayIndex: number, items: PackingListItem[]) {
-  if (!items) return 0;
-  const dayItems = items.filter((item) => item.dayIndex === dayIndex);
-  if (dayItems.length === 0) return 0;
-  const packedItems = dayItems.filter((item) => item.isPacked).length;
-  return Math.round((packedItems / dayItems.length) * 100);
 }
 
 interface TripDaysProps {
@@ -80,6 +56,16 @@ export function TripDays({ onEventClick }: TripDaysProps) {
     return days.map((day) => day.date);
   }, [days]);
 
+  const dayLabels = useMemo<Map<number, string>>(() => {
+    const allDateObjects = dates.map((ts) => new Date(ts));
+    const map = new Map<number, string>();
+    for (const day of days) {
+      const dayLabel = formatDayLabel(day.date, allDateObjects);
+      map.set(day.date, dayLabel);
+    }
+    return map;
+  }, [days, dates]);
+
   return (
     <ul className="list bg-base-100 rounded-box shadow-md">
       <li className="p-4 pb-2 text-xs opacity-60 tracking-wide flex items-center gap-2">
@@ -88,7 +74,10 @@ export function TripDays({ onEventClick }: TripDaysProps) {
       </li>
 
       {days.map((day, index) => {
-        const dayLabel = formatDayLabel(day.date, dates);
+        const dayLabel = dayLabels.get(day.date);
+        if (!dayLabel) {
+          throw new Error(`Day label not found for day ${day.date}`);
+        }
         const dayDate = format(new Date(day.date), 'yyyy-MM-dd');
         const dayEvents = tripEvents.filter(
           (event) => format(parseISO(event.date), 'yyyy-MM-dd') === dayDate

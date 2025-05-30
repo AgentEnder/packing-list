@@ -1,5 +1,5 @@
 import { configureStore, Reducer, UnknownAction } from '@reduxjs/toolkit';
-import { Mutations, AllActions, ActionHandler } from './actions.js';
+import { Mutations } from './actions.js';
 import {
   Item,
   DefaultItemRule,
@@ -9,7 +9,6 @@ import {
   PackingListViewState,
   PackingListItem,
 } from '@packing-list/model';
-import { DEMO_DATA } from './data.js';
 
 export type StoreType = {
   people: Person[];
@@ -23,10 +22,11 @@ export type StoreType = {
   packingListView: PackingListViewState;
 };
 
-export const initialState: StoreType = DEMO_DATA || {
+export const initialState: StoreType = {
   people: [],
   defaultItemRules: [],
   trip: {
+    id: 'new-trip',
     days: [],
     tripEvents: [],
   },
@@ -45,24 +45,22 @@ export const initialState: StoreType = DEMO_DATA || {
   },
 };
 
-const createReducer = <T extends keyof StoreType>(
-  key: T,
-  initialValue: StoreType[T]
-): Reducer<StoreType[T]> => {
-  return <T2 extends UnknownAction>(
-    state = initialValue,
-    action: T2
-  ): StoreType[T] => {
-    if (isStoreAction(action)) {
-      const actionType = action.type;
-      const mutation = Mutations[actionType] as ActionHandler<AllActions>;
-      const fullState = { ...initialState, [key]: state };
-      const result = mutation(fullState, action);
-      return result[key] as StoreType[T];
+function createReducer<K extends keyof StoreType>(
+  key: K,
+  initialValue: StoreType[K]
+): Reducer<StoreType[K]> {
+  return (state = initialValue, action: UnknownAction) => {
+    if ('type' in action && action.type in Mutations) {
+      const mutation = Mutations[action.type as keyof typeof Mutations];
+      const newState = mutation(
+        { ...initialState, [key]: state } as StoreType,
+        action as any
+      );
+      return newState[key];
     }
     return state;
   };
-};
+}
 
 type PageContext = {
   isClient?: boolean;
@@ -73,10 +71,9 @@ type PageContext = {
 
 export function createStore(pageContext: PageContext) {
   const preloadedState =
-    DEMO_DATA ||
-    ('isClient' in pageContext && pageContext.isClient
+    'isClient' in pageContext && pageContext.isClient
       ? pageContext.redux?.ssrState ?? initialState
-      : initialState);
+      : initialState;
 
   return configureStore({
     reducer: {
@@ -97,10 +94,4 @@ export function createStore(pageContext: PageContext) {
       ),
     },
   });
-}
-
-function isStoreAction<T extends UnknownAction>(
-  action: T
-): action is Extract<AllActions, T> {
-  return action.type in Mutations;
 }

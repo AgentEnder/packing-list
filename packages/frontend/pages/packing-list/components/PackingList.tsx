@@ -8,16 +8,26 @@ import {
   selectPackingListViewState,
   selectGroupedItems,
   GroupedItem,
-  ItemGroup,
-  GroupedItemsResult,
 } from '@packing-list/state';
-import { PackagePlus, Info, AlertTriangle, Check } from 'lucide-react';
+import {
+  PackagePlus,
+  Info,
+  AlertTriangle,
+  Check,
+  Calendar,
+  Users,
+  ClipboardList,
+} from 'lucide-react';
+import { Link } from '../../../components/Link';
 
 export const PackingList: React.FC = () => {
   const dispatch = useAppDispatch();
   const viewState = useAppSelector(selectPackingListViewState);
   const { groupedItems, groupedGeneralItems } =
     useAppSelector(selectGroupedItems);
+  const trip = useAppSelector((state) => state.trip);
+  const people = useAppSelector((state) => state.people);
+  const defaultItemRules = useAppSelector((state) => state.defaultItemRules);
 
   const [selectedItem, setSelectedItem] = useState<
     GroupedItem['baseItem'] | null
@@ -112,6 +122,135 @@ export const PackingList: React.FC = () => {
       </li>
     );
   };
+
+  // Check if we have any items before filtering
+  const hasAnyItems = groupedItems.length > 0 || groupedGeneralItems.length > 0;
+  const hasTrip = trip.days.length > 0;
+  const hasPeople = people.length > 0;
+  const hasRules = defaultItemRules.length > 0;
+
+  // Show setup help if we have no items
+  if (!hasAnyItems) {
+    return (
+      <div className="container mx-auto p-4">
+        <h1 className="text-2xl font-bold mb-6">Packing List</h1>
+        <div className="card bg-base-100 shadow-xl">
+          <div className="card-body">
+            <h2 className="card-title">Setup Your Packing List</h2>
+            <p className="text-base-content/70 mb-6">
+              To generate your packing list, complete these steps in order:
+            </p>
+            <div className="space-y-4">
+              <div
+                className={`flex items-start gap-4 ${
+                  hasTrip ? 'opacity-50' : ''
+                }`}
+              >
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <Calendar className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-medium">1. Configure Your Trip</h3>
+                  <p className="text-sm text-base-content/70 mb-2">
+                    Add your travel dates and destinations to calculate how many
+                    days you'll be away.
+                  </p>
+                  {!hasTrip && (
+                    <Link href="/days" className="btn btn-primary btn-sm">
+                      Configure Trip
+                    </Link>
+                  )}
+                  {hasTrip && (
+                    <div className="badge badge-success gap-2">
+                      <Check className="w-4 h-4" />
+                      Completed
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div
+                className={`flex items-start gap-4 ${
+                  hasPeople ? 'opacity-50' : ''
+                }`}
+              >
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <Users className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-medium">2. Add Travelers</h3>
+                  <p className="text-sm text-base-content/70 mb-2">
+                    Add the people going on the trip so we can calculate
+                    personal items.
+                  </p>
+                  {!hasPeople && hasTrip && (
+                    <Link href="/people" className="btn btn-primary btn-sm">
+                      Add People
+                    </Link>
+                  )}
+                  {!hasPeople && !hasTrip && (
+                    <div className="badge badge-neutral gap-2">
+                      Configure trip first
+                    </div>
+                  )}
+                  {hasPeople && (
+                    <div className="badge badge-success gap-2">
+                      <Check className="w-4 h-4" />
+                      Completed
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div
+                className={`flex items-start gap-4 ${
+                  hasRules ? 'opacity-50' : ''
+                }`}
+              >
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <ClipboardList className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-medium">3. Create Packing Rules</h3>
+                  <p className="text-sm text-base-content/70 mb-2">
+                    Set up rules for what to pack (e.g., "1 shirt per day + 1
+                    extra").
+                  </p>
+                  {!hasRules && hasTrip && hasPeople && (
+                    <Link href="/defaults" className="btn btn-primary btn-sm">
+                      Create Rules
+                    </Link>
+                  )}
+                  {!hasRules && (!hasTrip || !hasPeople) && (
+                    <div className="badge badge-neutral gap-2">
+                      Complete previous steps first
+                    </div>
+                  )}
+                  {hasRules && (
+                    <div className="badge badge-success gap-2">
+                      <Check className="w-4 h-4" />
+                      Completed
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {hasTrip && hasPeople && hasRules && (
+                <div className="alert alert-info mt-4">
+                  <Info className="w-6 h-6" />
+                  <span>
+                    Your packing list is configured but all items are currently
+                    filtered out. Try adjusting the filters above to show your
+                    items.
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4">

@@ -43,14 +43,14 @@ jobs:
           run_install: false
 
       - name: Get pnpm store directory
+        id: pnpm-store
         shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
       - uses: actions/cache@v4
         name: Setup pnpm cache
         with:
-          path: ${{ env.STORE_PATH }}
+          path: ${{ steps.pnpm-store.outputs.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
@@ -65,3 +65,4 @@ jobs:
         run: pnpm nx deploy frontend
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PATH_PREFIX: /${{ github.event.repository.name }}

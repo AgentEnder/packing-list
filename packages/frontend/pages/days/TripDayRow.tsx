@@ -1,5 +1,4 @@
-import { format, parseISO } from 'date-fns';
-import { ArrowRight, ChevronDown, ChevronRight, Plane } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plane } from 'lucide-react';
 import { PackingListItem, TripEvent } from '@packing-list/model';
 import { useState } from 'react';
 
@@ -38,9 +37,7 @@ function formatEventDescription(event: TripEvent): string {
 }
 
 export function TripDayRow({
-  index,
   dayLabel,
-  date,
   location,
   expectedClimate,
   isTravel,
@@ -59,7 +56,7 @@ export function TripDayRow({
         className="flex items-center gap-4 p-4 cursor-pointer hover:bg-base-200/50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="text-4xl font-thin opacity-30 tabular-nums">
+        <div className="text-4xl font-thin opacity-30 tabular-nums font-mono">
           {paddedIndex}
         </div>
         <div className="flex items-center justify-center w-6">

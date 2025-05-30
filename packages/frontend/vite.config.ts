@@ -8,5 +8,5 @@ export default defineConfig({
   build: {
     target: 'es2022',
   },
-  base: '/packing-list/',
+  base: process.env.PUBLIC_ENV__BASE_URL || '/',
 });

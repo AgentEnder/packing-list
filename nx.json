@@ -69,6 +69,15 @@
   "targetDefaults": {
     "test": {
       "dependsOn": ["^build"]
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "production",
+        "^production",
+        { "env": "PUBLIC_ENV__BASE_URL" }
+      ],
+      "cache": true
     }
   }
 }
