@@ -8,7 +8,6 @@ import {
   RuleOverride,
   PackingListViewState,
   PackingListItem,
-  TripEvent,
   RulePack,
 } from '@packing-list/model';
 import { DEFAULT_RULE_PACKS } from './default-rule-packs.js';

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
 import type { StoreType } from '../store.js';
-import type { DefaultItemRule, Person, Day, Item } from '@packing-list/model';
+import type { DefaultItemRule, Person, Day } from '@packing-list/model';
 
 describe('calculatePackingListHandler', () => {
   // Helper function to create a Day object
@@ -208,8 +208,6 @@ describe('calculatePackingListHandler', () => {
 
     // First calculation
     const firstResult = calculatePackingListHandler(initialState);
-    const itemId = firstResult.calculated.packingListItems[0].id;
-    const ruleHash = firstResult.calculated.packingListItems[0].ruleHash;
 
     // Mark item as packed
     const stateWithPackedItems: StoreType = {
