@@ -1,47 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from '@packing-list/state';
-import {
-  PackingListViewState,
-  Day,
-  Person,
-  PackingListItem,
-} from '@packing-list/model';
+import { PackingListViewState } from '@packing-list/model';
 import { RuleOverrideDialog } from './RuleOverrideDialog';
-
-type DayGroup = {
-  type: 'day';
-  day: Day;
-  index: number;
-  items: PackingListItem[];
-};
-
-type PersonGroup = {
-  type: 'person';
-  person: Person;
-  items: PackingListItem[];
-};
-
-type ItemGroup = DayGroup | PersonGroup;
+import { PackItemsDialog } from './PackItemsDialog';
+import { HelpBlurb } from '../../../components/HelpBlurb';
+import {
+  selectPackingListViewState,
+  selectGroupedItems,
+  GroupedItem,
+  ItemGroup,
+  GroupedItemsResult,
+} from '@packing-list/state';
 
 export const PackingList: React.FC = () => {
   const dispatch = useAppDispatch();
-  const viewState = useAppSelector((state) => state.packingListView);
-  const items = useAppSelector((state) => state.calculated.packingListItems);
-  const people = useAppSelector((state) => state.people);
-  const days = useAppSelector((state) => state.trip.days);
-  const defaultItemRules = useAppSelector((state) => state.defaultItemRules);
+  const viewState = useAppSelector(selectPackingListViewState);
+  const { groupedItems, groupedGeneralItems } =
+    useAppSelector(selectGroupedItems);
 
-  const [selectedItem, setSelectedItem] = useState<PackingListItem | null>(
-    null
-  );
+  const [selectedItem, setSelectedItem] = useState<
+    GroupedItem['baseItem'] | null
+  >(null);
   const [isOverrideDialogOpen, setIsOverrideDialogOpen] = useState(false);
+  const [selectedGroupForPacking, setSelectedGroupForPacking] =
+    useState<GroupedItem | null>(null);
+  const [isPackDialogOpen, setIsPackDialogOpen] = useState(false);
 
   useEffect(() => {
     // Calculate default items first
     dispatch({ type: 'CALCULATE_DEFAULT_ITEMS' });
     // Then calculate the packing list based on those items and any overrides
     dispatch({ type: 'CALCULATE_PACKING_LIST' });
-  }, [dispatch, defaultItemRules, people, days]);
+  }, [dispatch]);
 
   const handleViewModeChange = (mode: PackingListViewState['viewMode']) => {
     dispatch({
@@ -57,15 +47,8 @@ export const PackingList: React.FC = () => {
     });
   };
 
-  const handleTogglePacked = (item: PackingListItem) => {
-    dispatch({
-      type: 'TOGGLE_ITEM_PACKED',
-      payload: { itemId: item.id },
-    });
-  };
-
-  const handleOpenOverrideDialog = (item: PackingListItem) => {
-    setSelectedItem(item);
+  const handleOpenOverrideDialog = (groupedItem: GroupedItem) => {
+    setSelectedItem(groupedItem.baseItem);
     setIsOverrideDialogOpen(true);
   };
 
@@ -74,45 +57,54 @@ export const PackingList: React.FC = () => {
     setIsOverrideDialogOpen(false);
   };
 
-  const filteredItems = items.filter((item) => {
-    const { packed, unpacked, excluded } = viewState.filters;
-    if (item.isPacked && !packed) return false;
-    if (!item.isPacked && !unpacked) return false;
-    if (item.isOverridden && !excluded) return false;
-    return true;
-  });
+  const handleOpenPackDialog = (groupedItem: GroupedItem) => {
+    setSelectedGroupForPacking(groupedItem);
+    setIsPackDialogOpen(true);
+  };
 
-  const groupedItems: ItemGroup[] =
-    viewState.viewMode === 'by-day'
-      ? days.map((day, index) => ({
-          type: 'day',
-          day,
-          index,
-          items: filteredItems.filter((item) =>
-            item.applicableDays.includes(index)
-          ),
-        }))
-      : people.map((person) => ({
-          type: 'person',
-          person,
-          items: filteredItems.filter((item) =>
-            item.applicablePersons.includes(person.id)
-          ),
-        }));
+  const handleClosePackDialog = () => {
+    setSelectedGroupForPacking(null);
+    setIsPackDialogOpen(false);
+  };
 
-  const renderQuantity = (item: PackingListItem) => {
-    const isPerDay = item.applicableDays.length === 1;
-    const isPerPerson = item.applicablePersons.length === 1;
-    const quantity =
-      viewState.viewMode === 'by-day' && !isPerDay
-        ? item.perUnitCount
-        : viewState.viewMode === 'by-person' && !isPerPerson
-        ? item.perUnitCount
-        : item.totalCount;
+  const renderGroupedItem = (groupedItem: GroupedItem) => {
+    const progress = (groupedItem.packedCount / groupedItem.totalCount) * 100;
 
-    return `${quantity}${
-      item.totalCount !== item.perUnitCount ? ` (${item.totalCount} total)` : ''
-    }`;
+    return (
+      <li
+        key={groupedItem.baseItem.id}
+        className="relative overflow-hidden bg-base-100 rounded"
+      >
+        {/* Progress bar background */}
+        <div
+          className="absolute inset-0 bg-success/20 transition-all duration-300 ease-in-out"
+          style={{ width: `${progress}%` }}
+        />
+
+        {/* Content */}
+        <div className="relative flex items-center justify-between p-2">
+          <div className="flex items-center gap-2">
+            <button
+              className="btn btn-sm btn-ghost"
+              onClick={() => handleOpenPackDialog(groupedItem)}
+            >
+              <span className={progress === 100 ? 'text-success' : ''}>
+                {groupedItem.packedCount}/{groupedItem.totalCount}
+              </span>
+            </button>
+            <button
+              className="hover:underline"
+              onClick={() => handleOpenOverrideDialog(groupedItem)}
+            >
+              {groupedItem.displayName}
+            </button>
+          </div>
+          {groupedItem.baseItem.isOverridden && (
+            <span className="badge badge-warning">Modified</span>
+          )}
+        </div>
+      </li>
+    );
   };
 
   return (
@@ -185,46 +177,85 @@ export const PackingList: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {groupedItems.map((group, index) => (
-          <div key={index} className="card bg-base-200">
+      <HelpBlurb
+        title="How to use this packing list"
+        storageKey="packing-list-help"
+      >
+        <p>
+          Your packing list automatically updates based on your trip details and
+          rules. Use these features to stay organized:
+        </p>
+
+        <h3 className="text-base mt-4 mb-2">Key Features</h3>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 my-4">
+          <dt className="font-bold">Views:</dt>
+          <dd>Switch between organizing by day or by person</dd>
+
+          <dt className="font-bold">Progress:</dt>
+          <dd>Track what's packed with progress bars and counts</dd>
+
+          <dt className="font-bold">Filters:</dt>
+          <dd>Show/hide packed items or find specific things</dd>
+
+          <dt className="font-bold">Quantities:</dt>
+          <dd>See exactly how many of each item you need</dd>
+
+          <dt className="font-bold">Extras:</dt>
+          <dd>Additional items are grouped with their base items</dd>
+
+          <dt className="font-bold">General Items:</dt>
+          <dd>Shared items not tied to specific people</dd>
+        </dl>
+
+        <div className="bg-base-200 rounded-lg p-4 my-4">
+          <h3 className="text-sm font-medium mb-2">Pro Tips</h3>
+          <p className="text-sm text-base-content/70 m-0">
+            Pack efficiently by:
+            <br />
+            • Grouping similar items together
+            <br />
+            • Using search to find related items
+            <br />
+            • Checking off items as you pack
+            <br />• Reviewing the list before departure
+          </p>
+        </div>
+      </HelpBlurb>
+
+      <div className="flex flex-col gap-8">
+        {/* View-specific items */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {groupedItems.map((group, index) => (
+            <div key={index} className="card bg-base-200">
+              <div className="card-body">
+                <h2 className="card-title">
+                  {group.type === 'day'
+                    ? `Day ${group.index + 1} - ${group.day.location}`
+                    : group.person.name}
+                </h2>
+                <ul className="space-y-2">
+                  {group.items.map(renderGroupedItem)}
+                </ul>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* General items */}
+        {groupedGeneralItems.length > 0 && (
+          <div className="card bg-base-200">
             <div className="card-body">
-              <h2 className="card-title">
-                {group.type === 'day'
-                  ? `Day ${group.index + 1} - ${group.day.location}`
-                  : group.person.name}
-              </h2>
+              <h2 className="card-title">General Items</h2>
+              <p className="text-sm text-base-content/70 mb-4">
+                These items are not specific to{' '}
+                {viewState.viewMode === 'by-day' ? 'days' : 'people'}
+              </p>
               <ul className="space-y-2">
-                {group.items.map((item) => (
-                  <li
-                    key={item.id}
-                    className={`flex items-center justify-between p-2 rounded ${
-                      item.isPacked ? 'bg-success/20' : 'bg-base-100'
-                    }`}
-                  >
-                    <span className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="checkbox mr-2"
-                        checked={item.isPacked}
-                        onChange={() => handleTogglePacked(item)}
-                      />
-                      <button
-                        className="hover:underline"
-                        onClick={() => handleOpenOverrideDialog(item)}
-                      >
-                        {item.name} ({renderQuantity(item)})
-                      </button>
-                    </span>
-                    {item.isOverridden && (
-                      <span className="badge badge-warning">Modified</span>
-                    )}
-                  </li>
-                ))}
+                {groupedGeneralItems.map(renderGroupedItem)}
               </ul>
             </div>
           </div>
-        ))}
+        )}
       </div>
 
       {selectedItem && (
@@ -232,6 +263,14 @@ export const PackingList: React.FC = () => {
           item={selectedItem}
           isOpen={isOverrideDialogOpen}
           onClose={handleCloseOverrideDialog}
+        />
+      )}
+
+      {selectedGroupForPacking && (
+        <PackItemsDialog
+          groupedItem={selectedGroupForPacking}
+          isOpen={isPackDialogOpen}
+          onClose={handleClosePackDialog}
         />
       )}
     </div>

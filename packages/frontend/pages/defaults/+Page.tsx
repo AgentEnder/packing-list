@@ -1,5 +1,4 @@
-import { useSelector } from 'react-redux';
-import { StoreType } from '@packing-list/state';
+import { StoreType, useAppSelector } from '@packing-list/state';
 import { CreateRuleForm } from './components/CreateRuleForm';
 import { RuleList } from './components/RuleList';
 import { PageHeader } from '../../components/PageHeader';
@@ -7,11 +6,11 @@ import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
 
 export default function DefaultsPage() {
-  const defaultRules = useSelector(
+  const defaultRules = useAppSelector(
     (state: StoreType) => state.defaultItemRules
   );
-  const people = useSelector((state: StoreType) => state.people);
-  const days = useSelector((state: StoreType) => state.trip.days);
+  const people = useAppSelector((state: StoreType) => state.people);
+  const days = useAppSelector((state: StoreType) => state.trip.days);
 
   return (
     <PageContainer>

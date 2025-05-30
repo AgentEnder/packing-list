@@ -9,7 +9,7 @@ import {
 
 type CompareValue = string | number | boolean | Item[];
 
-const compare = (
+export const compare = (
   a: CompareValue,
   operator: string,
   b: CompareValue

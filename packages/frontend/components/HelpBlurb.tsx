@@ -1,12 +1,15 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { useEffect, useState, PropsWithChildren } from 'react';
 
 interface HelpBlurbProps {
   storageKey: string;
   title: string;
-  children: ReactNode;
 }
 
-export function HelpBlurb({ storageKey, title, children }: HelpBlurbProps) {
+export const HelpBlurb = ({
+  title,
+  children,
+  storageKey,
+}: PropsWithChildren<HelpBlurbProps>) => {
   const [isVisible, setIsVisible] = useState(true);
   const fullStorageKey = `help-blurb-${storageKey}`;
 
@@ -52,4 +55,4 @@ export function HelpBlurb({ storageKey, title, children }: HelpBlurbProps) {
       </div>
     </div>
   );
-}
+};

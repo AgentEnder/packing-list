@@ -68,7 +68,7 @@ export const DEMO_DATA: StoreType = {
     {
       id: 'person-4',
       name: 'Alex Johnson',
-      age: 8,
+      age: 3,
       gender: 'male',
     },
   ],
@@ -76,8 +76,8 @@ export const DEMO_DATA: StoreType = {
   packingListView: {
     viewMode: 'by-day',
     filters: {
-      packed: false,
-      unpacked: false,
+      packed: true,
+      unpacked: true,
       excluded: false,
     },
   },

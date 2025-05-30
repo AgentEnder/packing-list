@@ -74,7 +74,6 @@ export function enumerateTripDays(tripEvents: TripEvent[]): Day[] {
     };
 
     if (eventsOnThisDay) {
-      console.log('eventsOnThisDay', eventsOnThisDay, dateString);
       for (const event of eventsOnThisDay) {
         // All days that have an event are travel days...
         // You either just left, or are arriving.
@@ -84,25 +83,29 @@ export function enumerateTripDays(tripEvents: TripEvent[]): Day[] {
           case 'leave_home':
             currentLocation = 'Home';
             traveling = true;
+            day.location = 'Home';
             break;
           case 'leave_destination':
+            day.location = currentLocation;
             currentLocation = 'Traveling';
             traveling = true;
             break;
           case 'arrive_destination':
             currentLocation = event.location || 'destination';
             traveling = false;
+            day.location = currentLocation;
             break;
           case 'arrive_home':
             currentLocation = 'Home';
             traveling = false;
+            day.location = 'Home';
             break;
         }
       }
     } else {
       day.travel = traveling;
+      day.location = currentLocation;
     }
-    day.location = currentLocation;
     day.expectedClimate = getClimateForLocation(currentLocation);
 
     days.push(day);

@@ -1,5 +1,5 @@
 import { createSelector } from '@reduxjs/toolkit';
-import { StoreType } from './store';
+import type { StoreType } from './store.js';
 
 export const selectPeople = createSelector(
   (state: StoreType) => state.people,
