@@ -1,4 +1,9 @@
-import { configureStore, Reducer, UnknownAction } from '@reduxjs/toolkit';
+import {
+  configureStore,
+  Reducer,
+  UnknownAction,
+  Store,
+} from '@reduxjs/toolkit';
 import { Mutations } from './actions.js';
 import {
   Item,
@@ -31,7 +36,6 @@ export const initialState: StoreType = {
   trip: {
     id: 'new-trip',
     days: [],
-    tripEvents: [],
   },
   calculated: {
     defaultItems: [],
@@ -39,7 +43,7 @@ export const initialState: StoreType = {
   },
   ruleOverrides: [],
   packingListView: {
-    viewMode: 'by-person',
+    viewMode: 'by-day',
     filters: {
       packed: true,
       unpacked: true,
@@ -57,6 +61,7 @@ function createReducer(preloadedState: StoreType): Reducer<StoreType> {
     if ('type' in action && action.type in Mutations) {
       const mutation = Mutations[action.type as keyof typeof Mutations];
       if (mutation) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return mutation(state, action as any);
       }
       console.warn(`Unknown action: ${action.type}`);
@@ -73,7 +78,7 @@ type PageContext = {
   };
 };
 
-export function createStore(pageContext: PageContext) {
+export function createStore(pageContext: PageContext): Store<StoreType> {
   const preloadedState =
     'isClient' in pageContext && pageContext.isClient
       ? pageContext.redux?.ssrState ?? initialState

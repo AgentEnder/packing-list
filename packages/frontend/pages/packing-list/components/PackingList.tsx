@@ -3,6 +3,7 @@ import { useAppSelector, useAppDispatch } from '@packing-list/state';
 import { PackingListViewState } from '@packing-list/model';
 import { RuleOverrideDialog } from './RuleOverrideDialog';
 import { PackItemsDialog } from './PackItemsDialog';
+import { PrintDialog } from './PrintDialog';
 import { HelpBlurb } from '../../../components/HelpBlurb';
 import {
   selectPackingListViewState,
@@ -17,6 +18,7 @@ import {
   Calendar,
   Users,
   ClipboardList,
+  Printer,
 } from 'lucide-react';
 import { Link } from '../../../components/Link';
 
@@ -36,6 +38,7 @@ export const PackingList: React.FC = () => {
   const [selectedGroupForPacking, setSelectedGroupForPacking] =
     useState<GroupedItem | null>(null);
   const [isPackDialogOpen, setIsPackDialogOpen] = useState(false);
+  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
 
   const handleViewModeChange = (mode: PackingListViewState['viewMode']) => {
     dispatch({
@@ -320,6 +323,14 @@ export const PackingList: React.FC = () => {
               <span>Excluded</span>
             </label>
           </div>
+
+          <button
+            className="btn btn-primary"
+            onClick={() => setIsPrintDialogOpen(true)}
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            Print
+          </button>
         </div>
       </div>
 
@@ -417,11 +428,10 @@ export const PackingList: React.FC = () => {
         />
       )}
 
-      <p>You haven&apos;t added any custom items yet.</p>
-
-      <button className="btn btn-primary">&quot;Add Custom Item&quot;</button>
-
-      <button className="btn btn-primary">&quot;Start Fresh&quot;</button>
+      <PrintDialog
+        isOpen={isPrintDialogOpen}
+        onClose={() => setIsPrintDialogOpen(false)}
+      />
     </div>
   );
 };

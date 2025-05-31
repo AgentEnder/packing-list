@@ -7,8 +7,8 @@ describe('calculatePackingListHandler', () => {
   // Helper function to create a Day object
   const createDay = (
     dateStr: string,
-    expectedClimate: string = 'sunny',
-    location: string = 'home'
+    expectedClimate = 'sunny',
+    location = 'home'
   ): Day => ({
     date: new Date(dateStr).getTime(),
     expectedClimate,

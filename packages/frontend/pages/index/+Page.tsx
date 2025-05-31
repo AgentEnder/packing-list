@@ -129,16 +129,6 @@ export default function Page() {
           </div>
         </div>
       )}
-
-      <p>
-        Let&apos;s get started by creating a new trip or loading one you&apos;ve
-        already started.
-      </p>
-
-      <button className="btn btn-primary">
-        &quot;Try it out with demo data&quot;
-      </button>
-      <button className="btn btn-primary">&quot;Start fresh&quot;</button>
     </PageContainer>
   );
 }

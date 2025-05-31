@@ -9,7 +9,7 @@ export default defineConfig({
       // Enable HMR
       include: '**/*.{jsx,tsx}',
     }),
-    vike(),
+    !process.env.VITEST && vike(),
     tailwindcss(),
   ],
   build: {

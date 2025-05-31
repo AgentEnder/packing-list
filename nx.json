@@ -68,7 +68,10 @@
   ],
   "targetDefaults": {
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "options": {
+        "args": ["--watch=false"]
+      }
     },
     "build": {
       "dependsOn": ["^build"],

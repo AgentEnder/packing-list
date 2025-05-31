@@ -321,7 +321,7 @@ const trip: Trip = {
   tripEvents,
 };
 
-export const CREATE_DEMO_DATA: StoreType = () =>
+export const CREATE_DEMO_DATA: () => StoreType = () =>
   calculatePackingListHandler(
     calculateDefaultItems({
       people,
