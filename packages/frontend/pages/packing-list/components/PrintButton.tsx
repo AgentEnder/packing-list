@@ -395,7 +395,7 @@ export const PrintButton: React.FC = () => {
   }, [dispatch, viewState, groupedItems, groupedGeneralItems, days]);
 
   useEffect(() => {
-    const onBeforePrint = (e: Event) => {
+    const onBeforePrint = () => {
       handlePrint();
     };
     const onKeyPress = (e: KeyboardEvent) => {

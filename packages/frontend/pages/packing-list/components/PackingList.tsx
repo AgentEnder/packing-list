@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@packing-list/state';
-import { PackingListViewState, Category } from '@packing-list/model';
+import { PackingListViewState } from '@packing-list/model';
 import { RuleOverrideDialog } from './RuleOverrideDialog';
 import { PackItemsDialog } from './PackItemsDialog';
 import { HelpBlurb } from '../../../components/HelpBlurb';
@@ -19,7 +19,6 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import { Link } from '../../../components/Link';
-import { formatDayInfo } from '../utils/item-formatting';
 import { PrintButton } from './PrintButton';
 import { getAllCategories } from '@packing-list/model';
 import { format } from 'date-fns';

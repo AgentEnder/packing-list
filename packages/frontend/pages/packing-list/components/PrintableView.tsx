@@ -24,7 +24,6 @@ interface PrintableViewProps {
 export const PrintableView: React.FC<PrintableViewProps> = ({
   items,
   mode,
-  title,
 }) => {
   const categories = getAllCategories();
 
