@@ -13,7 +13,7 @@ export const PersonList = ({ people }: PersonListProps) => {
   const [isAdding, setIsAdding] = useState(false);
 
   const handleDelete = (id: string) => {
-    dispatch({ type: 'REMOVE_PERSON', payload: id });
+    dispatch({ type: 'REMOVE_PERSON', payload: { id } });
   };
 
   return (

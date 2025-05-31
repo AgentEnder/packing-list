@@ -20,12 +20,8 @@ export const removePersonHandler = (
   };
 
   // Then recalculate default items
-  const stateWithDefaultItems = calculateDefaultItems(stateWithPersonRemoved, {
-    type: 'CALCULATE_DEFAULT_ITEMS',
-  });
+  const stateWithDefaultItems = calculateDefaultItems(stateWithPersonRemoved);
 
   // Finally recalculate packing list
-  return calculatePackingListHandler(stateWithDefaultItems, {
-    type: 'CALCULATE_PACKING_LIST',
-  });
+  return calculatePackingListHandler(stateWithDefaultItems);
 };

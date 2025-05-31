@@ -13,22 +13,9 @@
     },
     "./package.json": "./package.json"
   },
-  "scripts": {
-    "lint": "eslint .",
-    "test": "vitest run",
-    "test:watch": "vitest"
-  },
   "dependencies": {
     "@packing-list/model": "workspace:*",
-    "@packing-list/shared-utils": "workspace:*",
-    "@reduxjs/toolkit": "^2.0.1",
-    "date-fns": "^3.0.6",
-    "react-redux": "^9.0.4"
+    "@packing-list/shared-utils": "workspace:*"
   },
-  "devDependencies": {
-    "@types/node": "^20.10.5",
-    "eslint": "^8.56.0",
-    "typescript": "^5.3.3",
-    "vitest": "^1.0.0"
-  }
+  "devDependencies": {}
 }

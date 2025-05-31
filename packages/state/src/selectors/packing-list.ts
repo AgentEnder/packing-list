@@ -48,45 +48,50 @@ export const selectPackingListViewState = (state: StoreType) =>
 export const selectDays = (state: StoreType) => state.trip.days;
 
 // Filter items based on view state
-export const selectFilteredItems = createSelector(
-  [selectPackingListItems, selectPackingListViewState],
-  (items, viewState) => {
-    return items.filter((item) => {
-      const { packed, unpacked, excluded } = viewState.filters;
-      if (item.isPacked && !packed) return false;
-      if (!item.isPacked && !unpacked) return false;
-      if (item.isOverridden && !excluded) return false;
-      return true;
-    });
-  }
-);
+export const selectFilteredItems: (state: StoreType) => PackingListItem[] =
+  createSelector(
+    [selectPackingListItems, selectPackingListViewState],
+    (items, viewState) => {
+      return items.filter((item) => {
+        // If the item is overridden, only show it if excluded is true
+        if (item.isOverridden) {
+          return viewState.filters.excluded;
+        }
+        // Otherwise, show it based on its packed status
+        return item.isPacked
+          ? viewState.filters.packed
+          : viewState.filters.unpacked;
+      });
+    }
+  );
 
 // Split items into view-specific and general items
-export const selectSplitItems = createSelector(
+export const selectSplitItems: (state: StoreType) => {
+  viewSpecificItems: PackingListItem[];
+  generalItems: PackingListItem[];
+} = createSelector(
   [selectFilteredItems, selectPackingListViewState],
   (items, viewState) => {
-    return items.reduce<{
-      viewSpecificItems: PackingListItem[];
-      generalItems: PackingListItem[];
-    }>(
-      (acc, item) => {
-        if (viewState.viewMode === 'by-day') {
-          if (item.dayIndex !== undefined) {
-            acc.viewSpecificItems.push(item);
-          } else {
-            acc.generalItems.push(item);
-          }
+    const viewSpecificItems: PackingListItem[] = [];
+    const generalItems: PackingListItem[] = [];
+
+    items.forEach((item) => {
+      if (viewState.viewMode === 'by-day') {
+        if (item.dayIndex !== undefined) {
+          viewSpecificItems.push(item);
         } else {
-          if (item.personId !== undefined) {
-            acc.viewSpecificItems.push(item);
-          } else {
-            acc.generalItems.push(item);
-          }
+          generalItems.push(item);
         }
-        return acc;
-      },
-      { viewSpecificItems: [], generalItems: [] }
-    );
+      } else {
+        if (item.personId !== undefined) {
+          viewSpecificItems.push(item);
+        } else {
+          generalItems.push(item);
+        }
+      }
+    });
+
+    return { viewSpecificItems, generalItems };
   }
 );
 
@@ -95,20 +100,18 @@ const groupItemsByPerson = (items: PackingListItem[]): GroupedItem[] => {
   const groupedMap = new Map<string, PackingListItem[]>();
 
   items.forEach((item) => {
-    // Group by rule and item name, keeping extras and base items together
     const key = `${item.ruleId}-${item.itemName}`;
     const group = groupedMap.get(key) || [];
     group.push(item);
     groupedMap.set(key, group);
   });
 
-  return Array.from(groupedMap.entries()).map(([_, instances]) => {
+  return Array.from(groupedMap.entries()).map(([, instances]) => {
     const baseItem = instances[0];
     const hasExtras = instances.some((item) => item.isExtra);
     const baseItems = instances.filter((item) => !item.isExtra);
     const extraItems = instances.filter((item) => item.isExtra);
 
-    // Calculate total quantities needed
     const baseQuantityNeeded = baseItems.reduce(
       (sum, item) => sum + item.quantity,
       0
@@ -119,7 +122,6 @@ const groupItemsByPerson = (items: PackingListItem[]): GroupedItem[] => {
     );
     const totalQuantityNeeded = baseQuantityNeeded + extraQuantityNeeded;
 
-    // Calculate packed counts
     const basePackedCount = baseItems
       .filter((i) => i.isPacked)
       .reduce((sum, item) => sum + item.quantity, 0);
@@ -134,7 +136,12 @@ const groupItemsByPerson = (items: PackingListItem[]): GroupedItem[] => {
       displayName: baseItem.itemName,
       totalCount: totalQuantityNeeded,
       packedCount: totalPackedCount,
-      metadata: { isExtra: hasExtras },
+      metadata: {
+        isExtra: hasExtras,
+        dayIndex: baseItem.dayIndex,
+        dayStart: baseItem.dayStart,
+        dayEnd: baseItem.dayEnd,
+      },
     };
   });
 };
@@ -150,7 +157,7 @@ const groupItemsByDay = (items: PackingListItem[]): GroupedItem[] => {
     groupedMap.set(key, group);
   });
 
-  return Array.from(groupedMap.entries()).map(([_, instances]) => {
+  return Array.from(groupedMap.entries()).map(([, instances]) => {
     const baseItem = instances[0];
     const metadata: GroupMetadata = {
       dayIndex: baseItem.dayIndex,
@@ -158,7 +165,6 @@ const groupItemsByDay = (items: PackingListItem[]): GroupedItem[] => {
       dayEnd: baseItem.dayEnd,
     };
 
-    // Calculate total quantities and packed counts
     const totalQuantityNeeded = instances.reduce(
       (sum, item) => sum + item.quantity,
       0
@@ -179,40 +185,70 @@ const groupItemsByDay = (items: PackingListItem[]): GroupedItem[] => {
 };
 
 // Select grouped items based on view mode
-export const selectGroupedItems = createSelector(
+const selectViewSpecificGroupedItems = createSelector(
   [selectSplitItems, selectPackingListViewState, selectPeople, selectDays],
-  (
-    { viewSpecificItems, generalItems },
-    viewState,
-    people,
-    days
-  ): GroupedItemsResult => {
-    const groupedGeneralItems =
-      viewState.viewMode === 'by-day'
-        ? groupItemsByDay(generalItems)
-        : groupItemsByPerson(generalItems);
-
-    const groupedItems: ItemGroup[] =
-      viewState.viewMode === 'by-day'
-        ? days.map((day, index) => ({
-            type: 'day',
-            day,
-            index,
-            items: groupItemsByDay(
-              viewSpecificItems.filter((item) => item.dayIndex === index)
-            ),
-          }))
-        : people.map((person) => ({
-            type: 'person',
-            person,
-            items: groupItemsByPerson(
-              viewSpecificItems.filter((item) => item.personId === person.id)
-            ),
-          }));
-
-    return {
-      groupedItems,
-      groupedGeneralItems,
-    };
+  ({ viewSpecificItems }, viewState, people, days): ItemGroup[] => {
+    if (viewState.viewMode === 'by-day') {
+      return days.map((day, index) => {
+        const dayItems = viewSpecificItems.filter(
+          (item) => item.dayIndex === index
+        );
+        const groupedDayItems = groupItemsByDay(dayItems);
+        return {
+          type: 'day' as const,
+          day,
+          index,
+          items: groupedDayItems,
+        };
+      });
+    } else {
+      return people.map((person) => {
+        const personItems = viewSpecificItems.filter(
+          (item) => item.personId === person.id
+        );
+        const groupedPersonItems = groupItemsByPerson(personItems);
+        return {
+          type: 'person' as const,
+          person,
+          items: groupedPersonItems,
+        };
+      });
+    }
   }
 );
+
+const selectGeneralGroupedItems = createSelector(
+  [selectSplitItems, selectPackingListViewState],
+  ({ generalItems }, viewState): GroupedItem[] => {
+    return viewState.viewMode === 'by-day'
+      ? groupItemsByDay(generalItems)
+      : groupItemsByPerson(generalItems);
+  }
+);
+
+export const selectGroupedItems: (state: StoreType) => GroupedItemsResult =
+  createSelector(
+    [selectViewSpecificGroupedItems, selectGeneralGroupedItems],
+    (groupedItems, groupedGeneralItems): GroupedItemsResult => {
+      const result: GroupedItemsResult = {
+        groupedItems: groupedItems.map((group) => ({
+          ...group,
+          items: group.items.map((item) => ({
+            ...item,
+            metadata: {
+              ...item.metadata,
+              isExtra: item.metadata.isExtra || false,
+            },
+          })),
+        })),
+        groupedGeneralItems: groupedGeneralItems.map((item) => ({
+          ...item,
+          metadata: {
+            ...item.metadata,
+            isExtra: item.metadata.isExtra || false,
+          },
+        })),
+      };
+      return result;
+    }
+  );

@@ -43,9 +43,6 @@ export default function PeoplePage() {
         </div>
       </HelpBlurb>
       <PersonList people={people} />
-      <p>You haven&apos;t added any travelers yet.</p>
-      <p>Let&apos;s add some people to your trip.</p>
-      <p>You&apos;ll need to add at least one person.</p>
     </PageContainer>
   );
 }

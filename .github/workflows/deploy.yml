@@ -65,4 +65,4 @@ jobs:
         run: pnpm nx deploy frontend
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PATH_PREFIX: /${{ github.event.repository.name }}
+          PUBLIC_ENV__BASE_URL: /${{ github.event.repository.name }}

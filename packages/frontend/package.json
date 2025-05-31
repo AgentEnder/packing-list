@@ -3,8 +3,7 @@
   "scripts": {
     "dev": "vike dev",
     "build": "vike build",
-    "preview": "vike preview",
-    "lint": "eslint ."
+    "preview": "vike preview"
   },
   "type": "module",
   "dependencies": {
