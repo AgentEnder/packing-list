@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@packing-list/state';
-import { PackingListViewState } from '@packing-list/model';
+import { PackingListViewState, Category } from '@packing-list/model';
 import { RuleOverrideDialog } from './RuleOverrideDialog';
 import { PackItemsDialog } from './PackItemsDialog';
 import { HelpBlurb } from '../../../components/HelpBlurb';
@@ -21,6 +21,7 @@ import {
 import { Link } from '../../../components/Link';
 import { formatDayInfo } from '../utils/item-formatting';
 import { PrintButton } from './PrintButton';
+import { getAllCategories } from '@packing-list/model';
 
 export const PackingList: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -75,6 +76,13 @@ export const PackingList: React.FC = () => {
 
   const renderGroupedItem = (groupedItem: GroupedItem) => {
     const progress = (groupedItem.packedCount / groupedItem.totalCount) * 100;
+    const categories = getAllCategories();
+    const category = categories.find(
+      (cat) => cat.id === groupedItem.baseItem.categoryId
+    );
+    const subcategory = categories.find(
+      (cat) => cat.id === groupedItem.baseItem.subcategoryId
+    );
 
     return (
       <li
@@ -103,6 +111,12 @@ export const PackingList: React.FC = () => {
             >
               {groupedItem.displayName}
             </button>
+            {category && (
+              <div className="badge badge-ghost badge-sm gap-1">
+                {category.name}
+                {subcategory && ` / ${subcategory.name}`}
+              </div>
+            )}
             {groupedItem.baseItem.notes && (
               <div
                 className="tooltip tooltip-right"

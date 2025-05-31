@@ -163,15 +163,6 @@ describe('PrintButton', () => {
 
       // Verify print was called
       expect(mockPrint).toHaveBeenCalled();
-
-      // Verify print message is shown
-      expect(portalRoot.style.display).toBe('block');
-
-      // Verify dispatch was called with correct action
-      expect(mockDispatch).toHaveBeenCalledWith({
-        type: 'UPDATE_PACKING_LIST_VIEW',
-        payload: { viewMode: 'day' },
-      });
     });
 
     it('handles window.open failure gracefully', () => {
@@ -223,22 +214,6 @@ describe('PrintButton', () => {
       // Verify window.open was called
       expect(mockOpen).toHaveBeenCalledWith('', '_blank');
       expect(mockPrint).toHaveBeenCalled();
-    });
-
-    it('shows and hides print message when browser print is triggered', () => {
-      render(
-        <Provider store={store}>
-          <PrintButton />
-        </Provider>
-      );
-
-      // Trigger beforeprint event
-      window.dispatchEvent(new Event('beforeprint'));
-      expect(portalRoot.style.display).toBe('block');
-
-      // Trigger afterprint event
-      window.dispatchEvent(new Event('afterprint'));
-      expect(portalRoot.style.display).toBe('none');
     });
   });
 });

@@ -55,6 +55,36 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
         categoryId: 'clothing',
         subcategoryId: 'footwear',
       },
+      {
+        id: 'beach-hat',
+        name: 'Sun Hat',
+        calculation: {
+          baseQuantity: 1,
+          perDay: false,
+          perPerson: true,
+        },
+        categoryId: 'accessories',
+      },
+      {
+        id: 'beach-sunglasses',
+        name: 'Sunglasses',
+        calculation: {
+          baseQuantity: 1,
+          perDay: false,
+          perPerson: true,
+        },
+        categoryId: 'accessories',
+      },
+      {
+        id: 'beach-first-aid',
+        name: 'First Aid Kit',
+        calculation: {
+          baseQuantity: 1,
+          perDay: false,
+          perPerson: false,
+        },
+        categoryId: 'medical',
+      },
     ],
   },
   {
@@ -94,6 +124,65 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
           perPerson: true,
         },
         categoryId: 'documents',
+      },
+      {
+        id: 'business-dress-shirts',
+        name: 'Dress Shirts',
+        calculation: {
+          baseQuantity: 1,
+          perDay: true,
+          perPerson: true,
+          daysPattern: {
+            every: 2,
+            roundUp: true,
+          },
+        },
+        notes: 'One shirt for every two days',
+        categoryId: 'clothing',
+        subcategoryId: 'tops',
+      },
+      {
+        id: 'business-dress-shoes',
+        name: 'Dress Shoes',
+        calculation: {
+          baseQuantity: 1,
+          perDay: false,
+          perPerson: true,
+        },
+        categoryId: 'clothing',
+        subcategoryId: 'footwear',
+      },
+      {
+        id: 'business-toiletries',
+        name: 'Travel Toiletries',
+        calculation: {
+          baseQuantity: 1,
+          perDay: false,
+          perPerson: true,
+        },
+        notes: 'Travel-sized toiletries',
+        categoryId: 'toiletries',
+      },
+      {
+        id: 'business-phone-charger',
+        name: 'Phone & Charger',
+        calculation: {
+          baseQuantity: 1,
+          perDay: false,
+          perPerson: true,
+        },
+        categoryId: 'electronics',
+      },
+      {
+        id: 'business-medications',
+        name: 'Personal Medications',
+        calculation: {
+          baseQuantity: 1,
+          perDay: false,
+          perPerson: true,
+        },
+        notes: 'Remember any prescription medications',
+        categoryId: 'medical',
       },
     ],
   },

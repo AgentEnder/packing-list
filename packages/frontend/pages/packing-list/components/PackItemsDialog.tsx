@@ -7,6 +7,7 @@ import {
   getItemLabel,
   getQuantityLabel,
 } from '../utils/item-formatting';
+import { getAllCategories } from '@packing-list/model';
 
 interface PackItemsDialogProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export const PackItemsDialog: React.FC<PackItemsDialogProps> = ({
 }) => {
   const dispatch = useAppDispatch();
   const viewMode = useAppSelector((state) => state.packingListView.viewMode);
+  const categories = getAllCategories();
 
   if (!isOpen) return null;
 
@@ -59,6 +61,39 @@ export const PackItemsDialog: React.FC<PackItemsDialogProps> = ({
     groupedItem.instances
   );
 
+  const renderItem = (item: PackingListItem) => {
+    const itemLabel = getItemLabel(item, viewMode);
+    const quantityLabel = getQuantityLabel(item.quantity);
+    const category = categories.find((cat) => cat.id === item.categoryId);
+    const subcategory = categories.find((cat) => cat.id === item.subcategoryId);
+
+    return (
+      <label
+        key={item.id}
+        className="flex items-center gap-2 p-2 hover:bg-base-200 rounded cursor-pointer"
+      >
+        <input
+          type="checkbox"
+          className="checkbox"
+          checked={item.isPacked}
+          onChange={() => handleToggleItem(item)}
+        />
+        <div className="flex flex-col gap-0.5">
+          <span>
+            {itemLabel}
+            <span className="text-base-content/70">{quantityLabel}</span>
+          </span>
+          {category && (
+            <span className="text-xs text-base-content/70">
+              {category.name}
+              {subcategory && ` / ${subcategory.name}`}
+            </span>
+          )}
+        </div>
+      </label>
+    );
+  };
+
   return (
     <dialog className="modal" open={isOpen}>
       <div className="modal-box">
@@ -68,32 +103,7 @@ export const PackItemsDialog: React.FC<PackItemsDialogProps> = ({
           {baseItems.length > 0 && (
             <div>
               <h4 className="font-medium mb-2">Base Items</h4>
-              <div className="space-y-2">
-                {baseItems.map((item) => {
-                  const itemLabel = getItemLabel(item, viewMode);
-                  const quantityLabel = getQuantityLabel(item.quantity);
-
-                  return (
-                    <label
-                      key={item.id}
-                      className="flex items-center gap-2 p-2 hover:bg-base-200 rounded cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        className="checkbox"
-                        checked={item.isPacked}
-                        onChange={() => handleToggleItem(item)}
-                      />
-                      <span>
-                        {itemLabel}
-                        <span className="text-base-content/70">
-                          {quantityLabel}
-                        </span>
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
+              <div className="space-y-2">{baseItems.map(renderItem)}</div>
             </div>
           )}
 
@@ -101,32 +111,7 @@ export const PackItemsDialog: React.FC<PackItemsDialogProps> = ({
           {extraItems.length > 0 && (
             <div>
               <h4 className="font-medium mb-2">Extra Items</h4>
-              <div className="space-y-2">
-                {extraItems.map((item) => {
-                  const itemLabel = getItemLabel(item, viewMode);
-                  const quantityLabel = getQuantityLabel(item.quantity);
-
-                  return (
-                    <label
-                      key={item.id}
-                      className="flex items-center gap-2 p-2 hover:bg-base-200 rounded cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        className="checkbox"
-                        checked={item.isPacked}
-                        onChange={() => handleToggleItem(item)}
-                      />
-                      <span>
-                        {itemLabel}
-                        <span className="text-base-content/70">
-                          {quantityLabel}
-                        </span>
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
+              <div className="space-y-2">{extraItems.map(renderItem)}</div>
             </div>
           )}
         </div>

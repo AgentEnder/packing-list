@@ -1,4 +1,5 @@
 import React from 'react';
+import { getAllCategories } from '@packing-list/model';
 
 interface PrintItem {
   name: string;
@@ -10,17 +11,23 @@ interface PrintItem {
   day?: string; // For by-person view
   dayStart?: number; // For items that span multiple days
   dayEnd?: number; // For items that span multiple days
+  categoryId?: string;
+  subcategoryId?: string;
 }
 
 interface PrintableViewProps {
   items: Record<string, PrintItem[]>;
   mode: 'by-day' | 'by-person';
+  title?: string;
 }
 
 export const PrintableView: React.FC<PrintableViewProps> = ({
   items,
   mode,
+  title,
 }) => {
+  const categories = getAllCategories();
+
   return (
     <div className="print-container">
       <style>{`
@@ -138,6 +145,12 @@ export const PrintableView: React.FC<PrintableViewProps> = ({
           font-weight: 600;
         }
 
+        .category-badge {
+          font-size: 0.75rem;
+          color: #666;
+          margin-left: 0.5rem;
+        }
+
         @media print {
           .item-list {
             column-fill: balance;
@@ -189,37 +202,58 @@ export const PrintableView: React.FC<PrintableViewProps> = ({
             <tr>
               <td>
                 <ul className="item-list">
-                  {contextItems.map((item, index) => (
-                    <li
-                      key={`${context}-${item.name}-${index}`}
-                      className="item"
-                    >
-                      <div className="checkbox-container">
-                        <div className="checkbox" />
-                      </div>
-                      <div className="item-details">
-                        <span className="item-name">{item.name}</span>
-                        {mode === 'by-day' && item.person && (
-                          <span className="item-context">
-                            for {item.person}
-                          </span>
-                        )}
-                        {mode === 'by-person' &&
-                          item.day &&
-                          item.day !== 'All Days' && (
-                            <span className="item-context">for {item.day}</span>
+                  {contextItems.map((item, index) => {
+                    const category = categories.find(
+                      (cat) => cat.id === item.categoryId
+                    );
+                    const subcategory = categories.find(
+                      (cat) => cat.id === item.subcategoryId
+                    );
+                    const categoryLabel = category
+                      ? subcategory
+                        ? `${category.name} / ${subcategory.name}`
+                        : category.name
+                      : '';
+
+                    return (
+                      <li
+                        key={`${context}-${item.name}-${index}`}
+                        className="item"
+                      >
+                        <div className="checkbox-container">
+                          <div className="checkbox" />
+                        </div>
+                        <div className="item-details">
+                          <span className="item-name">{item.name}</span>
+                          {categoryLabel && (
+                            <span className="category-badge">
+                              {categoryLabel}
+                            </span>
                           )}
-                        {item.isExtra && (
-                          <span className="extra-badge">extra</span>
-                        )}
-                        {item.quantity > 1 && (
-                          <span className="quantity-badge">
-                            ×{item.quantity}
-                          </span>
-                        )}
-                      </div>
-                    </li>
-                  ))}
+                          {mode === 'by-day' && item.person && (
+                            <span className="item-context">
+                              for {item.person}
+                            </span>
+                          )}
+                          {mode === 'by-person' &&
+                            item.day &&
+                            item.day !== 'All Days' && (
+                              <span className="item-context">
+                                for {item.day}
+                              </span>
+                            )}
+                          {item.isExtra && (
+                            <span className="extra-badge">extra</span>
+                          )}
+                          {item.quantity > 1 && (
+                            <span className="quantity-badge">
+                              ×{item.quantity}
+                            </span>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               </td>
             </tr>
