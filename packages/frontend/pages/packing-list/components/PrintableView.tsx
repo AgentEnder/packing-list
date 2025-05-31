@@ -28,6 +28,27 @@ export const PrintableView: React.FC<PrintableViewProps> = ({
 }) => {
   const categories = getAllCategories();
 
+  // Helper function to group items by category
+  const groupItemsByCategory = (items: PrintItem[]) => {
+    const grouped = new Map<string, PrintItem[]>();
+
+    // First, group by main categories
+    items.forEach((item) => {
+      const categoryId = item.categoryId || 'uncategorized';
+      if (!grouped.has(categoryId)) {
+        grouped.set(categoryId, []);
+      }
+      grouped.get(categoryId)?.push(item);
+    });
+
+    // Sort categories by their order in the categories array
+    return Array.from(grouped.entries()).sort((a, b) => {
+      const catA = categories.findIndex((c) => c.id === a[0]);
+      const catB = categories.findIndex((c) => c.id === b[0]);
+      return catA - catB;
+    });
+  };
+
   return (
     <div className="print-container">
       <style>{`
@@ -69,8 +90,17 @@ export const PrintableView: React.FC<PrintableViewProps> = ({
           margin-bottom: 24px;
         }
 
-        .report-content {
-          display: table-row-group;
+        .category-section {
+          margin-bottom: 24px;
+        }
+
+        .category-title {
+          font-size: 18px;
+          font-weight: 600;
+          color: #4a5568;
+          padding: 8px 0;
+          margin-bottom: 12px;
+          border-bottom: 1px solid #e2e8f0;
         }
 
         .item-list {
@@ -145,12 +175,6 @@ export const PrintableView: React.FC<PrintableViewProps> = ({
           font-weight: 600;
         }
 
-        .category-badge {
-          font-size: 0.75rem;
-          color: #666;
-          margin-left: 0.5rem;
-        }
-
         @media print {
           .item-list {
             column-fill: balance;
@@ -185,81 +209,79 @@ export const PrintableView: React.FC<PrintableViewProps> = ({
           }
         }
       `}</style>
-      {Object.entries(items).map(([context, contextItems]) => (
-        <table key={context} className="report-container">
-          <thead className="report-header">
-            <tr>
-              <th>
-                <div className="section-title">
-                  {context === 'General Items'
-                    ? 'General Items - Packing List'
-                    : `${context} - Packing List`}
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="report-content">
-            <tr>
-              <td>
-                <ul className="item-list">
-                  {contextItems.map((item, index) => {
+
+      {Object.entries(items).map(([context, contextItems]) => {
+        const categorizedItems = groupItemsByCategory(contextItems);
+
+        return (
+          <table key={context} className="report-container">
+            <thead className="report-header">
+              <tr>
+                <th>
+                  <div className="section-title">
+                    {context === 'General Items'
+                      ? 'General Items - Packing List'
+                      : `${context} - Packing List`}
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="report-content">
+              <tr>
+                <td>
+                  {categorizedItems.map(([categoryId, items]) => {
                     const category = categories.find(
-                      (cat) => cat.id === item.categoryId
+                      (c) => c.id === categoryId
                     );
-                    const subcategory = categories.find(
-                      (cat) => cat.id === item.subcategoryId
-                    );
-                    const categoryLabel = category
-                      ? subcategory
-                        ? `${category.name} / ${subcategory.name}`
-                        : category.name
-                      : '';
+                    const categoryName = category?.name || 'Other Items';
 
                     return (
-                      <li
-                        key={`${context}-${item.name}-${index}`}
-                        className="item"
-                      >
-                        <div className="checkbox-container">
-                          <div className="checkbox" />
-                        </div>
-                        <div className="item-details">
-                          <span className="item-name">{item.name}</span>
-                          {categoryLabel && (
-                            <span className="category-badge">
-                              {categoryLabel}
-                            </span>
-                          )}
-                          {mode === 'by-day' && item.person && (
-                            <span className="item-context">
-                              for {item.person}
-                            </span>
-                          )}
-                          {mode === 'by-person' &&
-                            item.day &&
-                            item.day !== 'All Days' && (
-                              <span className="item-context">
-                                for {item.day}
-                              </span>
-                            )}
-                          {item.isExtra && (
-                            <span className="extra-badge">extra</span>
-                          )}
-                          {item.quantity > 1 && (
-                            <span className="quantity-badge">
-                              ×{item.quantity}
-                            </span>
-                          )}
-                        </div>
-                      </li>
+                      <div key={categoryId} className="category-section">
+                        <h3 className="category-title">{categoryName}</h3>
+                        <ul className="item-list">
+                          {items.map((item, index) => (
+                            <li
+                              key={`${context}-${item.name}-${index}`}
+                              className="item"
+                            >
+                              <div className="checkbox-container">
+                                <div className="checkbox" />
+                              </div>
+                              <div className="item-details">
+                                <span className="item-name">{item.name}</span>
+                                {mode === 'by-day' && item.person && (
+                                  <span className="item-context">
+                                    for {item.person}
+                                  </span>
+                                )}
+                                {mode === 'by-person' &&
+                                  item.day &&
+                                  item.day !== 'All Days' && (
+                                    <span className="item-context">
+                                      for {item.day}
+                                    </span>
+                                  )}
+                                {item.isExtra && (
+                                  <span className="extra-badge">extra</span>
+                                )}
+                                {item.quantity > 1 && (
+                                  <span className="quantity-badge">
+                                    ×{item.quantity}
+                                  </span>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     );
                   })}
-                </ul>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      ))}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        );
+      })}
     </div>
   );
 };
