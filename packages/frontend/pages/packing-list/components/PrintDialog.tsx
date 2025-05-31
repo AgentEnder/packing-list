@@ -6,6 +6,10 @@ import { PrintableView } from './PrintableView';
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { format } from 'date-fns';
+import {
+  formatDayInfo,
+  splitInstancesByExtraStatus,
+} from '../utils/item-formatting';
 
 interface PrintDialogProps {
   isOpen: boolean;
@@ -23,51 +27,6 @@ interface PrintItem {
   dayStart?: number;
   dayEnd?: number;
 }
-
-// Helper function to format day information
-const formatDayInfo = (
-  instance: { dayIndex?: number; dayStart?: number; dayEnd?: number },
-  days: { date: string | number; location?: string }[]
-): string | undefined => {
-  if (instance.dayIndex === undefined) return undefined;
-
-  const day = days[instance.dayIndex];
-  if (!day) return undefined;
-
-  const date = new Date(day.date);
-  if (
-    instance.dayStart !== undefined &&
-    instance.dayEnd !== undefined &&
-    instance.dayStart !== instance.dayEnd
-  ) {
-    return `Days ${instance.dayStart + 1}-${instance.dayEnd + 1}`;
-  }
-
-  return `Day ${instance.dayIndex + 1} - ${format(date, 'MMM d')}${
-    day.location ? ` (${day.location})` : ''
-  }`;
-};
-
-// Helper function to create a print item
-const createPrintItem = (
-  item: { displayName: string; baseItem: { notes?: string } },
-  context: string,
-  instance: { quantity: number; isExtra: boolean },
-  person?: string,
-  day?: string,
-  dayStart?: number,
-  dayEnd?: number
-): PrintItem => ({
-  name: item.displayName,
-  notes: item.baseItem.notes,
-  context,
-  isExtra: instance.isExtra,
-  quantity: instance.quantity,
-  person,
-  day,
-  dayStart,
-  dayEnd,
-});
 
 // Helper function to process instances and create print items
 const processInstances = (
@@ -181,8 +140,9 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
 
           return group.items.flatMap((item) => {
             // Split instances by extra status
-            const baseItems = item.instances.filter((i) => !i.isExtra);
-            const extraItems = item.instances.filter((i) => i.isExtra);
+            const { baseItems, extraItems } = splitInstancesByExtraStatus(
+              item.instances
+            );
 
             return [
               ...processInstances(
@@ -207,8 +167,9 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
           const personGroup = group as PersonGroup;
           return group.items.flatMap((item) => {
             // Split instances by extra status
-            const baseItems = item.instances.filter((i) => !i.isExtra);
-            const extraItems = item.instances.filter((i) => i.isExtra);
+            const { baseItems, extraItems } = splitInstancesByExtraStatus(
+              item.instances
+            );
 
             const baseItemsByDay = processInstances(
               baseItems,
@@ -240,8 +201,9 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
               : 'General';
 
           // Split instances by extra status
-          const baseItems = item.instances.filter((i) => !i.isExtra);
-          const extraItems = item.instances.filter((i) => i.isExtra);
+          const { baseItems, extraItems } = splitInstancesByExtraStatus(
+            item.instances
+          );
 
           return [
             ...processInstances(baseItems, item, context, days),
@@ -254,8 +216,9 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
     // Add general items
     const generalItems = groupedGeneralItems.flatMap((item) => {
       // Split instances by extra status
-      const baseItems = item.instances.filter((i) => !i.isExtra);
-      const extraItems = item.instances.filter((i) => i.isExtra);
+      const { baseItems, extraItems } = splitInstancesByExtraStatus(
+        item.instances
+      );
 
       return [
         ...processInstances(

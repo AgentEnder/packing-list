@@ -10,6 +10,9 @@ export default function SettingsPage() {
 
   const handleResetHelpBlurbs = () => {
     localStorage.removeItem(HELP_ALL_KEY);
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('help-')) localStorage.removeItem(key);
+    }
     showToast('Help messages have been reset');
   };
 

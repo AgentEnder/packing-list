@@ -1,13 +1,12 @@
 import React from 'react';
 import { useAppDispatch, useAppSelector } from '@packing-list/state';
 import { PackingListItem } from '@packing-list/model';
-
-type GroupMetadata = {
-  isExtra?: boolean;
-  dayIndex?: number;
-  dayStart?: number;
-  dayEnd?: number;
-};
+import { GroupMetadata } from '@packing-list/state';
+import {
+  splitInstancesByExtraStatus,
+  getItemLabel,
+  getQuantityLabel,
+} from '../utils/item-formatting';
 
 interface PackItemsDialogProps {
   isOpen: boolean;
@@ -56,8 +55,9 @@ export const PackItemsDialog: React.FC<PackItemsDialogProps> = ({
   }
 
   // Group instances by extra status
-  const baseItems = groupedItem.instances.filter((item) => !item.isExtra);
-  const extraItems = groupedItem.instances.filter((item) => item.isExtra);
+  const { baseItems, extraItems } = splitInstancesByExtraStatus(
+    groupedItem.instances
+  );
 
   return (
     <dialog className="modal" open={isOpen}>
@@ -70,23 +70,8 @@ export const PackItemsDialog: React.FC<PackItemsDialogProps> = ({
               <h4 className="font-medium mb-2">Base Items</h4>
               <div className="space-y-2">
                 {baseItems.map((item) => {
-                  let itemLabel = item.itemName;
-                  let quantityLabel = '';
-
-                  if (viewMode === 'by-day') {
-                    // In day view, show person name for each instance
-                    itemLabel = item.personName || 'General';
-                  } else {
-                    // In person view, show day information
-                    if (item.dayIndex !== undefined) {
-                      itemLabel += ` (Day ${item.dayIndex + 1})`;
-                    }
-                  }
-
-                  // Add quantity information
-                  if (item.quantity > 1) {
-                    quantityLabel = ` - ${item.quantity} needed`;
-                  }
+                  const itemLabel = getItemLabel(item, viewMode);
+                  const quantityLabel = getQuantityLabel(item.quantity);
 
                   return (
                     <label
@@ -118,23 +103,8 @@ export const PackItemsDialog: React.FC<PackItemsDialogProps> = ({
               <h4 className="font-medium mb-2">Extra Items</h4>
               <div className="space-y-2">
                 {extraItems.map((item) => {
-                  let itemLabel = item.itemName;
-                  let quantityLabel = '';
-
-                  if (viewMode === 'by-day') {
-                    // In day view, show person name for each instance
-                    itemLabel = item.personName || 'General';
-                  } else {
-                    // In person view, show day information
-                    if (item.dayIndex !== undefined) {
-                      itemLabel += ` (Day ${item.dayIndex + 1})`;
-                    }
-                  }
-
-                  // Add quantity information
-                  if (item.quantity > 1) {
-                    quantityLabel = ` - ${item.quantity} needed`;
-                  }
+                  const itemLabel = getItemLabel(item, viewMode);
+                  const quantityLabel = getQuantityLabel(item.quantity);
 
                   return (
                     <label
