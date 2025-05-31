@@ -25,6 +25,8 @@ interface PrintItem {
   day?: string;
   dayStart?: number;
   dayEnd?: number;
+  categoryId?: string;
+  subcategoryId?: string;
 }
 
 // Helper function to process instances and create print items
@@ -37,7 +39,14 @@ const processInstances = (
     dayStart?: number;
     dayEnd?: number;
   }>,
-  item: { displayName: string; baseItem: { notes?: string } },
+  item: {
+    displayName: string;
+    baseItem: {
+      notes?: string;
+      categoryId?: string;
+      subcategoryId?: string;
+    };
+  },
   context: string,
   days: { date: string | number; location?: string }[],
   personName?: string,
@@ -56,6 +65,8 @@ const processInstances = (
             isExtra: instance.isExtra,
             quantity: instance.quantity,
             person: instance.personName || personName,
+            categoryId: item.baseItem.categoryId,
+            subcategoryId: item.baseItem.subcategoryId,
           },
         ];
       }
@@ -76,6 +87,8 @@ const processInstances = (
             isExtra: instance.isExtra,
             quantity: instance.quantity,
             person: instance.personName || personName,
+            categoryId: item.baseItem.categoryId,
+            subcategoryId: item.baseItem.subcategoryId,
           },
         ];
       }
@@ -94,6 +107,8 @@ const processInstances = (
           day: dayInfo,
           dayStart: instance.dayStart,
           dayEnd: instance.dayEnd,
+          categoryId: item.baseItem.categoryId,
+          subcategoryId: item.baseItem.subcategoryId,
         },
       ];
     }
