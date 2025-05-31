@@ -151,23 +151,27 @@ export const PackingList: React.FC = () => {
     const categorizedItems = groupItemsByCategory(group.items);
 
     return (
-      <div key={group.title} className="space-y-4">
-        <h2 className="text-lg font-semibold">{group.title}</h2>
-        {categorizedItems.map(([categoryId, items]) => {
-          const category = categories.find((c) => c.id === categoryId);
-          const categoryName = category?.name || 'Other Items';
+      <div key={group.title} className="card bg-base-200 shadow-lg">
+        <div className="card-body p-4">
+          <h2 className="card-title text-lg">{group.title}</h2>
+          <div className="space-y-6">
+            {categorizedItems.map(([categoryId, items]) => {
+              const category = categories.find((c) => c.id === categoryId);
+              const categoryName = category?.name || 'Other Items';
 
-          return (
-            <div key={categoryId} className="space-y-2">
-              <h3 className="text-sm font-medium text-base-content/70 border-b border-base-content/10 pb-1">
-                {categoryName}
-              </h3>
-              <ul className="space-y-2">
-                {items.map((item) => renderGroupedItem(item))}
-              </ul>
-            </div>
-          );
-        })}
+              return (
+                <div key={categoryId}>
+                  <h3 className="text-sm font-medium text-base-content/70 mb-3">
+                    {categoryName}
+                  </h3>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {items.map((item) => renderGroupedItem(item))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     );
   };
@@ -312,7 +316,7 @@ export const PackingList: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
           {/* Main grouped items */}
           {groupedItems.map((group) => {
             let title = '';
@@ -335,25 +339,31 @@ export const PackingList: React.FC = () => {
 
           {/* General items */}
           {groupedGeneralItems.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold">General Items</h2>
-              {groupItemsByCategory(groupedGeneralItems).map(
-                ([categoryId, items]) => {
-                  const category = categories.find((c) => c.id === categoryId);
-                  const categoryName = category?.name || 'Other Items';
+            <div className="card bg-base-200 shadow-lg">
+              <div className="card-body p-4">
+                <h2 className="card-title text-lg">General Items</h2>
+                <div className="space-y-6">
+                  {groupItemsByCategory(groupedGeneralItems).map(
+                    ([categoryId, items]) => {
+                      const category = categories.find(
+                        (c) => c.id === categoryId
+                      );
+                      const categoryName = category?.name || 'Other Items';
 
-                  return (
-                    <div key={categoryId} className="space-y-2">
-                      <h3 className="text-sm font-medium text-base-content/70 border-b border-base-content/10 pb-1">
-                        {categoryName}
-                      </h3>
-                      <ul className="space-y-2">
-                        {items.map((item) => renderGroupedItem(item))}
-                      </ul>
-                    </div>
-                  );
-                }
-              )}
+                      return (
+                        <div key={categoryId}>
+                          <h3 className="text-sm font-medium text-base-content/70 mb-3">
+                            {categoryName}
+                          </h3>
+                          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {items.map((item) => renderGroupedItem(item))}
+                          </ul>
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>
