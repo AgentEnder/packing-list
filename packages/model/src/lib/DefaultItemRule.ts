@@ -7,4 +7,6 @@ export type DefaultItemRule = {
   calculation: Calculation;
   conditions?: Condition[];
   notes?: string; // Optional notes explaining the rule
+  categoryId?: string; // Optional ID of the category this rule belongs to
+  subcategoryId?: string; // Optional subcategory ID for more specific categorization
 };

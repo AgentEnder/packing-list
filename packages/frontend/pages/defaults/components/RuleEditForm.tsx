@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ToggleGroup } from './ToggleGroup';
 import { ConditionForm } from './ConditionForm';
 import { Pencil, X } from 'lucide-react';
+import { CategorySelector } from '../../../components/CategorySelector';
 
 type RuleEditFormProps = {
   rule: DefaultItemRule;
@@ -74,6 +75,19 @@ export const RuleEditForm = ({
           }
         />
       </div>
+
+      <CategorySelector
+        selectedCategoryId={editedRule.categoryId}
+        selectedSubcategoryId={editedRule.subcategoryId}
+        onCategoryChange={(categoryId, subcategoryId) =>
+          setEditedRule((prev) => ({
+            ...prev,
+            categoryId,
+            subcategoryId,
+          }))
+        }
+        className="mt-4"
+      />
 
       <div className="form-control w-full mt-4">
         <label className="label">
@@ -294,7 +308,12 @@ export const RuleEditForm = ({
         <button type="button" className="btn" onClick={handleCancel}>
           Cancel
         </button>
-        <button type="button" className="btn btn-primary" onClick={handleSave}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleSave}
+          disabled={!editedRule.name || !editedRule.categoryId}
+        >
           Save
         </button>
       </div>

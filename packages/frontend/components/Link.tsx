@@ -25,15 +25,15 @@ export function Link({
   const isActive =
     href === '/' ? urlPathname === href : urlPathname.startsWith(href);
 
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    onClick?.();
-  };
-
   return (
     <a
       href={hrefWithBaseUrl}
       className={`${isActive ? 'is-active' : ''} ${className || ''}`}
-      onClick={handleClick}
+      onClick={() => {
+        if (onClick) {
+          onClick();
+        }
+      }}
     >
       {children}
     </a>

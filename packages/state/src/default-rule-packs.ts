@@ -5,6 +5,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
     id: 'beach-essentials',
     name: 'Beach Essentials',
     description: 'Essential items for a beach vacation',
+    primaryCategoryId: 'beach',
     rules: [
       {
         id: 'beach-swimsuit',
@@ -15,6 +16,8 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
           perPerson: true,
         },
         notes: 'Pack an extra swimsuit for comfort',
+        categoryId: 'clothing',
+        subcategoryId: 'swimwear',
       },
       {
         id: 'beach-sunscreen',
@@ -29,6 +32,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
           },
         },
         notes: 'One bottle per week of trip',
+        categoryId: 'toiletries',
       },
       {
         id: 'beach-towel',
@@ -38,6 +42,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
           perDay: false,
           perPerson: true,
         },
+        categoryId: 'gear',
       },
       {
         id: 'beach-sandals',
@@ -47,46 +52,28 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
           perDay: false,
           perPerson: true,
         },
+        categoryId: 'clothing',
+        subcategoryId: 'footwear',
       },
     ],
   },
   {
     id: 'business-travel',
     name: 'Business Travel',
-    description: 'Professional attire and business essentials',
+    description: 'Essential items for business trips',
+    primaryCategoryId: 'business',
     rules: [
       {
         id: 'business-suit',
         name: 'Business Suit',
         calculation: {
           baseQuantity: 1,
-          perDay: true,
-          perPerson: true,
-          daysPattern: {
-            every: 2,
-            roundUp: true,
-          },
-        },
-        notes: 'One suit for every two days',
-      },
-      {
-        id: 'business-shirt',
-        name: 'Dress Shirt',
-        calculation: {
-          baseQuantity: 1,
-          perDay: true,
-          perPerson: true,
-        },
-        notes: 'One fresh shirt per day',
-      },
-      {
-        id: 'business-shoes',
-        name: 'Dress Shoes',
-        calculation: {
-          baseQuantity: 1,
           perDay: false,
           perPerson: true,
         },
+        notes: 'One formal suit per person',
+        categoryId: 'clothing',
+        subcategoryId: 'formal',
       },
       {
         id: 'business-laptop',
@@ -96,59 +83,17 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
           perDay: false,
           perPerson: true,
         },
+        categoryId: 'electronics',
       },
-    ],
-  },
-  {
-    id: 'winter-gear',
-    name: 'Winter Gear',
-    description: 'Cold weather essentials',
-    rules: [
       {
-        id: 'winter-coat',
-        name: 'Winter Coat',
+        id: 'business-documents',
+        name: 'Business Documents',
         calculation: {
           baseQuantity: 1,
           perDay: false,
           perPerson: true,
         },
-      },
-      {
-        id: 'winter-gloves',
-        name: 'Gloves',
-        calculation: {
-          baseQuantity: 1,
-          perDay: false,
-          perPerson: true,
-        },
-      },
-      {
-        id: 'winter-hat',
-        name: 'Winter Hat',
-        calculation: {
-          baseQuantity: 1,
-          perDay: false,
-          perPerson: true,
-        },
-      },
-      {
-        id: 'winter-boots',
-        name: 'Winter Boots',
-        calculation: {
-          baseQuantity: 1,
-          perDay: false,
-          perPerson: true,
-        },
-      },
-      {
-        id: 'winter-thermals',
-        name: 'Thermal Underwear',
-        calculation: {
-          baseQuantity: 2,
-          perDay: false,
-          perPerson: true,
-        },
-        notes: 'Two sets per person',
+        categoryId: 'documents',
       },
     ],
   },

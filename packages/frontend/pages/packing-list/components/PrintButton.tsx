@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppSelector, useAppDispatch } from '@packing-list/state';
 import { Printer } from 'lucide-react';
@@ -100,70 +100,53 @@ const processInstances = (
   });
 };
 
-export const PrintButton: React.FC = () => {
+export function PrintButton() {
   const dispatch = useAppDispatch();
   const viewState = useAppSelector(selectPackingListViewState);
   const { groupedItems, groupedGeneralItems } =
     useAppSelector(selectGroupedItems);
   const days = useAppSelector((state) => state.trip.days);
 
-  // Create the print overlay styles once when the component mounts
   useEffect(() => {
-    const styleEl = document.createElement('style');
-    styleEl.innerHTML = `
-      @media print {
-        /* Hide everything except our overlay */
-        body > *:not(#print-message-root) {
-          display: none !important;
-        }
-        
-        #print-message-root {
-          display: block !important;
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          width: 100% !important;
-          height: 100% !important;
-          background: white !important;
-          z-index: 99999 !important;
-        }
-
-        .print-message {
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          height: 100% !important;
-          padding: 2rem !important;
-        }
-
-        .print-message h2,
-        .print-message p {
-          display: block !important;
-          color: black !important;
-        }
-      }
-    `;
-    document.head.appendChild(styleEl);
-
-    // Create the print message root if it doesn't exist
-    if (!document.getElementById('print-message-root')) {
-      const printRoot = document.createElement('div');
-      printRoot.id = 'print-message-root';
-      printRoot.style.display = 'none';
-      document.body.appendChild(printRoot);
-    }
-
-    return () => {
-      styleEl.remove();
+    const handleBeforePrint = () => {
+      // Show the print message
       const printRoot = document.getElementById('print-message-root');
       if (printRoot) {
-        printRoot.remove();
+        printRoot.style.display = 'block';
       }
+    };
+
+    const handleAfterPrint = () => {
+      // Hide the print message
+      const printRoot = document.getElementById('print-message-root');
+      if (printRoot) {
+        printRoot.style.display = 'none';
+      }
+    };
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (
+        e.key === 'p' &&
+        (e.ctrlKey || (e.metaKey && navigator.platform.includes('Mac')))
+      ) {
+        e.preventDefault();
+        handlePrint();
+        e.stopPropagation();
+      }
+    };
+
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+    window.addEventListener('keydown', handleKeyPress);
+
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+      window.removeEventListener('keydown', handleKeyPress);
     };
   }, []);
 
-  const handlePrint = useCallback(() => {
-    // Create a new window for printing
+  const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       console.error('Failed to open print window');
@@ -175,6 +158,12 @@ export const PrintButton: React.FC = () => {
       type: 'UPDATE_PACKING_LIST_VIEW',
       payload: { viewMode: viewState.viewMode },
     });
+
+    // Show the print message
+    const printRoot = document.getElementById('print-message-root');
+    if (printRoot) {
+      printRoot.style.display = 'block';
+    }
 
     // Convert grouped items to print items
     const allItems = groupedItems.flatMap((group) => {
@@ -361,64 +350,33 @@ export const PrintButton: React.FC = () => {
     } else {
       printWindow.addEventListener('load', waitForLoad);
     }
-  }, [dispatch, viewState, groupedItems, groupedGeneralItems, days]);
-
-  // The useEffect block is used to add event listeners to the window and remove them when the component unmounts.
-  useEffect(() => {
-    // This "handles" the user hitting the print button that is in the browser - not the print button in the app.
-    // Unfortunately, this will not prevent the browser from opening the print dialog on the original page, but
-    // the user will see the new print window first so they should not be too confused.
-    const onBeforePrint = (e: Event) => {
-      handlePrint();
-    };
-    // This handles the user hitting ctrl+p directly, and acts as if the app print button was clicked instead
-    // of going to the browser print dialog.
-    const onKeyPress = (e: KeyboardEvent) => {
-      if (
-        e.key === 'p' &&
-        (e.ctrlKey || (e.metaKey && navigator.platform.includes('Mac')))
-      ) {
-        e.preventDefault();
-        handlePrint();
-        e.stopPropagation();
-      }
-    };
-
-    window.addEventListener('beforeprint', onBeforePrint);
-    window.addEventListener('keydown', onKeyPress);
-
-    return () => {
-      window.removeEventListener('beforeprint', onBeforePrint);
-      window.removeEventListener('keydown', onKeyPress);
-    };
-  }, [handlePrint]);
-
-  const printMessage = (
-    <div className="print-message">
-      <div>
-        <h2 className="text-2xl font-bold mb-4">Stop! 🖨️</h2>
-        <p className="text-lg mb-6">
-          Please use the "Print" button in the app to open a properly formatted
-          view of your packing list.
-        </p>
-        <p className="text-base text-base-content/70">
-          The print button will open a new window with a clean, organized view
-          of your items that's perfect for printing.
-        </p>
-      </div>
-    </div>
-  );
+  };
 
   return (
     <>
-      {createPortal(
-        printMessage,
-        document.getElementById('print-message-root') || document.body
-      )}
-      <button className="btn btn-sm btn-primary" onClick={handlePrint}>
-        <Printer className="w-3.5 h-3.5" />
-        <span className="ml-1.5">Print</span>
+      <button
+        onClick={handlePrint}
+        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+      >
+        <Printer className="w-4 h-4" />
+        Print
       </button>
+      {createPortal(
+        <div
+          id="print-message-root"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+          style={{ display: 'none' }}
+        >
+          <div className="p-6 bg-white rounded-lg shadow-xl">
+            <h2 className="text-xl font-semibold">Printing...</h2>
+            <p className="mt-2">
+              Please wait while your packing list is being prepared for
+              printing.
+            </p>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
-};
+}
