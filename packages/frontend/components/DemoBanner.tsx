@@ -19,12 +19,17 @@ export function DemoBanner() {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-primary text-primary-content p-4 flex items-center justify-center gap-4 shadow-lg z-[9999]">
-      <span>You&apos;re currently using demo data</span>
-      <button onClick={handleClearDemo} className="btn btn-sm btn-ghost gap-2">
-        <XCircle className="w-4 h-4" />
-        Clear Demo Data
-      </button>
+    <div className="fixed bottom-0 left-0 right-0 bg-primary text-primary-content px-2 py-1.5 sm:p-4 shadow-lg z-[9999] text-xs sm:text-sm">
+      <div className="container mx-auto flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 max-w-[100vw]">
+        <span className="text-center">You're currently using demo data</span>
+        <button
+          onClick={handleClearDemo}
+          className="btn btn-xs btn-ghost gap-1 h-6 min-h-0"
+        >
+          <XCircle className="w-3 h-3" />
+          Clear
+        </button>
+      </div>
     </div>
   );
 }
