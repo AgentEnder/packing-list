@@ -8,6 +8,8 @@ interface PrintItem {
   quantity: number;
   person?: string; // For by-day view
   day?: string; // For by-person view
+  dayStart?: number; // For items that span multiple days
+  dayEnd?: number; // For items that span multiple days
 }
 
 interface PrintableViewProps {

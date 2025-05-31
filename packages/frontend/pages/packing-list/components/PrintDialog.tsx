@@ -20,7 +20,127 @@ interface PrintItem {
   quantity: number;
   person?: string;
   day?: string;
+  dayStart?: number;
+  dayEnd?: number;
 }
+
+// Helper function to format day information
+const formatDayInfo = (
+  instance: { dayIndex?: number; dayStart?: number; dayEnd?: number },
+  days: { date: string | number; location?: string }[]
+): string | undefined => {
+  if (instance.dayIndex === undefined) return undefined;
+
+  const day = days[instance.dayIndex];
+  if (!day) return undefined;
+
+  const date = new Date(day.date);
+  if (
+    instance.dayStart !== undefined &&
+    instance.dayEnd !== undefined &&
+    instance.dayStart !== instance.dayEnd
+  ) {
+    return `Days ${instance.dayStart + 1}-${instance.dayEnd + 1}`;
+  }
+
+  return `Day ${instance.dayIndex + 1} - ${format(date, 'MMM d')}${
+    day.location ? ` (${day.location})` : ''
+  }`;
+};
+
+// Helper function to create a print item
+const createPrintItem = (
+  item: { displayName: string; baseItem: { notes?: string } },
+  context: string,
+  instance: { quantity: number; isExtra: boolean },
+  person?: string,
+  day?: string,
+  dayStart?: number,
+  dayEnd?: number
+): PrintItem => ({
+  name: item.displayName,
+  notes: item.baseItem.notes,
+  context,
+  isExtra: instance.isExtra,
+  quantity: instance.quantity,
+  person,
+  day,
+  dayStart,
+  dayEnd,
+});
+
+// Helper function to process instances and create print items
+const processInstances = (
+  instances: Array<{
+    dayIndex?: number;
+    quantity: number;
+    isExtra: boolean;
+    personName?: string;
+    dayStart?: number;
+    dayEnd?: number;
+  }>,
+  item: { displayName: string; baseItem: { notes?: string } },
+  context: string,
+  days: { date: string | number; location?: string }[],
+  personName?: string,
+  dayContext?: boolean
+): PrintItem[] => {
+  return instances.flatMap((instance) => {
+    if (dayContext) {
+      // For by-day view
+      if (instance.dayIndex === undefined) {
+        // Items without a specific day go to "Any Day"
+        return [
+          {
+            name: item.displayName,
+            notes: item.baseItem.notes,
+            context: 'Any Day',
+            isExtra: instance.isExtra,
+            quantity: instance.quantity,
+            person: instance.personName || personName,
+          },
+        ];
+      }
+
+      const day = days[instance.dayIndex];
+      if (day) {
+        const date = new Date(day.date);
+        const dateStr = format(date, 'MMM d');
+        const context = `Day ${instance.dayIndex + 1} - ${dateStr}${
+          day.location ? ` - ${day.location}` : ''
+        }`;
+
+        return [
+          {
+            name: item.displayName,
+            notes: item.baseItem.notes,
+            context,
+            isExtra: instance.isExtra,
+            quantity: instance.quantity,
+            person: instance.personName || personName,
+          },
+        ];
+      }
+      return [];
+    } else {
+      // For by-person view
+      const dayInfo = formatDayInfo(instance, days) || 'All Days';
+      return [
+        {
+          name: item.displayName,
+          notes: item.baseItem.notes,
+          context,
+          isExtra: instance.isExtra,
+          quantity: instance.quantity,
+          person: personName,
+          day: dayInfo,
+          dayStart: instance.dayStart,
+          dayEnd: instance.dayEnd,
+        },
+      ];
+    }
+  });
+};
 
 export const PrintDialog: React.FC<PrintDialogProps> = ({
   isOpen,
@@ -64,116 +184,50 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
             const baseItems = item.instances.filter((i) => !i.isExtra);
             const extraItems = item.instances.filter((i) => i.isExtra);
 
-            const printItems: PrintItem[] = [];
-
-            // Add base items
-            baseItems.forEach((instance) => {
-              if (instance.dayIndex === dayGroup.index) {
-                printItems.push({
-                  name: item.displayName,
-                  notes: item.baseItem.notes,
-                  context,
-                  isExtra: false,
-                  quantity: instance.quantity,
-                  person: instance.personName,
-                });
-              }
-            });
-
-            // Add extra items
-            extraItems.forEach((instance) => {
-              if (instance.dayIndex === dayGroup.index) {
-                printItems.push({
-                  name: item.displayName,
-                  notes: item.baseItem.notes,
-                  context,
-                  isExtra: true,
-                  quantity: instance.quantity,
-                  person: instance.personName,
-                });
-              }
-            });
-
-            return printItems;
+            return [
+              ...processInstances(
+                baseItems.filter((i) => i.dayIndex === dayGroup.index),
+                item,
+                context,
+                days,
+                undefined,
+                true
+              ),
+              ...processInstances(
+                extraItems.filter((i) => i.dayIndex === dayGroup.index),
+                item,
+                context,
+                days,
+                undefined,
+                true
+              ),
+            ];
           });
         } else if (group.type === 'person') {
-          // Handle person groups in by-day view
           const personGroup = group as PersonGroup;
-
           return group.items.flatMap((item) => {
-            const printItems: PrintItem[] = [];
-
             // Split instances by extra status
             const baseItems = item.instances.filter((i) => !i.isExtra);
             const extraItems = item.instances.filter((i) => i.isExtra);
 
-            // Process base items
-            baseItems.forEach((instance) => {
-              if (instance.dayIndex !== undefined) {
-                const day = days[instance.dayIndex];
-                if (day) {
-                  const date = new Date(day.date);
-                  const dateStr = format(date, 'MMM d');
-                  const context = `Day ${instance.dayIndex + 1} - ${dateStr}${
-                    day.location ? ` - ${day.location}` : ''
-                  }`;
+            const baseItemsByDay = processInstances(
+              baseItems,
+              item,
+              '',
+              days,
+              personGroup.person.name,
+              true
+            );
+            const extraItemsByDay = processInstances(
+              extraItems,
+              item,
+              '',
+              days,
+              personGroup.person.name,
+              true
+            );
 
-                  printItems.push({
-                    name: item.displayName,
-                    notes: item.baseItem.notes,
-                    context,
-                    isExtra: false,
-                    quantity: instance.quantity,
-                    person: personGroup.person.name,
-                  });
-                }
-              } else {
-                // Items without a specific day go to "Any Day"
-                printItems.push({
-                  name: item.displayName,
-                  notes: item.baseItem.notes,
-                  context: 'Any Day',
-                  isExtra: false,
-                  quantity: instance.quantity,
-                  person: personGroup.person.name,
-                });
-              }
-            });
-
-            // Process extra items
-            extraItems.forEach((instance) => {
-              if (instance.dayIndex !== undefined) {
-                const day = days[instance.dayIndex];
-                if (day) {
-                  const date = new Date(day.date);
-                  const dateStr = format(date, 'MMM d');
-                  const context = `Day ${instance.dayIndex + 1} - ${dateStr}${
-                    day.location ? ` - ${day.location}` : ''
-                  }`;
-
-                  printItems.push({
-                    name: item.displayName,
-                    notes: item.baseItem.notes,
-                    context,
-                    isExtra: true,
-                    quantity: instance.quantity,
-                    person: personGroup.person.name,
-                  });
-                }
-              } else {
-                // Extra items without a specific day go to "Any Day"
-                printItems.push({
-                  name: item.displayName,
-                  notes: item.baseItem.notes,
-                  context: 'Any Day',
-                  isExtra: true,
-                  quantity: instance.quantity,
-                  person: personGroup.person.name,
-                });
-              }
-            });
-
-            return printItems;
+            return [...baseItemsByDay, ...extraItemsByDay];
           });
         }
         return [];
@@ -185,116 +239,38 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
               ? (group as PersonGroup).person.name
               : 'General';
 
-          // Group instances by day and extra status
+          // Split instances by extra status
           const baseItems = item.instances.filter((i) => !i.isExtra);
           const extraItems = item.instances.filter((i) => i.isExtra);
 
-          // Create print items for base instances
-          const baseItemsByDay = baseItems.map((instance): PrintItem => {
-            let dayInfo = 'All Days';
-            if (instance.dayIndex !== undefined) {
-              const day = days[instance.dayIndex];
-              if (day) {
-                const date = new Date(day.date);
-                if (
-                  instance.dayStart !== undefined &&
-                  instance.dayEnd !== undefined &&
-                  instance.dayStart !== instance.dayEnd
-                ) {
-                  dayInfo = `Days ${instance.dayStart + 1}-${
-                    instance.dayEnd + 1
-                  }`;
-                } else {
-                  dayInfo = `Day ${instance.dayIndex + 1} - ${format(
-                    date,
-                    'MMM d'
-                  )}${day.location ? ` (${day.location})` : ''}`;
-                }
-              }
-            }
-
-            return {
-              name: item.displayName,
-              notes: item.baseItem.notes,
-              context,
-              isExtra: false,
-              quantity: instance.quantity,
-              day: dayInfo,
-            };
-          });
-
-          // Create print items for extra instances
-          const extraItemsByDay = extraItems.map((instance): PrintItem => {
-            let dayInfo = 'All Days';
-            if (instance.dayIndex !== undefined) {
-              const day = days[instance.dayIndex];
-              if (day) {
-                const date = new Date(day.date);
-                if (
-                  instance.dayStart !== undefined &&
-                  instance.dayEnd !== undefined &&
-                  instance.dayStart !== instance.dayEnd
-                ) {
-                  dayInfo = `Days ${instance.dayStart + 1}-${
-                    instance.dayEnd + 1
-                  }`;
-                } else {
-                  dayInfo = `Day ${instance.dayIndex + 1} - ${format(
-                    date,
-                    'MMM d'
-                  )}${day.location ? ` (${day.location})` : ''}`;
-                }
-              }
-            }
-
-            return {
-              name: item.displayName,
-              notes: item.baseItem.notes,
-              context,
-              isExtra: true,
-              quantity: instance.quantity,
-              day: dayInfo,
-            };
-          });
-
-          return [...baseItemsByDay, ...extraItemsByDay];
+          return [
+            ...processInstances(baseItems, item, context, days),
+            ...processInstances(extraItems, item, context, days),
+          ];
         });
       }
     });
 
     // Add general items
     const generalItems = groupedGeneralItems.flatMap((item) => {
-      const printItems: PrintItem[] = [];
-
       // Split instances by extra status
       const baseItems = item.instances.filter((i) => !i.isExtra);
       const extraItems = item.instances.filter((i) => i.isExtra);
 
-      // Add base items
-      baseItems.forEach((instance) => {
-        printItems.push({
-          name: item.displayName,
-          notes: item.baseItem.notes,
-          context: printMode === 'by-day' ? 'Any Day' : 'General Items',
-          isExtra: false,
-          quantity: instance.quantity,
-          person: instance.personName,
-        });
-      });
-
-      // Add extra items
-      extraItems.forEach((instance) => {
-        printItems.push({
-          name: item.displayName,
-          notes: item.baseItem.notes,
-          context: printMode === 'by-day' ? 'Any Day' : 'General Items',
-          isExtra: true,
-          quantity: instance.quantity,
-          person: instance.personName,
-        });
-      });
-
-      return printItems;
+      return [
+        ...processInstances(
+          baseItems,
+          item,
+          printMode === 'by-day' ? 'Any Day' : 'General Items',
+          days
+        ),
+        ...processInstances(
+          extraItems,
+          item,
+          printMode === 'by-day' ? 'Any Day' : 'General Items',
+          days
+        ),
+      ];
     });
 
     // Combine all items and group them by context
