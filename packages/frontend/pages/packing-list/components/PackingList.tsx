@@ -3,7 +3,6 @@ import { useAppSelector, useAppDispatch } from '@packing-list/state';
 import { PackingListViewState } from '@packing-list/model';
 import { RuleOverrideDialog } from './RuleOverrideDialog';
 import { PackItemsDialog } from './PackItemsDialog';
-import { PrintDialog } from './PrintDialog';
 import { HelpBlurb } from '../../../components/HelpBlurb';
 import {
   selectPackingListViewState,
@@ -18,10 +17,10 @@ import {
   Calendar,
   Users,
   ClipboardList,
-  Printer,
 } from 'lucide-react';
 import { Link } from '../../../components/Link';
 import { formatDayInfo } from '../utils/item-formatting';
+import { PrintButton } from './PrintButton';
 
 export const PackingList: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -39,7 +38,6 @@ export const PackingList: React.FC = () => {
   const [selectedGroupForPacking, setSelectedGroupForPacking] =
     useState<GroupedItem | null>(null);
   const [isPackDialogOpen, setIsPackDialogOpen] = useState(false);
-  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
 
   const handleViewModeChange = (mode: PackingListViewState['viewMode']) => {
     dispatch({
@@ -145,13 +143,7 @@ export const PackingList: React.FC = () => {
       <div className="flex flex-col gap-3 mb-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-xl sm:text-2xl font-bold">Packing List</h1>
-          <button
-            className="btn btn-sm btn-primary"
-            onClick={() => setIsPrintDialogOpen(true)}
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span className="ml-1.5">Print</span>
-          </button>
+          <PrintButton />
         </div>
 
         {/* View Mode and Filters */}
@@ -373,11 +365,6 @@ export const PackingList: React.FC = () => {
               onClose={handleClosePackDialog}
             />
           )}
-
-          <PrintDialog
-            isOpen={isPrintDialogOpen}
-            onClose={() => setIsPrintDialogOpen(false)}
-          />
         </div>
       )}
     </div>

@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useAppSelector, useAppDispatch } from '@packing-list/state';
 import { Printer } from 'lucide-react';
-import { selectGroupedItems, DayGroup, PersonGroup } from '@packing-list/state';
+import {
+  selectGroupedItems,
+  selectPackingListViewState,
+} from '@packing-list/state';
 import { PrintableView } from './PrintableView';
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
@@ -10,11 +14,6 @@ import {
   formatDayInfo,
   splitInstancesByExtraStatus,
 } from '../utils/item-formatting';
-
-interface PrintDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
 
 interface PrintItem {
   name: string;
@@ -101,19 +100,69 @@ const processInstances = (
   });
 };
 
-export const PrintDialog: React.FC<PrintDialogProps> = ({
-  isOpen,
-  onClose,
-}) => {
-  const [printMode, setPrintMode] = useState<'by-day' | 'by-person'>('by-day');
+export const PrintButton: React.FC = () => {
   const dispatch = useAppDispatch();
+  const viewState = useAppSelector(selectPackingListViewState);
   const { groupedItems, groupedGeneralItems } =
     useAppSelector(selectGroupedItems);
   const days = useAppSelector((state) => state.trip.days);
 
-  if (!isOpen) return null;
+  // Create the print overlay styles once when the component mounts
+  useEffect(() => {
+    const styleEl = document.createElement('style');
+    styleEl.innerHTML = `
+      @media print {
+        /* Hide everything except our overlay */
+        body > *:not(#print-message-root) {
+          display: none !important;
+        }
+        
+        #print-message-root {
+          display: block !important;
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          background: white !important;
+          z-index: 99999 !important;
+        }
 
-  const handlePrint = () => {
+        .print-message {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          height: 100% !important;
+          padding: 2rem !important;
+        }
+
+        .print-message h2,
+        .print-message p {
+          display: block !important;
+          color: black !important;
+        }
+      }
+    `;
+    document.head.appendChild(styleEl);
+
+    // Create the print message root if it doesn't exist
+    if (!document.getElementById('print-message-root')) {
+      const printRoot = document.createElement('div');
+      printRoot.id = 'print-message-root';
+      printRoot.style.display = 'none';
+      document.body.appendChild(printRoot);
+    }
+
+    return () => {
+      styleEl.remove();
+      const printRoot = document.getElementById('print-message-root');
+      if (printRoot) {
+        printRoot.remove();
+      }
+    };
+  }, []);
+
+  const handlePrint = useCallback(() => {
     // Create a new window for printing
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -124,18 +173,17 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
     // First update the view mode in the store to match our print mode
     dispatch({
       type: 'UPDATE_PACKING_LIST_VIEW',
-      payload: { viewMode: printMode },
+      payload: { viewMode: viewState.viewMode },
     });
 
     // Convert grouped items to print items
     const allItems = groupedItems.flatMap((group) => {
-      if (printMode === 'by-day') {
+      if (viewState.viewMode === 'by-day') {
         if (group.type === 'day') {
-          const dayGroup = group as DayGroup;
-          const date = new Date(dayGroup.day.date);
+          const date = new Date(group.day.date);
           const dateStr = format(date, 'MMM d');
-          const context = `Day ${dayGroup.index + 1} - ${dateStr}${
-            dayGroup.day.location ? ` - ${dayGroup.day.location}` : ''
+          const context = `Day ${group.index + 1} - ${dateStr}${
+            group.day.location ? ` - ${group.day.location}` : ''
           }`;
 
           return group.items.flatMap((item) => {
@@ -146,7 +194,7 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
 
             return [
               ...processInstances(
-                baseItems.filter((i) => i.dayIndex === dayGroup.index),
+                baseItems.filter((i) => i.dayIndex === group.index),
                 item,
                 context,
                 days,
@@ -154,7 +202,7 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
                 true
               ),
               ...processInstances(
-                extraItems.filter((i) => i.dayIndex === dayGroup.index),
+                extraItems.filter((i) => i.dayIndex === group.index),
                 item,
                 context,
                 days,
@@ -164,7 +212,6 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
             ];
           });
         } else if (group.type === 'person') {
-          const personGroup = group as PersonGroup;
           return group.items.flatMap((item) => {
             // Split instances by extra status
             const { baseItems, extraItems } = splitInstancesByExtraStatus(
@@ -176,7 +223,7 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
               item,
               '',
               days,
-              personGroup.person.name,
+              group.person.name,
               true
             );
             const extraItemsByDay = processInstances(
@@ -184,7 +231,7 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
               item,
               '',
               days,
-              personGroup.person.name,
+              group.person.name,
               true
             );
 
@@ -192,25 +239,21 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
           });
         }
         return [];
-      } else {
-        // For by-person view, split each item into its instances
-        return group.items.flatMap((item) => {
-          const context =
-            group.type === 'person'
-              ? (group as PersonGroup).person.name
-              : 'General';
-
-          // Split instances by extra status
-          const { baseItems, extraItems } = splitInstancesByExtraStatus(
-            item.instances
-          );
-
-          return [
-            ...processInstances(baseItems, item, context, days),
-            ...processInstances(extraItems, item, context, days),
-          ];
-        });
       }
+      // For by-person view, split each item into its instances
+      return group.items.flatMap((item) => {
+        const context = group.type === 'person' ? group.person.name : 'General';
+
+        // Split instances by extra status
+        const { baseItems, extraItems } = splitInstancesByExtraStatus(
+          item.instances
+        );
+
+        return [
+          ...processInstances(baseItems, item, context, days),
+          ...processInstances(extraItems, item, context, days),
+        ];
+      });
     });
 
     // Add general items
@@ -224,13 +267,13 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
         ...processInstances(
           baseItems,
           item,
-          printMode === 'by-day' ? 'Any Day' : 'General Items',
+          viewState.viewMode === 'by-day' ? 'Any Day' : 'General Items',
           days
         ),
         ...processInstances(
           extraItems,
           item,
-          printMode === 'by-day' ? 'Any Day' : 'General Items',
+          viewState.viewMode === 'by-day' ? 'Any Day' : 'General Items',
           days
         ),
       ];
@@ -304,7 +347,9 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
       // Create a React root and render the PrintableView
       const root = createRoot(printRoot);
       flushSync(() => {
-        root.render(<PrintableView items={itemsByContext} mode={printMode} />);
+        root.render(
+          <PrintableView items={itemsByContext} mode={viewState.viewMode} />
+        );
       });
 
       // Print the window
@@ -316,51 +361,64 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
     } else {
       printWindow.addEventListener('load', waitForLoad);
     }
+  }, [dispatch, viewState, groupedItems, groupedGeneralItems, days]);
 
-    onClose();
-  };
+  // The useEffect block is used to add event listeners to the window and remove them when the component unmounts.
+  useEffect(() => {
+    // This "handles" the user hitting the print button that is in the browser - not the print button in the app.
+    // Unfortunately, this will not prevent the browser from opening the print dialog on the original page, but
+    // the user will see the new print window first so they should not be too confused.
+    const onBeforePrint = (e: Event) => {
+      handlePrint();
+    };
+    // This handles the user hitting ctrl+p directly, and acts as if the app print button was clicked instead
+    // of going to the browser print dialog.
+    const onKeyPress = (e: KeyboardEvent) => {
+      if (
+        e.key === 'p' &&
+        (e.ctrlKey || (e.metaKey && navigator.platform.includes('Mac')))
+      ) {
+        e.preventDefault();
+        handlePrint();
+        e.stopPropagation();
+      }
+    };
+
+    window.addEventListener('beforeprint', onBeforePrint);
+    window.addEventListener('keydown', onKeyPress);
+
+    return () => {
+      window.removeEventListener('beforeprint', onBeforePrint);
+      window.removeEventListener('keydown', onKeyPress);
+    };
+  }, [handlePrint]);
+
+  const printMessage = (
+    <div className="print-message">
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Stop! 🖨️</h2>
+        <p className="text-lg mb-6">
+          Please use the "Print" button in the app to open a properly formatted
+          view of your packing list.
+        </p>
+        <p className="text-base text-base-content/70">
+          The print button will open a new window with a clean, organized view
+          of your items that's perfect for printing.
+        </p>
+      </div>
+    </div>
+  );
 
   return (
-    <dialog className="modal" open={isOpen}>
-      <div className="modal-box">
-        <h3 className="font-bold text-lg mb-4">Print Packing List</h3>
-
-        <div className="form-control">
-          <label className="label cursor-pointer">
-            <span className="label-text">Group by Day</span>
-            <input
-              type="radio"
-              name="print-mode"
-              className="radio"
-              checked={printMode === 'by-day'}
-              onChange={() => setPrintMode('by-day')}
-            />
-          </label>
-        </div>
-
-        <div className="form-control">
-          <label className="label cursor-pointer">
-            <span className="label-text">Group by Person</span>
-            <input
-              type="radio"
-              name="print-mode"
-              className="radio"
-              checked={printMode === 'by-person'}
-              onChange={() => setPrintMode('by-person')}
-            />
-          </label>
-        </div>
-
-        <div className="modal-action">
-          <button className="btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="btn btn-primary" onClick={handlePrint}>
-            <Printer className="w-4 h-4 mr-2" />
-            Print
-          </button>
-        </div>
-      </div>
-    </dialog>
+    <>
+      {createPortal(
+        printMessage,
+        document.getElementById('print-message-root') || document.body
+      )}
+      <button className="btn btn-sm btn-primary" onClick={handlePrint}>
+        <Printer className="w-3.5 h-3.5" />
+        <span className="ml-1.5">Print</span>
+      </button>
+    </>
   );
 };
