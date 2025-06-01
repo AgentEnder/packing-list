@@ -99,44 +99,50 @@ export const PackingList: React.FC = () => {
         key={`${groupedItem.baseItem.id}-${groupedItem.displayName}`}
         className="card bg-base-100 shadow-sm"
       >
-        <div className="relative flex items-center gap-1.5 p-1.5">
-          <button
-            className="btn btn-xs sm:btn-sm btn-square shrink-0"
-            onClick={() => handleOpenPackDialog(groupedItem)}
-          >
-            <PackagePlus className="w-3.5 h-3.5" />
-          </button>
-
-          <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
+        <div className="relative flex items-center gap-1.5 p-1.5 overflow-hidden rounded-lg">
+          <div
+            className="absolute inset-0 bg-success/30 transition-all duration-300 ease-in-out z-0"
+            style={{ width: `${progress}%` }}
+          />
+          <div className="relative z-10 flex items-center gap-1.5 min-w-0 flex-1">
             <button
-              className="hover:text-primary transition-colors duration-200 truncate text-xs sm:text-sm"
-              onClick={() => handleOpenOverrideDialog(groupedItem)}
+              className="btn btn-xs sm:btn-sm btn-square shrink-0"
+              onClick={() => handleOpenPackDialog(groupedItem)}
             >
-              {groupedItem.displayName}
+              <PackagePlus className="w-3.5 h-3.5" />
             </button>
-            {groupedItem.baseItem.notes && (
-              <div
-                className="tooltip tooltip-right"
-                data-tip={groupedItem.baseItem.notes}
-              >
-                <Info className="w-3.5 h-3.5 stroke-current opacity-60 shrink-0" />
-              </div>
-            )}
-            {groupedItem.baseItem.isOverridden && (
-              <div className="badge badge-warning badge-xs sm:badge-sm gap-1 shrink-0">
-                <AlertTriangle className="w-3 h-3 stroke-current" />
-                <span className="hidden xs:inline">Modified</span>
-              </div>
-            )}
-          </div>
 
-          <span
-            className={`shrink-0 tabular-nums text-xs sm:text-sm ${
-              progress === 100 ? 'text-success' : ''
-            }`}
-          >
-            {groupedItem.packedCount}/{groupedItem.totalCount}
-          </span>
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
+              <button
+                className="hover:text-primary transition-colors duration-200 truncate text-xs sm:text-sm"
+                onClick={() => handleOpenOverrideDialog(groupedItem)}
+              >
+                {groupedItem.displayName}
+              </button>
+              {groupedItem.baseItem.notes && (
+                <div
+                  className="tooltip tooltip-right"
+                  data-tip={groupedItem.baseItem.notes}
+                >
+                  <Info className="w-3.5 h-3.5 stroke-current opacity-60 shrink-0" />
+                </div>
+              )}
+              {groupedItem.baseItem.isOverridden && (
+                <div className="badge badge-warning badge-xs sm:badge-sm gap-1 shrink-0">
+                  <AlertTriangle className="w-3 h-3 stroke-current" />
+                  <span className="hidden xs:inline">Modified</span>
+                </div>
+              )}
+            </div>
+
+            <span
+              className={`shrink-0 tabular-nums text-xs sm:text-sm ${
+                progress === 100 ? 'text-success' : ''
+              }`}
+            >
+              {groupedItem.packedCount}/{groupedItem.totalCount}
+            </span>
+          </div>
         </div>
       </li>
     );
