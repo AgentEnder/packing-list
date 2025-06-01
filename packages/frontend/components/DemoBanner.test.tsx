@@ -27,7 +27,7 @@ describe('DemoBanner Component', () => {
     expect(
       screen.getByText("You're currently using demo data")
     ).toBeInTheDocument();
-    expect(screen.getByText('Clear Demo Data')).toBeInTheDocument();
+    expect(screen.getByText('Clear')).toBeInTheDocument();
   });
 
   it('does not render when demo trip is not active', () => {
@@ -45,7 +45,7 @@ describe('DemoBanner Component', () => {
 
     render(<DemoBanner />);
 
-    const clearButton = screen.getByText('Clear Demo Data');
+    const clearButton = screen.getByText('Clear');
     fireEvent.click(clearButton);
 
     expect(sessionStorage.getItem('session-demo-choice')).toBe('fresh');
@@ -57,9 +57,8 @@ describe('DemoBanner Component', () => {
 
     render(<DemoBanner />);
 
-    const banner = screen.getByText(
-      "You're currently using demo data"
-    ).parentElement;
+    const banner = screen.getByText("You're currently using demo data")
+      .parentElement?.parentElement;
     expect(banner).toHaveClass(
       'fixed',
       'bottom-0',
@@ -67,13 +66,13 @@ describe('DemoBanner Component', () => {
       'right-0',
       'bg-primary',
       'text-primary-content',
-      'p-4',
-      'flex',
-      'items-center',
-      'justify-center',
-      'gap-4',
+      'px-2',
+      'py-1.5',
+      'sm:p-4',
       'shadow-lg',
-      'z-[9999]'
+      'z-[9999]',
+      'text-xs',
+      'sm:text-sm'
     );
   });
 
@@ -82,8 +81,15 @@ describe('DemoBanner Component', () => {
 
     render(<DemoBanner />);
 
-    const button = screen.getByRole('button', { name: 'Clear Demo Data' });
-    expect(button).toHaveClass('btn', 'btn-sm', 'btn-ghost', 'gap-2');
+    const button = screen.getByRole('button', { name: 'Clear' });
+    expect(button).toHaveClass(
+      'btn',
+      'btn-xs',
+      'btn-ghost',
+      'gap-1',
+      'h-6',
+      'min-h-0'
+    );
     expect(button.querySelector('svg')).toBeInTheDocument();
   });
 });

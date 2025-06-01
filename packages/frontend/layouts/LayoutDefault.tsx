@@ -15,6 +15,7 @@ import {
   CheckSquare,
   Settings,
 } from 'lucide-react';
+import { RulePackModal } from '../components/RulePackModal';
 
 const SESSION_DEMO_CHOICE_KEY = 'session-demo-choice';
 
@@ -164,6 +165,7 @@ export default function LayoutDefault({
           </ul>
         </div>
       </div>
+      <RulePackModal />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { ToggleGroup } from './ToggleGroup';
 import { ConditionForm } from './ConditionForm';
 import { useAppDispatch } from '@packing-list/state';
 import { Pencil, X } from 'lucide-react';
+import { CategorySelector } from '../../../components/CategorySelector';
 
 const DEFAULT_CALCULATION: Calculation = {
   baseQuantity: 1,
@@ -21,16 +22,18 @@ const DEFAULT_CALCULATION: Calculation = {
   },
 };
 
-const DEFAULT_RULE: Partial<DefaultItemRule> = {
-  name: '',
-  calculation: DEFAULT_CALCULATION,
-  conditions: [],
-};
-
 export const CreateRuleForm = () => {
   const dispatch = useAppDispatch();
-  const [newRule, setNewRule] =
-    useState<Partial<DefaultItemRule>>(DEFAULT_RULE);
+  const [newRule, setNewRule] = useState<DefaultItemRule>({
+    id: '',
+    name: '',
+    calculation: {
+      baseQuantity: 1,
+      perDay: false,
+      perPerson: false,
+    },
+    categoryId: '',
+  });
   const [showCondition, setShowCondition] = useState(false);
   const [showDiscardModal, setShowDiscardModal] = useState(false);
   const [editingConditionIndex, setEditingConditionIndex] = useState<
@@ -46,22 +49,49 @@ export const CreateRuleForm = () => {
   const handleCreateRule = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      if (!newRule.name) return;
+      if (!newRule.name || !newRule.categoryId) return;
 
       dispatch({
         type: 'CREATE_ITEM_RULE',
         payload: {
-          id: crypto.randomUUID(),
           ...newRule,
-        } as DefaultItemRule,
+          id: crypto.randomUUID(),
+        },
       });
-      setNewRule(DEFAULT_RULE);
+
+      setNewRule({
+        id: '',
+        name: '',
+        calculation: {
+          baseQuantity: 1,
+          perDay: false,
+          perPerson: false,
+        },
+        categoryId: '',
+      });
+      setShowCondition(false);
+      setEditingConditionIndex(null);
+      setCondition({
+        type: 'person',
+        field: 'age',
+        operator: '==',
+        value: 0,
+      });
     },
     [dispatch, newRule]
   );
 
   const handleDiscard = () => {
-    setNewRule(DEFAULT_RULE);
+    setNewRule({
+      id: '',
+      name: '',
+      calculation: {
+        baseQuantity: 1,
+        perDay: false,
+        perPerson: false,
+      },
+      categoryId: '',
+    });
     setShowDiscardModal(false);
   };
 
@@ -133,7 +163,8 @@ export const CreateRuleForm = () => {
     newRule.name !== '' ||
     newRule.notes !== undefined ||
     newRule.calculation !== DEFAULT_CALCULATION ||
-    (newRule.conditions?.length ?? 0) > 0;
+    (newRule.conditions?.length ?? 0) > 0 ||
+    newRule.categoryId !== '';
 
   return (
     <>
@@ -155,6 +186,18 @@ export const CreateRuleForm = () => {
                 required
               />
             </div>
+
+            <CategorySelector
+              selectedCategoryId={newRule.categoryId}
+              selectedSubcategoryId={newRule.subcategoryId}
+              onCategoryChange={(categoryId, subcategoryId) =>
+                setNewRule((prev) => ({
+                  ...prev,
+                  categoryId,
+                  subcategoryId,
+                }))
+              }
+            />
 
             <div className="form-control">
               <label className="label">
@@ -371,7 +414,11 @@ export const CreateRuleForm = () => {
                   Discard
                 </button>
               )}
-              <button type="submit" className="btn btn-primary">
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={!newRule.name || !newRule.categoryId}
+              >
                 Create Rule
               </button>
             </div>
@@ -384,7 +431,7 @@ export const CreateRuleForm = () => {
         <div className="modal-box">
           <h3 className="font-bold text-lg">Discard Changes?</h3>
           <p className="py-4">
-            Are you sure you want to discard your changes? This action cannot be
+            Are you sure you want to discard your changes? This cannot be
             undone.
           </p>
           <div className="modal-action">
@@ -397,7 +444,7 @@ export const CreateRuleForm = () => {
           </div>
         </div>
         <form method="dialog" className="modal-backdrop">
-          <button onClick={() => setShowDiscardModal(false)}>close</button>
+          <button>close</button>
         </form>
       </dialog>
     </>

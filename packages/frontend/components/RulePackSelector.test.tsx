@@ -5,6 +5,11 @@ import * as state from '@packing-list/state';
 import * as Toast from './Toast';
 import type { StoreType } from '@packing-list/state';
 import type { Mock } from 'vitest';
+import type {
+  DefaultItemRule,
+  RulePack,
+  RulePackVisibility,
+} from '@packing-list/model';
 
 // Mock the state and Toast modules
 vi.mock('@packing-list/state', () => ({
@@ -20,18 +25,84 @@ describe('RulePackSelector Component', () => {
   const mockDispatch = vi.fn();
   const mockOnRulesApplied = vi.fn();
 
-  const mockRulePacks = [
+  const mockRules: DefaultItemRule[] = [
+    {
+      id: 'beach1',
+      name: 'Beach Item 1',
+      calculation: {
+        baseQuantity: 1,
+        perDay: false,
+        perPerson: false,
+      },
+    },
+    {
+      id: 'beach2',
+      name: 'Beach Item 2',
+      calculation: {
+        baseQuantity: 1,
+        perDay: false,
+        perPerson: false,
+      },
+    },
+    {
+      id: 'camp1',
+      name: 'Camp Item 1',
+      calculation: {
+        baseQuantity: 1,
+        perDay: false,
+        perPerson: false,
+      },
+    },
+  ];
+
+  const mockRulePacks: RulePack[] = [
     {
       id: '1',
       name: 'Beach Pack',
       description: 'Essential items for beach trips',
-      rules: [{ id: 'beach1' }, { id: 'beach2' }],
+      rules: [mockRules[0], mockRules[1]],
+      author: { id: 'test', name: 'Test Author' },
+      metadata: {
+        created: new Date().toISOString(),
+        modified: new Date().toISOString(),
+        isBuiltIn: false,
+        isShared: false,
+        visibility: 'private' as RulePackVisibility,
+        tags: [],
+        category: 'test',
+        version: '1.0.0',
+      },
+      stats: {
+        usageCount: 10,
+        rating: 4.5,
+        reviewCount: 2,
+      },
+      color: '#FFB74D',
+      icon: 'sun',
     },
     {
       id: '2',
       name: 'Camping Pack',
       description: 'Must-have items for camping',
-      rules: [{ id: 'camp1' }],
+      rules: [mockRules[2]],
+      author: { id: 'test', name: 'Test Author' },
+      metadata: {
+        created: new Date().toISOString(),
+        modified: new Date().toISOString(),
+        isBuiltIn: false,
+        isShared: false,
+        visibility: 'private' as RulePackVisibility,
+        tags: [],
+        category: 'test',
+        version: '1.0.0',
+      },
+      stats: {
+        usageCount: 5,
+        rating: 4.0,
+        reviewCount: 1,
+      },
+      color: '#4CAF50',
+      icon: 'tent',
     },
   ];
 
@@ -41,10 +112,39 @@ describe('RulePackSelector Component', () => {
     (state.useAppSelector as unknown as Mock).mockImplementation(
       (selector: (state: StoreType) => unknown) => {
         // Mock the store state
-        const mockState = {
+        const mockState: StoreType = {
           rulePacks: mockRulePacks,
-          defaultItemRules: [{ id: 'beach1' }],
-        } as StoreType;
+          defaultItemRules: [
+            {
+              ...mockRules[0],
+              packIds: ['1'], // Beach Pack ID
+            },
+          ],
+          people: [],
+          trip: {
+            id: 'test-trip',
+            days: [],
+          },
+          ruleOverrides: [],
+          packingListView: {
+            filters: {
+              packed: true,
+              unpacked: true,
+              excluded: false,
+            },
+            viewMode: 'by-day',
+          },
+          calculated: {
+            defaultItems: [],
+            packingListItems: [],
+          },
+          ui: {
+            rulePackModal: {
+              isOpen: false,
+              activeTab: 'browse',
+            },
+          },
+        };
         return selector(mockState);
       }
     );
@@ -55,10 +155,6 @@ describe('RulePackSelector Component', () => {
 
     expect(screen.getByText('Beach Pack')).toBeInTheDocument();
     expect(screen.getByText('Camping Pack')).toBeInTheDocument();
-    expect(
-      screen.getByText('Essential items for beach trips')
-    ).toBeInTheDocument();
-    expect(screen.getByText('Must-have items for camping')).toBeInTheDocument();
   });
 
   it('shows active state for packs with active rules', () => {
@@ -104,7 +200,8 @@ describe('RulePackSelector Component', () => {
   it('applies custom className', () => {
     render(<RulePackSelector className="custom-class" />);
 
-    const container = screen.getByText('Rule Packs').parentElement;
+    const container =
+      screen.getByText('Popular Rule Packs').parentElement?.parentElement;
     expect(container).toHaveClass('custom-class');
   });
 

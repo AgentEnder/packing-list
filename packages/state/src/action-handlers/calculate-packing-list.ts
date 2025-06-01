@@ -175,6 +175,8 @@ function createItemInstances(
       notes: rule.notes,
       isExtra,
       quantity,
+      categoryId: rule.categoryId,
+      subcategoryId: rule.subcategoryId,
     };
   };
 

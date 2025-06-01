@@ -76,6 +76,8 @@ const defaultItemRules: DefaultItemRule[] = [
         value: 3,
       },
     ],
+    categoryId: 'clothing',
+    subcategoryId: 'underwear',
   },
   {
     id: 'socks-rule',
@@ -91,6 +93,8 @@ const defaultItemRules: DefaultItemRule[] = [
       },
     },
     conditions: [],
+    categoryId: 'clothing',
+    subcategoryId: 'underwear',
   },
   {
     id: 'tshirt-rule',
@@ -106,6 +110,8 @@ const defaultItemRules: DefaultItemRule[] = [
       },
     },
     conditions: [],
+    categoryId: 'clothing',
+    subcategoryId: 'tops',
   },
   {
     id: 'jeans-rule',
@@ -127,6 +133,8 @@ const defaultItemRules: DefaultItemRule[] = [
     notes:
       "Most people can wear jeans multiple times. We'll pack one pair for every 2 days plus an extra pair per person.",
     conditions: [],
+    categoryId: 'clothing',
+    subcategoryId: 'bottoms',
   },
   {
     id: 'pajamas-rule',
@@ -143,6 +151,8 @@ const defaultItemRules: DefaultItemRule[] = [
     notes:
       'Pajamas can usually be worn for a few nights before needing a wash.',
     conditions: [],
+    categoryId: 'clothing',
+    subcategoryId: 'underwear',
   },
   {
     id: 'swimsuit-rule',
@@ -161,6 +171,8 @@ const defaultItemRules: DefaultItemRule[] = [
         notes: 'Only needed for beach destinations or hotels with pools',
       },
     ],
+    categoryId: 'clothing',
+    subcategoryId: 'swimwear',
   },
   {
     id: 'jacket-rule',
@@ -181,6 +193,8 @@ const defaultItemRules: DefaultItemRule[] = [
         notes: 'Pack if any destination has cold weather',
       },
     ],
+    categoryId: 'clothing',
+    subcategoryId: 'outerwear',
   },
   {
     id: 'toothbrush-rule',
@@ -191,6 +205,7 @@ const defaultItemRules: DefaultItemRule[] = [
       perPerson: true,
     },
     conditions: [],
+    categoryId: 'toiletries',
   },
   {
     id: 'toothpaste-rule',
@@ -201,6 +216,7 @@ const defaultItemRules: DefaultItemRule[] = [
       perPerson: false,
     },
     conditions: [],
+    categoryId: 'toiletries',
   },
   {
     id: 'shampoo-rule',
@@ -215,6 +231,7 @@ const defaultItemRules: DefaultItemRule[] = [
       },
     },
     conditions: [],
+    categoryId: 'toiletries',
   },
   {
     id: 'laundry-rule',
@@ -229,6 +246,7 @@ const defaultItemRules: DefaultItemRule[] = [
       },
     },
     conditions: [],
+    categoryId: 'misc',
   },
   {
     id: 'diaper-rule',
@@ -254,6 +272,7 @@ const defaultItemRules: DefaultItemRule[] = [
         notes: 'Only needed for toddlers and babies',
       },
     ],
+    categoryId: 'misc',
   },
   {
     id: 'charger-rule',
@@ -276,6 +295,7 @@ const defaultItemRules: DefaultItemRule[] = [
         value: 12,
       },
     ],
+    categoryId: 'electronics',
   },
 ];
 
@@ -334,5 +354,12 @@ export const CREATE_DEMO_DATA: () => StoreType = () =>
         packingListItems: [],
       },
       rulePacks: DEFAULT_RULE_PACKS,
+      ui: {
+        rulePackModal: {
+          isOpen: false,
+          activeTab: 'browse',
+          selectedPackId: undefined,
+        },
+      },
     })
   );

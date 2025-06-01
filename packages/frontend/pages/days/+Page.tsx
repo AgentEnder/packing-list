@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent, FormEvent, ReactNode } from 'react';
+import { useState, ChangeEvent, FormEvent, ReactNode } from 'react';
 import { useAppDispatch, useAppSelector, StoreType } from '@packing-list/state';
 import { uuid } from '../../utils/uuid';
 import { createSelector } from '@reduxjs/toolkit';

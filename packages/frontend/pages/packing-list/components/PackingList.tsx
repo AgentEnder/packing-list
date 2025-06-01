@@ -19,8 +19,9 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import { Link } from '../../../components/Link';
-import { formatDayInfo } from '../utils/item-formatting';
 import { PrintButton } from './PrintButton';
+import { getAllCategories } from '@packing-list/model';
+import { format } from 'date-fns';
 
 export const PackingList: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -30,13 +31,10 @@ export const PackingList: React.FC = () => {
   const trip = useAppSelector((state) => state.trip);
   const people = useAppSelector((state) => state.people);
   const defaultItemRules = useAppSelector((state) => state.defaultItemRules);
+  const categories = getAllCategories();
 
-  const [selectedItem, setSelectedItem] = useState<
-    GroupedItem['baseItem'] | null
-  >(null);
+  const [selectedItem, setSelectedItem] = useState<GroupedItem | null>(null);
   const [isOverrideDialogOpen, setIsOverrideDialogOpen] = useState(false);
-  const [selectedGroupForPacking, setSelectedGroupForPacking] =
-    useState<GroupedItem | null>(null);
   const [isPackDialogOpen, setIsPackDialogOpen] = useState(false);
 
   const handleViewModeChange = (mode: PackingListViewState['viewMode']) => {
@@ -46,88 +44,140 @@ export const PackingList: React.FC = () => {
     });
   };
 
-  const handleFilterChange = (filters: PackingListViewState['filters']) => {
+  const handleFilterChange = (
+    filter: keyof PackingListViewState['filters']
+  ) => {
     dispatch({
       type: 'UPDATE_PACKING_LIST_VIEW',
-      payload: { filters },
+      payload: {
+        filters: {
+          ...viewState.filters,
+          [filter]: !viewState.filters[filter],
+        },
+      },
     });
   };
 
-  const handleOpenOverrideDialog = (groupedItem: GroupedItem) => {
-    setSelectedItem(groupedItem.baseItem);
+  const handleOpenOverrideDialog = (item: GroupedItem) => {
+    setSelectedItem(item);
     setIsOverrideDialogOpen(true);
   };
 
-  const handleCloseOverrideDialog = () => {
-    setSelectedItem(null);
-    setIsOverrideDialogOpen(false);
-  };
-
-  const handleOpenPackDialog = (groupedItem: GroupedItem) => {
-    setSelectedGroupForPacking(groupedItem);
+  const handleOpenPackDialog = (item: GroupedItem) => {
+    setSelectedItem(item);
     setIsPackDialogOpen(true);
   };
 
-  const handleClosePackDialog = () => {
-    setSelectedGroupForPacking(null);
-    setIsPackDialogOpen(false);
+  // Helper function to group items by category
+  const groupItemsByCategory = (items: GroupedItem[]) => {
+    const grouped = new Map<string, GroupedItem[]>();
+
+    // First, group by main categories
+    items.forEach((item) => {
+      const categoryId = item.baseItem.categoryId || 'uncategorized';
+      if (!grouped.has(categoryId)) {
+        grouped.set(categoryId, []);
+      }
+      grouped.get(categoryId)?.push(item);
+    });
+
+    // Sort categories by their order in the categories array
+    return Array.from(grouped.entries()).sort((a, b) => {
+      const catA = categories.findIndex((c) => c.id === a[0]);
+      const catB = categories.findIndex((c) => c.id === b[0]);
+      return catA - catB;
+    });
   };
 
   const renderGroupedItem = (groupedItem: GroupedItem) => {
-    const progress = (groupedItem.packedCount / groupedItem.totalCount) * 100;
+    const progress = Math.round(
+      (groupedItem.packedCount / groupedItem.totalCount) * 100
+    );
 
     return (
       <li
-        key={groupedItem.baseItem.id}
-        className="relative overflow-hidden bg-base-100 rounded-lg border border-base-200 hover:border-primary transition-colors duration-200"
+        key={`${groupedItem.baseItem.id}-${groupedItem.displayName}`}
+        className="card bg-base-100 shadow-sm"
       >
-        {/* Progress bar background */}
-        <div
-          className="absolute inset-0 bg-success/30 transition-all duration-300 ease-in-out"
-          style={{ width: `${progress}%` }}
-        />
-
-        {/* Content */}
-        <div className="relative flex items-center gap-1.5 p-1.5">
-          <button
-            className="btn btn-xs sm:btn-sm btn-square shrink-0"
-            onClick={() => handleOpenPackDialog(groupedItem)}
-          >
-            <PackagePlus className="w-3.5 h-3.5" />
-          </button>
-
-          <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
+        <div className="relative flex items-center gap-1.5 p-1.5 overflow-hidden rounded-lg">
+          <div
+            className="absolute inset-0 bg-success/30 transition-all duration-300 ease-in-out z-0"
+            style={{ width: `${progress}%` }}
+          />
+          <div className="relative z-10 flex items-center gap-1.5 min-w-0 flex-1">
             <button
-              className="hover:text-primary transition-colors duration-200 truncate text-xs sm:text-sm"
-              onClick={() => handleOpenOverrideDialog(groupedItem)}
+              className="btn btn-xs sm:btn-sm btn-square shrink-0"
+              onClick={() => handleOpenPackDialog(groupedItem)}
             >
-              {groupedItem.displayName}
+              <PackagePlus className="w-3.5 h-3.5" />
             </button>
-            {groupedItem.baseItem.notes && (
-              <div
-                className="tooltip tooltip-right"
-                data-tip={groupedItem.baseItem.notes}
-              >
-                <Info className="w-3.5 h-3.5 stroke-current opacity-60 shrink-0" />
-              </div>
-            )}
-            {groupedItem.baseItem.isOverridden && (
-              <div className="badge badge-warning badge-xs sm:badge-sm gap-1 shrink-0">
-                <AlertTriangle className="w-3 h-3 stroke-current" />
-                <span className="hidden xs:inline">Modified</span>
-              </div>
-            )}
-          </div>
 
-          <span
-            className={`shrink-0 tabular-nums text-xs sm:text-sm ${
-              progress === 100 ? 'text-success' : ''
-            }`}
-          >
-            {groupedItem.packedCount}/{groupedItem.totalCount}
-          </span>
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
+              <button
+                className="hover:text-primary transition-colors duration-200 truncate text-xs sm:text-sm"
+                onClick={() => handleOpenOverrideDialog(groupedItem)}
+              >
+                {groupedItem.displayName}
+              </button>
+              {groupedItem.baseItem.notes && (
+                <div
+                  className="tooltip tooltip-right"
+                  data-tip={groupedItem.baseItem.notes}
+                >
+                  <Info className="w-3.5 h-3.5 stroke-current opacity-60 shrink-0" />
+                </div>
+              )}
+              {groupedItem.baseItem.isOverridden && (
+                <div className="badge badge-warning badge-xs sm:badge-sm gap-1 shrink-0">
+                  <AlertTriangle className="w-3 h-3 stroke-current" />
+                  <span className="hidden xs:inline">Modified</span>
+                </div>
+              )}
+            </div>
+
+            <span
+              className={`shrink-0 tabular-nums text-xs sm:text-sm ${
+                progress === 100 ? 'text-success' : ''
+              }`}
+            >
+              {groupedItem.packedCount}/{groupedItem.totalCount}
+            </span>
+          </div>
         </div>
       </li>
+    );
+  };
+
+  const renderGroup = (group: {
+    type: 'day' | 'person';
+    items: GroupedItem[];
+    title: string;
+  }) => {
+    const categorizedItems = groupItemsByCategory(group.items);
+
+    return (
+      <div key={group.title} className="card bg-base-200 shadow-lg">
+        <div className="card-body p-4">
+          <h2 className="card-title text-lg">{group.title}</h2>
+          <div className="space-y-6">
+            {categorizedItems.map(([categoryId, items]) => {
+              const category = categories.find((c) => c.id === categoryId);
+              const categoryName = category?.name || 'Other Items';
+
+              return (
+                <div key={categoryId}>
+                  <h3 className="text-sm font-medium text-base-content/70 mb-3">
+                    {categoryName}
+                  </h3>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {items.map((item) => renderGroupedItem(item))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -160,7 +210,8 @@ export const PackingList: React.FC = () => {
                 }`}
                 onClick={() => handleViewModeChange('by-day')}
               >
-                By Day
+                <Calendar className="w-3.5 h-3.5" />
+                <span className="ml-1.5">By Day</span>
               </button>
               <button
                 className={`btn btn-xs sm:btn-sm join-item ${
@@ -168,59 +219,36 @@ export const PackingList: React.FC = () => {
                 }`}
                 onClick={() => handleViewModeChange('by-person')}
               >
-                By Person
+                <Users className="w-3.5 h-3.5" />
+                <span className="ml-1.5">By Person</span>
               </button>
             </div>
           </div>
 
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3 sm:items-center sm:ml-6">
+          <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3 sm:items-center">
             <label className="text-sm font-medium text-base-content/70 sm:min-w-[4.5rem]">
-              Show Items
+              Show
             </label>
-            <div className="grid grid-cols-3 sm:flex sm:flex-row gap-1.5 sm:gap-2">
-              <label className="flex flex-col sm:flex-row items-center xs:flex-col sm:items-center gap-1.5 p-1.5 xs:p-2 sm:p-0 bg-base-200 sm:bg-transparent rounded-lg sm:rounded-none cursor-pointer hover:bg-base-200 transition-colors sm:px-2">
-                <input
-                  type="checkbox"
-                  className="toggle toggle-success toggle-xs sm:toggle-sm"
-                  checked={viewState.filters.packed}
-                  onChange={(e) =>
-                    handleFilterChange({
-                      ...viewState.filters,
-                      packed: e.target.checked,
-                    })
-                  }
-                />
-                <span className="text-xs sm:text-sm">Packed</span>
-              </label>
-              <label className="flex flex-col sm:flex-row items-center xs:flex-col sm:items-center gap-1.5 p-1.5 xs:p-2 sm:p-0 bg-base-200 sm:bg-transparent rounded-lg sm:rounded-none cursor-pointer hover:bg-base-200 transition-colors sm:px-2">
-                <input
-                  type="checkbox"
-                  className="toggle toggle-success toggle-xs sm:toggle-sm"
-                  checked={viewState.filters.unpacked}
-                  onChange={(e) =>
-                    handleFilterChange({
-                      ...viewState.filters,
-                      unpacked: e.target.checked,
-                    })
-                  }
-                />
-                <span className="text-xs sm:text-sm">Unpacked</span>
-              </label>
-              <label className="flex flex-col sm:flex-row items-center xs:flex-col sm:items-center gap-1.5 p-1.5 xs:p-2 sm:p-0 bg-base-200 sm:bg-transparent rounded-lg sm:rounded-none cursor-pointer hover:bg-base-200 transition-colors sm:px-2">
-                <input
-                  type="checkbox"
-                  className="toggle toggle-success toggle-xs sm:toggle-sm"
-                  checked={viewState.filters.excluded}
-                  onChange={(e) =>
-                    handleFilterChange({
-                      ...viewState.filters,
-                      excluded: e.target.checked,
-                    })
-                  }
-                />
-                <span className="text-xs sm:text-sm">Excluded</span>
-              </label>
+            <div className="join">
+              <button
+                className={`btn btn-xs sm:btn-sm join-item ${
+                  viewState.filters.packed ? 'btn-active' : ''
+                }`}
+                onClick={() => handleFilterChange('packed')}
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span className="ml-1.5">Packed</span>
+              </button>
+              <button
+                className={`btn btn-xs sm:btn-sm join-item ${
+                  viewState.filters.unpacked ? 'btn-active' : ''
+                }`}
+                onClick={() => handleFilterChange('unpacked')}
+              >
+                <ClipboardList className="w-3.5 h-3.5" />
+                <span className="ml-1.5">Unpacked</span>
+              </button>
             </div>
           </div>
         </div>
@@ -293,79 +321,78 @@ export const PackingList: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="container mx-auto p-4">
-          <div className="flex flex-col gap-6">
-            {/* View-specific items */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              {groupedItems.map((group, index) => (
-                <div key={index} className="card bg-base-200 shadow-lg">
-                  <div className="card-body p-3">
-                    <h2 className="card-title text-sm sm:text-base flex flex-wrap gap-1.5 items-center">
-                      {group.type === 'day' ? (
-                        <>
-                          <span className="min-w-0 truncate">
-                            {formatDayInfo(
-                              {
-                                dayIndex: group.index,
-                                dayStart: group.items[0]?.metadata?.dayStart,
-                                dayEnd: group.items[0]?.metadata?.dayEnd,
-                              },
-                              trip.days
-                            )}
-                          </span>
-                          {group.day.location && (
-                            <div className="badge badge-primary/20 text-xs">
-                              {group.day.location}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        group.person.name
-                      )}
-                    </h2>
-                    <ul className="space-y-1.5">
-                      {group.items.map(renderGroupedItem)}
-                    </ul>
-                  </div>
-                </div>
-              ))}
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
+          {/* Main grouped items */}
+          {groupedItems.map((group) => {
+            let title = '';
+            if (group.type === 'day') {
+              const date = new Date(group.day.date);
+              const dateStr = format(date, 'MMM d');
+              title = `Day ${group.index + 1} - ${dateStr}${
+                group.day.location ? ` - ${group.day.location}` : ''
+              }`;
+            } else if (group.type === 'person') {
+              title = group.person.name;
+            }
 
-            {/* General items */}
-            {groupedGeneralItems.length > 0 && (
-              <div className="card bg-base-200 shadow-lg">
-                <div className="card-body p-3">
-                  <h2 className="card-title text-sm sm:text-base">
-                    General Items
-                  </h2>
-                  <p className="text-xs sm:text-sm text-base-content/70 mb-3">
-                    These items are not specific to{' '}
-                    {viewState.viewMode === 'by-day' ? 'days' : 'people'}
-                  </p>
-                  <ul className="space-y-1.5">
-                    {groupedGeneralItems.map(renderGroupedItem)}
-                  </ul>
+            return renderGroup({
+              type: group.type,
+              items: group.items,
+              title,
+            });
+          })}
+
+          {/* General items */}
+          {groupedGeneralItems.length > 0 && (
+            <div className="card bg-base-200 shadow-lg">
+              <div className="card-body p-4">
+                <h2 className="card-title text-lg">General Items</h2>
+                <div className="space-y-6">
+                  {groupItemsByCategory(groupedGeneralItems).map(
+                    ([categoryId, items]) => {
+                      const category = categories.find(
+                        (c) => c.id === categoryId
+                      );
+                      const categoryName = category?.name || 'Other Items';
+
+                      return (
+                        <div key={categoryId}>
+                          <h3 className="text-sm font-medium text-base-content/70 mb-3">
+                            {categoryName}
+                          </h3>
+                          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {items.map((item) => renderGroupedItem(item))}
+                          </ul>
+                        </div>
+                      );
+                    }
+                  )}
                 </div>
               </div>
-            )}
-          </div>
-
-          {selectedItem && (
-            <RuleOverrideDialog
-              item={selectedItem}
-              isOpen={isOverrideDialogOpen}
-              onClose={handleCloseOverrideDialog}
-            />
-          )}
-
-          {selectedGroupForPacking && (
-            <PackItemsDialog
-              groupedItem={selectedGroupForPacking}
-              isOpen={isPackDialogOpen}
-              onClose={handleClosePackDialog}
-            />
+            </div>
           )}
         </div>
+      )}
+
+      {selectedItem && (
+        <>
+          <RuleOverrideDialog
+            isOpen={isOverrideDialogOpen}
+            onClose={() => {
+              setIsOverrideDialogOpen(false);
+              setSelectedItem(null);
+            }}
+            item={selectedItem.baseItem}
+          />
+          <PackItemsDialog
+            isOpen={isPackDialogOpen}
+            onClose={() => {
+              setIsPackDialogOpen(false);
+              setSelectedItem(null);
+            }}
+            groupedItem={selectedItem}
+          />
+        </>
       )}
     </div>
   );

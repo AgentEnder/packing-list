@@ -16,4 +16,6 @@ export type PackingListItem = {
   dayEnd?: number; // End of a day range (0-based)
   isExtra: boolean; // Whether this is an extra item
   quantity: number; // How many of this item are needed
+  categoryId?: string; // Optional ID of the category this item belongs to (inherited from rule)
+  subcategoryId?: string; // Optional subcategory ID (inherited from rule)
 };

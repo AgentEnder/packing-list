@@ -28,6 +28,13 @@ export type StoreType = {
   ruleOverrides: RuleOverride[];
   packingListView: PackingListViewState;
   rulePacks: RulePack[];
+  ui: {
+    rulePackModal: {
+      isOpen: boolean;
+      activeTab: 'browse' | 'manage' | 'details';
+      selectedPackId?: string;
+    };
+  };
 };
 
 export const initialState: StoreType = {
@@ -51,6 +58,13 @@ export const initialState: StoreType = {
     },
   },
   rulePacks: DEFAULT_RULE_PACKS,
+  ui: {
+    rulePackModal: {
+      isOpen: false,
+      activeTab: 'browse',
+      selectedPackId: undefined,
+    },
+  },
 };
 
 function createReducer(preloadedState: StoreType): Reducer<StoreType> {

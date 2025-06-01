@@ -1,4 +1,9 @@
-import { DefaultItemRule, Person, Day } from '@packing-list/model';
+import {
+  DefaultItemRule,
+  Person,
+  Day,
+  getAllCategories,
+} from '@packing-list/model';
 import {
   calculateRuleTotal,
   calculateItemQuantity,
@@ -6,7 +11,9 @@ import {
   calculateNumDaysMeetingCondition,
 } from '@packing-list/shared-utils';
 import { ReactNode } from 'react';
-import { Info } from 'lucide-react';
+import { Info, LucideIcon } from 'lucide-react';
+import * as Icons from 'lucide-react';
+import { useAppSelector, useAppDispatch } from '@packing-list/state';
 
 type RuleCardProps = {
   rule: DefaultItemRule;
@@ -39,6 +46,52 @@ export const RuleCard = ({
     days,
     rule.conditions || []
   );
+
+  // Get category information
+  const categories = getAllCategories();
+  const category = categories.find((c) => c.id === rule.categoryId);
+  const subcategory = categories.find((c) => c.id === rule.subcategoryId);
+
+  // Get the icon component for a category
+  const getCategoryIcon = (iconName?: string) => {
+    if (!iconName) return null;
+    const IconComponent = (Icons as unknown as Record<string, LucideIcon>)[
+      iconName
+    ];
+    return IconComponent ? <IconComponent className="w-4 h-4" /> : null;
+  };
+
+  // Get rule packs
+  const rulePacks = useAppSelector((state) => state.rulePacks);
+  const dispatch = useAppDispatch();
+
+  const handlePackClick = (packId: string) => {
+    dispatch({
+      type: 'OPEN_RULE_PACK_MODAL',
+      payload: { tab: 'details', packId },
+    });
+  };
+
+  const packBadges = rule.packIds
+    ? rulePacks
+        .filter((pack) => rule.packIds?.includes(pack.id))
+        .map((pack) => {
+          const IconComponent = pack.icon
+            ? (Icons as unknown as Record<string, LucideIcon>)[pack.icon]
+            : null;
+          return (
+            <button
+              key={pack.id}
+              className="badge badge-sm gap-1 cursor-pointer"
+              style={{ backgroundColor: pack.color, color: 'white' }}
+              onClick={() => handlePackClick(pack.id)}
+            >
+              {IconComponent && <IconComponent className="w-3 h-3" />}
+              {pack.name}
+            </button>
+          );
+        })
+    : null;
 
   // Calculate if extra items would result in zero
   const extraItemsTotal = extraItems
@@ -231,7 +284,24 @@ export const RuleCard = ({
 
   return (
     <div className="grid grid-cols-[1fr_auto] gap-2">
-      <h3 className="font-medium text-lg">{rule.name}</h3>
+      <div className="flex flex-col">
+        <h3 className="font-medium text-lg">{rule.name}</h3>
+        {category && (
+          <div className="flex items-center gap-2 text-sm text-base-content/70">
+            {category.icon && getCategoryIcon(category.icon)}
+            <span>{category.name}</span>
+            {subcategory && (
+              <>
+                <span className="text-base-content/30">•</span>
+                <span>{subcategory.name}</span>
+              </>
+            )}
+          </div>
+        )}
+        {packBadges && packBadges.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">{packBadges}</div>
+        )}
+      </div>
 
       <div className="flex flex-col items-end row-span-2">
         <span className="text-base-content/70">Total: {total}</span>

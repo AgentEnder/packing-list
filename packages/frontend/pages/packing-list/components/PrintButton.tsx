@@ -25,6 +25,8 @@ interface PrintItem {
   day?: string;
   dayStart?: number;
   dayEnd?: number;
+  categoryId?: string;
+  subcategoryId?: string;
 }
 
 // Helper function to process instances and create print items
@@ -37,7 +39,14 @@ const processInstances = (
     dayStart?: number;
     dayEnd?: number;
   }>,
-  item: { displayName: string; baseItem: { notes?: string } },
+  item: {
+    displayName: string;
+    baseItem: {
+      notes?: string;
+      categoryId?: string;
+      subcategoryId?: string;
+    };
+  },
   context: string,
   days: { date: string | number; location?: string }[],
   personName?: string,
@@ -56,6 +65,8 @@ const processInstances = (
             isExtra: instance.isExtra,
             quantity: instance.quantity,
             person: instance.personName || personName,
+            categoryId: item.baseItem.categoryId,
+            subcategoryId: item.baseItem.subcategoryId,
           },
         ];
       }
@@ -76,6 +87,8 @@ const processInstances = (
             isExtra: instance.isExtra,
             quantity: instance.quantity,
             person: instance.personName || personName,
+            categoryId: item.baseItem.categoryId,
+            subcategoryId: item.baseItem.subcategoryId,
           },
         ];
       }
@@ -94,21 +107,32 @@ const processInstances = (
           day: dayInfo,
           dayStart: instance.dayStart,
           dayEnd: instance.dayEnd,
+          categoryId: item.baseItem.categoryId,
+          subcategoryId: item.baseItem.subcategoryId,
         },
       ];
     }
   });
 };
 
-export const PrintButton: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const viewState = useAppSelector(selectPackingListViewState);
-  const { groupedItems, groupedGeneralItems } =
-    useAppSelector(selectGroupedItems);
-  const days = useAppSelector((state) => state.trip.days);
+// Create a client-side only component for the portal
+const PrintMessagePortal: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [mounted, setMounted] = React.useState(false);
 
-  // Create the print overlay styles once when the component mounts
   useEffect(() => {
+    setMounted(true);
+
+    // Create the print message root if it doesn't exist
+    if (!document.getElementById('print-message-root')) {
+      const printRoot = document.createElement('div');
+      printRoot.id = 'print-message-root';
+      printRoot.style.display = 'none';
+      document.body.appendChild(printRoot);
+    }
+
+    // Create the print styles
     const styleEl = document.createElement('style');
     styleEl.innerHTML = `
       @media print {
@@ -145,14 +169,6 @@ export const PrintButton: React.FC = () => {
     `;
     document.head.appendChild(styleEl);
 
-    // Create the print message root if it doesn't exist
-    if (!document.getElementById('print-message-root')) {
-      const printRoot = document.createElement('div');
-      printRoot.id = 'print-message-root';
-      printRoot.style.display = 'none';
-      document.body.appendChild(printRoot);
-    }
-
     return () => {
       styleEl.remove();
       const printRoot = document.getElementById('print-message-root');
@@ -161,6 +177,21 @@ export const PrintButton: React.FC = () => {
       }
     };
   }, []);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    children,
+    document.getElementById('print-message-root') || document.body
+  );
+};
+
+export const PrintButton: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const viewState = useAppSelector(selectPackingListViewState);
+  const { groupedItems, groupedGeneralItems } =
+    useAppSelector(selectGroupedItems);
+  const days = useAppSelector((state) => state.trip.days);
 
   const handlePrint = useCallback(() => {
     // Create a new window for printing
@@ -363,16 +394,10 @@ export const PrintButton: React.FC = () => {
     }
   }, [dispatch, viewState, groupedItems, groupedGeneralItems, days]);
 
-  // The useEffect block is used to add event listeners to the window and remove them when the component unmounts.
   useEffect(() => {
-    // This "handles" the user hitting the print button that is in the browser - not the print button in the app.
-    // Unfortunately, this will not prevent the browser from opening the print dialog on the original page, but
-    // the user will see the new print window first so they should not be too confused.
-    const onBeforePrint = (e: Event) => {
+    const onBeforePrint = () => {
       handlePrint();
     };
-    // This handles the user hitting ctrl+p directly, and acts as if the app print button was clicked instead
-    // of going to the browser print dialog.
     const onKeyPress = (e: KeyboardEvent) => {
       if (
         e.key === 'p' &&
@@ -411,10 +436,7 @@ export const PrintButton: React.FC = () => {
 
   return (
     <>
-      {createPortal(
-        printMessage,
-        document.getElementById('print-message-root') || document.body
-      )}
+      <PrintMessagePortal>{printMessage}</PrintMessagePortal>
       <button className="btn btn-sm btn-primary" onClick={handlePrint}>
         <Printer className="w-3.5 h-3.5" />
         <span className="ml-1.5">Print</span>

@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent, useEffect } from 'react';
+import { useState, ChangeEvent, useEffect } from 'react';
 import { TripEvent } from '@packing-list/model';
 import { Timeline } from '@packing-list/shared-components';
 import { uuid } from '../../utils/uuid';

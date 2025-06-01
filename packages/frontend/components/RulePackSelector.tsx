@@ -1,7 +1,36 @@
-import { useAppDispatch, useAppSelector, StoreType } from '@packing-list/state';
+import { useAppDispatch, useAppSelector } from '@packing-list/state';
 import { RulePack } from '@packing-list/model';
 import { showToast } from './Toast';
-import { Check } from 'lucide-react';
+import {
+  Check,
+  Star,
+  Tag,
+  ChevronRight,
+  Sun,
+  Briefcase,
+  Tent,
+  Backpack,
+  Plane,
+  Car,
+  Train,
+  Ship,
+  Map,
+  Compass,
+  User,
+} from 'lucide-react';
+
+const ICONS = {
+  sun: Sun,
+  briefcase: Briefcase,
+  tent: Tent,
+  backpack: Backpack,
+  plane: Plane,
+  car: Car,
+  train: Train,
+  ship: Ship,
+  map: Map,
+  compass: Compass,
+} as const;
 
 interface RulePackSelectorProps {
   className?: string;
@@ -13,17 +42,16 @@ export function RulePackSelector({
   onRulesApplied,
 }: RulePackSelectorProps) {
   const dispatch = useAppDispatch();
-  const rulePacks = useAppSelector((state: StoreType) => state.rulePacks);
-  const currentRules = useAppSelector(
-    (state: StoreType) => state.defaultItemRules
-  );
+  const rulePacks = useAppSelector((state) => state.rulePacks);
+  const currentRules = useAppSelector((state) => state.defaultItemRules);
 
-  // Check if a rule pack is active by comparing rule IDs
+  // Get the top 2 packs by usage count
+  const topPacks = [...rulePacks]
+    .sort((a, b) => b.stats.usageCount - a.stats.usageCount)
+    .slice(0, 2);
+
   const isPackActive = (pack: RulePack): boolean => {
-    const currentRuleIds = new Set(currentRules.map((rule) => rule.id));
-
-    // Consider the pack active if any of its rules are present
-    return pack.rules.some((rule) => currentRuleIds.has(rule.id));
+    return currentRules.some((rule) => rule.packIds?.includes(pack.id));
   };
 
   const handleTogglePack = (pack: RulePack) => {
@@ -39,25 +67,66 @@ export function RulePackSelector({
     onRulesApplied?.();
   };
 
+  const getPackIcon = (pack: RulePack) => {
+    if (!pack.icon) return null;
+    const IconComponent = ICONS[pack.icon as keyof typeof ICONS];
+    return IconComponent ? <IconComponent className="w-5 h-5" /> : null;
+  };
+
   return (
     <div className={className}>
-      <h2 className="text-lg font-semibold mb-4">Rule Packs</h2>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {rulePacks.map((pack) => {
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold">Popular Rule Packs</h2>
+        <button
+          className="btn btn-ghost btn-sm gap-2"
+          onClick={() => dispatch({ type: 'OPEN_RULE_PACK_MODAL' })}
+        >
+          View All
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Top 2 most used packs */}
+        {topPacks.map((pack) => {
           const active = isPackActive(pack);
+          const icon = getPackIcon(pack);
+
           return (
             <div
               key={pack.id}
               className={`card bg-base-100 shadow-xl ${
                 active ? 'border-2 border-primary' : ''
               }`}
+              style={{
+                borderColor: active ? undefined : pack.color,
+                borderWidth: '1px',
+              }}
             >
-              <div className="card-body">
-                <h3 className="card-title">
-                  {pack.name}
-                  {active && <Check className="w-4 h-4 text-primary" />}
-                </h3>
-                <p className="text-base-content/70">{pack.description}</p>
+              <div className="card-body p-4">
+                <div className="flex items-start justify-between">
+                  <h3 className="card-title flex items-center gap-2 text-base">
+                    {icon}
+                    {pack.name}
+                    {active && <Check className="w-4 h-4 text-primary" />}
+                  </h3>
+                  <div className="flex items-center gap-1 text-sm text-base-content/70">
+                    <Star className="w-4 h-4" />
+                    <span>{pack.stats.rating.toFixed(1)}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 mt-2 text-sm text-base-content/70">
+                  <div className="flex items-center gap-1">
+                    <Tag className="w-4 h-4" />
+                    <span>{pack.rules.length} rules</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <User className="w-4 h-4" />
+                    <span>{pack.author.name}</span>
+                  </div>
+                </div>
+
                 <div className="card-actions justify-end mt-4">
                   <button
                     className={`btn btn-sm ${
@@ -72,6 +141,19 @@ export function RulePackSelector({
             </div>
           );
         })}
+
+        {/* "More Packs" card */}
+        <div
+          className="card bg-base-100 shadow-xl border border-base-300 cursor-pointer hover:shadow-2xl transition-shadow"
+          onClick={() => dispatch({ type: 'OPEN_RULE_PACK_MODAL' })}
+        >
+          <div className="card-body items-center justify-center text-center p-4">
+            <h3 className="card-title text-base mb-2">Explore More Packs</h3>
+            <p className="text-sm text-base-content/70">
+              Browse and manage all available rule packs
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
