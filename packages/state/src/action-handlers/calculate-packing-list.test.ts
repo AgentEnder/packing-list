@@ -44,6 +44,12 @@ describe('calculatePackingListHandler', () => {
       defaultItems: [],
       packingListItems: [],
     },
+    ui: {
+      rulePackModal: {
+        isOpen: false,
+        activeTab: 'browse',
+      },
+    },
   });
 
   it('should handle empty state', () => {

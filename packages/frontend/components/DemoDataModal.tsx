@@ -41,8 +41,8 @@ export function DemoDataModal() {
   if (!isOpen) return null;
 
   return (
-    <div className="modal modal-open">
-      <div className="modal-box">
+    <div className="modal modal-open z-[10000]">
+      <div className="modal-box my-0 sm:my-8 max-h-[calc(100vh-4rem)]">
         <h3 className="font-bold text-lg">Welcome to Smart Packing List!</h3>
         <p className="py-4">
           Would you like to start with a demo trip to see how everything works,

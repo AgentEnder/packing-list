@@ -13,6 +13,7 @@ import {
 import { ReactNode } from 'react';
 import { Info, LucideIcon } from 'lucide-react';
 import * as Icons from 'lucide-react';
+import { useAppSelector, useAppDispatch } from '@packing-list/state';
 
 type RuleCardProps = {
   rule: DefaultItemRule;
@@ -59,6 +60,38 @@ export const RuleCard = ({
     ];
     return IconComponent ? <IconComponent className="w-4 h-4" /> : null;
   };
+
+  // Get rule packs
+  const rulePacks = useAppSelector((state) => state.rulePacks);
+  const dispatch = useAppDispatch();
+
+  const handlePackClick = (packId: string) => {
+    dispatch({
+      type: 'OPEN_RULE_PACK_MODAL',
+      payload: { tab: 'details', packId },
+    });
+  };
+
+  const packBadges = rule.packIds
+    ? rulePacks
+        .filter((pack) => rule.packIds?.includes(pack.id))
+        .map((pack) => {
+          const IconComponent = pack.icon
+            ? (Icons as unknown as Record<string, LucideIcon>)[pack.icon]
+            : null;
+          return (
+            <button
+              key={pack.id}
+              className="badge badge-sm gap-1 cursor-pointer"
+              style={{ backgroundColor: pack.color, color: 'white' }}
+              onClick={() => handlePackClick(pack.id)}
+            >
+              {IconComponent && <IconComponent className="w-3 h-3" />}
+              {pack.name}
+            </button>
+          );
+        })
+    : null;
 
   // Calculate if extra items would result in zero
   const extraItemsTotal = extraItems
@@ -264,6 +297,9 @@ export const RuleCard = ({
               </>
             )}
           </div>
+        )}
+        {packBadges && packBadges.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">{packBadges}</div>
         )}
       </div>
 
