@@ -63,29 +63,29 @@ import {
   toggleRulePackHandler,
   ToggleRulePackAction,
 } from './action-handlers/toggle-rule-pack.js';
+import {
+  CreateRulePackAction,
+  createRulePackHandler,
+} from './action-handlers/create-rule-pack.js';
+import {
+  UpdateRulePackAction,
+  updateRulePackHandler,
+} from './action-handlers/update-rule-pack.js';
+import {
+  openRulePackModalHandler,
+  OpenRulePackModalAction,
+  closeRulePackModalHandler,
+  CloseRulePackModalAction,
+  setRulePackModalTabHandler,
+  SetRulePackModalTabAction,
+} from './action-handlers/rule-pack-modal.js';
 
 export type ActionHandler<T extends AllActions> = (
   state: StoreType,
   action: T
 ) => StoreType;
 
-export type StoreActions =
-  | 'ADD_PERSON'
-  | 'REMOVE_PERSON'
-  | 'UPDATE_PERSON'
-  | 'CALCULATE_DEFAULT_ITEMS'
-  | 'UPDATE_TRIP_EVENTS'
-  | 'CALCULATE_DAYS'
-  | 'CREATE_ITEM_RULE'
-  | 'UPDATE_ITEM_RULE'
-  | 'DELETE_ITEM_RULE'
-  | 'ADD_RULE_OVERRIDE'
-  | 'UPDATE_PACKING_LIST_VIEW'
-  | 'CALCULATE_PACKING_LIST'
-  | 'TOGGLE_ITEM_PACKED'
-  | 'LOAD_DEMO_DATA'
-  | 'CLEAR_TRIP_DATA'
-  | 'TOGGLE_RULE_PACK';
+export type StoreActions = AllActions['type'];
 
 export type AllActions =
   | AddPersonAction
@@ -103,7 +103,12 @@ export type AllActions =
   | ToggleItemPackedAction
   | LoadDemoDataAction
   | ClearTripDataAction
-  | ToggleRulePackAction;
+  | ToggleRulePackAction
+  | CreateRulePackAction
+  | UpdateRulePackAction
+  | OpenRulePackModalAction
+  | CloseRulePackModalAction
+  | SetRulePackModalTabAction;
 
 export const Mutations: {
   [K in StoreActions]: ActionHandler<Extract<AllActions, { type: K }>>;
@@ -124,4 +129,9 @@ export const Mutations: {
   LOAD_DEMO_DATA: loadDemoDataHandler,
   CLEAR_TRIP_DATA: clearTripDataHandler,
   TOGGLE_RULE_PACK: toggleRulePackHandler,
+  CREATE_RULE_PACK: createRulePackHandler,
+  UPDATE_RULE_PACK: updateRulePackHandler,
+  OPEN_RULE_PACK_MODAL: openRulePackModalHandler,
+  CLOSE_RULE_PACK_MODAL: closeRulePackModalHandler,
+  SET_RULE_PACK_MODAL_TAB: setRulePackModalTabHandler,
 };

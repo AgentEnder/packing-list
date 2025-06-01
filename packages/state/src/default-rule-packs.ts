@@ -1,11 +1,40 @@
 import { RulePack } from '@packing-list/model';
 
+const SYSTEM_AUTHOR = {
+  id: 'system',
+  name: 'System',
+};
+
+const DEFAULT_METADATA = {
+  created: new Date().toISOString(),
+  modified: new Date().toISOString(),
+  isBuiltIn: true,
+  isShared: true,
+  visibility: 'public',
+  version: '1.0.0',
+} as const;
+
+const DEFAULT_STATS = {
+  usageCount: 0,
+  rating: 5,
+  reviewCount: 0,
+} as const;
+
 export const DEFAULT_RULE_PACKS: RulePack[] = [
   {
     id: 'beach-essentials',
     name: 'Beach Essentials',
     description: 'Essential items for a beach vacation',
     primaryCategoryId: 'beach',
+    author: SYSTEM_AUTHOR,
+    metadata: {
+      ...DEFAULT_METADATA,
+      tags: ['beach', 'summer', 'vacation'],
+      category: 'vacation',
+    },
+    stats: DEFAULT_STATS,
+    icon: 'sun',
+    color: '#FFB74D',
     rules: [
       {
         id: 'beach-swimsuit',
@@ -92,6 +121,15 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
     name: 'Business Travel',
     description: 'Essential items for business trips',
     primaryCategoryId: 'business',
+    author: SYSTEM_AUTHOR,
+    metadata: {
+      ...DEFAULT_METADATA,
+      tags: ['business', 'work', 'professional'],
+      category: 'business',
+    },
+    stats: DEFAULT_STATS,
+    icon: 'briefcase',
+    color: '#78909C',
     rules: [
       {
         id: 'business-suit',

@@ -354,5 +354,12 @@ export const CREATE_DEMO_DATA: () => StoreType = () =>
         packingListItems: [],
       },
       rulePacks: DEFAULT_RULE_PACKS,
+      ui: {
+        rulePackModal: {
+          isOpen: false,
+          activeTab: 'browse',
+          selectedPackId: undefined,
+        },
+      },
     })
   );
