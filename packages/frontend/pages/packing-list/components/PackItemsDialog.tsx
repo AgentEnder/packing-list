@@ -95,9 +95,16 @@ export const PackItemsDialog: React.FC<PackItemsDialogProps> = ({
   };
 
   return (
-    <dialog className="modal" open={isOpen}>
+    <div
+      className={`modal ${isOpen ? 'modal-open' : ''}`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pack-dialog-title"
+    >
       <div className="modal-box">
-        <h3 className="font-bold text-lg mb-4">Pack {headerText}</h3>
+        <h3 id="pack-dialog-title" className="font-bold text-lg">
+          Pack {headerText}
+        </h3>
         <div className="space-y-4">
           {/* Base items */}
           {baseItems.length > 0 && (
@@ -124,6 +131,6 @@ export const PackItemsDialog: React.FC<PackItemsDialogProps> = ({
       <form method="dialog" className="modal-backdrop" onClick={onClose}>
         <button>close</button>
       </form>
-    </dialog>
+    </div>
   );
 };

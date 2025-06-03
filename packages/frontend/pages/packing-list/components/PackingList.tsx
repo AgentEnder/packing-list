@@ -7,6 +7,9 @@ import { HelpBlurb } from '../../../components/HelpBlurb';
 import {
   selectPackingListViewState,
   selectGroupedItems,
+  selectTrip,
+  selectPeople,
+  selectDefaultItemRules,
   GroupedItem,
 } from '@packing-list/state';
 import {
@@ -28,9 +31,9 @@ export const PackingList: React.FC = () => {
   const viewState = useAppSelector(selectPackingListViewState);
   const { groupedItems, groupedGeneralItems } =
     useAppSelector(selectGroupedItems);
-  const trip = useAppSelector((state) => state.trip);
-  const people = useAppSelector((state) => state.people);
-  const defaultItemRules = useAppSelector((state) => state.defaultItemRules);
+  const trip = useAppSelector(selectTrip);
+  const people = useAppSelector(selectPeople);
+  const defaultItemRules = useAppSelector(selectDefaultItemRules);
   const categories = getAllCategories();
 
   const [selectedItem, setSelectedItem] = useState<GroupedItem | null>(null);
@@ -108,6 +111,8 @@ export const PackingList: React.FC = () => {
             <button
               className="btn btn-xs sm:btn-sm btn-square shrink-0"
               onClick={() => handleOpenPackDialog(groupedItem)}
+              aria-label="Pack"
+              aria-description={`Pack ${groupedItem.displayName}`}
             >
               <PackagePlus className="w-3.5 h-3.5" />
             </button>
@@ -124,7 +129,10 @@ export const PackingList: React.FC = () => {
                   className="tooltip tooltip-right"
                   data-tip={groupedItem.baseItem.notes}
                 >
-                  <Info className="w-3.5 h-3.5 stroke-current opacity-60 shrink-0" />
+                  <Info
+                    className="w-3.5 h-3.5 stroke-current opacity-60 shrink-0"
+                    data-testid="info-icon"
+                  />
                 </div>
               )}
               {groupedItem.baseItem.isOverridden && (

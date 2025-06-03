@@ -28,6 +28,16 @@
         "dependsOn": [
           "build"
         ]
+      },
+      "dev": {
+        "continuous": true
+      },
+      "serve-static": {
+        "command": "http-server {projectRoot}/dist/client -p 3000",
+        "dependsOn": [
+          "build"
+        ],
+        "continuous": true
       }
     }
   }

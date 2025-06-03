@@ -35,9 +35,16 @@ export const RuleOverrideDialog: React.FC<RuleOverrideDialogProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="modal modal-open">
+    <div
+      className={`modal ${isOpen ? 'modal-open' : ''}`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="override-dialog-title"
+    >
       <div className="modal-box">
-        <h3 className="font-bold text-lg">Override {item.name} Quantity</h3>
+        <h3 id="override-dialog-title" className="font-bold text-lg">
+          Override {item.name} Quantity
+        </h3>
         <p className="py-4">
           {item.isOverridden
             ? `Current quantity is overridden to ${item.quantity}`

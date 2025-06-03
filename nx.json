@@ -29,7 +29,8 @@
       "exclude": [
         "packages/shared-components/*",
         "packages/model/*",
-        "packages/state/*"
+        "packages/state/*",
+        "e2e/frontend-e2e/*"
       ]
     },
     {
@@ -37,7 +38,8 @@
       "include": [
         "packages/shared-components/*",
         "packages/model/*",
-        "packages/state/*"
+        "packages/state/*",
+        "e2e/frontend-e2e/*"
       ],
       "options": {
         "typecheck": {
@@ -64,6 +66,12 @@
         "buildDepsTargetName": "build-deps",
         "watchDepsTargetName": "watch-deps"
       }
+    },
+    {
+      "plugin": "@nx/playwright/plugin",
+      "options": {
+        "targetName": "e2e"
+      }
     }
   ],
   "targetDefaults": {
@@ -78,7 +86,9 @@
       "inputs": [
         "production",
         "^production",
-        { "env": "PUBLIC_ENV__BASE_URL" }
+        {
+          "env": "PUBLIC_ENV__BASE_URL"
+        }
       ],
       "cache": true
     }
