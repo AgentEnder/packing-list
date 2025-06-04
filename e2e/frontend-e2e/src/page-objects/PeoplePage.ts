@@ -18,7 +18,7 @@ export class PeoplePage {
         timeout: 10000,
       });
     } catch (error) {
-      console.log('Error navigating to People page:', error);
+      console.error('Error navigating to People page:', error);
       // Fallback to direct navigation
       await this.page.goto('/people');
       await this.page.waitForLoadState('networkidle');
@@ -30,7 +30,6 @@ export class PeoplePage {
     age: number,
     gender: 'male' | 'female' | 'other' = 'male'
   ) {
-    console.log(`Adding person: ${name}, age: ${age}, gender: ${gender}`);
     await this.page.getByTestId('add-person-button').click();
     await this.page.getByTestId('person-name-input').fill(name);
     await this.page.getByTestId('person-age-input').fill(age.toString());
@@ -39,7 +38,6 @@ export class PeoplePage {
 
     // Verify the person was added
     const peopleCount = await this.getPeopleCount();
-    console.log(`People count after adding ${name}: ${peopleCount}`);
   }
 
   async getPeopleCount() {
@@ -47,7 +45,6 @@ export class PeoplePage {
     const count = await this.page
       .locator('[data-testid^="person-card-"]')
       .count();
-    console.log(`Current people count: ${count}`);
     return count;
   }
 

@@ -18,7 +18,7 @@ export class TripPage {
         }
       );
     } catch (error) {
-      console.log('Error navigating to Trip page:', error);
+      console.warn('Error navigating to Trip page:', error);
       // Fallback to direct navigation
       await this.page.goto('/days');
       await this.page.waitForLoadState('networkidle');
@@ -34,10 +34,6 @@ export class TripPage {
       leaveDate: string;
     }>;
   }) {
-    console.log(
-      `Configuring trip: ${options.leaveDate} to ${options.returnDate}`
-    );
-
     // Open trip configuration wizard
     await this.page.getByRole('button', { name: 'Configure Trip' }).click();
 

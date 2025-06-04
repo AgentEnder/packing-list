@@ -1,5 +1,5 @@
-import { Page, expect } from '@playwright/test';
-import { PackItemsModal } from './PackItemsModal.js';
+import { Page } from '@playwright/test';
+import { PackItemsModal } from './PackItemsModal';
 
 export type ViewMode = 'by-day' | 'by-person';
 export type FilterType = 'packed' | 'unpacked';
