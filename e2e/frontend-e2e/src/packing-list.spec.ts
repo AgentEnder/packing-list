@@ -337,7 +337,7 @@ test.describe('Packing List View', () => {
             // Simple verification - just check that we can interact with the modal
             expect(availableItems.length).toBeGreaterThan(0);
           }
-        } catch (error) {
+        } catch {
           // If interaction fails, just verify modal was opened successfully
           console.log(
             'Modal interaction failed, but modal was opened successfully'

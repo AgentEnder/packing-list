@@ -18,6 +18,10 @@ test.describe('Packing Rules', () => {
     await packingRulesPage.goto();
   });
 
+  test.afterEach(async () => {
+    await packingRulesPage.rulePackModal.close();
+  });
+
   test.describe('Calculation Display Visual Regression', () => {
     test('simple calculation display test', async ({ page }) => {
       // Set a larger viewport to ensure md:block styles are active
@@ -46,18 +50,16 @@ test.describe('Packing Rules', () => {
       await packingRulesPage.goto();
 
       // Create a single simple rule to test basic visual regression
-      await packingRulesPage.createRuleWithoutWait({
+      await packingRulesPage.createRule({
         name: 'Simple Test',
         baseQuantity: 6,
         isPerPerson: true,
         isPerDay: true,
-        extraItems: [
-          {
-            quantity: 4,
-            perPerson: true,
-            perDay: false,
-          },
-        ],
+        extraItems: {
+          quantity: 4,
+          perPerson: true,
+          perDay: false,
+        },
       });
 
       // Wait for rule to appear and take screenshot
@@ -73,16 +75,11 @@ test.describe('Packing Rules', () => {
       // Debug: Check if calculation display exists at all
       const calculationDisplay = rule.locator('.text-base-content\\/50');
       const calculationExists = await calculationDisplay.count();
-      console.log('Calculation display count:', calculationExists);
-
-      // Check the total value
-      const totalText = await rule.locator(':text("Total:")').textContent();
-      console.log('Total text:', totalText);
 
       if (calculationExists === 0) {
         // Check if there are any people and days without navigating away
         // (navigating would reset the counts since state isn't persisted yet)
-        console.log(
+        console.error(
           'Calculation display not found, checking state without navigation...'
         );
 
@@ -131,24 +128,17 @@ test.describe('Packing Rules', () => {
       // Go back to rules page
       await packingRulesPage.goto();
 
-      // Wait for page to load
-      await page.waitForSelector('[data-testid="create-rule-form"]', {
-        timeout: 10000,
-      });
-
       // Test Case 1: "6 per person per day + 4 extra per person"
-      await packingRulesPage.createRuleWithoutWait({
+      await packingRulesPage.createRule({
         name: 'Test Case 1',
         baseQuantity: 6,
         isPerPerson: true,
         isPerDay: true,
-        extraItems: [
-          {
-            quantity: 4,
-            perPerson: true,
-            perDay: false,
-          },
-        ],
+        extraItems: {
+          quantity: 4,
+          perPerson: true,
+          perDay: false,
+        },
       });
 
       // Wait for rule to appear and take screenshot
@@ -163,19 +153,17 @@ test.describe('Packing Rules', () => {
       );
 
       // Test Case 2: "1 per person every 2 days (rounded up) + 1 extra per person"
-      await packingRulesPage.createRuleWithoutWait({
+      await packingRulesPage.createRule({
         name: 'Test Case 2',
         baseQuantity: 1,
         isPerPerson: true,
         isPerDay: true,
         everyNDays: 2,
-        extraItems: [
-          {
-            quantity: 1,
-            perPerson: true,
-            perDay: false,
-          },
-        ],
+        extraItems: {
+          quantity: 1,
+          perPerson: true,
+          perDay: false,
+        },
       });
 
       await page.waitForSelector(':text("Test Case 2")', { timeout: 10000 });
@@ -189,18 +177,16 @@ test.describe('Packing Rules', () => {
       );
 
       // Test Case 3: "2 per person + 3 extra per day"
-      await packingRulesPage.createRuleWithoutWait({
+      await packingRulesPage.createRule({
         name: 'Test Case 3',
         baseQuantity: 2,
         isPerPerson: true,
         isPerDay: false,
-        extraItems: [
-          {
-            quantity: 3,
-            perPerson: false,
-            perDay: true,
-          },
-        ],
+        extraItems: {
+          quantity: 3,
+          perPerson: false,
+          perDay: true,
+        },
       });
 
       await page.waitForSelector(':text("Test Case 3")', { timeout: 10000 });
@@ -214,18 +200,16 @@ test.describe('Packing Rules', () => {
       );
 
       // Test Case 4: "1 per day + 1 extra"
-      await packingRulesPage.createRuleWithoutWait({
+      await packingRulesPage.createRule({
         name: 'Test Case 4',
         baseQuantity: 1,
         isPerPerson: false,
         isPerDay: true,
-        extraItems: [
-          {
-            quantity: 1,
-            perPerson: false,
-            perDay: false,
-          },
-        ],
+        extraItems: {
+          quantity: 1,
+          perPerson: false,
+          perDay: false,
+        },
       });
 
       await page.waitForSelector(':text("Test Case 4")', { timeout: 10000 });
@@ -239,20 +223,18 @@ test.describe('Packing Rules', () => {
       );
 
       // Test Case 5: Complex pattern - "1 per person every 3 days + 2 extra every 2 days"
-      await packingRulesPage.createRuleWithoutWait({
+      await packingRulesPage.createRule({
         name: 'Test Case 5',
         baseQuantity: 1,
         isPerPerson: true,
         isPerDay: true,
         everyNDays: 3,
-        extraItems: [
-          {
-            quantity: 2,
-            perPerson: false,
-            perDay: true,
-            everyNDays: 2,
-          },
-        ],
+        extraItems: {
+          quantity: 2,
+          perPerson: false,
+          perDay: true,
+          everyNDays: 2,
+        },
       });
 
       await page.waitForSelector(':text("Test Case 5")', { timeout: 10000 });
@@ -304,23 +286,18 @@ test.describe('Packing Rules', () => {
 
       // Go back to rules page
       await packingRulesPage.goto();
-      await page.waitForSelector('[data-testid="create-rule-form"]', {
-        timeout: 10000,
-      });
 
       // Test the specific failing scenario with 1 person
-      await packingRulesPage.createRuleWithoutWait({
+      await packingRulesPage.createRule({
         name: 'Single Person Test',
         baseQuantity: 6,
         isPerPerson: true,
         isPerDay: true,
-        extraItems: [
-          {
-            quantity: 4,
-            perPerson: true,
-            perDay: false,
-          },
-        ],
+        extraItems: {
+          quantity: 4,
+          perPerson: true,
+          perDay: false,
+        },
       });
 
       await page.waitForSelector(':text("Single Person Test")', {
@@ -365,106 +342,18 @@ test.describe('Packing Rules', () => {
       });
 
       // Fill the form step by step and check each field
-      await packingRulesPage.createRuleForm.fillBasicInfo(
-        'Test Underwear Simple',
-        'Simple test rule'
-      );
-
-      // Check name field
-      const nameInput = page.getByTestId('rule-name-input');
-      const nameValue = await nameInput.inputValue();
-      console.log('Name after fill:', nameValue);
-
-      // Set category
-      await packingRulesPage.createRuleForm.setCategory('clothing');
-      const categorySelect = page.getByTestId('create-rule-category-select');
-      const categoryValue = await categorySelect.inputValue();
-      console.log('Category after set:', categoryValue);
-
-      // Set base quantity
-      await packingRulesPage.createRuleForm.setBaseQuantity(1);
-      const quantityInput = page.getByTestId('create-rule-base-quantity-input');
-      const quantityValue = await quantityInput.inputValue();
-      console.log('Quantity after set:', quantityValue);
-
-      // Set per day checkbox
-      await packingRulesPage.createRuleForm.setPerDay(true);
-      const perDayCheckbox = page.getByTestId(
-        'create-rule-base-per-day-checkbox'
-      );
-      const perDayChecked = await perDayCheckbox.isChecked();
-      console.log('Per day after set:', perDayChecked);
-
-      // Set per person checkbox
-      await packingRulesPage.createRuleForm.setPerPerson(false);
-      const perPersonCheckbox = page.getByTestId(
-        'create-rule-base-per-person-checkbox'
-      );
-      const perPersonChecked = await perPersonCheckbox.isChecked();
-      console.log('Per person after set:', perPersonChecked);
-
-      // Ensure extra quantity field has a valid value
-      const extraQuantityInput = page.getByTestId(
-        'create-rule-extra-quantity-input'
-      );
-      await extraQuantityInput.fill('1');
-      const extraQuantityValue = await extraQuantityInput.inputValue();
-      console.log('Extra quantity after set:', extraQuantityValue);
-
-      // Check if save button is enabled before clicking
-      const saveButton = page.getByTestId('create-rule-save-button');
-      const isDisabledBefore = await saveButton.isDisabled();
-      console.log('Save button disabled before click:', isDisabledBefore);
-
-      // Get the form element and check its validity
-      const form = page.locator('form[aria-label="Create Rule Form"]');
-      const isFormValid = await form.evaluate((form: HTMLFormElement) => {
-        return form.checkValidity ? form.checkValidity() : 'unknown';
+      await packingRulesPage.createRule({
+        name: 'Test Underwear Simple',
+        description: 'Simple test rule',
+        baseQuantity: 1,
+        isPerDay: true,
+        isPerPerson: false,
+        categoryId: 'clothing',
       });
-      console.log('Form validity before submission:', isFormValid);
 
-      // Check which fields are invalid
-      const invalidFields = await form.evaluate((form: HTMLFormElement) => {
-        if (!form.checkValidity) return 'checkValidity not supported';
-
-        const invalidElements: {
-          name: string | null;
-          validationMessage: string;
-          value: string;
-          type: string;
-        }[] = [];
-        const inputs = form.querySelectorAll('input, select, textarea');
-        for (const input of inputs) {
-          if (!(input as HTMLInputElement).checkValidity()) {
-            const i = input as HTMLInputElement;
-            invalidElements.push({
-              name: i.name || i.id || i.getAttribute('data-testid'),
-              validationMessage: i.validationMessage,
-              value: i.value,
-              type: i.type,
-            });
-          }
-        }
-        return invalidElements;
-      });
-      console.log('Invalid fields:', JSON.stringify(invalidFields, null, 2));
-
-      // Try the save
-      await packingRulesPage.createRuleForm.save();
-
-      // Check form state after save attempt
-      const nameValueAfter = await nameInput.inputValue();
-      const isDisabledAfter = await saveButton.isDisabled();
-      console.log('Name after save attempt:', nameValueAfter);
-      console.log('Save button disabled after click:', isDisabledAfter);
-
-      // Log any console errors
-      if (consoleErrors.length > 0) {
-        console.log('Console errors:', consoleErrors);
-      }
-
-      // If the form was reset, the name should be empty
-      expect(nameValueAfter).toBe('');
+      await expect(
+        packingRulesPage.isRuleVisible('Test Underwear Simple')
+      ).resolves.toBe(true);
     });
 
     test('can create a rule with every N days pattern', async () => {
@@ -487,10 +376,7 @@ test.describe('Packing Rules', () => {
         description: 'Basic toiletries kit',
         baseQuantity: 1,
         isPerPerson: true,
-        extraItems: [
-          { quantity: 1, perPerson: true },
-          { quantity: 1, perDay: true, everyNDays: 3 },
-        ],
+        extraItems: { quantity: 1 },
       });
 
       await expect(
@@ -653,81 +539,27 @@ test.describe('Packing Rules', () => {
   });
 
   test.describe('Rule Conditions', () => {
-    test('can add person-based conditions to a rule', async ({ page }) => {
-      // Add debugging to see what happens
-      const consoleErrors: string[] = [];
-      page.on('console', (msg) => {
-        if (msg.type() === 'error') {
-          consoleErrors.push(msg.text());
-        }
+    test('can add person-based conditions to a rule', async () => {
+      await packingRulesPage.createRule({
+        name: 'Test Baby Items',
+        description: 'Items needed for babies',
+        baseQuantity: 1,
+        isPerPerson: true,
+        categoryId: 'clothing',
+        conditions: [
+          {
+            type: 'person',
+            field: 'age',
+            operator: '<',
+            value: '3',
+          },
+        ],
+        extraItems: {
+          quantity: 1,
+          perPerson: true,
+          perDay: false,
+        },
       });
-
-      // Fill basic form info first
-      await packingRulesPage.createRuleForm.fillBasicInfo(
-        'Test Baby Items',
-        'Items needed for babies'
-      );
-      await packingRulesPage.createRuleForm.setCategory('clothing');
-      await packingRulesPage.createRuleForm.setBaseQuantity(1);
-
-      // Debug: Check if add condition button exists
-      const addConditionButton = page.getByTestId(
-        'create-rule-add-condition-button'
-      );
-      const buttonExists = await addConditionButton.isVisible();
-      console.log('Add condition button visible:', buttonExists);
-
-      if (buttonExists) {
-        // Click add condition button
-        await addConditionButton.click();
-        // await page.waitForTimeout(500);
-
-        // Check if condition form appeared
-        const conditionTypeSelect = page.getByTestId(
-          'create-rule-condition-type-select'
-        );
-        const formVisible = await conditionTypeSelect.isVisible();
-        console.log('Condition form visible after click:', formVisible);
-
-        if (formVisible) {
-          // Fill condition form manually
-          await conditionTypeSelect.selectOption('person');
-          await page
-            .getByTestId('create-rule-condition-field-select')
-            .selectOption('age');
-          await page
-            .getByTestId('create-rule-condition-operator-select')
-            .selectOption('<');
-          await page.getByTestId('create-rule-condition-value-input').fill('3');
-
-          // Save condition
-          const saveConditionButton = page.getByTestId(
-            'create-rule-save-condition-button'
-          );
-          await saveConditionButton.click();
-          //   await page.waitForTimeout(500);
-
-          // Check if condition was added
-          const conditionCount = await page
-            .locator('[data-testid^="create-rule-condition-"]')
-            .count();
-          console.log('Condition count after save:', conditionCount);
-        }
-      }
-
-      // Set extra quantity field to avoid validation issues
-      const extraQuantityInput = page.getByTestId(
-        'create-rule-extra-quantity-input'
-      );
-      await extraQuantityInput.fill('1');
-
-      // Save the rule
-      await packingRulesPage.createRuleForm.save();
-
-      // Log any errors
-      if (consoleErrors.length > 0) {
-        console.log('Console errors:', consoleErrors);
-      }
 
       // Wait for rule to appear
       await expect(
@@ -738,9 +570,13 @@ test.describe('Packing Rules', () => {
       const finalConditionCount = await packingRulesPage.getRuleConditionCount(
         'Test Baby Items'
       );
-      console.log('Final condition count:', finalConditionCount);
-
       await expect(finalConditionCount).toBe(1);
+
+      // validate extra items are present
+      const extraItems = await packingRulesPage.getRuleCalculationDescription(
+        'Test Baby Items'
+      );
+      await expect(extraItems).toContain('1 extra per person');
     });
 
     test('can add trip-based conditions to a rule', async () => {
@@ -781,20 +617,22 @@ test.describe('Packing Rules', () => {
         ],
       });
 
-      await packingRulesPage.editRuleConditions('Test Swimming Gear', [
-        {
-          type: 'day',
-          field: 'location',
-          operator: '==',
-          value: 'pool',
-        },
-        {
-          type: 'day',
-          field: 'expectedClimate',
-          operator: '==',
-          value: 'summer',
-        },
-      ]);
+      await packingRulesPage.editRule('Test Swimming Gear', {
+        conditions: [
+          {
+            type: 'day',
+            field: 'location',
+            operator: '==',
+            value: 'pool',
+          },
+          {
+            type: 'day',
+            field: 'expectedClimate',
+            operator: '==',
+            value: 'summer',
+          },
+        ],
+      });
 
       await expect(
         packingRulesPage.getRuleConditionCount('Test Swimming Gear')
