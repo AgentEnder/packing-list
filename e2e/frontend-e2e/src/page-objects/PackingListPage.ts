@@ -228,7 +228,7 @@ export class PackingListPage {
   }
 
   async isSetupComplete(): Promise<boolean> {
-    const setupChecks = this.page.getByTestId('setup-check');
+    const setupChecks = this.page.getByTestId('check');
     const count = await setupChecks.count();
     return count >= 3; // Days, people, and rules
   }

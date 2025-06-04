@@ -342,7 +342,7 @@ export const PackingList: React.FC = () => {
                 {hasTrip && (
                   <Check
                     className="w-4 h-4 inline-block ml-2"
-                    data-testid="setup-check"
+                    data-testid="check"
                   />
                 )}
               </li>
@@ -358,7 +358,7 @@ export const PackingList: React.FC = () => {
                 {hasPeople && (
                   <Check
                     className="w-4 h-4 inline-block ml-2"
-                    data-testid="setup-check"
+                    data-testid="check"
                   />
                 )}
               </li>
@@ -374,7 +374,7 @@ export const PackingList: React.FC = () => {
                 {hasRules && (
                   <Check
                     className="w-4 h-4 inline-block ml-2"
-                    data-testid="setup-check"
+                    data-testid="check"
                   />
                 )}
               </li>

@@ -90,7 +90,7 @@ export class PackingRulesPage {
           // Modal may still be visible, but continuing...
         }
       }
-    } catch (error) {
+    } catch {
       // Modal might not exist or already be closed, continue
     }
   }

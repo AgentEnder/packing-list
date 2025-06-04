@@ -18,8 +18,10 @@ export const RuleOverrideDialog: React.FC<RuleOverrideDialogProps> = ({
   const handleOverride = (quantity: number) => {
     dispatch({
       type: 'OVERRIDE_ITEM_QUANTITY',
-      itemId: item.id,
-      quantity,
+      payload: {
+        itemId: item.id,
+        quantity,
+      },
     });
     onClose();
   };

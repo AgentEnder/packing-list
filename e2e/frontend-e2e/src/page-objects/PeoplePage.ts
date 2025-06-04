@@ -35,9 +35,6 @@ export class PeoplePage {
     await this.page.getByTestId('person-age-input').fill(age.toString());
     await this.page.getByTestId('person-gender-select').selectOption(gender);
     await this.page.getByTestId('save-person-button').click();
-
-    // Verify the person was added
-    const peopleCount = await this.getPeopleCount();
   }
 
   async getPeopleCount() {

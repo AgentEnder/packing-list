@@ -15,6 +15,7 @@ export const BUILT_IN_CATEGORIES: Category[] = [
   { id: 'accessories', name: 'Accessories', icon: 'watch' },
   { id: 'gear', name: 'Gear', icon: 'backpack' },
   { id: 'medical', name: 'Medical', icon: 'first-aid' },
+  { id: 'essentials', name: 'Essentials', icon: 'star' },
   { id: 'misc', name: 'Miscellaneous', icon: 'more-horizontal' },
 ];
 
@@ -29,9 +30,18 @@ export const CLOTHING_SUBCATEGORIES: Category[] = [
   { id: 'formal', name: 'Formal Wear', parentId: 'clothing' },
 ];
 
+// Essentials subcategories
+export const ESSENTIALS_SUBCATEGORIES: Category[] = [
+  { id: 'sun-protection', name: 'Sun Protection', parentId: 'essentials' },
+];
+
 // Helper function to get all available categories
 export function getAllCategories(): Category[] {
-  return [...BUILT_IN_CATEGORIES, ...CLOTHING_SUBCATEGORIES];
+  return [
+    ...BUILT_IN_CATEGORIES,
+    ...CLOTHING_SUBCATEGORIES,
+    ...ESSENTIALS_SUBCATEGORIES,
+  ];
 }
 
 // Helper function to get subcategories for a given category

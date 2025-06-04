@@ -17,6 +17,9 @@
     },
     {
       "path": "./e2e/frontend-e2e"
+    },
+    {
+      "path": "./packages/auth"
     }
   ]
 }

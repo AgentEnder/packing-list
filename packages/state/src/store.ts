@@ -34,6 +34,9 @@ export type StoreType = {
       activeTab: 'browse' | 'manage' | 'details';
       selectedPackId?: string;
     };
+    loginModal: {
+      isOpen: boolean;
+    };
   };
 };
 
@@ -63,6 +66,9 @@ export const initialState: StoreType = {
       isOpen: false,
       activeTab: 'browse',
       selectedPackId: undefined,
+    },
+    loginModal: {
+      isOpen: false,
     },
   },
 };

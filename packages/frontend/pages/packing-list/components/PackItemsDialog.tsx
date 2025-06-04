@@ -1,5 +1,9 @@
 import React from 'react';
-import { useAppDispatch, useAppSelector } from '@packing-list/state';
+import {
+  selectPackingListViewMode,
+  useAppDispatch,
+  useAppSelector,
+} from '@packing-list/state';
 import { PackingListItem } from '@packing-list/model';
 import { GroupMetadata } from '@packing-list/state';
 import {
@@ -28,7 +32,7 @@ export const PackItemsDialog: React.FC<PackItemsDialogProps> = ({
   groupedItem,
 }) => {
   const dispatch = useAppDispatch();
-  const viewMode = useAppSelector((state) => state.packingListView.viewMode);
+  const viewMode = useAppSelector(selectPackingListViewMode);
   const categories = getAllCategories();
 
   if (!isOpen) return null;
@@ -65,7 +69,10 @@ export const PackItemsDialog: React.FC<PackItemsDialogProps> = ({
     const itemLabel = getItemLabel(item, viewMode);
     const quantityLabel = getQuantityLabel(item.quantity);
     const category = categories.find((cat) => cat.id === item.categoryId);
-    const subcategory = categories.find((cat) => cat.id === item.subcategoryId);
+    // Check both item.subcategoryId and baseItem.subcategoryId for backwards compatibility
+    const subcategoryId =
+      item.subcategoryId || groupedItem.baseItem.subcategoryId;
+    const subcategory = categories.find((cat) => cat.id === subcategoryId);
 
     return (
       <label

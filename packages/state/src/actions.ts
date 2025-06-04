@@ -83,6 +83,12 @@ import {
   setRulePackModalTabHandler,
   SetRulePackModalTabAction,
 } from './action-handlers/rule-pack-modal.js';
+import {
+  openLoginModalHandler,
+  OpenLoginModalAction,
+  closeLoginModalHandler,
+  CloseLoginModalAction,
+} from './action-handlers/login-modal.js';
 
 export type ActionHandler<T extends AllActions> = (
   state: StoreType,
@@ -113,7 +119,9 @@ export type AllActions =
   | DeleteRulePackAction
   | OpenRulePackModalAction
   | CloseRulePackModalAction
-  | SetRulePackModalTabAction;
+  | SetRulePackModalTabAction
+  | OpenLoginModalAction
+  | CloseLoginModalAction;
 
 export const Mutations: {
   [K in StoreActions]: ActionHandler<Extract<AllActions, { type: K }>>;
@@ -140,4 +148,6 @@ export const Mutations: {
   OPEN_RULE_PACK_MODAL: openRulePackModalHandler,
   CLOSE_RULE_PACK_MODAL: closeRulePackModalHandler,
   SET_RULE_PACK_MODAL_TAB: setRulePackModalTabHandler,
+  OPEN_LOGIN_MODAL: openLoginModalHandler,
+  CLOSE_LOGIN_MODAL: closeLoginModalHandler,
 };

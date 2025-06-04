@@ -13,6 +13,7 @@ vi.mock('@packing-list/state', () => ({
   useAppDispatch: vi.fn(),
   selectPackingListViewState: vi.fn(),
   selectGroupedItems: vi.fn(),
+  selectPackingListViewMode: (state: any) => state.packingListView.viewMode,
 
   selectTrip: (state: any) => state.trip,
 
@@ -93,9 +94,12 @@ describe('PackingList', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
 
     (state.useAppSelector as any).mockImplementation((selector: unknown) => {
       if (selector === state.selectPackingListViewState) return mockViewState;
+      if (selector === state.selectPackingListViewMode)
+        return mockViewState.viewMode;
       if (selector === state.selectGroupedItems) return mockGroupedItems;
       if (selector === state.selectTrip) return mockState.trip;
       if (selector === state.selectPeople) return mockState.people;
@@ -322,14 +326,12 @@ describe('PackingList', () => {
     );
 
     fireEvent.click(screen.getByText('Sunscreen'));
-    const dialog = screen.getByRole('dialog', {
-      name: /override sunscreen quantity/i,
-    });
+    const dialog = screen.getByRole('dialog');
     expect(dialog).toBeInTheDocument();
 
-    const quantityInput = within(dialog).getByRole('spinbutton');
-    fireEvent.change(quantityInput, { target: { value: '2' } });
-    fireEvent.click(within(dialog).getByRole('button', { name: /save/i }));
+    const addButton = within(dialog).getByRole('button', { name: /add one/i });
+    fireEvent.click(addButton);
+    fireEvent.click(within(dialog).getByRole('button', { name: /cancel/i }));
 
     expect(mockDispatch).toHaveBeenCalledWith({
       type: 'OVERRIDE_ITEM_QUANTITY',
@@ -421,7 +423,7 @@ describe('PackingList', () => {
       </Provider>
     );
 
-    expect(screen.getByText('Other Items')).toBeInTheDocument();
+    expect(screen.getByText('Essentials')).toBeInTheDocument();
     expect(screen.getByText('Sunscreen')).toBeInTheDocument();
     expect(screen.getByText('First Aid Kit')).toBeInTheDocument();
   });
@@ -547,7 +549,7 @@ describe('PackingList', () => {
 
     const tripCheckmark = screen.getAllByTestId('check')[0];
     expect(tripCheckmark).toBeInTheDocument();
-    expect(screen.queryByTestId('check')).toHaveLength(1);
+    expect(screen.getAllByTestId('check')).toHaveLength(1);
   });
 
   it('shows category and subcategory in pack dialog', () => {
@@ -613,6 +615,8 @@ describe('PackingList', () => {
 
     (state.useAppSelector as any).mockImplementation((selector: any) => {
       if (selector === state.selectPackingListViewState) return mockViewState;
+      if (selector === state.selectPackingListViewMode)
+        return mockViewState.viewMode;
       if (selector === state.selectGroupedItems) return itemsWithDayRange;
       if (selector === state.selectTrip) return mockState.trip;
       if (selector === state.selectPeople) return mockState.people;
@@ -630,6 +634,11 @@ describe('PackingList', () => {
     const packButton = screen.getAllByRole('button', { name: 'Pack' })[0];
     fireEvent.click(packButton);
 
-    expect(screen.getByText('Sunscreen (Days 1-3)')).toBeInTheDocument();
+    const allH3Tags = screen.getAllByRole('heading', { level: 3 });
+    console.log(allH3Tags.map((h3) => h3.textContent));
+
+    expect(allH3Tags[allH3Tags.length - 1]).toHaveTextContent(
+      'Sunscreen (Days 1-3)'
+    );
   });
 });
