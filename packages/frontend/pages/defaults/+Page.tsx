@@ -1,5 +1,7 @@
 import { StoreType, useAppSelector } from '@packing-list/state';
-import { CreateRuleForm } from './components/CreateRuleForm';
+import { useState } from 'react';
+import { Plus } from 'lucide-react';
+import { RuleFormModal } from './components/RuleFormModal';
 import { RuleList } from './components/RuleList';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
@@ -12,6 +14,8 @@ export default function DefaultsPage() {
   );
   const people = useAppSelector((state: StoreType) => state.people);
   const days = useAppSelector((state: StoreType) => state.trip.days);
+
+  const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
 
   return (
     <PageContainer>
@@ -67,8 +71,27 @@ export default function DefaultsPage() {
       </HelpBlurb>
 
       <RulePackSelector className="mb-8" />
-      <CreateRuleForm />
+
+      {/* Add Rule Button */}
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">Your Rules</h2>
+        <button
+          className="btn btn-primary gap-2"
+          onClick={() => setIsRuleModalOpen(true)}
+          data-testid="add-rule-button"
+        >
+          <Plus className="w-4 h-4" />
+          Add Rule
+        </button>
+      </div>
+
       <RuleList rules={defaultRules} people={people} days={days} />
+
+      {/* Rule Form Modal */}
+      <RuleFormModal
+        isOpen={isRuleModalOpen}
+        onClose={() => setIsRuleModalOpen(false)}
+      />
     </PageContainer>
   );
 }
