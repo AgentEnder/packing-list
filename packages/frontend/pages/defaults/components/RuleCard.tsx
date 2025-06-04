@@ -10,17 +10,17 @@ import {
   calculateNumPeopleMeetingCondition,
   calculateNumDaysMeetingCondition,
 } from '@packing-list/shared-utils';
-import { ReactNode } from 'react';
 import { Info, LucideIcon } from 'lucide-react';
 import * as Icons from 'lucide-react';
+import { useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@packing-list/state';
+import { CalculationDisplay } from './CalculationDisplay';
+import { RuleEditForm } from './RuleEditForm';
 
 type RuleCardProps = {
   rule: DefaultItemRule;
   people: Person[];
   days: Day[];
-  onEdit: () => void;
-  onDelete: () => void;
 };
 
 const formatDayPattern = (pattern: { every: number; roundUp: boolean }) => {
@@ -28,13 +28,11 @@ const formatDayPattern = (pattern: { every: number; roundUp: boolean }) => {
   return `every ${pattern.every} days${pattern.roundUp ? ' (rounded up)' : ''}`;
 };
 
-export const RuleCard = ({
-  rule,
-  people,
-  days,
-  onEdit,
-  onDelete,
-}: RuleCardProps) => {
+export const RuleCard = ({ rule, people, days }: RuleCardProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const dispatch = useAppDispatch();
+
   const total = calculateRuleTotal(rule, people, days);
   const { baseQuantity, perDay, perPerson, daysPattern, extraItems } =
     rule.calculation;
@@ -63,13 +61,36 @@ export const RuleCard = ({
 
   // Get rule packs
   const rulePacks = useAppSelector((state) => state.rulePacks);
-  const dispatch = useAppDispatch();
 
   const handlePackClick = (packId: string) => {
     dispatch({
       type: 'OPEN_RULE_PACK_MODAL',
       payload: { tab: 'details', packId },
     });
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+  };
+
+  const handleDelete = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    dispatch({
+      type: 'DELETE_ITEM_RULE',
+      payload: { id: rule.id },
+    });
+    setShowDeleteConfirm(false);
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
   };
 
   const packBadges = rule.packIds
@@ -105,282 +126,194 @@ export const RuleCard = ({
       )
     : 0;
 
-  // Format the multiplier text
-  const getMultiplierParts = () => {
-    const parts = [];
-    if (perPerson && peopleCount > 0) {
-      if (peopleCount > 1) {
-        parts.push({ value: peopleCount, unit: 'people' });
-      }
-    }
-    if (perDay && daysCount > 0) {
-      if (daysPattern && daysPattern.every > 1) {
-        const dayGroups = daysPattern.roundUp
-          ? Math.ceil(daysCount / daysPattern.every)
-          : Math.floor(daysCount / daysPattern.every);
-        if (dayGroups > 1) {
-          parts.push({
-            value: dayGroups,
-            unit: `${daysPattern.every}-day periods`,
-          });
-        } else if (dayGroups === 1) {
-          parts.push({ value: 1, unit: `${daysPattern.every}-day period` });
-        }
-      } else if (daysCount > 1) {
-        parts.push({ value: daysCount, unit: 'days' });
-      }
-    }
-    return parts;
-  };
+  const showMath = (() => {
+    // Check if base calculation will have visible parts
+    const baseHasParts =
+      (perPerson && peopleCount > 1) || (perDay && daysCount > 1);
 
-  const getExtraMultiplierParts = () => {
-    if (!extraItems?.quantity) return [];
-    const parts = [];
-    if (extraItems.perPerson && peopleCount > 0) {
-      if (peopleCount > 1) {
-        parts.push({ value: peopleCount, unit: 'people' });
-      }
-    }
-    if (extraItems.perDay && daysCount > 0) {
-      if (extraItems.daysPattern && extraItems.daysPattern.every > 1) {
-        const dayGroups = extraItems.daysPattern.roundUp
-          ? Math.ceil(daysCount / extraItems.daysPattern.every)
-          : Math.floor(daysCount / extraItems.daysPattern.every);
-        if (dayGroups > 1) {
-          parts.push({
-            value: dayGroups,
-            unit: `${extraItems.daysPattern.every}-day periods`,
-          });
-        } else if (dayGroups === 1) {
-          parts.push({
-            value: 1,
-            unit: `${extraItems.daysPattern.every}-day period`,
-          });
-        }
-      } else if (daysCount > 1) {
-        parts.push({ value: daysCount, unit: 'days' });
-      }
-    }
-    return parts;
-  };
+    // Check if extra calculation will have visible parts
+    const extraHasParts =
+      extraItems &&
+      ((extraItems.perPerson && peopleCount > 1) ||
+        (extraItems.perDay && daysCount > 1));
 
-  const baseParts = getMultiplierParts();
-  const extraParts = getExtraMultiplierParts();
-  const showMath =
-    (baseParts.length > 0 || extraParts.length > 0) &&
-    peopleCount > 0 &&
-    daysCount > 0;
+    return (baseHasParts || extraHasParts) && peopleCount > 0 && daysCount > 0;
+  })();
 
-  // Get units needed for each row and ensure common units are in the same order
-  const getUnitsForRow = (parts: Array<{ value: number; unit: string }>) => {
-    return [...new Set(parts.map((p) => p.unit))];
-  };
-
-  const baseUnits = getUnitsForRow(baseParts);
-  const extraUnits = getUnitsForRow(extraParts);
-
-  // Combine units ensuring common ones appear in the same order
-  const allUnits = [...new Set([...baseUnits, ...extraUnits])];
-
-  // Check if we need to reserve space for leading numbers
-  const needsLeadingNumberSpace =
-    baseQuantity !== 1 || (extraItems?.quantity && extraItems.quantity !== 1);
-
-  const renderMultiplierRow = (
-    quantity: number,
-    parts: Array<{ value: number; unit: string }>,
-    prefix = ''
-  ) => {
-    // If it's an extra item with no multipliers, just return the simple format
-    if (prefix && parts.length === 0) {
-      return (
-        <div className="flex items-center justify-end gap-x-1">
-          <span>{prefix}</span>
-          <span>{quantity}</span>
-        </div>
-      );
-    }
-
-    const cells: ReactNode[] = [];
-
-    // Only add quantity cell if we need the space
-    if (needsLeadingNumberSpace) {
-      cells.push(
-        <div
-          key="quantity"
-          className={`text-right ${quantity === 1 ? 'opacity-0' : ''}`}
-        >
-          {quantity}
-        </div>,
-        // Always add the multiplication symbol after the quantity, but hide it if quantity is 1
-        <span
-          key="mult-quantity"
-          className={`text-center ${quantity === 1 ? 'opacity-0' : ''}`}
-        >
-          ×
-        </span>
-      );
-    }
-
-    // Add cells for each unit position, maintaining alignment with other rows
-    allUnits.forEach((unit, index) => {
-      const part = parts.find((p) => p.unit === unit);
-      const showMultiplier = index > 0; // Only show multipliers between units
-
-      if (part) {
-        if (showMultiplier) {
-          cells.push(
-            <span key={`mult-${index}`} className="text-center">
-              ×
-            </span>
-          );
-        }
-        cells.push(
-          <div
-            key={`unit-${index}`}
-            className="grid grid-cols-[auto_auto] items-center gap-x-1"
-          >
-            <span className="text-right">{part.value}</span>
-            <span>{part.unit}</span>
-          </div>
-        );
-      } else {
-        // Add empty cells to maintain alignment with other rows
-        if (showMultiplier) {
-          cells.push(
-            <span key={`mult-${index}`} className="opacity-0">
-              ×
-            </span>
-          );
-        }
-        cells.push(
-          <div
-            key={`unit-${index}`}
-            className="grid grid-cols-[auto_auto] items-center gap-x-1 opacity-0"
-          >
-            <span className="text-right">0</span>
-            <span>{unit}</span>
-          </div>
-        );
-      }
-    });
-
+  if (isEditing) {
     return (
-      <div className="flex items-center justify-end gap-x-1">
-        {prefix && <span>{prefix}</span>}
-        <div
-          className="grid items-center gap-x-1"
-          style={{
-            gridTemplateColumns: needsLeadingNumberSpace
-              ? `auto auto ${' auto auto'.repeat(allUnits.length)}`
-              : `auto ${' auto'.repeat(allUnits.length)}`,
-          }}
-        >
-          {cells}
-        </div>
+      <div data-testid="rule-card">
+        <RuleEditForm rule={rule} onCancel={handleCancelEdit} />
       </div>
     );
-  };
+  }
 
   return (
-    <div className="grid grid-cols-[1fr_auto] gap-2">
-      <div className="flex flex-col">
-        <h3 className="font-medium text-lg">{rule.name}</h3>
-        {category && (
-          <div className="flex items-center gap-2 text-sm text-base-content/70">
-            {category.icon && getCategoryIcon(category.icon)}
-            <span>{category.name}</span>
-            {subcategory && (
-              <>
-                <span className="text-base-content/30">•</span>
-                <span>{subcategory.name}</span>
-              </>
-            )}
-          </div>
-        )}
-        {packBadges && packBadges.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">{packBadges}</div>
-        )}
-      </div>
-
-      <div className="flex flex-col items-end row-span-2">
-        <span className="text-base-content/70">Total: {total}</span>
-        {peopleCount === 0 || daysCount === 0 ? (
-          <div className="text-xs text-warning">
-            {peopleCount === 0 && daysCount === 0
-              ? 'No matching people or days'
-              : peopleCount === 0
-              ? 'No matching people'
-              : 'No matching days'}
-          </div>
-        ) : (
-          showMath && (
-            <div className="hidden md:block text-xs text-base-content/50 space-y-0.5 mb-auto">
-              {renderMultiplierRow(baseQuantity, baseParts)}
-              {extraItems?.quantity &&
-                extraItemsTotal > 0 &&
-                renderMultiplierRow(extraItems.quantity, extraParts, '+ ')}
+    <>
+      <div className="grid grid-cols-[1fr_auto] gap-2" data-testid="rule-card">
+        <div className="flex flex-col">
+          <h3 className="font-medium text-lg">{rule.name}</h3>
+          {category && (
+            <div className="flex items-center gap-2 text-sm text-base-content/70">
+              {category.icon && getCategoryIcon(category.icon)}
+              <span>{category.name}</span>
+              {subcategory && (
+                <>
+                  <span className="text-base-content/30">•</span>
+                  <span>{subcategory.name}</span>
+                </>
+              )}
             </div>
-          )
-        )}
-      </div>
+          )}
+          {packBadges && packBadges.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">{packBadges}</div>
+          )}
+        </div>
 
-      <div className="space-y-2 md:col-start-1 col-span-2 md:col-span-1">
-        {(perPerson || perDay || extraItems?.quantity) && (
-          <p className="text-base-content/70">
-            {baseQuantity}
-            {perPerson ? ' per person' : ''}
-            {perDay && !daysPattern ? ' per day' : ''}
-            {perDay && daysPattern ? ` ${formatDayPattern(daysPattern)}` : ''}
-            {extraItems?.quantity ? (
-              <>
-                {' + '}
-                {extraItems.quantity} extra
-                {extraItems.perPerson ? ' per person' : ''}
-                {extraItems.perDay && !extraItems.daysPattern ? ' per day' : ''}
-                {extraItems.perDay && extraItems.daysPattern
-                  ? ` ${formatDayPattern(extraItems.daysPattern)}`
-                  : ''}
-              </>
-            ) : null}
-          </p>
-        )}
-        {rule.notes && (
-          <div className="text-sm text-base-content/70 flex gap-2 items-start">
-            <Info className="stroke-base-content/50 shrink-0 w-4 h-4 mt-0.5" />
-            <span>{rule.notes}</span>
-          </div>
-        )}
-        {rule.conditions && rule.conditions.length > 0 && (
-          <div>
-            <p className="text-sm font-medium mb-1">Conditions:</p>
-            <div className="space-y-1">
-              {rule.conditions.map((condition, index) => (
-                <div key={index} className="flex flex-col gap-1">
-                  <div
-                    className={`badge badge-outline gap-1 ${
-                      condition.notes ? 'tooltip tooltip-right' : ''
-                    }`}
-                    data-tip={condition.notes}
-                  >
-                    {condition.type === 'person' ? '👤' : '📅'}{' '}
-                    {condition.field} {condition.operator} {condition.value}
+        <div className="flex flex-col items-end row-span-2">
+          <span className="text-base-content/70">Total: {total}</span>
+          {peopleCount === 0 || daysCount === 0 ? (
+            <div className="text-xs text-warning">
+              {peopleCount === 0 && daysCount === 0
+                ? 'No matching people or days'
+                : peopleCount === 0
+                ? 'No matching people'
+                : 'No matching days'}
+            </div>
+          ) : (
+            showMath && (
+              <div className="hidden md:block text-xs text-base-content/50 mb-auto">
+                <CalculationDisplay
+                  baseCalculation={{
+                    quantity: baseQuantity,
+                    perPerson: !!perPerson,
+                    perDay: !!perDay,
+                    daysPattern,
+                  }}
+                  extraCalculation={
+                    extraItems?.quantity && extraItemsTotal > 0
+                      ? {
+                          quantity: extraItems.quantity,
+                          perPerson: Boolean(extraItems.perPerson),
+                          perDay: Boolean(extraItems.perDay),
+                          daysPattern: extraItems.daysPattern,
+                        }
+                      : undefined
+                  }
+                  peopleCount={peopleCount}
+                  daysCount={daysCount}
+                />
+              </div>
+            )
+          )}
+        </div>
+
+        <div className="space-y-2 md:col-start-1 col-span-2 md:col-span-1">
+          {(perPerson || perDay || extraItems?.quantity) && (
+            <p className="text-base-content/70">
+              {baseQuantity}
+              {perPerson ? ' per person' : ''}
+              {perDay && !daysPattern ? ' per day' : ''}
+              {perDay && daysPattern ? ` ${formatDayPattern(daysPattern)}` : ''}
+              {extraItems?.quantity ? (
+                <>
+                  {' + '}
+                  {extraItems.quantity} extra
+                  {extraItems.perPerson ? ' per person' : ''}
+                  {extraItems.perDay && !extraItems.daysPattern
+                    ? ' per day'
+                    : ''}
+                  {extraItems.perDay && extraItems.daysPattern
+                    ? ` ${formatDayPattern(extraItems.daysPattern)}`
+                    : ''}
+                </>
+              ) : null}
+            </p>
+          )}
+          {rule.notes && (
+            <div className="text-sm text-base-content/70 flex gap-2 items-start">
+              <Info className="stroke-base-content/50 shrink-0 w-4 h-4 mt-0.5" />
+              <span>{rule.notes}</span>
+            </div>
+          )}
+          {rule.conditions && rule.conditions.length > 0 && (
+            <div>
+              <p className="text-sm font-medium mb-1">Conditions:</p>
+              <div className="space-y-1">
+                {rule.conditions.map((condition, index) => (
+                  <div key={index} className="flex flex-col gap-1">
+                    <div
+                      className={`badge badge-outline gap-1 ${
+                        condition.notes ? 'tooltip tooltip-right' : ''
+                      }`}
+                      data-tip={condition.notes}
+                      data-testid={`rule-condition-${index}`}
+                    >
+                      {condition.type === 'person' ? '👤' : '📅'}{' '}
+                      {condition.field} {condition.operator} {condition.value}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
+        <div className="col-span-2 flex justify-end gap-2">
+          <button
+            onClick={handleEdit}
+            className="btn btn-primary btn-sm"
+            data-testid="edit-rule-button"
+          >
+            Edit
+          </button>
+          <button
+            onClick={handleDelete}
+            className="btn btn-error btn-sm"
+            data-testid="delete-rule-button"
+          >
+            Delete
+          </button>
+        </div>
       </div>
 
-      <div className="col-span-2 flex justify-end gap-2">
-        <button onClick={onEdit} className="btn btn-primary btn-sm">
-          Edit
-        </button>
-        <button onClick={onDelete} className="btn btn-error btn-sm">
-          Delete
-        </button>
-      </div>
-    </div>
+      {/* Delete Confirmation Modal */}
+      <dialog
+        className={`modal ${showDeleteConfirm ? 'modal-open' : ''}`}
+        aria-labelledby="delete-modal-title"
+        aria-modal="true"
+        role="dialog"
+      >
+        <div className="modal-box">
+          <h3 id="delete-modal-title" className="font-bold text-lg">
+            Delete Rule?
+          </h3>
+          <p className="py-4">
+            Are you sure you want to delete &quot;{rule.name}&quot;? This cannot
+            be undone.
+          </p>
+          <div className="modal-action">
+            <button
+              className="btn"
+              onClick={handleCancelDelete}
+              aria-label="Cancel delete"
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-error"
+              onClick={handleConfirmDelete}
+              aria-label="Confirm delete"
+              data-testid="confirm-delete-button"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+        <form method="dialog" className="modal-backdrop">
+          <button>close</button>
+        </form>
+      </dialog>
+    </>
   );
 };

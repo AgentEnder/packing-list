@@ -1,322 +1,133 @@
-import { Condition, DefaultItemRule } from '@packing-list/model';
+import { DefaultItemRule } from '@packing-list/model';
 import { useState } from 'react';
-import { ToggleGroup } from './ToggleGroup';
-import { ConditionForm } from './ConditionForm';
-import { Pencil, X } from 'lucide-react';
+import { useAppDispatch } from '@packing-list/state';
 import { CategorySelector } from '../../../components/CategorySelector';
+import { ConditionsList } from './ConditionsList';
+import { ItemCalculationForm } from './ItemCalculationForm';
 
 type RuleEditFormProps = {
   rule: DefaultItemRule;
-  onUpdateRule: (updates: Partial<DefaultItemRule>) => void;
   onCancel: () => void;
-};
-
-const DEFAULT_CONDITION: Condition = {
-  type: 'person',
-  field: 'age',
-  operator: '==',
-  value: 0,
 };
 
 export const RuleEditForm = ({
   rule: initialRule,
-  onUpdateRule,
   onCancel,
 }: RuleEditFormProps) => {
+  const dispatch = useAppDispatch();
   // Local state for the rule being edited
   const [editedRule, setEditedRule] = useState<DefaultItemRule>(initialRule);
-  const [showCondition, setShowCondition] = useState(false);
-  const [editingConditionIndex, setEditingConditionIndex] = useState<
-    number | null
-  >(null);
-  const [editingCondition, setEditingCondition] =
-    useState<Condition>(DEFAULT_CONDITION);
-
-  const handleStartEditingCondition = (index: number, condition: Condition) => {
-    setEditingConditionIndex(index);
-    setEditingCondition(condition);
-    setShowCondition(true);
-  };
-
-  const handleRemoveCondition = (index: number) => {
-    setEditedRule((prev) => ({
-      ...prev,
-      conditions: prev.conditions?.filter((_, i) => i !== index),
-    }));
-  };
-
-  const handleCancelCondition = () => {
-    setShowCondition(false);
-    setEditingConditionIndex(null);
-    setEditingCondition(DEFAULT_CONDITION);
-  };
 
   const handleSave = () => {
-    onUpdateRule(editedRule);
-    onCancel();
-  };
-
-  const handleCancel = () => {
+    dispatch({
+      type: 'UPDATE_ITEM_RULE',
+      payload: editedRule,
+    });
     onCancel();
   };
 
   return (
     <div>
-      <div className="form-control w-full">
-        <label className="label">
-          <span className="label-text font-medium">Name</span>
-        </label>
-        <input
-          type="text"
-          className="input input-bordered w-full"
-          value={editedRule.name}
-          onChange={(e) =>
-            setEditedRule((prev) => ({ ...prev, name: e.target.value }))
-          }
-        />
-      </div>
-
-      <CategorySelector
-        selectedCategoryId={editedRule.categoryId}
-        selectedSubcategoryId={editedRule.subcategoryId}
-        onCategoryChange={(categoryId, subcategoryId) =>
-          setEditedRule((prev) => ({
-            ...prev,
-            categoryId,
-            subcategoryId,
-          }))
-        }
-        className="mt-4"
-      />
-
-      <div className="form-control w-full mt-4">
-        <label className="label">
-          <span className="label-text font-medium">Notes (optional)</span>
-        </label>
-        <textarea
-          className="textarea textarea-bordered w-full h-24"
-          value={editedRule.notes || ''}
-          onChange={(e) =>
-            setEditedRule((prev) => ({ ...prev, notes: e.target.value }))
-          }
-          placeholder="Add any helpful notes about this rule..."
-        />
-      </div>
-
-      <div className="form-control w-full mt-4">
-        <label className="label">
-          <span className="label-text font-medium">Base Quantity</span>
-        </label>
-        <input
-          type="number"
-          className="input input-bordered w-full"
-          value={editedRule.calculation.baseQuantity}
-          onChange={(e) =>
-            setEditedRule((prev) => ({
-              ...prev,
-              calculation: {
-                ...prev.calculation,
-                baseQuantity: parseInt(e.target.value) || 0,
-              },
-            }))
-          }
-        />
-      </div>
-
-      <ToggleGroup
-        perDay={editedRule.calculation.perDay || false}
-        perPerson={editedRule.calculation.perPerson || false}
-        daysPattern={editedRule.calculation.daysPattern}
-        onPerDayChange={(checked) =>
-          setEditedRule((prev) => ({
-            ...prev,
-            calculation: {
-              ...prev.calculation,
-              perDay: checked,
-              daysPattern: checked ? prev.calculation.daysPattern : undefined,
-            },
-          }))
-        }
-        onPerPersonChange={(checked) =>
-          setEditedRule((prev) => ({
-            ...prev,
-            calculation: {
-              ...prev.calculation,
-              perPerson: checked,
-            },
-          }))
-        }
-        onDaysPatternChange={(pattern) =>
-          setEditedRule((prev) => ({
-            ...prev,
-            calculation: {
-              ...prev.calculation,
-              daysPattern: pattern,
-            },
-          }))
-        }
-      />
-
-      <div className="divider">Extra Items</div>
-
-      <div className="form-control w-full">
-        <label className="label">
-          <span className="label-text font-medium">Extra Quantity</span>
-        </label>
-        <input
-          type="number"
-          className="input input-bordered w-full"
-          value={editedRule.calculation.extraItems?.quantity || 0}
-          onChange={(e) =>
-            setEditedRule((prev) => ({
-              ...prev,
-              calculation: {
-                ...prev.calculation,
-                extraItems: {
-                  ...(prev.calculation.extraItems || {}),
-                  quantity: parseInt(e.target.value) || 0,
-                },
-              },
-            }))
-          }
-        />
-      </div>
-
-      {editedRule.calculation.extraItems?.quantity ? (
-        <ToggleGroup
-          perDay={editedRule.calculation.extraItems?.perDay || false}
-          perPerson={editedRule.calculation.extraItems?.perPerson || false}
-          daysPattern={editedRule.calculation.extraItems?.daysPattern}
-          onPerDayChange={(checked) =>
-            setEditedRule((prev) => ({
-              ...prev,
-              calculation: {
-                ...prev.calculation,
-                extraItems: {
-                  ...(prev.calculation.extraItems || {}),
-                  quantity: prev.calculation.extraItems?.quantity || 0,
-                  perDay: checked,
-                  daysPattern: checked
-                    ? prev.calculation.extraItems?.daysPattern
-                    : undefined,
-                },
-              },
-            }))
-          }
-          onPerPersonChange={(checked) =>
-            setEditedRule((prev) => ({
-              ...prev,
-              calculation: {
-                ...prev.calculation,
-                extraItems: {
-                  ...(prev.calculation.extraItems || {}),
-                  quantity: prev.calculation.extraItems?.quantity || 0,
-                  perPerson: checked,
-                },
-              },
-            }))
-          }
-          onDaysPatternChange={(pattern) =>
-            setEditedRule((prev) => ({
-              ...prev,
-              calculation: {
-                ...prev.calculation,
-                extraItems: {
-                  ...(prev.calculation.extraItems || {}),
-                  quantity: prev.calculation.extraItems?.quantity || 0,
-                  daysPattern: pattern,
-                },
-              },
-            }))
-          }
-          label="Extra Items Calculation"
-        />
-      ) : null}
-
-      <div className="divider">Conditions</div>
-
-      {editedRule.conditions?.map((condition, index) => (
-        <div
-          key={index}
-          className="alert flex flex-col items-stretch gap-2 mb-2"
-        >
-          <div className="flex items-center justify-between w-full">
-            <div
-              className={`badge badge-outline gap-1 ${
-                condition.notes ? 'tooltip tooltip-right' : ''
-              }`}
-              data-tip={condition.notes}
-            >
-              {condition.type === 'person' ? '👤' : '📅'} {condition.field}{' '}
-              {condition.operator} {condition.value}
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="btn btn-ghost btn-xs"
-                onClick={() => handleStartEditingCondition(index, condition)}
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-xs text-error"
-                onClick={() => handleRemoveCondition(index)}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      ))}
-
-      {showCondition ? (
-        <ConditionForm
-          initialCondition={editingCondition}
-          onSave={(newCondition) => {
-            if (editingConditionIndex !== null) {
-              setEditedRule((prev) => ({
-                ...prev,
-                conditions: prev.conditions?.map((c, i) =>
-                  i === editingConditionIndex ? newCondition : c
-                ),
-              }));
-            } else {
-              setEditedRule((prev) => ({
-                ...prev,
-                conditions: [...(prev.conditions || []), newCondition],
-              }));
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSave();
+        }}
+        aria-label="Edit Rule Form"
+      >
+        <div className="form-control w-full">
+          <label htmlFor="edit-rule-name" className="label">
+            <span className="label-text font-medium">Name</span>
+          </label>
+          <input
+            id="edit-rule-name"
+            type="text"
+            className="input input-bordered w-full"
+            value={editedRule.name}
+            onChange={(e) =>
+              setEditedRule((prev) => ({ ...prev, name: e.target.value }))
             }
-            handleCancelCondition();
-          }}
-          onCancel={handleCancelCondition}
-          isEditing={editingConditionIndex !== null}
+            data-testid="edit-rule-name-input"
+            required
+            aria-required="true"
+          />
+        </div>
+
+        <CategorySelector
+          selectedCategoryId={editedRule.categoryId}
+          selectedSubcategoryId={editedRule.subcategoryId}
+          onCategoryChange={(categoryId, subcategoryId) =>
+            setEditedRule((prev) => ({
+              ...prev,
+              categoryId,
+              subcategoryId,
+            }))
+          }
+          testIdPrefix="edit-rule-"
+          className="mt-4"
         />
-      ) : (
-        <button
-          type="button"
-          className="btn btn-outline btn-primary"
-          onClick={() => setShowCondition(true)}
-        >
-          Add Condition
-        </button>
-      )}
 
-      <div className="divider"></div>
+        <div className="form-control w-full mt-4">
+          <label htmlFor="edit-rule-notes" className="label">
+            <span className="label-text font-medium">Notes (optional)</span>
+          </label>
+          <textarea
+            id="edit-rule-notes"
+            className="textarea textarea-bordered w-full h-24"
+            value={editedRule.notes || ''}
+            onChange={(e) =>
+              setEditedRule((prev) => ({ ...prev, notes: e.target.value }))
+            }
+            placeholder="Add any helpful notes about this rule..."
+            data-testid="edit-rule-notes-input"
+            aria-label="Rule description"
+          />
+        </div>
 
-      <div className="flex justify-end gap-2">
-        <button type="button" className="btn" onClick={handleCancel}>
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={handleSave}
-          disabled={!editedRule.name || !editedRule.categoryId}
-        >
-          Save
-        </button>
-      </div>
+        <ItemCalculationForm
+          calculation={editedRule.calculation}
+          onCalculationChange={(calculation) =>
+            setEditedRule((prev) => ({ ...prev, calculation }))
+          }
+          testIdPrefix="edit-rule-"
+          className="mt-4"
+        />
+
+        <div className="divider" role="separator">
+          Conditions
+        </div>
+
+        <ConditionsList
+          conditions={editedRule.conditions}
+          onConditionsChange={(conditions) =>
+            setEditedRule((prev) => ({ ...prev, conditions }))
+          }
+          testIdPrefix="edit-rule-"
+        />
+
+        <div className="divider" role="separator"></div>
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            className="btn"
+            onClick={onCancel}
+            data-testid="edit-rule-cancel-button"
+            aria-label="Cancel editing"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={!editedRule.name || !editedRule.categoryId}
+            data-testid="edit-rule-save-button"
+            aria-disabled={!editedRule.name || !editedRule.categoryId}
+          >
+            Save
+          </button>
+        </div>
+      </form>
     </div>
   );
 };

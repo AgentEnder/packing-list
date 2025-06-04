@@ -47,7 +47,7 @@ export function RulePackDetails({ pack }: RulePackDetailsProps) {
     .filter((rule): rule is NonNullable<typeof rule> => rule !== undefined);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="rule-pack-details">
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -65,11 +65,18 @@ export function RulePackDetails({ pack }: RulePackDetailsProps) {
           <button
             className={`btn ${isPackActive ? 'btn-error' : 'btn-primary'}`}
             onClick={handleTogglePack}
+            data-testid={`${isPackActive ? 'remove' : 'apply'}-pack-${
+              pack.name
+            }-button`}
           >
             {isPackActive ? 'Remove Pack' : 'Add Pack'}
           </button>
           {!pack.metadata.isBuiltIn && (
-            <button className="btn btn-ghost" onClick={handleEditPack}>
+            <button
+              className="btn btn-ghost"
+              onClick={handleEditPack}
+              data-testid={`edit-pack-${pack.name}-button`}
+            >
               Edit Pack
             </button>
           )}
@@ -83,8 +90,12 @@ export function RulePackDetails({ pack }: RulePackDetailsProps) {
               <Star className="w-8 h-8" />
             </div>
             <div className="stat-title">Rating</div>
-            <div className="stat-value">{pack.stats.rating.toFixed(1)}</div>
-            <div className="stat-desc">{pack.stats.reviewCount} reviews</div>
+            <div className="stat-value" data-testid="pack-rating">
+              {pack.stats.rating.toFixed(1)}
+            </div>
+            <div className="stat-desc" data-testid="pack-review-count">
+              {pack.stats.reviewCount} reviews
+            </div>
           </div>
         </div>
 
@@ -94,7 +105,9 @@ export function RulePackDetails({ pack }: RulePackDetailsProps) {
               <Users className="w-8 h-8" />
             </div>
             <div className="stat-title">Usage</div>
-            <div className="stat-value">{pack.stats.usageCount}</div>
+            <div className="stat-value" data-testid="pack-usage-count">
+              {pack.stats.usageCount}
+            </div>
             <div className="stat-desc">Times used</div>
           </div>
         </div>
@@ -111,14 +124,16 @@ export function RulePackDetails({ pack }: RulePackDetailsProps) {
                 <Calendar className="w-4 h-4" />
                 <span className="font-medium">Created</span>
               </div>
-              <p>{new Date(pack.metadata.created).toLocaleDateString()}</p>
+              <p data-testid="pack-created-date">
+                {new Date(pack.metadata.created).toLocaleDateString()}
+              </p>
             </div>
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Tag className="w-4 h-4" />
                 <span className="font-medium">Category</span>
               </div>
-              <p>{pack.metadata.category}</p>
+              <p data-testid="pack-category">{pack.metadata.category}</p>
             </div>
           </div>
         </div>
@@ -126,9 +141,13 @@ export function RulePackDetails({ pack }: RulePackDetailsProps) {
 
       <div>
         <h3 className="text-lg font-medium mb-4">Pack Rules</h3>
-        <div className="grid gap-2">
+        <div className="grid gap-2" data-testid="pack-rules-list">
           {packRules.map((rule) => (
-            <div key={rule.id} className="card bg-base-100">
+            <div
+              key={rule.id}
+              className="card bg-base-100"
+              data-testid={`pack-rule-${rule.name}`}
+            >
               <div className="card-body">
                 <h4 className="card-title text-base">{rule.name}</h4>
                 {rule.notes && (

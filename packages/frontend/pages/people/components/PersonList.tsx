@@ -36,6 +36,7 @@ export const PersonList = ({ people }: PersonListProps) => {
           onClick={() => setIsAdding(true)}
           type="button"
           aria-label="Add person"
+          data-testid="add-person-button"
         >
           <span className="text-5xl mb-2">+</span>
           <span className="font-semibold">Add Person</span>

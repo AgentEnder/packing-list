@@ -80,6 +80,7 @@ export function RulePackSelector({
         <button
           className="btn btn-ghost btn-sm gap-2"
           onClick={() => dispatch({ type: 'OPEN_RULE_PACK_MODAL' })}
+          data-testid="view-all-packs-button"
         >
           View All
           <ChevronRight className="w-4 h-4" />
@@ -102,6 +103,7 @@ export function RulePackSelector({
                 borderColor: active ? undefined : pack.color,
                 borderWidth: '1px',
               }}
+              data-testid={`rule-pack-${pack.name}`}
             >
               <div className="card-body p-4">
                 <div className="flex items-start justify-between">
@@ -133,6 +135,9 @@ export function RulePackSelector({
                       active ? 'btn-outline btn-error' : 'btn-primary'
                     }`}
                     onClick={() => handleTogglePack(pack)}
+                    data-testid={`${active ? 'remove' : 'apply'}-pack-${
+                      pack.name
+                    }-button`}
                   >
                     {active ? 'Remove' : 'Add Rules'}
                   </button>
@@ -146,6 +151,7 @@ export function RulePackSelector({
         <div
           className="card bg-base-100 shadow-xl border border-base-300 cursor-pointer hover:shadow-2xl transition-shadow"
           onClick={() => dispatch({ type: 'OPEN_RULE_PACK_MODAL' })}
+          data-testid="more-packs-card"
         >
           <div className="card-body items-center justify-center text-center p-4">
             <h3 className="card-title text-base mb-2">Explore More Packs</h3>

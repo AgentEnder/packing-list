@@ -3,8 +3,9 @@
   "compilerOptions": {
     "allowJs": true,
     "outDir": "out-tsc/playwright",
-    "sourceMap": false
+    "sourceMap": false,
+    "lib": ["DOM", "ES2016"]
   },
-  "include": ["e2e/**/*.ts", "e2e/**/*.js", "playwright.config.ts"],
+  "include": ["e2e/**/*.ts", "e2e/**/*.js", "playwright.config.cts"],
   "exclude": ["out-tsc", "test-output"]
 }

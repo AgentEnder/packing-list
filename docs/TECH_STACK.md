@@ -12,3 +12,4 @@
 - Tailwind CSS: utility classes
 - DaisyUI: class based components
 - Redux Toolkit: state management
+- Playwright: e2e testing

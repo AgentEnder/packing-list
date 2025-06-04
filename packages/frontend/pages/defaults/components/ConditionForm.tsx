@@ -6,6 +6,7 @@ type ConditionFormProps = {
   onSave: (condition: Condition) => void;
   onCancel: () => void;
   isEditing: boolean;
+  testIdPrefix?: string;
 };
 
 const DEFAULT_CONDITION: Condition = {
@@ -20,6 +21,7 @@ export const ConditionForm = ({
   onSave,
   onCancel,
   isEditing,
+  testIdPrefix = 'create-rule-',
 }: ConditionFormProps) => {
   const [condition, setCondition] = useState<Condition>(initialCondition);
 
@@ -43,181 +45,186 @@ export const ConditionForm = ({
         ];
 
   return (
-    <div className="card bg-base-300">
-      <div className="card-body">
-        <div className="flex gap-4">
-          <div className="form-control flex-1">
-            <label className="label">
-              <span className="label-text font-medium">Type</span>
-            </label>
-            <select
-              className="select select-bordered w-full"
-              value={condition.type}
-              onChange={(e) => {
-                const type = e.target.value as 'person' | 'day';
-                if (type === 'person') {
-                  setCondition({
-                    type: 'person',
-                    field: 'age',
-                    operator: '==',
-                    value: 0,
-                  });
-                } else {
-                  setCondition({
-                    type: 'day',
-                    field: 'location',
-                    operator: '==',
-                    value: '',
-                  });
-                }
-              }}
-            >
-              <option value="person">Person</option>
-              <option value="day">Day</option>
-            </select>
-          </div>
+    <div className="card bg-base-200 p-4">
+      {/* <div className="card-body"> */}
+      <div className="flex gap-4">
+        <div className="form-control flex-1">
+          <label className="label">
+            <span className="label-text font-medium">Type</span>
+          </label>
+          <select
+            className="select select-bordered w-full"
+            value={condition.type}
+            onChange={(e) => {
+              const type = e.target.value as 'person' | 'day';
+              if (type === 'person') {
+                setCondition({
+                  type: 'person',
+                  field: 'age',
+                  operator: '==',
+                  value: 0,
+                });
+              } else {
+                setCondition({
+                  type: 'day',
+                  field: 'location',
+                  operator: '==',
+                  value: '',
+                });
+              }
+            }}
+            data-testid={`${testIdPrefix}condition-type-select`}
+          >
+            <option value="person">Person</option>
+            <option value="day">Day</option>
+          </select>
+        </div>
 
-          <div className="form-control flex-1">
-            <label className="label">
-              <span className="label-text font-medium">Field</span>
-            </label>
-            <select
-              className="select select-bordered w-full"
-              value={condition.field}
-              onChange={(e) => {
-                if (condition.type === 'person') {
-                  const field = e.target.value as 'age' | 'gender';
-                  setCondition({
-                    ...condition,
-                    field,
-                    value: field === 'gender' ? 'male' : 0,
-                  });
-                } else {
-                  const field = e.target.value as
-                    | 'location'
-                    | 'expectedClimate';
-                  setCondition({
-                    ...condition,
-                    field,
-                    value: '',
-                  });
-                }
-              }}
-            >
-              {condition.type === 'person' ? (
-                <>
-                  <option value="age">Age</option>
-                  <option value="gender">Gender</option>
-                </>
-              ) : (
-                <>
-                  <option value="location">Location</option>
-                  <option value="expectedClimate">Expected Climate</option>
-                </>
-              )}
-            </select>
-          </div>
-
-          <div className="form-control flex-1">
-            <label className="label">
-              <span className="label-text font-medium">Operator</span>
-            </label>
-            <select
-              className="select select-bordered w-full"
-              value={condition.operator}
-              onChange={(e) => {
+        <div className="form-control flex-1">
+          <label className="label">
+            <span className="label-text font-medium">Field</span>
+          </label>
+          <select
+            className="select select-bordered w-full"
+            value={condition.field}
+            onChange={(e) => {
+              if (condition.type === 'person') {
+                const field = e.target.value as 'age' | 'gender';
                 setCondition({
                   ...condition,
-                  operator: e.target.value as '<' | '>' | '==' | '>=' | '<=',
+                  field,
+                  value: field === 'gender' ? 'male' : 0,
                 });
-              }}
-            >
-              {operatorOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-control flex-1">
-            <label className="label">
-              <span className="label-text font-medium">Value</span>
-            </label>
-            {condition.field === 'gender' ? (
-              <select
-                className="select select-bordered w-full"
-                value={condition.value as string}
-                onChange={(e) =>
-                  setCondition({
-                    ...condition,
-                    value: e.target.value,
-                  })
-                }
-              >
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
-            ) : condition.type === 'person' ? (
-              <input
-                type="number"
-                className="input input-bordered w-full"
-                value={condition.value as number}
-                onChange={(e) =>
-                  setCondition({
-                    ...condition,
-                    value: parseInt(e.target.value) || 0,
-                  })
-                }
-              />
+              } else {
+                const field = e.target.value as 'location' | 'expectedClimate';
+                setCondition({
+                  ...condition,
+                  field,
+                  value: '',
+                });
+              }
+            }}
+            data-testid={`${testIdPrefix}condition-field-select`}
+          >
+            {condition.type === 'person' ? (
+              <>
+                <option value="age">Age</option>
+                <option value="gender">Gender</option>
+              </>
             ) : (
-              <input
-                type="text"
-                className="input input-bordered w-full"
-                value={condition.value as string}
-                onChange={(e) =>
-                  setCondition({
-                    ...condition,
-                    value: e.target.value,
-                  })
-                }
-              />
+              <>
+                <option value="location">Location</option>
+                <option value="expectedClimate">Expected Climate</option>
+              </>
             )}
-          </div>
+          </select>
         </div>
 
-        <div className="form-control w-full">
+        <div className="form-control flex-1">
           <label className="label">
-            <span className="label-text">Notes (optional)</span>
+            <span className="label-text font-medium">Operator</span>
           </label>
-          <input
-            type="text"
-            className="input input-bordered w-full"
-            value={condition.notes || ''}
-            onChange={(e) =>
+          <select
+            className="select select-bordered w-full"
+            value={condition.operator}
+            onChange={(e) => {
               setCondition({
                 ...condition,
-                notes: e.target.value,
-              })
-            }
-            placeholder="Add a helpful note about this condition..."
-          />
+                operator: e.target.value as '<' | '>' | '==' | '>=' | '<=',
+              });
+            }}
+            data-testid={`${testIdPrefix}condition-operator-select`}
+          >
+            {operatorOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="flex justify-end gap-2 mt-4">
-          <button type="button" className="btn" onClick={onCancel}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => onSave(condition)}
-          >
-            {isEditing ? 'Update' : 'Add'} Condition
-          </button>
+        <div className="form-control flex-1">
+          <label className="label">
+            <span className="label-text font-medium">Value</span>
+          </label>
+          {condition.field === 'gender' ? (
+            <select
+              className="select select-bordered w-full"
+              value={condition.value as string}
+              onChange={(e) =>
+                setCondition({
+                  ...condition,
+                  value: e.target.value,
+                })
+              }
+              data-testid={`${testIdPrefix}condition-value-input`}
+            >
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          ) : condition.type === 'person' ? (
+            <input
+              type="number"
+              className="input input-bordered w-full"
+              value={condition.value as number}
+              onChange={(e) =>
+                setCondition({
+                  ...condition,
+                  value: parseInt(e.target.value) || 0,
+                })
+              }
+              data-testid={`${testIdPrefix}condition-value-input`}
+            />
+          ) : (
+            <input
+              type="text"
+              className="input input-bordered w-full"
+              value={condition.value as string}
+              onChange={(e) =>
+                setCondition({
+                  ...condition,
+                  value: e.target.value,
+                })
+              }
+              data-testid={`${testIdPrefix}condition-value-input`}
+            />
+          )}
         </div>
       </div>
+
+      <div className="form-control w-full">
+        <label className="label">
+          <span className="label-text">Notes (optional)</span>
+        </label>
+        <input
+          type="text"
+          className="input input-bordered w-full"
+          value={condition.notes || ''}
+          onChange={(e) =>
+            setCondition({
+              ...condition,
+              notes: e.target.value,
+            })
+          }
+          placeholder="Add a helpful note about this condition..."
+        />
+      </div>
+
+      <div className="flex justify-end gap-2 mt-4">
+        <button type="button" className="btn" onClick={onCancel}>
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => onSave(condition)}
+          data-testid={`${testIdPrefix}save-condition-button`}
+        >
+          {isEditing ? 'Update' : 'Add'} Condition
+        </button>
+      </div>
+      {/* </div> */}
     </div>
   );
 };

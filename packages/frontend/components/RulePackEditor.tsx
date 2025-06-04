@@ -174,160 +174,157 @@ export function RulePackEditor({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="rule-pack-editor">
       <h2 className="text-2xl font-bold mb-6">
         {pack ? 'Edit Rule Pack' : 'Create New Rule Pack'}
       </h2>
 
-      {/* Basic Information */}
-      <div className="space-y-4">
-        <div>
-          <label className="label">Name</label>
+      {/* Basic Info */}
+      <div>
+        <label className="label">Name</label>
+        <input
+          type="text"
+          className="input input-bordered w-full"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Pack name"
+          data-testid="rule-pack-name-input"
+        />
+      </div>
+
+      <div>
+        <label className="label">Description</label>
+        <textarea
+          className="textarea textarea-bordered w-full"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Pack description"
+          data-testid="rule-pack-description-input"
+        />
+      </div>
+
+      {/* Category */}
+      <div>
+        <label className="label">Category</label>
+        <select
+          className="select select-bordered w-full"
+          value={category}
+          onChange={(e) =>
+            setCategory(e.target.value as typeof CATEGORIES[number])
+          }
+          data-testid="rule-pack-category-select"
+        >
+          {CATEGORIES.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat.charAt(0).toUpperCase() + cat.slice(1)}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Tags */}
+      <div className="form-control">
+        <label className="label">
+          <span className="label-text">Tags</span>
+        </label>
+        <div className="join">
           <input
             type="text"
-            className="input input-bordered w-full"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter pack name"
+            className="input input-bordered join-item"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+            placeholder="Add tag"
+            data-testid="rule-pack-tag-input"
           />
-        </div>
-
-        <div>
-          <label className="label">Description</label>
-          <textarea
-            className="textarea textarea-bordered w-full"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe what this pack is for"
-            rows={3}
-          />
-        </div>
-      </div>
-
-      {/* Category and Tags */}
-      <div className="space-y-4">
-        <div>
-          <label className="label">Category</label>
-          <select
-            className="select select-bordered w-full"
-            value={category}
-            onChange={(e) =>
-              setCategory(e.target.value as typeof CATEGORIES[number])
-            }
+          <button
+            className="btn join-item"
+            onClick={handleAddTag}
+            data-testid="rule-pack-add-tag-button"
           >
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat.charAt(0).toUpperCase() + cat.slice(1)}
-              </option>
-            ))}
-          </select>
+            Add
+          </button>
         </div>
-
-        <div>
-          <label className="label">Tags</label>
-          <div className="flex gap-2 flex-wrap mb-2">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="badge badge-outline gap-2"
-                style={{ borderColor: selectedColor }}
-              >
-                {tag}
-                <button
-                  className="btn btn-ghost btn-xs"
-                  onClick={() => handleRemoveTag(tag)}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-          <div className="join w-full">
-            <input
-              type="text"
-              className="input input-bordered join-item flex-1"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-              placeholder="Add a tag"
-            />
-            <button
-              className="btn join-item"
-              onClick={handleAddTag}
-              disabled={!tagInput.trim()}
+        <div className="flex flex-wrap gap-2 mt-2">
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="badge badge-outline gap-2"
+              data-testid={`rule-pack-tag-${tag}`}
             >
-              Add
-            </button>
-          </div>
+              {tag}
+              <button
+                className="btn btn-ghost btn-xs"
+                onClick={() => handleRemoveTag(tag)}
+                data-testid={`rule-pack-remove-tag-${tag}-button`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
         </div>
       </div>
 
-      {/* Appearance */}
-      <div className="space-y-4">
-        <div>
-          <label className="label">Icon</label>
-          <div className="flex flex-wrap gap-2">
-            {AVAILABLE_ICONS.map((icon) => {
-              const IconComponent = ICONS[icon];
-              return (
-                <button
-                  key={icon}
-                  className={`btn btn-square ${
-                    selectedIcon === icon ? 'btn-primary' : 'btn-outline'
-                  }`}
-                  onClick={() => setSelectedIcon(icon)}
-                >
-                  <IconComponent className="w-5 h-5" />
-                </button>
-              );
-            })}
-          </div>
+      {/* Color Selection */}
+      <div className="form-control">
+        <label className="label">
+          <span className="label-text">Color</span>
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {AVAILABLE_COLORS.map((color) => (
+            <button
+              key={color}
+              className={`w-8 h-8 rounded-full ${
+                selectedColor === color ? 'ring-2 ring-primary' : ''
+              }`}
+              style={{ backgroundColor: color }}
+              onClick={() => setSelectedColor(color)}
+              data-testid={`rule-pack-color-${color}-button`}
+            />
+          ))}
         </div>
+      </div>
 
-        <div>
-          <label className="label">Color</label>
-          <div className="flex flex-wrap gap-2">
-            {AVAILABLE_COLORS.map((color) => (
+      {/* Icon Selection */}
+      <div className="form-control">
+        <label className="label">
+          <span className="label-text">Icon</span>
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {AVAILABLE_ICONS.map((icon) => {
+            const IconComponent = ICONS[icon];
+            return (
               <button
-                key={color}
-                className={`w-8 h-8 rounded-full border-2 ${
-                  selectedColor === color
-                    ? 'border-primary'
-                    : 'border-transparent'
+                key={icon}
+                className={`btn btn-square btn-sm ${
+                  selectedIcon === icon ? 'btn-primary' : 'btn-outline'
                 }`}
-                style={{ backgroundColor: color }}
-                onClick={() => setSelectedColor(color)}
-              />
-            ))}
-          </div>
+                onClick={() => setSelectedIcon(icon)}
+                data-testid={`rule-pack-icon-${icon}-button`}
+              >
+                <IconComponent className="w-4 h-4" />
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Visibility */}
-      <div>
-        <label className="label">Visibility</label>
-        <div className="flex gap-4">
-          <label className="label cursor-pointer gap-2">
-            <input
-              type="radio"
-              name="visibility"
-              className="radio"
-              checked={visibility === 'private'}
-              onChange={() => setVisibility('private')}
-            />
-            <span>Private</span>
-          </label>
-          <label className="label cursor-pointer gap-2">
-            <input
-              type="radio"
-              name="visibility"
-              className="radio"
-              checked={visibility === 'public'}
-              onChange={() => setVisibility('public')}
-            />
-            <span>Public</span>
-          </label>
-        </div>
+      <div className="form-control">
+        <label className="label cursor-pointer">
+          <span className="label-text">Visibility</span>
+          <select
+            className="select select-bordered"
+            value={visibility}
+            onChange={(e) =>
+              setVisibility(e.target.value as 'private' | 'public')
+            }
+            data-testid="rule-pack-visibility-select"
+          >
+            <option value="private">Private</option>
+            <option value="public">Public</option>
+          </select>
+        </label>
       </div>
 
       {/* Rule Selection */}
@@ -339,11 +336,21 @@ export function RulePackEditor({
       </div>
 
       {/* Actions */}
-      <div className="flex justify-end gap-2 pt-4">
-        <button className="btn btn-ghost" onClick={onCancel}>
-          Cancel
-        </button>
-        <button className="btn btn-primary" onClick={handleSave}>
+      <div className="flex justify-end gap-2">
+        {onCancel && (
+          <button
+            className="btn"
+            onClick={onCancel}
+            data-testid="rule-pack-cancel-button"
+          >
+            Cancel
+          </button>
+        )}
+        <button
+          className="btn btn-primary"
+          onClick={handleSave}
+          data-testid="rule-pack-save-button"
+        >
           {pack ? 'Update Pack' : 'Create Pack'}
         </button>
       </div>

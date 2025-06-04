@@ -1,19 +1,14 @@
-import {
-  DefaultItemRule,
-  Calculation,
-  Condition,
-  DayCalculation,
-} from '@packing-list/model';
+import { DefaultItemRule, Calculation } from '@packing-list/model';
 import { useState, useCallback } from 'react';
-import { ToggleGroup } from './ToggleGroup';
-import { ConditionForm } from './ConditionForm';
-import { useAppDispatch } from '@packing-list/state';
-import { Pencil, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { CategorySelector } from '../../../components/CategorySelector';
+import { ConditionsList } from './ConditionsList';
+import { ItemCalculationForm } from './ItemCalculationForm';
+import { useAppDispatch } from '@packing-list/state';
 
 const DEFAULT_CALCULATION: Calculation = {
   baseQuantity: 1,
-  perDay: true,
+  perDay: false,
   perPerson: false,
   extraItems: {
     quantity: 0,
@@ -27,24 +22,10 @@ export const CreateRuleForm = () => {
   const [newRule, setNewRule] = useState<DefaultItemRule>({
     id: '',
     name: '',
-    calculation: {
-      baseQuantity: 1,
-      perDay: false,
-      perPerson: false,
-    },
+    calculation: DEFAULT_CALCULATION,
     categoryId: '',
   });
-  const [showCondition, setShowCondition] = useState(false);
   const [showDiscardModal, setShowDiscardModal] = useState(false);
-  const [editingConditionIndex, setEditingConditionIndex] = useState<
-    number | null
-  >(null);
-  const [condition, setCondition] = useState<Condition>({
-    type: 'person',
-    field: 'age',
-    operator: '==',
-    value: 0,
-  });
 
   const handleCreateRule = useCallback(
     (e: React.FormEvent) => {
@@ -62,20 +43,8 @@ export const CreateRuleForm = () => {
       setNewRule({
         id: '',
         name: '',
-        calculation: {
-          baseQuantity: 1,
-          perDay: false,
-          perPerson: false,
-        },
+        calculation: DEFAULT_CALCULATION,
         categoryId: '',
-      });
-      setShowCondition(false);
-      setEditingConditionIndex(null);
-      setCondition({
-        type: 'person',
-        field: 'age',
-        operator: '==',
-        value: 0,
       });
     },
     [dispatch, newRule]
@@ -85,360 +54,150 @@ export const CreateRuleForm = () => {
     setNewRule({
       id: '',
       name: '',
-      calculation: {
-        baseQuantity: 1,
-        perDay: false,
-        perPerson: false,
-      },
+      calculation: DEFAULT_CALCULATION,
       categoryId: '',
     });
     setShowDiscardModal(false);
   };
 
-  const handleStartEditingCondition = useCallback(
-    (index: number, condition: Condition) => {
-      setEditingConditionIndex(index);
-      setCondition(condition);
-      setShowCondition(true);
-    },
-    []
-  );
-
-  const handleCancelCondition = useCallback(() => {
-    setShowCondition(false);
-    setEditingConditionIndex(null);
-    setCondition({
-      type: 'person',
-      field: 'age',
-      operator: '==',
-      value: 0,
-    });
-  }, []);
-
-  const handleRemoveCondition = useCallback((index: number) => {
-    setNewRule((prev) => ({
-      ...prev,
-      conditions: prev.conditions?.filter((_, i) => i !== index),
-    }));
-  }, []);
-
-  const handleExtraItemsChange = (
-    checked: boolean,
-    field: 'perDay' | 'perPerson'
-  ) => {
-    setNewRule((prev) => ({
-      ...prev,
-      calculation: {
-        ...(prev.calculation || DEFAULT_CALCULATION),
-        extraItems: {
-          ...(prev.calculation?.extraItems || {}),
-          quantity: prev.calculation?.extraItems?.quantity || 0,
-          [field]: checked,
-          daysPattern:
-            field === 'perDay' && !checked
-              ? undefined
-              : prev.calculation?.extraItems?.daysPattern,
-        },
-      },
-    }));
-  };
-
-  const handleExtraItemsDaysPatternChange = (
-    pattern: DayCalculation | undefined
-  ) => {
-    setNewRule((prev) => ({
-      ...prev,
-      calculation: {
-        ...(prev.calculation || DEFAULT_CALCULATION),
-        extraItems: {
-          ...(prev.calculation?.extraItems || {}),
-          quantity: prev.calculation?.extraItems?.quantity || 0,
-          daysPattern: pattern,
-        },
-      },
-    }));
-  };
-
-  const hasChanges =
-    newRule.name !== '' ||
-    newRule.notes !== undefined ||
-    newRule.calculation !== DEFAULT_CALCULATION ||
-    (newRule.conditions?.length ?? 0) > 0 ||
-    newRule.categoryId !== '';
-
   return (
-    <>
-      <div className="card bg-base-100 shadow-xl mb-6">
+    <div
+      className="card bg-base-100 shadow-xl mb-6"
+      data-testid="create-rule-form"
+    >
+      <form onSubmit={handleCreateRule} aria-label="Create Rule Form">
         <div className="card-body">
-          <h2 className="card-title">Add New Rule</h2>
-          <form onSubmit={handleCreateRule} className="space-y-4">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Item Name</span>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="card-title" id="create-rule-title">
+              {newRule ? 'Edit Rule' : 'Create New Rule'}
+            </h2>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => setShowDiscardModal(true)}
+              data-testid="create-rule-discard-button"
+              aria-label="Discard changes"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            {/* Basic Info */}
+            <div>
+              <label htmlFor="rule-name" className="label">
+                Name
               </label>
               <input
+                id="rule-name"
                 type="text"
+                className="input input-bordered w-full"
                 value={newRule.name}
                 onChange={(e) =>
                   setNewRule((prev) => ({ ...prev, name: e.target.value }))
                 }
-                className="input input-bordered w-full"
+                placeholder="Rule name"
+                data-testid="rule-name-input"
                 required
+                aria-required="true"
               />
             </div>
-
             <CategorySelector
               selectedCategoryId={newRule.categoryId}
               selectedSubcategoryId={newRule.subcategoryId}
               onCategoryChange={(categoryId, subcategoryId) =>
-                setNewRule((prev) => ({
-                  ...prev,
-                  categoryId,
-                  subcategoryId,
-                }))
+                setNewRule((prev) => ({ ...prev, categoryId, subcategoryId }))
               }
+              testIdPrefix="create-rule-"
             />
-
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Notes (optional)</span>
+            <div>
+              <label htmlFor="rule-notes" className="label">
+                Description
               </label>
               <textarea
+                id="rule-notes"
+                className="textarea textarea-bordered w-full"
                 value={newRule.notes || ''}
                 onChange={(e) =>
                   setNewRule((prev) => ({ ...prev, notes: e.target.value }))
                 }
-                className="textarea textarea-bordered w-full h-24"
-                placeholder="Add any helpful notes about this rule..."
+                placeholder="Notes (optional)"
+                data-testid="rule-notes-input"
+                aria-label="Rule description"
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Base Quantity</span>
-                </label>
-                <input
-                  type="number"
-                  value={newRule.calculation?.baseQuantity}
-                  onChange={(e) =>
-                    setNewRule((prev) => ({
-                      ...prev,
-                      calculation: {
-                        ...(prev.calculation || DEFAULT_CALCULATION),
-                        baseQuantity: parseFloat(e.target.value),
-                      },
-                    }))
-                  }
-                  step="0.1"
-                  min="0.1"
-                  className="input input-bordered w-full"
-                  required
-                />
-                <div className="mt-4">
-                  <ToggleGroup
-                    perDay={newRule.calculation?.perDay ?? false}
-                    perPerson={newRule.calculation?.perPerson ?? false}
-                    daysPattern={newRule.calculation?.daysPattern}
-                    onPerDayChange={(checked) =>
-                      setNewRule((prev) => ({
-                        ...prev,
-                        calculation: {
-                          ...(prev.calculation || DEFAULT_CALCULATION),
-                          perDay: checked,
-                          daysPattern: checked
-                            ? prev.calculation?.daysPattern
-                            : undefined,
-                        },
-                      }))
-                    }
-                    onPerPersonChange={(checked) =>
-                      setNewRule((prev) => ({
-                        ...prev,
-                        calculation: {
-                          ...(prev.calculation || DEFAULT_CALCULATION),
-                          perPerson: checked,
-                        },
-                      }))
-                    }
-                    onDaysPatternChange={(pattern) =>
-                      setNewRule((prev) => ({
-                        ...prev,
-                        calculation: {
-                          ...(prev.calculation || DEFAULT_CALCULATION),
-                          daysPattern: pattern,
-                        },
-                      }))
-                    }
-                    label="Base Quantity Settings"
-                  />
-                </div>
-              </div>
+            <ItemCalculationForm
+              calculation={newRule.calculation}
+              onCalculationChange={(calculation) =>
+                setNewRule((prev) => ({ ...prev, calculation }))
+              }
+              testIdPrefix="create-rule-"
+            />
 
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Extra Items</span>
-                </label>
-                <input
-                  type="number"
-                  value={newRule.calculation?.extraItems?.quantity || 0}
-                  onChange={(e) =>
-                    setNewRule((prev) => ({
-                      ...prev,
-                      calculation: {
-                        ...(prev.calculation || DEFAULT_CALCULATION),
-                        extraItems: {
-                          ...(prev.calculation?.extraItems || {}),
-                          quantity: parseInt(e.target.value),
-                        },
-                      },
-                    }))
-                  }
-                  min="0"
-                  className="input input-bordered w-full"
-                />
-                {newRule.calculation?.extraItems?.quantity ? (
-                  <div className="mt-4">
-                    <ToggleGroup
-                      perDay={newRule.calculation?.extraItems?.perDay ?? false}
-                      perPerson={
-                        newRule.calculation?.extraItems?.perPerson ?? false
-                      }
-                      daysPattern={newRule.calculation?.extraItems?.daysPattern}
-                      onPerDayChange={(checked) =>
-                        handleExtraItemsChange(checked, 'perDay')
-                      }
-                      onPerPersonChange={(checked) =>
-                        handleExtraItemsChange(checked, 'perPerson')
-                      }
-                      onDaysPatternChange={handleExtraItemsDaysPatternChange}
-                      label="Extra Items Settings"
-                    />
-                  </div>
-                ) : null}
-              </div>
-            </div>
+            {/* Conditions */}
+            <ConditionsList
+              conditions={newRule.conditions}
+              onConditionsChange={(conditions) =>
+                setNewRule((prev) => ({ ...prev, conditions }))
+              }
+              testIdPrefix="create-rule-"
+            />
 
-            <div className="divider">Conditions</div>
-
-            {newRule.conditions && newRule.conditions.length > 0 && (
-              <div className="space-y-2">
-                {newRule.conditions.map((condition, index) => (
-                  <div
-                    key={index}
-                    className="alert flex flex-col items-stretch gap-2 mb-2"
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <div
-                        className={`badge badge-outline gap-1 ${
-                          condition.notes ? 'tooltip tooltip-right' : ''
-                        }`}
-                        data-tip={condition.notes}
-                      >
-                        {condition.type === 'person' ? '👤' : '📅'}{' '}
-                        {condition.field} {condition.operator} {condition.value}
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-xs"
-                          onClick={() =>
-                            handleStartEditingCondition(index, condition)
-                          }
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-xs text-error"
-                          onClick={() => handleRemoveCondition(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Add condition form */}
-            {showCondition ? (
-              <ConditionForm
-                initialCondition={condition}
-                onSave={(newCondition) => {
-                  if (editingConditionIndex !== null) {
-                    setNewRule((prev) => ({
-                      ...prev,
-                      conditions: prev.conditions?.map((c, i) =>
-                        i === editingConditionIndex ? newCondition : c
-                      ),
-                    }));
-                  } else {
-                    setNewRule((prev) => ({
-                      ...prev,
-                      conditions: [...(prev.conditions || []), newCondition],
-                    }));
-                  }
-                  setShowCondition(false);
-                  setEditingConditionIndex(null);
-                  setCondition({
-                    type: 'person',
-                    field: 'age',
-                    operator: '==',
-                    value: 0,
-                  });
-                }}
-                onCancel={handleCancelCondition}
-                isEditing={editingConditionIndex !== null}
-              />
-            ) : (
-              <button
-                type="button"
-                className="btn btn-outline btn-primary"
-                onClick={() => setShowCondition(true)}
-              >
-                Add Condition
-              </button>
-            )}
-
-            <div className="divider"></div>
-
-            <div className="card-actions justify-end gap-2">
-              {hasChanges && (
+            {/* Actions */}
+            <div className="card-body pt-2">
+              <div className="flex justify-end gap-2">
                 <button
                   type="button"
-                  className="btn btn-outline btn-error"
+                  className="btn btn-ghost"
                   onClick={() => setShowDiscardModal(true)}
+                  data-testid="create-rule-discard-button"
+                  aria-label="Discard changes"
                 >
                   Discard
                 </button>
-              )}
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={!newRule.name || !newRule.categoryId}
-              >
-                Create Rule
-              </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  data-testid="create-rule-save-button"
+                  disabled={!newRule.name || !newRule.categoryId}
+                  aria-disabled={!newRule.name || !newRule.categoryId}
+                >
+                  {newRule ? 'Update Rule' : 'Create Rule'}
+                </button>
+              </div>
             </div>
-          </form>
+          </div>
         </div>
-      </div>
+      </form>
 
       {/* Discard Confirmation Modal */}
-      <dialog className={`modal ${showDiscardModal ? 'modal-open' : ''}`}>
+      <dialog
+        className={`modal ${showDiscardModal ? 'modal-open' : ''}`}
+        aria-labelledby="discard-modal-title"
+        aria-modal="true"
+        role="dialog"
+      >
         <div className="modal-box">
-          <h3 className="font-bold text-lg">Discard Changes?</h3>
+          <h3 id="discard-modal-title" className="font-bold text-lg">
+            Discard Changes?
+          </h3>
           <p className="py-4">
             Are you sure you want to discard your changes? This cannot be
             undone.
           </p>
           <div className="modal-action">
-            <button className="btn" onClick={() => setShowDiscardModal(false)}>
+            <button
+              className="btn"
+              onClick={() => setShowDiscardModal(false)}
+              aria-label="Cancel discard"
+            >
               Cancel
             </button>
-            <button className="btn btn-error" onClick={handleDiscard}>
+            <button
+              className="btn btn-error"
+              onClick={handleDiscard}
+              aria-label="Confirm discard"
+            >
               Discard
             </button>
           </div>
@@ -447,6 +206,6 @@ export const CreateRuleForm = () => {
           <button>close</button>
         </form>
       </dialog>
-    </>
+    </div>
   );
 };

@@ -72,6 +72,10 @@ import {
   updateRulePackHandler,
 } from './action-handlers/update-rule-pack.js';
 import {
+  DeleteRulePackAction,
+  deleteRulePackHandler,
+} from './action-handlers/delete-rule-pack.js';
+import {
   openRulePackModalHandler,
   OpenRulePackModalAction,
   closeRulePackModalHandler,
@@ -106,6 +110,7 @@ export type AllActions =
   | ToggleRulePackAction
   | CreateRulePackAction
   | UpdateRulePackAction
+  | DeleteRulePackAction
   | OpenRulePackModalAction
   | CloseRulePackModalAction
   | SetRulePackModalTabAction;
@@ -131,6 +136,7 @@ export const Mutations: {
   TOGGLE_RULE_PACK: toggleRulePackHandler,
   CREATE_RULE_PACK: createRulePackHandler,
   UPDATE_RULE_PACK: updateRulePackHandler,
+  DELETE_RULE_PACK: deleteRulePackHandler,
   OPEN_RULE_PACK_MODAL: openRulePackModalHandler,
   CLOSE_RULE_PACK_MODAL: closeRulePackModalHandler,
   SET_RULE_PACK_MODAL_TAB: setRulePackModalTabHandler,

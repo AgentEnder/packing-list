@@ -66,15 +66,31 @@ export function Timeline({
               onEventClick ? 'cursor-pointer hover:bg-base-200' : ''
             }`}
             onClick={() => onEventClick?.(event)}
+            data-testid={`timeline-event-${event.type}${
+              event.location ? `-${event.location}` : ''
+            }`}
           >
-            <div className="font-semibold">
+            <div
+              className="font-semibold"
+              data-testid={`timeline-event-title-${event.type}`}
+            >
               {eventTypeLabels[event.type] || event.type}
             </div>
             {event.location && (
-              <div className="text-sm text-gray-600">{event.location}</div>
+              <div
+                className="text-sm text-gray-600"
+                data-testid={`timeline-event-location-${event.location}`}
+              >
+                {event.location}
+              </div>
             )}
             {event.notes && (
-              <div className="text-xs text-gray-500 mt-1">{event.notes}</div>
+              <div
+                className="text-xs text-gray-500 mt-1"
+                data-testid={`timeline-event-notes-${event.id}`}
+              >
+                {event.notes}
+              </div>
             )}
           </div>
           {index < sortedEvents.length - 1 && <hr />}

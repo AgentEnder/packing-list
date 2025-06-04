@@ -64,8 +64,12 @@ export function RulePackRuleSelector({
             placeholder="Search rules..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            data-testid="rule-search-input"
           />
-          <div className="badge badge-neutral">
+          <div
+            className="badge badge-neutral"
+            data-testid="selected-rules-count"
+          >
             {selectedRules.length} selected
           </div>
         </div>
@@ -84,6 +88,7 @@ export function RulePackRuleSelector({
                   : 'border border-base-300'
               }`}
               onClick={() => handleToggleRule(rule)}
+              data-testid={`rule-${rule.name}`}
             >
               <div className="card-body p-4">
                 <div className="flex items-start justify-between">
@@ -112,6 +117,9 @@ export function RulePackRuleSelector({
                       e.stopPropagation();
                       handleToggleRule(rule);
                     }}
+                    data-testid={`${isSelected ? 'remove' : 'add'}-rule-${
+                      rule.name
+                    }-button`}
                   >
                     {isSelected ? (
                       <Minus className="w-4 h-4" />

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { PackingList } from './PackingList';
@@ -12,8 +13,11 @@ vi.mock('@packing-list/state', () => ({
   useAppDispatch: vi.fn(),
   selectPackingListViewState: vi.fn(),
   selectGroupedItems: vi.fn(),
+
   selectTrip: (state: any) => state.trip,
+
   selectPeople: (state: any) => state.people,
+
   selectDefaultItemRules: (state: any) => state.defaultItemRules,
 }));
 
@@ -89,7 +93,8 @@ describe('PackingList', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (state.useAppSelector as any).mockImplementation((selector: any) => {
+
+    (state.useAppSelector as any).mockImplementation((selector: unknown) => {
       if (selector === state.selectPackingListViewState) return mockViewState;
       if (selector === state.selectGroupedItems) return mockGroupedItems;
       if (selector === state.selectTrip) return mockState.trip;
@@ -98,6 +103,7 @@ describe('PackingList', () => {
         return mockState.defaultItemRules;
       return {};
     });
+
     (state.useAppDispatch as any).mockReturnValue(mockDispatch);
   });
 
@@ -236,7 +242,10 @@ describe('PackingList', () => {
       (button) => button.getAttribute('aria-description') === 'Pack Sunscreen'
     );
     expect(sunscreenPackButton).toBeTruthy();
-    fireEvent.click(sunscreenPackButton!);
+    if (!sunscreenPackButton) {
+      throw new Error('Sunscreen pack button not found');
+    }
+    fireEvent.click(sunscreenPackButton);
 
     const dialog = screen.getByRole('dialog', {
       name: /pack sunscreen/i,

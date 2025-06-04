@@ -3,10 +3,12 @@ import { Person } from './Person.js';
 
 export type ConditionValue = string | number | boolean;
 
+export type Operator = '==' | '>' | '<' | '>=' | '<=';
+
 export type Condition = {
   type: 'person' | 'day';
   field: string;
-  operator: '==' | '>' | '<' | '>=' | '<=';
+  operator: Operator;
   value: ConditionValue;
   notes?: string;
 };

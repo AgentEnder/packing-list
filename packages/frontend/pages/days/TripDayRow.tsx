@@ -115,6 +115,7 @@ function formatEventDescription(event: TripEvent): string {
 }
 
 export function TripDayRow({
+  index,
   dayLabel,
   location,
   expectedClimate,
@@ -133,6 +134,7 @@ export function TripDayRow({
       <div
         className="flex items-start sm:items-center gap-2 sm:gap-4 p-2 sm:p-4 cursor-pointer hover:bg-base-200/50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
+        data-testid={`day-row-${index}`}
       >
         <div className="text-2xl sm:text-4xl font-thin opacity-30 tabular-nums font-mono pt-1 sm:pt-0">
           {paddedIndex}
@@ -167,6 +169,7 @@ export function TripDayRow({
                     onEventClick?.(event);
                   }}
                   className="block w-full text-left text-sm hover:bg-base-200 rounded transition-colors"
+                  data-testid={`event-button-${event.type}-${index}`}
                 >
                   <div className="font-medium">
                     {formatEventDescription(event)}
@@ -182,7 +185,12 @@ export function TripDayRow({
             </div>
           ) : (
             <>
-              <div className="font-medium">{location}</div>
+              <div
+                className="font-medium"
+                data-testid={`day-location-${index}`}
+              >
+                {location}
+              </div>
               <div className="text-xs uppercase font-semibold opacity-60">
                 {expectedClimate}
               </div>

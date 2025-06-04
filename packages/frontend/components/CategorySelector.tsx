@@ -10,6 +10,7 @@ interface CategorySelectorProps {
   selectedSubcategoryId?: string;
   onCategoryChange: (categoryId?: string, subcategoryId?: string) => void;
   className?: string;
+  testIdPrefix?: string;
 }
 
 export function CategorySelector({
@@ -17,6 +18,7 @@ export function CategorySelector({
   selectedSubcategoryId,
   onCategoryChange,
   className = '',
+  testIdPrefix = '',
 }: CategorySelectorProps) {
   const [categories] = useState<Category[]>(getAllCategories());
   const [subcategories, setSubcategories] = useState<Category[]>([]);
@@ -42,6 +44,7 @@ export function CategorySelector({
             const newCategoryId = e.target.value;
             onCategoryChange(newCategoryId, undefined);
           }}
+          data-testid={`${testIdPrefix}category-select`}
         >
           <option value="">Select a category</option>
           {categories
@@ -68,6 +71,7 @@ export function CategorySelector({
               const newSubcategoryId = e.target.value || undefined;
               onCategoryChange(selectedCategoryId, newSubcategoryId);
             }}
+            data-testid={`${testIdPrefix}subcategory-select`}
           >
             <option value="">No subcategory</option>
             {subcategories.map((subcategory) => (

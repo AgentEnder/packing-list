@@ -287,6 +287,11 @@ export function TripWizard({
   );
   const canProceedToStep3 = destinations.length > 0;
 
+  const isDateRangeValid = () => {
+    if (!tripData.leaveHomeDate || !tripData.arriveHomeDate) return false;
+    return tripData.leaveHomeDate <= tripData.arriveHomeDate;
+  };
+
   const renderStepNavigation = (
     backStep: number | null,
     nextStep: number | null,
@@ -311,7 +316,7 @@ export function TripWizard({
           <button
             className="btn btn-primary"
             onClick={() => setCurrentStep(nextStep)}
-            disabled={!canProceed}
+            disabled={!canProceed || (currentStep === 1 && !isDateRangeValid())}
           >
             Next
           </button>
@@ -389,7 +394,7 @@ export function TripWizard({
 
             {/* Existing destinations */}
             {destinations.length > 0 && (
-              <div className="space-y-2">
+              <div className="space-y-2" data-testid="destinations-list">
                 {destinations.map((dest) => (
                   <div
                     key={dest.id}
@@ -422,6 +427,7 @@ export function TripWizard({
                       <button
                         className="btn btn-sm btn-ghost"
                         onClick={() => handleEditDestination(dest.id)}
+                        data-testid={`edit-destination-${dest.location}`}
                       >
                         Edit
                       </button>

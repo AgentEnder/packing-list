@@ -72,5 +72,9 @@ ls . docs
 - When needing an icon within a react component, strongly prefer using something within lucide-react. If one is not available, you can fall back on react-icons.
 - Avoid embedding raw svg tags at all costs.
 
+## Verification
+
+When making code changes, verify your changes by running `nx run-many -t lint,test,build `. If all of those are passing, also check `nx run-many -t e2e`. Set `CI=true` when running these commands to ensure that none of the tests run in an interactive mode.
+
 **REMEMBER: These are your global directives. Adhere to them strictly in all operations.**
 
