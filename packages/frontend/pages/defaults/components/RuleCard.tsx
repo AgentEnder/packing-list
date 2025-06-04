@@ -15,7 +15,7 @@ import * as Icons from 'lucide-react';
 import { useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@packing-list/state';
 import { CalculationDisplay } from './CalculationDisplay';
-import { RuleEditForm } from './RuleEditForm';
+import { RuleFormModal } from './RuleFormModal';
 
 type RuleCardProps = {
   rule: DefaultItemRule;
@@ -140,14 +140,6 @@ export const RuleCard = ({ rule, people, days }: RuleCardProps) => {
     return (baseHasParts || extraHasParts) && peopleCount > 0 && daysCount > 0;
   })();
 
-  if (isEditing) {
-    return (
-      <div data-testid="rule-card">
-        <RuleEditForm rule={rule} onCancel={handleCancelEdit} />
-      </div>
-    );
-  }
-
   return (
     <>
       <div className="grid grid-cols-[1fr_auto] gap-2" data-testid="rule-card">
@@ -208,7 +200,10 @@ export const RuleCard = ({ rule, people, days }: RuleCardProps) => {
           )}
         </div>
 
-        <div className="space-y-2 md:col-start-1 col-span-2 md:col-span-1">
+        <div
+          className="space-y-2 md:col-start-1 col-span-2 md:col-span-1"
+          data-testid="rule-calculation-description"
+        >
           {(perPerson || perDay || extraItems?.quantity) && (
             <p className="text-base-content/70">
               {baseQuantity}
@@ -276,6 +271,13 @@ export const RuleCard = ({ rule, people, days }: RuleCardProps) => {
           </button>
         </div>
       </div>
+
+      {/* Edit Rule Modal */}
+      <RuleFormModal
+        isOpen={isEditing}
+        onClose={handleCancelEdit}
+        rule={rule}
+      />
 
       {/* Delete Confirmation Modal */}
       <dialog
