@@ -219,7 +219,7 @@ export const ConditionForm = ({
           type="button"
           className="btn btn-primary"
           onClick={() => onSave(condition)}
-          data-testid={`${testIdPrefix}save-condition-button`}
+          data-testid={`${testIdPrefix}condition-save-button`}
         >
           {isEditing ? 'Update' : 'Add'} Condition
         </button>
