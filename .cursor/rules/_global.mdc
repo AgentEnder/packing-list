@@ -74,7 +74,7 @@ ls . docs
 
 ## Verification
 
-When making code changes, verify your changes by running `nx run-many -t lint,test,build `. If all of those are passing, also check `nx run-many -t e2e`. Set `CI=true` when running these commands to ensure that none of the tests run in an interactive mode.
+When making code changes, verify your changes by running `nx run-many -t lint,test,build `. If all of those are passing, also check `nx run-many -t e2e --reporter=list`. Avoid setting CI=true as it limits workers to 1 which is much too slow.
 
 **REMEMBER: These are your global directives. Adhere to them strictly in all operations.**
 
