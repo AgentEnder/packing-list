@@ -18,7 +18,11 @@ export class RulePackModal {
   }
 
   async close() {
-    await this.page.getByRole('button', { name: 'Close' }).click();
+    if (
+      await this.page.getByTestId('rule-pack-modal-close-button').isVisible()
+    ) {
+      await this.page.getByTestId('rule-pack-modal-close-button').click();
+    }
   }
 
   async createPack(
@@ -27,6 +31,7 @@ export class RulePackModal {
     options: RulePackOptions = {}
   ) {
     await this.page.getByTestId('create-pack-button').click();
+
     await this.page.getByTestId('rule-pack-name-input').fill(name);
     await this.page
       .getByTestId('rule-pack-description-input')
@@ -65,28 +70,32 @@ export class RulePackModal {
 
     // The RulePackEditor requires at least one rule to be selected
     // Let's select the first available rule if any exist
-    const firstAddRuleButton = this.page
+    const modalContent = this.page.getByTestId('rule-pack-modal');
+    const firstAddRuleButton = modalContent
       .locator('[data-testid^="add-rule-"][data-testid$="-button"]')
       .first();
     if (await firstAddRuleButton.isVisible()) {
-      console.log('Selecting first available rule for pack creation');
       await firstAddRuleButton.click();
     } else {
-      console.log('Warning: No rules available to add to pack');
+      console.warn('Warning: No rules available to add to pack');
 
-      // Wait a moment and try again - the rules might be loading
-      await this.page.waitForTimeout(1000);
       if (await firstAddRuleButton.isVisible()) {
-        console.log('Selecting rule after wait');
         await firstAddRuleButton.click();
       } else {
-        console.log('Still no rules available after wait - proceeding anyway');
+        console.warn('Still no rules available after wait - proceeding anyway');
         // Continue with pack creation even without rules
         // The backend should handle empty rule packs
       }
     }
 
     await this.page.getByTestId('rule-pack-save-button').click();
+
+    // Wait for pack creation to complete and ensure we're back on browse tab
+    await this.page.waitForTimeout(1000);
+
+    // Switch back to browse tab to make the pack visible and searchable
+    await this.page.getByTestId('browse-tab').click();
+    await this.page.waitForTimeout(500);
   }
 
   async editPack(name: string, options: RulePackOptions = {}) {
@@ -173,7 +182,10 @@ export class RulePackModal {
   async isPackVisible(packName: string) {
     // Wait a moment for any filtering/search to take effect
     await this.page.waitForTimeout(1000);
-    return this.page.getByTestId(`pack-${packName}`).isVisible();
+
+    // Use a more robust selector that can handle spaces in pack names
+    const packElement = this.page.locator(`[data-testid="pack-${packName}"]`);
+    return packElement.isVisible();
   }
 
   async isPackApplied(packName: string) {
@@ -198,12 +210,23 @@ export class RulePackModal {
     await this.page.getByTestId(`remove-pack-${packName}-button`).click();
   }
 
+  async deletePack(packName: string) {
+    await this.page.getByTestId(`delete-pack-${packName}-button`).click();
+    await this.page.getByTestId('confirm-delete-rule-packs-button').click();
+  }
+
   async searchPacks(query: string) {
     const searchInput = this.page.getByTestId('pack-search-input');
+
+    // Clear any existing search first
     await searchInput.clear();
+    await this.page.waitForTimeout(500);
+
+    // Fill the search term
     await searchInput.fill(query);
-    // Wait for search to process
-    await this.page.waitForTimeout(1000);
+
+    // Wait for search to process and UI to update
+    await this.page.waitForTimeout(1500);
   }
 
   async clearCategory() {
