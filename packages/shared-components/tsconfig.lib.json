@@ -8,10 +8,14 @@
     "emitDeclarationOnly": true,
     "forceConsistentCasingInFileNames": true,
     "types": ["node"],
+    "lib": ["es2020", "dom"],
     "jsx": "react-jsx"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "references": [
+    {
+      "path": "../auth"
+    },
     {
       "path": "../model/tsconfig.lib.json"
     }

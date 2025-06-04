@@ -1,0 +1,39 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps
+
+      - name: Derive appropriate SHAs for nx affected commands
+        uses: nrwl/nx-set-shas@v4
+
+      - name: Run Checks
+        run: pnpm nx affected -t lint,test,build,e2e --parallel=3
+        env:
+          CI: true
+          PUBLIC_ENV_SUPABASE_URL: ${{ secrets.PUBLIC_ENV_SUPABASE_URL }}
+          PUBLIC_ENV_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_ENV_SUPABASE_ANON_KEY }}

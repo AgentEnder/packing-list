@@ -227,13 +227,6 @@ export class CreateRuleForm {
 
       if (!isEnabled) {
         // Try to identify why the button is disabled
-        const nameInput = this.page.getByTestId('rule-name-input');
-        const nameValue = await nameInput.inputValue();
-
-        const categorySelect = this.page.getByTestId(
-          'create-rule-category-select'
-        );
-        const categoryValue = await categorySelect.inputValue();
 
         // If edit button is disabled, try clicking it anyway (force click)
         if (saveButton === editSaveButton) {

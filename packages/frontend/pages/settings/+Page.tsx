@@ -1,7 +1,8 @@
 import { useAppDispatch } from '@packing-list/state';
+import { UserManagement } from '@packing-list/shared-components';
 import { PageContainer } from '../../components/PageContainer';
 import { PageHeader } from '../../components/PageHeader';
-import { Settings, AlertTriangle, EyeOff } from 'lucide-react';
+import { Settings, AlertTriangle, EyeOff, Calendar } from 'lucide-react';
 import { showToast } from '../../components/Toast';
 import { HELP_ALL_KEY } from '../../components/HelpBlurb';
 
@@ -31,7 +32,7 @@ export default function SettingsPage() {
     <PageContainer>
       <PageHeader title="Settings" />
 
-      <div className="space-y-8">
+      <div className="space-y-4">
         <div className="card bg-base-100 shadow-xl">
           <div className="card-body">
             <h2 className="card-title">Help & Tutorials</h2>
@@ -54,7 +55,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="card bg-base-100 shadow-xl">
+        <div className="card bg-base-100 shadow-xl space-y-4">
           <div className="card-body">
             <h2 className="card-title">Demo Data</h2>
             <p className="text-base-content/70">
@@ -69,11 +70,21 @@ export default function SettingsPage() {
             </div>
             <div className="card-actions justify-end">
               <button className="btn btn-primary" onClick={handleLoadDemo}>
+                <Calendar className="w-4 h-4" />
                 Load Demo Data
               </button>
             </div>
           </div>
         </div>
+
+        {/* User Management Component */}
+        <UserManagement
+          showToast={showToast}
+          onAccountDeleted={() => {
+            // Redirect to home after account deletion
+            window.location.href = '/';
+          }}
+        />
       </div>
     </PageContainer>
   );

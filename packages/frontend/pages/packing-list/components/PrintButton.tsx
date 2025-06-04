@@ -423,12 +423,12 @@ export const PrintButton: React.FC = () => {
       <div>
         <h2 className="text-2xl font-bold mb-4">Stop! 🖨️</h2>
         <p className="text-lg mb-6">
-          Please use the "Print" button in the app to open a properly formatted
-          view of your packing list.
+          Please use the &quot;Print&quot; button in the app to open a properly
+          formatted view of your packing list.
         </p>
         <p className="text-base text-base-content/70">
           The print button will open a new window with a clean, organized view
-          of your items that's perfect for printing.
+          of your items that&apos;s perfect for printing.
         </p>
       </div>
     </div>

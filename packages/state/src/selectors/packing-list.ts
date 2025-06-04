@@ -47,6 +47,9 @@ export const selectPackingListViewState = (state: StoreType) =>
   state.packingListView;
 export const selectDays = (state: StoreType) => state.trip.days;
 
+export const selectPackingListViewMode = (state: StoreType) =>
+  state.packingListView.viewMode;
+
 // Filter items based on view state
 export const selectFilteredItems: (state: StoreType) => PackingListItem[] =
   createSelector(

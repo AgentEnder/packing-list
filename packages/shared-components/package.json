@@ -14,6 +14,8 @@
     "./package.json": "./package.json"
   },
   "dependencies": {
-    "@packing-list/model": "workspace:*"
+    "@packing-list/model": "workspace:*",
+    "@packing-list/auth": "workspace:*",
+    "@packing-list/state": "workspace:*"
   }
 }

@@ -7,6 +7,12 @@ import { DemoBanner } from '../components/DemoBanner';
 import { ToastContainer } from '../components/Toast';
 import { useAppDispatch } from '@packing-list/state';
 import {
+  useAuth,
+  useLoginModal,
+  UserProfile,
+  LoginModal,
+} from '@packing-list/shared-components';
+import {
   Menu,
   Home,
   Users,
@@ -14,6 +20,7 @@ import {
   ClipboardList,
   CheckSquare,
   Settings,
+  LogIn,
 } from 'lucide-react';
 import { RulePackModal } from '../components/RulePackModal';
 
@@ -26,6 +33,8 @@ export default function LayoutDefault({
 }) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const dispatch = useAppDispatch();
+  const { user, loading } = useAuth();
+  const { openLoginModal, closeLoginModal } = useLoginModal();
 
   useEffect(() => {
     // Check if user has made a choice this session
@@ -41,6 +50,25 @@ export default function LayoutDefault({
   const handleLinkClick = () => {
     setIsDrawerOpen(false);
   };
+
+  const handleLoginClick = () => {
+    openLoginModal();
+  };
+
+  // Close login modal when user successfully logs in
+  useEffect(() => {
+    if (user) {
+      closeLoginModal();
+    }
+  }, [user, closeLoginModal]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <span className="loading loading-spinner loading-lg"></span>
+      </div>
+    );
+  }
 
   return (
     <div className="drawer lg:drawer-open">
@@ -71,6 +99,19 @@ export default function LayoutDefault({
               Packing List
             </Link>
           </div>
+          <div className="flex-none">
+            {user ? (
+              <UserProfile />
+            ) : (
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={handleLoginClick}
+              >
+                <LogIn className="w-4 h-4" />
+                Sign In
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Page content */}
@@ -91,7 +132,7 @@ export default function LayoutDefault({
           onClick={() => setIsDrawerOpen(false)}
         ></label>
         <div className="menu p-4 w-80 min-h-full bg-base-200 text-base-content">
-          <div className="hidden lg:flex mb-8">
+          <div className="hidden lg:flex mb-8 justify-between items-center">
             <Link
               href="./"
               className="btn btn-ghost normal-case text-xl"
@@ -99,6 +140,17 @@ export default function LayoutDefault({
             >
               Packing List
             </Link>
+            {user ? (
+              <UserProfile />
+            ) : (
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleLoginClick}
+              >
+                <LogIn className="w-4 h-4" />
+                Sign In
+              </button>
+            )}
           </div>
           <ul className="menu menu-lg gap-2">
             <li>
@@ -166,6 +218,9 @@ export default function LayoutDefault({
         </div>
       </div>
       <RulePackModal />
+
+      {/* Login Modal */}
+      <LoginModal />
     </div>
   );
 }

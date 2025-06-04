@@ -16,6 +16,7 @@ export default defineConfig({
     target: 'es2022',
   },
   base: process.env.PUBLIC_ENV__BASE_URL || '/',
+  envPrefix: ['VITE_', 'PUBLIC_ENV__'],
   server: {
     hmr: {
       overlay: true,
