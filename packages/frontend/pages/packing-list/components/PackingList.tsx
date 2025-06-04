@@ -101,6 +101,7 @@ export const PackingList: React.FC = () => {
       <li
         key={`${groupedItem.baseItem.id}-${groupedItem.displayName}`}
         className="card bg-base-100 shadow-sm"
+        data-testid="packing-item"
       >
         <div className="relative flex items-center gap-1.5 p-1.5 overflow-hidden rounded-lg">
           <div
@@ -113,6 +114,7 @@ export const PackingList: React.FC = () => {
               onClick={() => handleOpenPackDialog(groupedItem)}
               aria-label="Pack"
               aria-description={`Pack ${groupedItem.displayName}`}
+              data-testid="pack-button"
             >
               <PackagePlus className="w-3.5 h-3.5" />
             </button>
@@ -121,6 +123,7 @@ export const PackingList: React.FC = () => {
               <button
                 className="hover:text-primary transition-colors duration-200 truncate text-xs sm:text-sm"
                 onClick={() => handleOpenOverrideDialog(groupedItem)}
+                data-testid="item-name"
               >
                 {groupedItem.displayName}
               </button>
@@ -136,7 +139,10 @@ export const PackingList: React.FC = () => {
                 </div>
               )}
               {groupedItem.baseItem.isOverridden && (
-                <div className="badge badge-warning badge-xs sm:badge-sm gap-1 shrink-0">
+                <div
+                  className="badge badge-warning badge-xs sm:badge-sm gap-1 shrink-0"
+                  data-testid="override-badge"
+                >
                   <AlertTriangle className="w-3 h-3 stroke-current" />
                   <span className="hidden xs:inline">Modified</span>
                 </div>
@@ -147,6 +153,7 @@ export const PackingList: React.FC = () => {
               className={`shrink-0 tabular-nums text-xs sm:text-sm ${
                 progress === 100 ? 'text-success' : ''
               }`}
+              data-testid="item-counts"
             >
               {groupedItem.packedCount}/{groupedItem.totalCount}
             </span>
@@ -164,17 +171,26 @@ export const PackingList: React.FC = () => {
     const categorizedItems = groupItemsByCategory(group.items);
 
     return (
-      <div key={group.title} className="card bg-base-200 shadow-lg">
+      <div
+        key={group.title}
+        className="card bg-base-200 shadow-lg"
+        data-testid="packing-group"
+      >
         <div className="card-body p-4">
-          <h2 className="card-title text-lg">{group.title}</h2>
+          <h2 className="card-title text-lg" data-testid="group-title">
+            {group.title}
+          </h2>
           <div className="space-y-6">
             {categorizedItems.map(([categoryId, items]) => {
               const category = categories.find((c) => c.id === categoryId);
               const categoryName = category?.name || 'Other Items';
 
               return (
-                <div key={categoryId}>
-                  <h3 className="text-sm font-medium text-base-content/70 mb-3">
+                <div key={categoryId} data-testid="category-section">
+                  <h3
+                    className="text-sm font-medium text-base-content/70 mb-3"
+                    data-testid="category-title"
+                  >
                     {categoryName}
                   </h3>
                   <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -190,7 +206,9 @@ export const PackingList: React.FC = () => {
   };
 
   // Check if we have any items before filtering
-  const hasAnyItems = groupedItems.length > 0 || groupedGeneralItems.length > 0;
+  const hasAnyItems =
+    groupedItems.some((group) => group.items.length > 0) ||
+    groupedGeneralItems.length > 0;
   const hasTrip = trip.days.length > 0;
   const hasPeople = people.length > 0;
   const hasRules = defaultItemRules.length > 0;
@@ -217,6 +235,7 @@ export const PackingList: React.FC = () => {
                   viewState.viewMode === 'by-day' ? 'btn-active' : ''
                 }`}
                 onClick={() => handleViewModeChange('by-day')}
+                data-testid="view-mode-by-day"
               >
                 <Calendar className="w-3.5 h-3.5" />
                 <span className="ml-1.5">By Day</span>
@@ -226,6 +245,7 @@ export const PackingList: React.FC = () => {
                   viewState.viewMode === 'by-person' ? 'btn-active' : ''
                 }`}
                 onClick={() => handleViewModeChange('by-person')}
+                data-testid="view-mode-by-person"
               >
                 <Users className="w-3.5 h-3.5" />
                 <span className="ml-1.5">By Person</span>
@@ -244,6 +264,7 @@ export const PackingList: React.FC = () => {
                   viewState.filters.packed ? 'btn-active' : ''
                 }`}
                 onClick={() => handleFilterChange('packed')}
+                data-testid="filter-packed"
               >
                 <Check className="w-3.5 h-3.5" />
                 <span className="ml-1.5">Packed</span>
@@ -253,6 +274,7 @@ export const PackingList: React.FC = () => {
                   viewState.filters.unpacked ? 'btn-active' : ''
                 }`}
                 onClick={() => handleFilterChange('unpacked')}
+                data-testid="filter-unpacked"
               >
                 <ClipboardList className="w-3.5 h-3.5" />
                 <span className="ml-1.5">Unpacked</span>
@@ -265,6 +287,7 @@ export const PackingList: React.FC = () => {
       <HelpBlurb
         title="How to use this packing list"
         storageKey="packing-list-help"
+        data-testid="help-blurb"
       >
         <p>
           Your packing list helps you track and organize everything you need for
@@ -297,7 +320,10 @@ export const PackingList: React.FC = () => {
       </HelpBlurb>
 
       {!hasAnyItems ? (
-        <div className="card bg-base-200 shadow-lg mt-6">
+        <div
+          className="card bg-base-200 shadow-lg mt-6"
+          data-testid="empty-state"
+        >
           <div className="card-body">
             <h2 className="card-title">Get Started</h2>
             <p className="text-base-content/70">
@@ -305,25 +331,52 @@ export const PackingList: React.FC = () => {
             </p>
             <ol className="list-decimal list-inside space-y-4 mt-4">
               <li>
-                <Link href="/days" className="link link-primary">
+                <Link
+                  href="/days"
+                  className="link link-primary"
+                  dataTestId="setup-add-days-link"
+                >
                   <Calendar className="w-4 h-4 inline-block mr-2" />
                   Add trip days
                 </Link>
-                {hasTrip && <Check className="w-4 h-4 inline-block ml-2" />}
+                {hasTrip && (
+                  <Check
+                    className="w-4 h-4 inline-block ml-2"
+                    data-testid="setup-check"
+                  />
+                )}
               </li>
               <li>
-                <Link href="/people" className="link link-primary">
+                <Link
+                  href="/people"
+                  className="link link-primary"
+                  dataTestId="setup-add-people-link"
+                >
                   <Users className="w-4 h-4 inline-block mr-2" />
                   Add people
                 </Link>
-                {hasPeople && <Check className="w-4 h-4 inline-block ml-2" />}
+                {hasPeople && (
+                  <Check
+                    className="w-4 h-4 inline-block ml-2"
+                    data-testid="setup-check"
+                  />
+                )}
               </li>
               <li>
-                <Link href="/rules" className="link link-primary">
+                <Link
+                  href="/rules"
+                  className="link link-primary"
+                  dataTestId="setup-add-rules-link"
+                >
                   <ClipboardList className="w-4 h-4 inline-block mr-2" />
                   Add packing rules
                 </Link>
-                {hasRules && <Check className="w-4 h-4 inline-block ml-2" />}
+                {hasRules && (
+                  <Check
+                    className="w-4 h-4 inline-block ml-2"
+                    data-testid="setup-check"
+                  />
+                )}
               </li>
             </ol>
           </div>
@@ -352,9 +405,14 @@ export const PackingList: React.FC = () => {
 
           {/* General items */}
           {groupedGeneralItems.length > 0 && (
-            <div className="card bg-base-200 shadow-lg">
+            <div
+              className="card bg-base-200 shadow-lg"
+              data-testid="packing-group"
+            >
               <div className="card-body p-4">
-                <h2 className="card-title text-lg">General Items</h2>
+                <h2 className="card-title text-lg" data-testid="group-title">
+                  General Items
+                </h2>
                 <div className="space-y-6">
                   {groupItemsByCategory(groupedGeneralItems).map(
                     ([categoryId, items]) => {
@@ -364,8 +422,11 @@ export const PackingList: React.FC = () => {
                       const categoryName = category?.name || 'Other Items';
 
                       return (
-                        <div key={categoryId}>
-                          <h3 className="text-sm font-medium text-base-content/70 mb-3">
+                        <div key={categoryId} data-testid="category-section">
+                          <h3
+                            className="text-sm font-medium text-base-content/70 mb-3"
+                            data-testid="category-title"
+                          >
                             {categoryName}
                           </h3>
                           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">

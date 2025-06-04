@@ -52,6 +52,12 @@ export class SettingsPage {
   }
 
   async clearDemoData() {
-    await this.page.getByRole('button', { name: 'Clear' }).click();
+    try {
+      await this.page
+        .getByRole('button', { name: 'Clear' })
+        .click({ timeout: 1000 });
+    } catch {
+      // Demo data was likely not loaded.
+    }
   }
 }

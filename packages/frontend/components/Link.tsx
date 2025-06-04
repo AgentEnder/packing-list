@@ -6,11 +6,13 @@ export function Link({
   children,
   className,
   onClick,
+  dataTestId,
 }: {
   href: string;
   children: ReactNode;
   className?: string;
   onClick?: () => void;
+  dataTestId?: string;
 }) {
   const pageContext = usePageContext();
   const { urlPathname } = pageContext;
@@ -34,6 +36,7 @@ export function Link({
           onClick();
         }
       }}
+      data-testid={dataTestId}
     >
       {children}
     </a>

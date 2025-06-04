@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 interface HelpBlurbProps {
   storageKey: string;
   title: string;
+  'data-testid'?: string;
 }
 
 export const HELP_ALL_KEY = 'help-all';
@@ -22,6 +23,7 @@ export const HelpBlurb = ({
   title,
   children,
   storageKey,
+  'data-testid': testId,
 }: PropsWithChildren<HelpBlurbProps>) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isVisible, setIsVisible] = useState(!isHelpHidden(storageKey));
@@ -39,7 +41,7 @@ export const HelpBlurb = ({
   if (!isLoaded || !isVisible) return null;
 
   return (
-    <div className="card bg-base-100 shadow-xl mb-6">
+    <div className="card bg-base-100 shadow-xl mb-6" data-testid={testId}>
       <div className="card-body prose relative">
         <button
           onClick={handleDismiss}

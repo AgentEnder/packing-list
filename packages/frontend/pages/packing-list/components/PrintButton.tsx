@@ -437,7 +437,11 @@ export const PrintButton: React.FC = () => {
   return (
     <>
       <PrintMessagePortal>{printMessage}</PrintMessagePortal>
-      <button className="btn btn-sm btn-primary" onClick={handlePrint}>
+      <button
+        className="btn btn-sm btn-primary"
+        onClick={handlePrint}
+        data-testid="print-button"
+      >
         <Printer className="w-3.5 h-3.5" />
         <span className="ml-1.5">Print</span>
       </button>

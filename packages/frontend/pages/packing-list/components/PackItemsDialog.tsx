@@ -100,15 +100,20 @@ export const PackItemsDialog: React.FC<PackItemsDialogProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="pack-dialog-title"
+      data-testid="pack-items-modal"
     >
       <div className="modal-box">
-        <h3 id="pack-dialog-title" className="font-bold text-lg">
+        <h3
+          id="pack-dialog-title"
+          className="font-bold text-lg"
+          data-testid="pack-dialog-title"
+        >
           Pack {headerText}
         </h3>
-        <div className="space-y-4">
+        <div className="space-y-4" data-testid="pack-dialog-content">
           {/* Base items */}
           {baseItems.length > 0 && (
-            <div>
+            <div data-testid="base-items-section">
               <h4 className="font-medium mb-2">Base Items</h4>
               <div className="space-y-2">{baseItems.map(renderItem)}</div>
             </div>
@@ -116,14 +121,18 @@ export const PackItemsDialog: React.FC<PackItemsDialogProps> = ({
 
           {/* Extra items */}
           {extraItems.length > 0 && (
-            <div>
+            <div data-testid="extra-items-section">
               <h4 className="font-medium mb-2">Extra Items</h4>
               <div className="space-y-2">{extraItems.map(renderItem)}</div>
             </div>
           )}
         </div>
         <div className="modal-action">
-          <button className="btn" onClick={onClose}>
+          <button
+            className="btn"
+            onClick={onClose}
+            data-testid="pack-dialog-close"
+          >
             Close
           </button>
         </div>
