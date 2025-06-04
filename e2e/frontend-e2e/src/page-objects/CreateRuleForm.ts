@@ -114,16 +114,12 @@ export class CreateRuleForm {
     value: string | number | boolean,
     testIdPrefix = 'create-rule-'
   ) {
-    console.log(`Adding condition with testIdPrefix: ${testIdPrefix}`);
-
     // Click the appropriate add condition button
     const addButton = this.page.getByTestId(
       `${testIdPrefix}add-condition-button`
     );
-    console.log(`Looking for add button: ${testIdPrefix}add-condition-button`);
 
     const addButtonExists = await addButton.isVisible();
-    console.log(`Add button visible: ${addButtonExists}`);
 
     if (!addButtonExists) {
       throw new Error(
@@ -132,7 +128,6 @@ export class CreateRuleForm {
     }
 
     await addButton.click();
-    console.log('Clicked add condition button');
 
     // Wait a moment for form to appear
     await this.page.waitForTimeout(1000);
@@ -149,13 +144,9 @@ export class CreateRuleForm {
     let actualPrefix;
 
     if (await expectedTypeSelect.isVisible()) {
-      console.log(`Using expected form: ${testIdPrefix}condition-type-select`);
       actualTypeSelect = expectedTypeSelect;
       actualPrefix = testIdPrefix;
     } else if (await createTypeSelect.isVisible()) {
-      console.log(
-        `Using create form as workaround: create-rule-condition-type-select`
-      );
       actualTypeSelect = createTypeSelect;
       actualPrefix = 'create-rule-';
     } else {
@@ -178,8 +169,6 @@ export class CreateRuleForm {
       .getByTestId(`${actualPrefix}condition-value-input`)
       .fill(stringValue);
     await this.page.getByTestId(`${actualPrefix}save-condition-button`).click();
-
-    console.log('Condition added successfully');
   }
 
   async removeCondition(index: number, testIdPrefix = 'create-rule-') {
@@ -227,35 +216,27 @@ export class CreateRuleForm {
       // Prefer edit save button if it's visible (even if create is also visible)
       if (await editSaveButton.isVisible()) {
         saveButton = editSaveButton;
-        console.log('Form is in edit mode, using edit save button...');
       } else if (await createSaveButton.isVisible()) {
         saveButton = createSaveButton;
-        console.log('Form is in create mode, using create save button...');
       } else {
         throw new Error('No save button found (neither create nor edit)');
       }
 
       // Check if the button is enabled before clicking
       const isEnabled = await saveButton.isEnabled();
-      console.log(`Save button enabled: ${isEnabled}`);
 
       if (!isEnabled) {
-        console.log('Save button is disabled - checking form state...');
-
         // Try to identify why the button is disabled
         const nameInput = this.page.getByTestId('rule-name-input');
         const nameValue = await nameInput.inputValue();
-        console.log(`Rule name: "${nameValue}"`);
 
         const categorySelect = this.page.getByTestId(
           'create-rule-category-select'
         );
         const categoryValue = await categorySelect.inputValue();
-        console.log(`Category: "${categoryValue}"`);
 
         // If edit button is disabled, try clicking it anyway (force click)
         if (saveButton === editSaveButton) {
-          console.log('Trying to force click edit save button...');
           await saveButton.click({ force: true });
           return;
         }
