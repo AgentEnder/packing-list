@@ -22,7 +22,12 @@ const mockOpen = vi.fn().mockReturnValue({
   document: {
     write: mockWrite,
     close: mockClose,
-    getElementById: vi.fn().mockReturnValue(document.createElement('div')),
+    getElementById: vi.fn().mockImplementation((id) => {
+      if (id === 'print-root') {
+        return document.createElement('div');
+      }
+      throw new Error(`Element with id ${id} not found`);
+    }),
     readyState: 'complete',
   },
   print: mockPrint,
