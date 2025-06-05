@@ -15,6 +15,7 @@ import {
   removeOfflinePasscode,
   checkConnectivity,
   setForceOfflineMode as setForceOfflineModeAction,
+  deleteAccount,
 } from './auth-slice.js';
 import {
   selectUser,
@@ -54,7 +55,10 @@ const connectivityService = new ConnectivityService();
 const isServer = (import.meta as any).env?.SSR;
 
 // SSR-safe hook that provides fallback values when Redux is not available
-function useSSRSafeSelector<T>(selector: any, fallbackValue: T): T {
+function useSSRSafeSelector<T, T2>(
+  selector: (state: any) => T,
+  fallbackValue: T2
+): T | T2 {
   try {
     if (isServer) {
       return fallbackValue;
@@ -98,11 +102,18 @@ export function useAuth() {
   const userEmail = useSSRSafeSelector(selectUserEmail, null);
   const userName = useSSRSafeSelector(selectUserName, null);
   const userAvatar = useSSRSafeSelector(selectUserAvatar, null);
-  const authStatus = useSSRSafeSelector(selectAuthStatus, 'loading');
-  const connectivityStatus = useSSRSafeSelector(
-    selectConnectivityStatus,
-    'unknown'
-  );
+  const authStatus = useSSRSafeSelector(selectAuthStatus, {
+    isAuthenticated: false,
+    isLoading: true,
+    isInitialized: false,
+    isOfflineMode: false,
+  });
+  const connectivityStatus = useSSRSafeSelector(selectConnectivityStatus, {
+    isOnline: true,
+    isConnected: false,
+    isOfflineMode: false,
+    canUseRemoteAuth: false,
+  });
   const offlineAccounts = useSSRSafeSelector(selectOfflineAccounts, []);
   const hasOfflinePasscode = useSSRSafeSelector(
     selectHasOfflinePasscode,
@@ -209,6 +220,10 @@ export function useAuth() {
     );
   };
 
+  const deleteUserAccount = async () => {
+    return (dispatch as any)(deleteAccount());
+  };
+
   const checkConnectivityNow = async () => {
     return (dispatch as any)(checkConnectivity());
   };
@@ -218,7 +233,7 @@ export function useAuth() {
   };
 
   const clearErrorAction = () => {
-    dispatch(clearError());
+    dispatch(clearError(null));
   };
 
   return {
@@ -253,6 +268,7 @@ export function useAuth() {
     signOut: signOutUser,
     setOfflinePasscode: setOfflinePass,
     removeOfflinePasscode: removeOfflinePass,
+    deleteAccount: deleteUserAccount,
     checkConnectivity: checkConnectivityNow,
     setForceOfflineMode,
     clearError: clearErrorAction,
@@ -271,6 +287,8 @@ export const useIsOfflineMode = () =>
 export const useConnectivityState = () =>
   useSSRSafeSelector(selectConnectivityState, null);
 export const useAuthStatus = () =>
-  useSSRSafeSelector(selectAuthStatus, 'loading');
+  useSSRSafeSelector(selectAuthStatus, {
+    isAuthenticated: false,
+  });
 export const useConnectivityStatus = () =>
   useSSRSafeSelector(selectConnectivityStatus, 'unknown');

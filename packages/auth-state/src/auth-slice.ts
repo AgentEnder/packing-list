@@ -1,4 +1,9 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import {
+  createSlice,
+  createAsyncThunk,
+  PayloadAction,
+  Slice,
+} from '@reduxjs/toolkit';
 import {
   authService,
   AuthUser,
@@ -421,6 +426,39 @@ export const removeOfflinePasscode = createAsyncThunk(
   }
 );
 
+export const deleteAccount = createAsyncThunk(
+  'auth/deleteAccount',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as { auth: AuthState };
+
+      if (state.auth.isOfflineMode) {
+        const result = await localAuthService.deleteAccount();
+        if (result.error) {
+          return rejectWithValue(result.error);
+        }
+      } else {
+        const result = await authService.deleteAccount();
+        if (result.error) {
+          return rejectWithValue(result.error);
+        }
+      }
+
+      return {
+        user: null,
+        session: null,
+        loading: false,
+        error: null,
+        offlineAccounts: await localAuthService.getLocalUsers(),
+      };
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error ? error.message : 'Account deletion failed'
+      );
+    }
+  }
+);
+
 // Helper functions
 function transformLocalUserToAuthUser(localUser: LocalAuthUser): AuthUser {
   return {
@@ -453,7 +491,7 @@ async function createOfflineAccountForOnlineUser(
 }
 
 // Create the auth slice
-export const authSlice = createSlice({
+export const authSlice: Slice<AuthState> = createSlice({
   name: 'auth',
   initialState,
   reducers: {
@@ -648,9 +686,19 @@ export const authSlice = createSlice({
       .addCase(removeOfflinePasscode.rejected, (state, action) => {
         state.error = action.payload as string;
         state.lastError = action.payload as string;
+      })
+
+      // Delete account
+      .addCase(deleteAccount.fulfilled, (state, action) => {
+        Object.assign(state, action.payload);
+        state.error = null;
+      })
+      .addCase(deleteAccount.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.lastError = action.payload as string;
       });
   },
-}) as any; // Type annotation to fix portable issue
+});
 
 export const {
   updateAuthState,
