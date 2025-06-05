@@ -37,6 +37,7 @@ jobs:
         run: pnpm nx affected -t lint,test,build,e2e --parallel=3
         env:
           CI: true
-          PUBLIC_ENV__BASE_URL: ${{ secrets.PUBLIC_ENV__BASE_URL || 'http://localhost:3000' }}
+          PUBLIC_ENV__BASE_URL: /
+          PUBLIC_ENV__LOCATION: 'http://localhost:3000'
           PUBLIC_ENV__SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           PUBLIC_ENV__SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}

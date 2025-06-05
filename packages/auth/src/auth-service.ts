@@ -16,9 +16,21 @@ export interface AuthState {
 }
 
 function getBaseUrl(): string {
+  if (import.meta.env.PUBLIC_ENV__LOCATION) {
+    return import.meta.env.PUBLIC_ENV__LOCATION;
+  }
+
   // Use environment variable for production base URL
-  const envBaseUrl =
-    import.meta.env?.PUBLIC_ENV__BASE_URL || import.meta.env?.VITE_BASE_URL;
+  const envBaseUrl = import.meta.env?.PUBLIC_ENV__BASE_URL;
+
+  const origin =
+    (typeof window !== 'undefined'
+      ? window.location.origin
+      : 'http://localhost:3000') + envBaseUrl;
+
+  if (origin) {
+    return origin;
+  }
 
   if (envBaseUrl) {
     return envBaseUrl;
