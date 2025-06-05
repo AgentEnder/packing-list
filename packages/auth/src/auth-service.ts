@@ -16,9 +16,19 @@ export interface AuthState {
 }
 
 function getBaseUrl(): string {
+  // Use environment variable for production base URL
+  const envBaseUrl =
+    import.meta.env?.PUBLIC_ENV__BASE_URL || import.meta.env?.VITE_BASE_URL;
+
+  if (envBaseUrl) {
+    return envBaseUrl;
+  }
+
+  // Fallback to window.location.origin for development
   if (typeof window !== 'undefined') {
     return window.location.origin;
   }
+
   return '';
 }
 

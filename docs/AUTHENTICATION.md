@@ -66,6 +66,9 @@ PUBLIC_ENV__SUPABASE_ANON_KEY=your-anon-key
 
 # Google OAuth
 PUBLIC_ENV__GOOGLE_CLIENT_ID=your-google-client-id
+
+# Production Base URL (required for OAuth redirects in deployed environments)
+PUBLIC_ENV__BASE_URL=https://your-app-domain.com
 ```
 
 **Important Notes:**
@@ -110,6 +113,43 @@ To enable avatar caching, create a storage bucket in your Supabase project:
 - No CORS issues
 - Reliable image availability
 - Reduced dependency on external services
+
+## Deployment Configuration
+
+When deploying your application, you need to ensure the OAuth redirect URLs are configured correctly:
+
+### Environment Variables for Production
+
+Set these environment variables in your deployment platform:
+
+```bash
+PUBLIC_ENV__BASE_URL=https://your-app-domain.com
+PUBLIC_ENV__SUPABASE_URL=https://your-project.supabase.co
+PUBLIC_ENV__SUPABASE_ANON_KEY=your-anon-key
+PUBLIC_ENV__GOOGLE_CLIENT_ID=your-google-client-id
+```
+
+### Google Cloud Console Configuration
+
+Update your OAuth 2.0 client in Google Cloud Console:
+
+1. **Authorized JavaScript origins**: Add your production domain
+
+   - `https://your-app-domain.com`
+
+2. **Authorized redirect URIs**: Add your production callback URLs
+   - `https://your-project.supabase.co/auth/v1/callback` (for Supabase)
+   - `https://your-app-domain.com/auth/callback` (for your app)
+
+### Supabase Configuration
+
+In your Supabase project dashboard:
+
+1. Go to **Authentication** > **URL Configuration**
+2. Add your production domain to **Site URL**
+3. Add redirect URLs to **Redirect URLs**:
+   - `https://your-app-domain.com/auth/callback`
+   - `https://your-app-domain.com/**` (wildcard for development)
 
 ## Usage
 
@@ -320,7 +360,16 @@ PUBLIC_ENV__SUPABASE_ANON_KEY=your-anon-key
 
 # Google OAuth
 PUBLIC_ENV__GOOGLE_CLIENT_ID=your-google-client-id
+
+# Production Base URL (required for OAuth redirects in deployed environments)
+PUBLIC_ENV__BASE_URL=https://your-app-domain.com
 ```
+
+**Important for Deployment:**
+
+- `PUBLIC_ENV__BASE_URL` must be set to your production domain for OAuth redirects to work correctly
+- This overrides the automatic detection from `window.location.origin`
+- For local development, this can be omitted (will default to `http://localhost:3000`)
 
 ### Custom Domain (Recommended)
 
