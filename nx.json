@@ -10,7 +10,20 @@
       "!{projectRoot}/tsconfig.spec.json",
       "!{projectRoot}/src/test-setup.[jt]s"
     ],
-    "sharedGlobals": []
+    "sharedGlobals": [
+      {
+        "env": "PUBLIC_ENV__BASE_URL"
+      },
+      {
+        "env": "PUBLIC_ENV__LOCATION"
+      },
+      {
+        "env": "PUBLIC_ENV__SUPABASE_URL"
+      },
+      {
+        "env": "PUBLIC_ENV__SUPABASE_ANON_KEY"
+      }
+    ]
   },
   "tui": { "enabled": false },
   "plugins": [

@@ -41,3 +41,13 @@ jobs:
           PUBLIC_ENV__LOCATION: 'http://localhost:3000'
           PUBLIC_ENV__SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           PUBLIC_ENV__SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Deploy
+        run: pnpm nx deploy frontend
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBLIC_ENV__BASE_URL: /${{ github.event.repository.name }}
+          PUBLIC_ENV__LOCATION: https://craigory.dev/${{ github.event.repository.name }}
+          PUBLIC_ENV__SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          PUBLIC_ENV__SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
