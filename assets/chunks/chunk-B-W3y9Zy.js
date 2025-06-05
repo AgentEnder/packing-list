@@ -1,0 +1,1 @@
+import{t as u,n as f,v as r,w as g}from"./chunk-rZD_AvgO.js";function o(t){const e=u(t),a=new Date(Date.UTC(e.getFullYear(),e.getMonth(),e.getDate(),e.getHours(),e.getMinutes(),e.getSeconds(),e.getMilliseconds()));return a.setUTCFullYear(e.getFullYear()),+t-+a}function d(t,e,a){const[l,i]=f(a?.in,t,e),n=r(l),s=r(i),c=+n-o(n),D=+s-o(s);return Math.round((c-D)/g)}export{d};
