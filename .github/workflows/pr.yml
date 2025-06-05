@@ -3,6 +3,8 @@ name: Pull Request Checks
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
 
 jobs:
   ci:
@@ -35,5 +37,5 @@ jobs:
         run: pnpm nx affected -t lint,test,build,e2e --parallel=3
         env:
           CI: true
-          PUBLIC_ENV_SUPABASE_URL: ${{ secrets.PUBLIC_ENV_SUPABASE_URL }}
-          PUBLIC_ENV_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_ENV_SUPABASE_ANON_KEY }}
+          PUBLIC_ENV_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          PUBLIC_ENV_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}

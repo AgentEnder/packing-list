@@ -66,5 +66,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PUBLIC_ENV__BASE_URL: /${{ github.event.repository.name }}
-          PUBLIC_ENV__SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          PUBLIC_ENV__SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          PUBLIC_ENV__SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          PUBLIC_ENV__SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
