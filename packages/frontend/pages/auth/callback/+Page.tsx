@@ -5,27 +5,97 @@ import { Link } from '../../../components/Link';
 export default function AuthCallback() {
   const { user, error } = useAuth();
   const [countdown, setCountdown] = useState(3);
+  const [isPopup, setIsPopup] = useState(false);
 
   useEffect(() => {
-    // The auth service will automatically handle the callback
-    // and update the auth state
-    if (user) {
-      // Start countdown before redirect
-      const timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            window.location.href = '/';
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    // Check if we're in a popup window
+    const isInPopup = window.opener && window.opener !== window;
+    setIsPopup(isInPopup);
 
-      return () => clearInterval(timer);
+    if (isInPopup) {
+      // We're in a popup - close it when auth completes
+      if (user || error) {
+        // Give a brief moment for state to settle, then close
+        setTimeout(() => {
+          window.close();
+        }, 1000);
+      }
+    } else {
+      // Regular page behavior - redirect after successful auth
+      if (user) {
+        // Start countdown before redirect
+        const timer = setInterval(() => {
+          setCountdown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              window.location.href = '/';
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+
+        return () => clearInterval(timer);
+      }
     }
-  }, [user]);
+  }, [user, error]);
 
+  // If we're in a popup, show minimal UI
+  if (isPopup) {
+    if (error) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-base-200">
+          <div className="card w-full max-w-md shadow-2xl bg-base-100">
+            <div className="card-body text-center">
+              <div className="text-error text-4xl mb-4">⚠️</div>
+              <h2 className="card-title justify-center text-error text-lg">
+                Authentication Failed
+              </h2>
+              <p className="text-sm text-base-content/70 mb-4">{error}</p>
+              <p className="text-xs text-base-content/50">
+                This window will close automatically...
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (user) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-base-200">
+          <div className="card w-full max-w-md shadow-2xl bg-base-100">
+            <div className="card-body text-center">
+              <div className="text-success text-4xl mb-4">✅</div>
+              <h2 className="card-title justify-center text-success text-lg">
+                Success!
+              </h2>
+              <p className="text-sm text-base-content/70 mb-4">
+                Welcome, {user.name || user.email}!
+              </p>
+              <p className="text-xs text-base-content/50">Closing window...</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-base-200">
+        <div className="card w-full max-w-md shadow-2xl bg-base-100">
+          <div className="card-body text-center">
+            <span className="loading loading-spinner loading-lg text-primary"></span>
+            <h2 className="card-title justify-center text-lg">
+              Completing Authentication
+            </h2>
+            <p className="text-sm text-base-content/70">Please wait...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Regular page behavior (not in popup)
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-base-200">

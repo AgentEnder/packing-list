@@ -361,9 +361,9 @@ export class AuthService {
                 } else {
                   resolve({ error: 'Authentication was cancelled or failed' });
                 }
-              }, 1000);
+              }, 500);
             }
-          }, 1000);
+          }, 500);
 
           // Timeout after 5 minutes
           setTimeout(() => {
