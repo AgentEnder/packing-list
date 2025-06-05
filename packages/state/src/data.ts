@@ -360,6 +360,9 @@ export const CREATE_DEMO_DATA: () => StoreType = () =>
           activeTab: 'browse',
           selectedPackId: undefined,
         },
+        loginModal: {
+          isOpen: false,
+        },
       },
     })
   );
