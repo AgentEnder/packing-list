@@ -139,23 +139,36 @@ export const signInWithPassword = createAsyncThunk(
           offlineAccounts: await localAuthService.getLocalUsers(),
         };
       } else {
+        console.log('Signing in online user with auth service');
         const result = await authService.signInWithPassword(email, password);
         if (result.error) {
           return rejectWithValue(result.error);
         }
         const remoteState = authService.getState();
+        console.log('Remote auth state after sign in:', remoteState);
 
         // Auto-create offline account for online user
         if (remoteState.user) {
+          console.log('Creating offline account for user:', remoteState.user);
           await createOfflineAccountForOnlineUser(remoteState.user);
+        } else {
+          console.log(
+            'No user in remote state, skipping offline account creation'
+          );
         }
+
+        const finalOfflineAccounts = await localAuthService.getLocalUsers();
+        console.log(
+          'Final offline accounts after creation:',
+          finalOfflineAccounts
+        );
 
         return {
           user: remoteState.user,
           session: remoteState.session,
           loading: false,
           error: null,
-          offlineAccounts: await localAuthService.getLocalUsers(),
+          offlineAccounts: finalOfflineAccounts,
         };
       }
     } catch (error) {
@@ -270,24 +283,38 @@ export const signInWithGoogle = createAsyncThunk(
         return rejectWithValue('Google sign-in not available in offline mode');
       }
 
+      console.log('Starting Google sign-in');
       const result = await authService.signInWithGoogle();
       if (result.error) {
         return rejectWithValue(result.error);
       }
 
       const remoteState = authService.getState();
+      console.log('Google sign-in remote state:', remoteState);
 
       // Auto-create offline account for Google user
       if (remoteState.user) {
+        console.log(
+          'Creating offline account for Google user:',
+          remoteState.user
+        );
         await createOfflineAccountForOnlineUser(remoteState.user);
+      } else {
+        console.log('No user in Google sign-in remote state');
       }
+
+      const finalOfflineAccounts = await localAuthService.getLocalUsers();
+      console.log(
+        'Final offline accounts after Google sign-in:',
+        finalOfflineAccounts
+      );
 
       return {
         user: remoteState.user,
         session: remoteState.session,
         loading: false,
         error: null,
-        offlineAccounts: await localAuthService.getLocalUsers(),
+        offlineAccounts: finalOfflineAccounts,
       };
     } catch (error) {
       return rejectWithValue(
@@ -307,24 +334,38 @@ export const signInWithGooglePopup = createAsyncThunk(
         return rejectWithValue('Google sign-in not available in offline mode');
       }
 
+      console.log('Starting Google popup sign-in');
       const result = await authService.signInWithGooglePopup();
       if (result.error) {
         return rejectWithValue(result.error);
       }
 
       const remoteState = authService.getState();
+      console.log('Google popup sign-in remote state:', remoteState);
 
       // Auto-create offline account for Google user
       if (remoteState.user) {
+        console.log(
+          'Creating offline account for Google popup user:',
+          remoteState.user
+        );
         await createOfflineAccountForOnlineUser(remoteState.user);
+      } else {
+        console.log('No user in Google popup sign-in remote state');
       }
+
+      const finalOfflineAccounts = await localAuthService.getLocalUsers();
+      console.log(
+        'Final offline accounts after Google popup sign-in:',
+        finalOfflineAccounts
+      );
 
       return {
         user: remoteState.user,
         session: remoteState.session,
         loading: false,
         error: null,
-        offlineAccounts: await localAuthService.getLocalUsers(),
+        offlineAccounts: finalOfflineAccounts,
       };
     } catch (error) {
       return rejectWithValue(
@@ -473,20 +514,28 @@ function transformLocalUserToAuthUser(localUser: LocalAuthUser): AuthUser {
 async function createOfflineAccountForOnlineUser(
   onlineUser: AuthUser
 ): Promise<void> {
+  console.log('Creating offline account for online user:', onlineUser);
+
   // Check if offline account already exists
   const existingOfflineUsers = await localAuthService.getLocalUsers();
+  console.log('Existing offline users:', existingOfflineUsers);
+
   const existingOfflineUser = existingOfflineUsers.find(
     (u: LocalAuthUser) => u.email === onlineUser.email
   );
 
   if (!existingOfflineUser) {
+    console.log('No existing offline user found, creating new one');
     // Create offline account without password (will use passwordless access until passcode is set)
-    await localAuthService.createOfflineAccountForOnlineUser({
+    const result = await localAuthService.createOfflineAccountForOnlineUser({
       id: onlineUser.id,
       email: onlineUser.email,
       name: onlineUser.name,
       avatar_url: onlineUser.avatar_url,
     });
+    console.log('Offline account creation result:', result);
+  } else {
+    console.log('Offline user already exists:', existingOfflineUser);
   }
 }
 
