@@ -23,9 +23,13 @@ export default defineConfig({
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },
+  // Snapshot tests are only checked on Linux to avoid issues with
+  // screenshot tests. If you have added or modified a snapshot test,
+  // running `nx update-snapshots frontend-e2e` will run in a linux container.
+  ignoreSnapshots: process.env.CI ? false : process.platform !== 'linux',
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'nx serve-static frontend',
+    command: 'npx nx serve-static frontend',
     url: 'http://localhost:3000',
     reuseExistingServer: true,
     cwd: workspaceRoot,
