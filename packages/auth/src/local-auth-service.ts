@@ -5,6 +5,7 @@ export interface LocalAuthUser {
   avatar_url?: string;
   created_at: string;
   password_hash: string;
+  passcode_hash?: string; // Per-account passcode
 }
 
 export interface LocalAuthState {
@@ -14,9 +15,10 @@ export interface LocalAuthState {
   error: string | null;
 }
 
-const LOCAL_USERS_KEY = 'packing_list_local_users';
-const LOCAL_SESSION_KEY = 'packing_list_local_session';
-const LOCAL_PASSCODE_KEY = 'packing_list_local_passcode';
+const DB_NAME = 'packing_list_offline_auth';
+const DB_VERSION = 1;
+const USERS_STORE = 'users';
+const SESSION_STORE = 'session';
 
 export class LocalAuthService {
   private listeners: Array<(state: LocalAuthState) => void> = [];
@@ -26,15 +28,47 @@ export class LocalAuthService {
     loading: true,
     error: null,
   };
+  private db: IDBDatabase | null = null;
 
   constructor() {
-    this.initializeAuth();
+    this.initializeDB().then(() => this.initializeAuth());
+  }
+
+  private async initializeDB(): Promise<void> {
+    if (typeof window === 'undefined') return;
+
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        this.db = request.result;
+        resolve();
+      };
+
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+
+        // Create users store
+        if (!db.objectStoreNames.contains(USERS_STORE)) {
+          const usersStore = db.createObjectStore(USERS_STORE, {
+            keyPath: 'id',
+          });
+          usersStore.createIndex('email', 'email', { unique: true });
+        }
+
+        // Create session store
+        if (!db.objectStoreNames.contains(SESSION_STORE)) {
+          db.createObjectStore(SESSION_STORE, { keyPath: 'id' });
+        }
+      };
+    });
   }
 
   private async initializeAuth() {
     try {
       // Check for existing session
-      const session = this.getStoredSession();
+      const session = await this.getStoredSession();
 
       if (session && new Date(session.expires_at) > new Date()) {
         this.updateState({
@@ -45,7 +79,7 @@ export class LocalAuthService {
         });
       } else {
         // Clear expired session
-        this.clearSession();
+        await this.clearSession();
         this.updateState({
           user: null,
           session: null,
@@ -64,42 +98,102 @@ export class LocalAuthService {
     }
   }
 
-  private getStoredUsers(): LocalAuthUser[] {
-    if (typeof window === 'undefined') return [];
-    try {
-      const users = localStorage.getItem(LOCAL_USERS_KEY);
-      return users ? JSON.parse(users) : [];
-    } catch {
-      return [];
-    }
+  private async getStoredUsers(): Promise<LocalAuthUser[]> {
+    if (!this.db) return [];
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([USERS_STORE], 'readonly');
+      const store = transaction.objectStore(USERS_STORE);
+      const request = store.getAll();
+
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
   }
 
-  private saveUsers(users: LocalAuthUser[]) {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(users));
+  private async saveUser(user: LocalAuthUser): Promise<void> {
+    if (!this.db) return;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([USERS_STORE], 'readwrite');
+      const store = transaction.objectStore(USERS_STORE);
+      const request = store.put(user);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
   }
 
-  private getStoredSession(): {
+  private async deleteUser(userId: string): Promise<void> {
+    if (!this.db) return;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([USERS_STORE], 'readwrite');
+      const store = transaction.objectStore(USERS_STORE);
+      const request = store.delete(userId);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  private async getUserByEmail(email: string): Promise<LocalAuthUser | null> {
+    if (!this.db) return null;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([USERS_STORE], 'readonly');
+      const store = transaction.objectStore(USERS_STORE);
+      const index = store.index('email');
+      const request = index.get(email);
+
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  private async getStoredSession(): Promise<{
     user: LocalAuthUser;
     expires_at: string;
-  } | null {
-    if (typeof window === 'undefined') return null;
-    try {
-      const session = localStorage.getItem(LOCAL_SESSION_KEY);
-      return session ? JSON.parse(session) : null;
-    } catch {
-      return null;
-    }
+  } | null> {
+    if (!this.db) return null;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([SESSION_STORE], 'readonly');
+      const store = transaction.objectStore(SESSION_STORE);
+      const request = store.get('current');
+
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
   }
 
-  private saveSession(session: { user: LocalAuthUser; expires_at: string }) {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(LOCAL_SESSION_KEY, JSON.stringify(session));
+  private async saveSession(session: {
+    user: LocalAuthUser;
+    expires_at: string;
+  }): Promise<void> {
+    if (!this.db) return;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([SESSION_STORE], 'readwrite');
+      const store = transaction.objectStore(SESSION_STORE);
+      const request = store.put({ id: 'current', ...session });
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
   }
 
-  private clearSession() {
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem(LOCAL_SESSION_KEY);
+  private async clearSession(): Promise<void> {
+    if (!this.db) return;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([SESSION_STORE], 'readwrite');
+      const store = transaction.objectStore(SESSION_STORE);
+      const request = store.delete('current');
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
   }
 
   private generateId(): string {
@@ -128,12 +222,12 @@ export class LocalAuthService {
     return passwordHash === hash;
   }
 
-  private createSession(user: LocalAuthUser) {
+  private async createSession(user: LocalAuthUser) {
     const session = {
       user,
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
     };
-    this.saveSession(session);
+    await this.saveSession(session);
     return session;
   }
 
@@ -165,8 +259,8 @@ export class LocalAuthService {
   ): Promise<{ user?: LocalAuthUser; error?: string }> {
     try {
       // Check if user already exists
-      const users = this.getStoredUsers();
-      const existingUser = users.find((u) => u.email === email);
+      const users = await this.getStoredUsers();
+      const existingUser = await this.getUserByEmail(email);
 
       if (existingUser) {
         const error = 'A user with this email already exists';
@@ -185,11 +279,10 @@ export class LocalAuthService {
       };
 
       // Save user
-      users.push(user);
-      this.saveUsers(users);
+      await this.saveUser(user);
 
       // Create session
-      const session = this.createSession(user);
+      const session = await this.createSession(user);
 
       this.updateState({
         user,
@@ -212,8 +305,8 @@ export class LocalAuthService {
     password: string
   ): Promise<{ user?: LocalAuthUser; error?: string }> {
     try {
-      const users = this.getStoredUsers();
-      const user = users.find((u) => u.email === email);
+      const users = await this.getStoredUsers();
+      const user = await this.getUserByEmail(email);
 
       if (!user) {
         const error = 'No account found with this email';
@@ -232,7 +325,7 @@ export class LocalAuthService {
       }
 
       // Create session
-      const session = this.createSession(user);
+      const session = await this.createSession(user);
 
       this.updateState({
         user,
@@ -252,7 +345,7 @@ export class LocalAuthService {
 
   async signOut(): Promise<{ error?: string }> {
     try {
-      this.clearSession();
+      await this.clearSession();
       this.updateState({
         user: null,
         session: null,
@@ -292,7 +385,7 @@ export class LocalAuthService {
       }
 
       // Update password
-      const users = this.getStoredUsers();
+      const users = await this.getStoredUsers();
       const userIndex = users.findIndex((u) => u.id === user.id);
 
       if (userIndex === -1) {
@@ -303,11 +396,11 @@ export class LocalAuthService {
 
       const newPasswordHash = await this.hashPassword(newPassword);
       users[userIndex].password_hash = newPasswordHash;
-      this.saveUsers(users);
+      await this.saveUser(users[userIndex]);
 
       // Update current user state
       const updatedUser = { ...user, password_hash: newPasswordHash };
-      const session = this.createSession(updatedUser);
+      const session = await this.createSession(updatedUser);
 
       this.updateState({
         user: updatedUser,
@@ -334,12 +427,10 @@ export class LocalAuthService {
       }
 
       // Remove user from storage
-      const users = this.getStoredUsers();
-      const filteredUsers = users.filter((u) => u.id !== user.id);
-      this.saveUsers(filteredUsers);
+      await this.deleteUser(user.id);
 
       // Clear session
-      this.clearSession();
+      await this.clearSession();
 
       this.updateState({
         user: null,
@@ -370,7 +461,7 @@ export class LocalAuthService {
       }
 
       // Update user in storage
-      const users = this.getStoredUsers();
+      const users = await this.getStoredUsers();
       const userIndex = users.findIndex((u) => u.id === user.id);
 
       if (userIndex === -1) {
@@ -380,11 +471,10 @@ export class LocalAuthService {
       }
 
       const updatedUser = { ...user, ...updates };
-      users[userIndex] = updatedUser;
-      this.saveUsers(users);
+      await this.saveUser(updatedUser);
 
       // Update session
-      const session = this.createSession(updatedUser);
+      const session = await this.createSession(updatedUser);
 
       this.updateState({
         user: updatedUser,
@@ -402,16 +492,22 @@ export class LocalAuthService {
   }
 
   // Get all local users (for admin purposes or account switching)
-  getLocalUsers(): LocalAuthUser[] {
-    return this.getStoredUsers();
+  async getLocalUsers(): Promise<LocalAuthUser[]> {
+    return await this.getStoredUsers();
   }
 
-  // Passcode management methods
-  async hasPasscode(): Promise<boolean> {
-    if (typeof window === 'undefined') return false;
+  // Passcode management methods - now per-account
+  async hasPasscode(userId?: string): Promise<boolean> {
     try {
-      const passcode = localStorage.getItem(LOCAL_PASSCODE_KEY);
-      return !!passcode;
+      if (!userId && this.currentState.user) {
+        userId = this.currentState.user.id;
+      }
+
+      if (!userId) return false;
+
+      const users = await this.getStoredUsers();
+      const user = users.find((u) => u.id === userId);
+      return !!user?.passcode_hash;
     } catch {
       return false;
     }
@@ -419,28 +515,47 @@ export class LocalAuthService {
 
   async setPasscode(
     currentPassword: string | undefined,
-    newPasscode: string
+    newPasscode: string,
+    userId?: string
   ): Promise<{ error?: string }> {
     try {
-      // If current user is signed in and has a password, verify it
-      if (
-        currentPassword &&
-        this.currentState.user &&
-        this.currentState.user.password_hash
-      ) {
+      // Use current user if no userId specified
+      if (!userId && this.currentState.user) {
+        userId = this.currentState.user.id;
+      }
+
+      if (!userId) {
+        return { error: 'No user specified for passcode' };
+      }
+
+      const users = await this.getStoredUsers();
+      const user = users.find((u) => u.id === userId);
+
+      if (!user) {
+        return { error: 'User not found' };
+      }
+
+      // If current user has a password, verify it
+      if (currentPassword && user.password_hash) {
         const isValidPassword = await this.verifyPassword(
           currentPassword,
-          this.currentState.user.password_hash
+          user.password_hash
         );
         if (!isValidPassword) {
           return { error: 'Current password is incorrect' };
         }
       }
 
-      // Hash and store the passcode
+      // Hash and store the passcode in the user record
       const passcodeHash = await this.hashPassword(newPasscode);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(LOCAL_PASSCODE_KEY, passcodeHash);
+      const updatedUser = { ...user, passcode_hash: passcodeHash };
+      await this.saveUser(updatedUser);
+
+      // Update current state if this is the current user
+      if (this.currentState.user?.id === userId) {
+        this.updateState({
+          user: updatedUser,
+        });
       }
 
       return {};
@@ -452,29 +567,46 @@ export class LocalAuthService {
     }
   }
 
-  async removePasscode(currentPasscode: string): Promise<{ error?: string }> {
+  async removePasscode(
+    currentPasscode: string,
+    userId?: string
+  ): Promise<{ error?: string }> {
     try {
-      // Verify current passcode
-      const storedPasscodeHash =
-        typeof window !== 'undefined'
-          ? localStorage.getItem(LOCAL_PASSCODE_KEY)
-          : null;
-
-      if (!storedPasscodeHash) {
-        return { error: 'No passcode is set' };
+      // Use current user if no userId specified
+      if (!userId && this.currentState.user) {
+        userId = this.currentState.user.id;
       }
 
+      if (!userId) {
+        return { error: 'No user specified for passcode removal' };
+      }
+
+      const users = await this.getStoredUsers();
+      const user = users.find((u) => u.id === userId);
+
+      if (!user || !user.passcode_hash) {
+        return { error: 'No passcode is set for this user' };
+      }
+
+      // Verify current passcode
       const isValidPasscode = await this.verifyPassword(
         currentPasscode,
-        storedPasscodeHash
+        user.passcode_hash
       );
       if (!isValidPasscode) {
         return { error: 'Current passcode is incorrect' };
       }
 
-      // Remove the passcode
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem(LOCAL_PASSCODE_KEY);
+      // Remove the passcode from the user record
+      const updatedUser = { ...user };
+      delete updatedUser.passcode_hash;
+      await this.saveUser(updatedUser);
+
+      // Update current state if this is the current user
+      if (this.currentState.user?.id === userId) {
+        this.updateState({
+          user: updatedUser,
+        });
       }
 
       return {};
@@ -490,22 +622,20 @@ export class LocalAuthService {
     email: string
   ): Promise<{ user?: LocalAuthUser; error?: string }> {
     try {
-      // Check if passcode is set - if so, require it
-      const hasPasscode = await this.hasPasscode();
-      if (hasPasscode) {
-        return { error: 'Passcode is required for this account' };
-      }
-
       // Find the user
-      const users = this.getStoredUsers();
-      const user = users.find((u) => u.email === email);
+      const user = await this.getUserByEmail(email);
 
       if (!user) {
         return { error: 'User not found' };
       }
 
+      // Check if passcode is set for this specific user - if so, require it
+      if (user.passcode_hash) {
+        return { error: 'Passcode is required for this account' };
+      }
+
       // Create session
-      const session = this.createSession(user);
+      const session = await this.createSession(user);
 
       this.updateState({
         user,
@@ -531,8 +661,7 @@ export class LocalAuthService {
   }): Promise<{ user?: LocalAuthUser; error?: string }> {
     try {
       // Check if user already exists
-      const users = this.getStoredUsers();
-      const existingUser = users.find((u) => u.email === onlineUser.email);
+      const existingUser = await this.getUserByEmail(onlineUser.email);
 
       if (existingUser) {
         // User already exists, just return it
@@ -550,8 +679,7 @@ export class LocalAuthService {
       };
 
       // Save user
-      users.push(user);
-      this.saveUsers(users);
+      await this.saveUser(user);
 
       return { user };
     } catch (error) {
@@ -566,5 +694,9 @@ export class LocalAuthService {
 
   destroy() {
     this.listeners = [];
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+    }
   }
 }

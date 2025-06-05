@@ -54,7 +54,7 @@ export const initializeAuth = createAsyncThunk('auth/initialize', async () => {
   const connectivityState = await connectivityService.checkNow();
 
   // Get offline accounts
-  const offlineAccounts = localAuthService.getLocalUsers();
+  const offlineAccounts = await localAuthService.getLocalUsers();
 
   // Determine if we should start in offline mode
   const shouldUseOfflineMode =
@@ -73,11 +73,22 @@ export const initializeAuth = createAsyncThunk('auth/initialize', async () => {
       isOfflineMode: true,
       connectivityState,
       offlineAccounts,
-      hasOfflinePasscode: await localAuthService.hasPasscode(),
+      hasOfflinePasscode: localState.user
+        ? !!localState.user.passcode_hash
+        : false,
     };
   } else {
     // Start with remote auth state
     const remoteState = authService.getState();
+
+    // Check if current user has an offline passcode
+    let hasOfflinePasscode = false;
+    if (remoteState.user) {
+      hasOfflinePasscode = await localAuthService.hasPasscode(
+        remoteState.user.id
+      );
+    }
+
     return {
       user: remoteState.user,
       session: remoteState.session,
@@ -86,7 +97,7 @@ export const initializeAuth = createAsyncThunk('auth/initialize', async () => {
       isOfflineMode: false,
       connectivityState,
       offlineAccounts,
-      hasOfflinePasscode: await localAuthService.hasPasscode(),
+      hasOfflinePasscode,
     };
   }
 });
@@ -120,6 +131,7 @@ export const signInWithPassword = createAsyncThunk(
           session: localState.session,
           loading: false,
           error: null,
+          offlineAccounts: await localAuthService.getLocalUsers(),
         };
       } else {
         const result = await authService.signInWithPassword(email, password);
@@ -138,7 +150,7 @@ export const signInWithPassword = createAsyncThunk(
           session: remoteState.session,
           loading: false,
           error: null,
-          offlineAccounts: localAuthService.getLocalUsers(),
+          offlineAccounts: await localAuthService.getLocalUsers(),
         };
       }
     } catch (error) {
@@ -173,6 +185,7 @@ export const signInOfflineWithoutPassword = createAsyncThunk(
         session: localState.session,
         loading: false,
         error: null,
+        offlineAccounts: await localAuthService.getLocalUsers(),
       };
     } catch (error) {
       return rejectWithValue(
@@ -212,7 +225,7 @@ export const signUp = createAsyncThunk(
           session: localState.session,
           loading: false,
           error: null,
-          offlineAccounts: localAuthService.getLocalUsers(),
+          offlineAccounts: await localAuthService.getLocalUsers(),
         };
       } else {
         const result = await authService.signUp(email, password, metadata);
@@ -231,7 +244,7 @@ export const signUp = createAsyncThunk(
           session: remoteState.session,
           loading: false,
           error: null,
-          offlineAccounts: localAuthService.getLocalUsers(),
+          offlineAccounts: await localAuthService.getLocalUsers(),
         };
       }
     } catch (error) {
@@ -269,7 +282,7 @@ export const signInWithGoogle = createAsyncThunk(
         session: remoteState.session,
         loading: false,
         error: null,
-        offlineAccounts: localAuthService.getLocalUsers(),
+        offlineAccounts: await localAuthService.getLocalUsers(),
       };
     } catch (error) {
       return rejectWithValue(
@@ -306,7 +319,7 @@ export const signInWithGooglePopup = createAsyncThunk(
         session: remoteState.session,
         loading: false,
         error: null,
-        offlineAccounts: localAuthService.getLocalUsers(),
+        offlineAccounts: await localAuthService.getLocalUsers(),
       };
     } catch (error) {
       return rejectWithValue(
@@ -351,13 +364,15 @@ export const setOfflinePasscode = createAsyncThunk(
     {
       currentPassword,
       newPasscode,
-    }: { currentPassword?: string; newPasscode: string },
+      userId,
+    }: { currentPassword?: string; newPasscode: string; userId?: string },
     { rejectWithValue }
   ) => {
     try {
       const result = await localAuthService.setPasscode(
         currentPassword,
-        newPasscode
+        newPasscode,
+        userId
       );
       if (result.error) {
         return rejectWithValue(result.error);
@@ -365,6 +380,7 @@ export const setOfflinePasscode = createAsyncThunk(
 
       return {
         hasOfflinePasscode: true,
+        offlineAccounts: await localAuthService.getLocalUsers(),
       };
     } catch (error) {
       return rejectWithValue(
@@ -379,17 +395,21 @@ export const setOfflinePasscode = createAsyncThunk(
 export const removeOfflinePasscode = createAsyncThunk(
   'auth/removeOfflinePasscode',
   async (
-    { currentPasscode }: { currentPasscode: string },
+    { currentPasscode, userId }: { currentPasscode: string; userId?: string },
     { rejectWithValue }
   ) => {
     try {
-      const result = await localAuthService.removePasscode(currentPasscode);
+      const result = await localAuthService.removePasscode(
+        currentPasscode,
+        userId
+      );
       if (result.error) {
         return rejectWithValue(result.error);
       }
 
       return {
         hasOfflinePasscode: false,
+        offlineAccounts: await localAuthService.getLocalUsers(),
       };
     } catch (error) {
       return rejectWithValue(
@@ -416,7 +436,7 @@ async function createOfflineAccountForOnlineUser(
   onlineUser: AuthUser
 ): Promise<void> {
   // Check if offline account already exists
-  const existingOfflineUsers = localAuthService.getLocalUsers();
+  const existingOfflineUsers = await localAuthService.getLocalUsers();
   const existingOfflineUser = existingOfflineUsers.find(
     (u: LocalAuthUser) => u.email === onlineUser.email
   );

@@ -192,15 +192,21 @@ export function useAuth() {
 
   const setOfflinePass = async (
     currentPassword: string | undefined,
-    newPasscode: string
+    newPasscode: string,
+    userId?: string
   ) => {
     return (dispatch as any)(
-      setOfflinePasscode({ currentPassword, newPasscode })
+      setOfflinePasscode({ currentPassword, newPasscode, userId })
     );
   };
 
-  const removeOfflinePass = async (currentPasscode: string) => {
-    return (dispatch as any)(removeOfflinePasscode({ currentPasscode }));
+  const removeOfflinePass = async (
+    currentPasscode: string,
+    userId?: string
+  ) => {
+    return (dispatch as any)(
+      removeOfflinePasscode({ currentPasscode, userId })
+    );
   };
 
   const checkConnectivityNow = async () => {
