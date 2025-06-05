@@ -12,3 +12,6 @@ export * from './selectors/base.js';
 export * from './store.js';
 export * from './data.js';
 export * from './default-rule-packs.js';
+
+// Re-export auth-state for convenience
+export * from '@packing-list/auth-state';

@@ -1,7 +1,12 @@
+import { useState } from 'react';
 import { useAuth } from './useAuth.js';
+import { LocalAccountForm } from './LocalAccountForm.js';
 
 export function LoginForm() {
-  const { signInWithGooglePopup, loading, error } = useAuth();
+  const { signInWithGooglePopup, loading, error, isOfflineMode, isConnected } =
+    useAuth();
+  const [showLocalForm, setShowLocalForm] = useState(false);
+  const [localMode, setLocalMode] = useState<'signin' | 'signup'>('signin');
 
   const handleGoogleSignIn = async () => {
     const result = await signInWithGooglePopup();
@@ -9,6 +14,54 @@ export function LoginForm() {
       console.error('Google sign-in error:', result.error);
     }
   };
+
+  const handleLocalFormSuccess = () => {
+    // Form will handle success, just reset the local form state
+    setShowLocalForm(false);
+  };
+
+  const toggleLocalMode = () => {
+    setLocalMode((prev) => (prev === 'signin' ? 'signup' : 'signin'));
+  };
+
+  // If offline or user explicitly wants local account
+  if (isOfflineMode || showLocalForm) {
+    return (
+      <div className="flex flex-col items-center space-y-6">
+        <div className="text-center">
+          <h3 className="text-lg font-medium text-base-content">
+            {localMode === 'signup'
+              ? 'Create Local Account'
+              : 'Sign In Locally'}
+          </h3>
+          <p className="text-sm text-base-content/70 mt-2">
+            {isOfflineMode
+              ? "You're offline. Use a local account to continue."
+              : 'Create or sign in with a local account that works offline.'}
+          </p>
+        </div>
+
+        <LocalAccountForm
+          mode={localMode}
+          onSuccess={handleLocalFormSuccess}
+          onToggleMode={toggleLocalMode}
+        />
+
+        {/* Option to go back to online form if not forced offline */}
+        {!isOfflineMode && (
+          <div className="text-center">
+            <button
+              type="button"
+              className="link link-primary text-sm"
+              onClick={() => setShowLocalForm(false)}
+            >
+              Back to online sign-in
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center space-y-6 relative">
@@ -27,6 +80,18 @@ export function LoginForm() {
         </div>
       )}
 
+      {/* Connection status indicator */}
+      {!isConnected && (
+        <div className="alert alert-warning w-full">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+            <span className="text-sm">
+              Limited connectivity - some features may not work
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="relative w-full">
         <button
           type="button"
@@ -34,7 +99,7 @@ export function LoginForm() {
             loading ? 'loading' : ''
           }`}
           onClick={handleGoogleSignIn}
-          disabled={loading}
+          disabled={loading || !isConnected}
         >
           {!loading && (
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -66,6 +131,17 @@ export function LoginForm() {
           </div>
         )}
       </div>
+
+      <div className="divider">OR</div>
+
+      {/* Local account option */}
+      <button
+        type="button"
+        className="btn btn-outline w-full"
+        onClick={() => setShowLocalForm(true)}
+      >
+        Use Local Account (Works Offline)
+      </button>
 
       <div className="text-center">
         <p className="text-xs text-base-content/60">

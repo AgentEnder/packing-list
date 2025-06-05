@@ -4,6 +4,7 @@ export * from './lib/Timeline.js';
 export { useAuth } from './auth/useAuth.js';
 export { useLoginModal } from './auth/useLoginModal.js';
 export { LoginForm } from './auth/LoginForm.js';
+export { LocalAccountForm } from './auth/LocalAccountForm.js';
 export { UserProfile } from './auth/UserProfile.js';
 export { AuthGuard } from './auth/AuthGuard.js';
 export { UserManagement } from './auth/UserManagement.js';

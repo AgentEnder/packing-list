@@ -1,0 +1,21 @@
+{
+  "name": "@packing-list/auth-state",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.5.0",
+    "@packing-list/auth": "workspace:*",
+    "react": "^18.2.0",
+    "react-redux": "^9.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.16.9",
+    "@types/react": "^18.2.33",
+    "typescript": "5.7.3",
+    "vitest": "^3.0.0"
+  }
+}

@@ -12,6 +12,9 @@
   "include": ["src/**/*.ts"],
   "references": [
     {
+      "path": "../auth-state"
+    },
+    {
       "path": "../shared-utils/tsconfig.lib.json"
     },
     {

@@ -16,6 +16,7 @@
   "dependencies": {
     "@packing-list/model": "workspace:*",
     "@packing-list/auth": "workspace:*",
+    "@packing-list/auth-state": "workspace:*",
     "@packing-list/state": "workspace:*"
   }
 }

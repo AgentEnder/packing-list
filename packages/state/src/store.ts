@@ -3,7 +3,9 @@ import {
   Reducer,
   UnknownAction,
   Store,
+  combineReducers,
 } from '@reduxjs/toolkit';
+import { authReducer, type AuthState } from '@packing-list/auth-state';
 import { Mutations } from './actions.js';
 import {
   Item,
@@ -38,9 +40,10 @@ export type StoreType = {
       isOpen: boolean;
     };
   };
+  auth: AuthState;
 };
 
-export const initialState: StoreType = {
+export const initialState: Omit<StoreType, 'auth'> = {
   people: [],
   defaultItemRules: [],
   trip: {
@@ -73,16 +76,20 @@ export const initialState: StoreType = {
   },
 };
 
-function createReducer(preloadedState: StoreType): Reducer<StoreType> {
+function createAppReducer(): Reducer<Omit<StoreType, 'auth'>> {
   return (
-    state: StoreType = preloadedState,
+    state: Omit<StoreType, 'auth'> = initialState,
     action: UnknownAction
-  ): StoreType => {
+  ): Omit<StoreType, 'auth'> => {
     if ('type' in action && action.type in Mutations) {
       const mutation = Mutations[action.type as keyof typeof Mutations];
       if (mutation) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return mutation(state, action as any);
+        const fullState = { ...state, auth: undefined } as any;
+        const result = mutation(fullState, action as any);
+        // Remove auth from result and return
+        const { auth, ...appResult } = result;
+        return appResult;
       }
       console.warn(`Unknown action: ${action.type}`);
       return state;
@@ -99,12 +106,24 @@ type PageContext = {
 };
 
 export function createStore(pageContext: PageContext): Store<StoreType> {
-  const preloadedState =
-    'isClient' in pageContext && pageContext.isClient
-      ? pageContext.redux?.ssrState ?? initialState
-      : initialState;
+  const appReducer = createAppReducer();
+
+  const rootReducer = (
+    state: StoreType | undefined,
+    action: UnknownAction
+  ): StoreType => {
+    const { auth, ...appState } = state || { auth: undefined, ...initialState };
+
+    return {
+      ...appReducer(appState, action),
+      auth: authReducer(auth, action),
+    };
+  };
+
+  const preloadedState = pageContext.redux?.ssrState;
 
   return configureStore({
-    reducer: createReducer(preloadedState),
+    reducer: rootReducer,
+    preloadedState,
   });
 }

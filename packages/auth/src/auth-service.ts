@@ -1,4 +1,4 @@
-import { supabase } from './supabase-client.js';
+import { getSupabaseClient, isSupabaseAvailable } from './supabase-client.js';
 
 export interface AuthUser {
   id: string;
@@ -52,13 +52,28 @@ export class AuthService {
     loading: true,
     error: null,
   };
+  private supabaseAvailable: boolean;
 
   constructor() {
+    this.supabaseAvailable = isSupabaseAvailable();
     this.initializeAuth();
   }
 
   private async initializeAuth() {
+    if (!this.supabaseAvailable) {
+      // If Supabase is not available, set auth state to not loading and no user
+      this.updateState({
+        user: null,
+        session: null,
+        loading: false,
+        error: null,
+      });
+      return;
+    }
+
     try {
+      const supabase = getSupabaseClient();
+
       // Get initial session
       const {
         data: { session },
@@ -136,7 +151,13 @@ export class AuthService {
     userId: string,
     avatarUrl: string
   ): Promise<string | null> {
+    if (!this.supabaseAvailable) {
+      return null;
+    }
+
     try {
+      const supabase = getSupabaseClient();
+
       // Check if we already have a cached version
       const { data: existingFile } = await supabase.storage
         .from('avatars')
@@ -208,19 +229,27 @@ export class AuthService {
     email: string,
     password: string
   ): Promise<{ error?: unknown }> {
-    this.updateState({ loading: true, error: null });
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      this.updateState({ loading: false, error: error.message });
-      return { error };
+    if (!this.supabaseAvailable) {
+      return { error: 'Supabase not available' };
     }
 
-    return {};
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      return {};
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
   }
 
   async signUp(
@@ -228,245 +257,162 @@ export class AuthService {
     password: string,
     metadata?: { name?: string }
   ): Promise<{ error?: unknown }> {
-    this.updateState({ loading: true, error: null });
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: metadata,
-      },
-    });
-
-    if (error) {
-      this.updateState({ loading: false, error: error.message });
-      return { error };
+    if (!this.supabaseAvailable) {
+      return { error: 'Supabase not available' };
     }
-
-    return {};
-  }
-
-  async signInWithGoogle(): Promise<{ error?: unknown }> {
-    this.updateState({ loading: true, error: null });
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${getBaseUrl()}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      this.updateState({ loading: false, error: error.message });
-      return { error };
-    }
-
-    return {};
-  }
-
-  async signInWithGooglePopup(): Promise<{ error?: unknown }> {
-    this.updateState({ loading: true, error: null });
 
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
         options: {
-          redirectTo: `${getBaseUrl()}/auth/callback`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-          skipBrowserRedirect: true,
+          data: metadata || {},
         },
       });
 
       if (error) {
-        this.updateState({ loading: false, error: error.message });
-        return { error };
+        return { error: error.message };
       }
 
-      if (data?.url) {
-        // Open popup window
-        const popup = window.open(
-          data.url,
-          'google-auth',
-          'width=500,height=600,scrollbars=yes,resizable=yes'
-        );
-
-        if (!popup) {
-          this.updateState({
-            loading: false,
-            error: 'Popup was blocked. Please enable popups for this site.',
-          });
-          return { error: 'Popup blocked' };
-        }
-
-        // Listen for auth completion with timeout
-        return new Promise((resolve) => {
-          let resolved = false;
-
-          // Set a timeout to avoid waiting indefinitely
-          const timeout = setTimeout(() => {
-            if (!resolved) {
-              resolved = true;
-              subscription?.unsubscribe();
-              try {
-                popup.close();
-              } catch {
-                // Ignore COOP errors when closing popup
-              }
-              this.updateState({
-                loading: false,
-                error: 'Authentication timed out. Please try again.',
-              });
-              resolve({ error: 'Authentication timeout' });
-            }
-          }, 60000); // 60 second timeout
-
-          // Handle auth state change
-          const {
-            data: { subscription },
-          } = supabase.auth.onAuthStateChange((event, session) => {
-            if (
-              (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') &&
-              session &&
-              !resolved
-            ) {
-              resolved = true;
-              clearTimeout(timeout);
-              subscription.unsubscribe();
-
-              try {
-                popup.close();
-              } catch {
-                // Ignore COOP errors when closing popup
-              }
-
-              this.updateState({ loading: false });
-              resolve({});
-            }
-          });
-
-          // Check if popup was closed manually (with error handling for COOP)
-          const checkClosed = setInterval(() => {
-            try {
-              if (popup.closed && !resolved) {
-                resolved = true;
-                clearTimeout(timeout);
-                clearInterval(checkClosed);
-                subscription.unsubscribe();
-
-                // Check if we have a session after popup closes
-                supabase.auth.getSession().then(({ data: { session } }) => {
-                  if (session) {
-                    this.updateState({ loading: false });
-                    resolve({});
-                  } else {
-                    this.updateState({
-                      loading: false,
-                      error: 'Authentication was cancelled or failed',
-                    });
-                    resolve({ error: 'Authentication cancelled' });
-                  }
-                });
-              }
-            } catch {
-              // COOP error - can't access popup.closed
-              // This is normal and we'll rely on the auth state change or timeout
-            }
-          }, 1000);
-        });
-      }
-
-      this.updateState({ loading: false, error: 'No auth URL received' });
-      return { error: 'No auth URL received' };
+      return {};
     } catch (error) {
-      this.updateState({
-        loading: false,
+      return {
         error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  async signInWithGoogle(): Promise<{ error?: unknown }> {
+    if (!this.supabaseAvailable) {
+      return { error: 'Supabase not available' };
+    }
+
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${getBaseUrl()}/auth/callback`,
+        },
       });
-      return { error };
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      return {};
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  async signInWithGooglePopup(): Promise<{ error?: unknown }> {
+    if (!this.supabaseAvailable) {
+      return { error: 'Supabase not available' };
+    }
+
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${getBaseUrl()}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      return {};
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
     }
   }
 
   async signOut(): Promise<{ error?: unknown }> {
-    this.updateState({ loading: true, error: null });
-
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      this.updateState({ loading: false, error: error.message });
-      return { error };
-    }
-
-    return {};
-  }
-
-  async resetPassword(email: string): Promise<{ error?: unknown }> {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${getBaseUrl()}/auth/reset-password`,
-    });
-
-    return { error };
-  }
-
-  async updatePassword(password: string): Promise<{ error?: unknown }> {
-    const { error } = await supabase.auth.updateUser({ password });
-    return { error };
-  }
-
-  async deleteAccount(): Promise<{ error?: unknown }> {
-    this.updateState({ loading: true, error: null });
-
-    try {
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        this.updateState({ loading: false, error: 'No user found' });
-        return { error: 'No user found' };
-      }
-
-      // Delete user's cached avatar from storage if it exists
-      try {
-        await supabase.storage.from('avatars').remove([`${user.id}.jpg`]);
-      } catch (error) {
-        // Ignore storage errors - avatar might not exist
-        console.warn('Could not delete avatar:', error);
-      }
-
-      // Note: We would delete user data from other tables here
-      // For now, we'll just delete the auth user
-      // In a real app, you'd want to delete all associated data:
-      // - User preferences
-      // - Trip data
-      // - Any other user-related records
-
-      // Delete the auth user (this also signs them out)
-      const { error } = await supabase.auth.admin.deleteUser(user.id);
-
-      if (error) {
-        this.updateState({ loading: false, error: error.message });
-        return { error };
-      }
-
-      // Clear local state
+    if (!this.supabaseAvailable) {
+      // For offline mode, just clear the state
       this.updateState({
         user: null,
         session: null,
         loading: false,
         error: null,
       });
+      return {};
+    }
+
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        return { error: error.message };
+      }
 
       return {};
     } catch (error) {
-      this.updateState({
-        loading: false,
+      return {
         error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return { error };
+      };
     }
+  }
+
+  async resetPassword(email: string): Promise<{ error?: unknown }> {
+    if (!this.supabaseAvailable) {
+      return { error: 'Supabase not available' };
+    }
+
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      return error ? { error: error.message } : {};
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  async updatePassword(password: string): Promise<{ error?: unknown }> {
+    if (!this.supabaseAvailable) {
+      return { error: 'Supabase not available' };
+    }
+
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.auth.updateUser({ password });
+      return error ? { error: error.message } : {};
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  async deleteAccount(): Promise<{ error?: unknown }> {
+    if (!this.supabaseAvailable) {
+      return { error: 'Supabase not available' };
+    }
+
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.rpc('delete_user');
+      return error ? { error: error.message } : {};
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  destroy() {
+    this.listeners = [];
   }
 }
 

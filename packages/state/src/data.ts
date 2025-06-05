@@ -341,7 +341,7 @@ const trip: Trip = {
   tripEvents,
 };
 
-export const CREATE_DEMO_DATA: () => StoreType = () =>
+export const CREATE_DEMO_DATA: () => Partial<StoreType> = () =>
   calculatePackingListHandler(
     calculateDefaultItems({
       people,
@@ -363,6 +363,17 @@ export const CREATE_DEMO_DATA: () => StoreType = () =>
         loginModal: {
           isOpen: false,
         },
+      },
+      auth: {
+        user: null,
+        session: null,
+        loading: false,
+        error: null,
+        isOfflineMode: false,
+        connectivityState: { isOnline: false, isConnected: false },
+        isInitialized: false,
+        lastError: null,
+        isAuthenticating: false,
       },
     })
   );

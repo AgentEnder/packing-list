@@ -13,6 +13,12 @@
   "include": ["src/**/*"],
   "references": [
     {
+      "path": "../state"
+    },
+    {
+      "path": "../auth-state"
+    },
+    {
       "path": "../auth"
     },
     {
