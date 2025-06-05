@@ -299,7 +299,7 @@ export const PackingList: React.FC = () => {
           <dt className="font-bold">Views:</dt>
           <dd>Switch between organizing by day or by person</dd>
           <dt className="font-bold">Progress:</dt>
-          <dd>Track what's packed with progress bars and counts</dd>
+          <dd>Track what&apos;s packed with progress bars and counts</dd>
           <dt className="font-bold">Filters:</dt>
           <dd>Show/hide packed items or find specific things</dd>
         </dl>
