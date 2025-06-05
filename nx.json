@@ -12,16 +12,12 @@
     ],
     "sharedGlobals": []
   },
-  "tui": {
-    "enabled": false
-  },
+  "tui": { "enabled": false },
   "plugins": [
     {
       "plugin": "@nx/js/typescript",
       "options": {
-        "typecheck": {
-          "targetName": "typecheck"
-        },
+        "typecheck": { "targetName": "typecheck" },
         "build": {
           "targetName": "build",
           "configName": "tsconfig.lib.json",
@@ -44,18 +40,9 @@
         "packages/state/*",
         "e2e/frontend-e2e/*"
       ],
-      "options": {
-        "typecheck": {
-          "targetName": "typecheck"
-        }
-      }
+      "options": { "typecheck": { "targetName": "typecheck" } }
     },
-    {
-      "plugin": "@nx/eslint/plugin",
-      "options": {
-        "targetName": "lint"
-      }
-    },
+    { "plugin": "@nx/eslint/plugin", "options": { "targetName": "lint" } },
     {
       "plugin": "@nx/vite/plugin",
       "options": {
@@ -70,30 +57,22 @@
         "watchDepsTargetName": "watch-deps"
       }
     },
-    {
-      "plugin": "@nx/playwright/plugin",
-      "options": {
-        "targetName": "e2e"
-      }
-    }
+    { "plugin": "@nx/playwright/plugin", "options": { "targetName": "e2e" } }
   ],
   "targetDefaults": {
     "test": {
       "dependsOn": ["^build"],
-      "options": {
-        "args": ["--watch=false"]
-      }
+      "options": { "args": ["--watch=false"] }
     },
     "build": {
       "dependsOn": ["^build"],
       "inputs": [
         "production",
         "^production",
-        {
-          "env": "PUBLIC_ENV__BASE_URL"
-        }
+        { "env": "PUBLIC_ENV__BASE_URL" }
       ],
       "cache": true
     }
-  }
+  },
+  "nxCloudId": "684107bdefa0532521431c03"
 }
