@@ -316,15 +316,64 @@ export class AuthService {
 
     try {
       const supabase = getSupabaseClient();
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error, data } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${getBaseUrl()}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+          skipBrowserRedirect: true,
         },
       });
 
       if (error) {
         return { error: error.message };
+      }
+
+      if (data.url) {
+        // Open popup window for Google OAuth
+        const popup = window.open(
+          data.url,
+          'google-auth',
+          'width=500,height=600,scrollbars=yes,resizable=yes'
+        );
+
+        if (!popup) {
+          return {
+            error:
+              'Failed to open popup window. Please allow popups for this site.',
+          };
+        }
+
+        // Listen for auth completion
+        return new Promise((resolve) => {
+          const checkClosed = setInterval(() => {
+            if (popup.closed) {
+              clearInterval(checkClosed);
+              // Check if auth was successful by checking current session
+              setTimeout(async () => {
+                const { data: sessionData, error: sessionError } =
+                  await supabase.auth.getSession();
+                if (sessionData?.session && !sessionError) {
+                  resolve({});
+                } else {
+                  resolve({ error: 'Authentication was cancelled or failed' });
+                }
+              }, 1000);
+            }
+          }, 1000);
+
+          // Timeout after 5 minutes
+          setTimeout(() => {
+            if (!popup.closed) {
+              popup.close();
+              clearInterval(checkClosed);
+              resolve({ error: 'Authentication timed out' });
+            }
+          }, 300000);
+        });
       }
 
       return {};
