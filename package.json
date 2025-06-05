@@ -51,6 +51,7 @@
     "react-dom": "^19.1.0",
     "react-redux": "^9.2.0",
     "tailwindcss": "^4.1.7",
+    "tmp": "^0.2.3",
     "ts-jest": "^29.3.4",
     "tslib": "^2.3.0",
     "typescript": "^5.8.3",

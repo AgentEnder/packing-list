@@ -13,6 +13,14 @@
           "args": ["--reporter=list"]
         }
       }
+    },
+    "update-snapshots": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["@packing-list/frontend:serve-static"],
+      "options": {
+        "command": "node e2e/frontend-e2e/update-snapshots.js",
+        "forwardAllArgs": false
+      }
     }
   },
   "implicitDependencies": ["frontend"]
