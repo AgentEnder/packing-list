@@ -30,18 +30,24 @@ export function UserProfile() {
       </div>
       <ul
         tabIndex={0}
-        className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52"
+        className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-64"
       >
         <li>
           <div className="justify-between">
-            <span>{user.name || 'User'}</span>
+            <span className="truncate">{user.name || 'User'}</span>
             {!isOnline && (
-              <span className="badge badge-error badge-sm">Offline</span>
+              <span className="badge badge-error badge-sm ml-2 flex-shrink-0">
+                Offline
+              </span>
             )}
           </div>
         </li>
         <li>
-          <span className="text-sm opacity-70">{user.email}</span>
+          <div className="tooltip tooltip-top" data-tip={user.email}>
+            <span className="text-sm opacity-70 truncate block w-full text-left">
+              {user.email}
+            </span>
+          </div>
         </li>
         <li>
           <hr />

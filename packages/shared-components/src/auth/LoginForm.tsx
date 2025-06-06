@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from './useAuth.js';
 import { LocalAccountSelector } from './LocalAccountSelector.js';
 import { EmailPasswordForm } from './EmailPasswordForm.js';
+import { useLoginModal } from './useLoginModal.js';
 
 interface LocalAccount {
   id: string;
@@ -23,6 +24,7 @@ export function LoginForm() {
     user,
     offlineAccounts,
   } = useAuth();
+  const { closeLoginModal } = useLoginModal();
   const [showLocalForm, setShowLocalForm] = useState(false);
   const [showEmailPasswordForm, setShowEmailPasswordForm] = useState(false);
   const [emailPasswordMode, setEmailPasswordMode] = useState<
@@ -33,12 +35,14 @@ export function LoginForm() {
   // Cast offlineAccounts to proper type since useAuth returns unknown[]
   const typedOfflineAccounts = (offlineAccounts || []) as LocalAccount[];
 
-  // If user is signed in and not using shared account, don't show this form
+  // If user is signed in and not using shared account, close modal automatically
   if (user && !shouldShowSignInOptions) {
+    // Auto-close modal when user successfully logs in
+    setTimeout(() => closeLoginModal(), 0);
     return (
       <div className="text-center">
         <p className="text-base-content/70">
-          You're already signed in as {user.name || user.email}
+          Successfully signed in! Closing...
         </p>
       </div>
     );
@@ -59,6 +63,8 @@ export function LoginForm() {
         console.error('🚀 [MAIN WINDOW] Google sign-in error:', errorMessage);
       } else {
         console.log('🚀 [MAIN WINDOW] Google sign-in successful');
+        // Close modal after successful login
+        setTimeout(() => closeLoginModal(), 100);
       }
     } catch (error) {
       console.error('🚀 [MAIN WINDOW] Exception during Google sign-in:', error);
@@ -81,6 +87,8 @@ export function LoginForm() {
         console.error('🚀 [MAIN WINDOW] Local sign-in error:', errorMessage);
       } else {
         console.log('🚀 [MAIN WINDOW] Local sign-in successful');
+        // Close modal after successful login
+        setTimeout(() => closeLoginModal(), 100);
       }
     } catch (error) {
       console.error('🚀 [MAIN WINDOW] Exception during local sign-in:', error);
@@ -94,6 +102,8 @@ export function LoginForm() {
 
   const handleEmailPasswordSuccess = () => {
     setShowEmailPasswordForm(false);
+    // Close modal after successful login
+    setTimeout(() => closeLoginModal(), 100);
   };
 
   const handleEmailPasswordModeToggle = () => {
@@ -203,7 +213,7 @@ export function LoginForm() {
         </div>
       )}
 
-      <div className="relative w-full">
+      <div className="relative w-full flex flex-col">
         <button
           type="button"
           className={`btn btn-primary btn-lg w-full ${
@@ -235,6 +245,18 @@ export function LoginForm() {
           {loading ? 'Signing in...' : 'Continue with Google'}
         </button>
 
+        <button
+          type="button"
+          className="link link-primary text-xs opacity-70 hover:opacity-100 ml-auto mt-2"
+          onClick={() => {
+            setEmailPasswordMode('signin');
+            setShowEmailPasswordForm(true);
+          }}
+          disabled={loading || !isConnected}
+        >
+          Or sign in with email instead
+        </button>
+
         {/* Custom loading overlay for better visibility in modals */}
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-base-100/80 rounded-lg z-50">
@@ -258,17 +280,6 @@ export function LoginForm() {
         <p className="text-xs text-base-content/60">
           By signing in, you agree to our terms of service and privacy policy
         </p>
-        <button
-          type="button"
-          className="link link-primary text-xs opacity-70 hover:opacity-100"
-          onClick={() => {
-            setEmailPasswordMode('signin');
-            setShowEmailPasswordForm(true);
-          }}
-          disabled={loading || !isConnected}
-        >
-          Or sign in with email instead
-        </button>
       </div>
     </div>
   );

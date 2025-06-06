@@ -11,3 +11,4 @@ export { LocalAccountSelector } from './auth/LocalAccountSelector.js';
 export { EmailPasswordForm } from './auth/EmailPasswordForm.js';
 export { UserManagement } from './auth/UserManagement.js';
 export { LoginModal } from './auth/LoginModal.js';
+export { OfflinePasscodeForm } from './auth/OfflinePasscodeForm.js';
