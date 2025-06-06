@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from './useAuth.js';
 import { LocalAccountSelector } from './LocalAccountSelector.js';
+import { EmailPasswordForm } from './EmailPasswordForm.js';
 
 interface LocalAccount {
   id: string;
@@ -23,6 +24,10 @@ export function LoginForm() {
     offlineAccounts,
   } = useAuth();
   const [showLocalForm, setShowLocalForm] = useState(false);
+  const [showEmailPasswordForm, setShowEmailPasswordForm] = useState(false);
+  const [emailPasswordMode, setEmailPasswordMode] = useState<
+    'signin' | 'signup'
+  >('signin');
   const [localMode, setLocalMode] = useState<'signin' | 'signup'>('signin');
 
   // Cast offlineAccounts to proper type since useAuth returns unknown[]
@@ -87,14 +92,25 @@ export function LoginForm() {
     setLocalMode('signup');
   };
 
-  const handleLocalFormSuccess = () => {
-    // Form will handle success, just reset the local form state
-    setShowLocalForm(false);
+  const handleEmailPasswordSuccess = () => {
+    setShowEmailPasswordForm(false);
   };
 
-  const toggleLocalMode = () => {
-    setLocalMode((prev) => (prev === 'signin' ? 'signup' : 'signin'));
+  const handleEmailPasswordModeToggle = () => {
+    setEmailPasswordMode((prev) => (prev === 'signin' ? 'signup' : 'signin'));
   };
+
+  // Show email/password form
+  if (showEmailPasswordForm) {
+    return (
+      <EmailPasswordForm
+        mode={emailPasswordMode}
+        onModeToggle={handleEmailPasswordModeToggle}
+        onBack={() => setShowEmailPasswordForm(false)}
+        onSuccess={handleEmailPasswordSuccess}
+      />
+    );
+  }
 
   // If offline, show local account selector
   if (isOfflineMode) {
@@ -229,10 +245,39 @@ export function LoginForm() {
 
       <div className="divider">OR</div>
 
+      {/* Email/Password option - subtle and less prominent */}
+      <div className="w-full space-y-3">
+        <button
+          type="button"
+          className="btn btn-outline btn-sm w-full"
+          onClick={() => {
+            setEmailPasswordMode('signin');
+            setShowEmailPasswordForm(true);
+          }}
+          disabled={loading || !isConnected}
+        >
+          Sign in with email & password
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm w-full text-xs"
+          onClick={() => {
+            setEmailPasswordMode('signup');
+            setShowEmailPasswordForm(true);
+          }}
+          disabled={loading || !isConnected}
+        >
+          Create account with email
+        </button>
+      </div>
+
+      <div className="divider text-xs opacity-50">OR</div>
+
       {/* Local account option */}
       <button
         type="button"
-        className="btn btn-outline w-full"
+        className="btn btn-outline btn-sm w-full"
         onClick={() => setShowLocalForm(true)}
       >
         Use Local Account (Works Offline)
