@@ -19,9 +19,11 @@ export function EmailPasswordForm({
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    confirmPassword: '',
     name: '',
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,9 +54,21 @@ export function EmailPasswordForm({
       return false;
     }
 
-    if (mode === 'signup' && !formData.name.trim()) {
-      setLocalError('Name is required for signup');
-      return false;
+    if (mode === 'signup') {
+      if (!formData.name.trim()) {
+        setLocalError('Name is required for signup');
+        return false;
+      }
+
+      if (!formData.confirmPassword.trim()) {
+        setLocalError('Please confirm your password');
+        return false;
+      }
+
+      if (formData.password !== formData.confirmPassword) {
+        setLocalError('Passwords do not match');
+        return false;
+      }
     }
 
     return true;
@@ -221,6 +235,40 @@ export function EmailPasswordForm({
           )}
         </div>
 
+        {/* Confirm Password field for signup */}
+        {mode === 'signup' && (
+          <div className="form-control">
+            <label className="label pb-1">
+              <span className="label-text font-medium">Confirm Password</span>
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-base-content/40" />
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+                className="input input-bordered w-full pl-10 pr-12 h-12"
+                placeholder="Enter your password again"
+                disabled={loading}
+                required
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/40 hover:text-base-content/70 transition-colors"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                disabled={loading}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Submit Button */}
         <button
           type="submit"
@@ -234,6 +282,22 @@ export function EmailPasswordForm({
             : `${mode === 'signup' ? 'Create Account' : 'Sign In'}`}
         </button>
       </form>
+
+      {/* Support Disclaimer */}
+      <div className="alert alert-warning bg-warning/10 border-warning/20">
+        <div className="text-sm text-warning-content">
+          <strong>Note:</strong> We recommend using{' '}
+          <button
+            type="button"
+            className="link link-primary font-medium"
+            onClick={onBack}
+          >
+            Google sign-in
+          </button>{' '}
+          for the best experience. Email/password authentication has limited
+          support and may not receive dedicated assistance for technical issues.
+        </div>
+      </div>
 
       {/* Mode Toggle */}
       <div className="text-center">
