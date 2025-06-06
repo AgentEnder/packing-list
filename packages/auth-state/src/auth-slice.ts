@@ -127,21 +127,18 @@ async function handlePostLoginEffects(
   // Always refresh offline accounts after any login
   const finalOfflineAccounts = await localAuthService.getLocalUsers();
 
-  // For remote authentication, auto-create offline account
+  // For remote authentication, the auth service has already handled
+  // creating the offline account and managing the user session
   if (isRemoteAuth && user && user.type === 'remote') {
     console.log(
-      '🔄 [AUTH SLICE] Creating offline account for remote user:',
-      user.email
+      '🔄 [AUTH SLICE] Remote auth completed, auth service handled offline account creation'
     );
-    await createOfflineAccountForOnlineUser(user);
-    // Refresh accounts list after creation
-    const updatedAccounts = await localAuthService.getLocalUsers();
     return {
       user,
       session: authService.getState().session,
       loading: false,
       error: null,
-      offlineAccounts: updatedAccounts,
+      offlineAccounts: finalOfflineAccounts,
     };
   }
 
@@ -157,7 +154,7 @@ async function handlePostLoginEffects(
     };
   }
 
-  // For remote authentication without offline account creation
+  // For remote authentication without user (e.g., email confirmation required)
   return {
     user,
     session: user ? authService.getState().session : null,
@@ -218,15 +215,27 @@ export const initializeAuth = createAsyncThunk(
       ) {
         // If user has a real account, try to switch to their personal local account
         const personalLocalUserId = `local-${authServiceState.user.id}`;
-        const personalLocalUser = offlineAccounts.find(
+        let personalLocalUser = offlineAccounts.find(
           (u: LocalAuthUser) => u.id === personalLocalUserId
         );
+
+        // If not found by ID, try to find by email (fallback for different ID formats)
+        if (!personalLocalUser) {
+          personalLocalUser = offlineAccounts.find(
+            (u: LocalAuthUser) =>
+              u.email === authServiceState.user.email &&
+              u.id !== 'local-shared-user' &&
+              u.email !== 'shared@local.device'
+          );
+        }
 
         if (personalLocalUser) {
           // Switch to personal local account
           console.log(
             '🔧 [AUTH SLICE] Switching to personal local account for offline mode:',
-            personalLocalUser.email
+            personalLocalUser.email,
+            'ID:',
+            personalLocalUser.id
           );
           await localAuthService.signInWithoutPassword(
             personalLocalUser.email,
@@ -235,7 +244,13 @@ export const initializeAuth = createAsyncThunk(
         } else {
           // No personal local account found, fall back to shared account
           console.log(
-            '🔧 [AUTH SLICE] No personal local account found, switching to shared account'
+            '🔧 [AUTH SLICE] No personal local account found for user:',
+            authServiceState.user.email,
+            'Available accounts:',
+            offlineAccounts.map((u: LocalAuthUser) => ({
+              id: u.id,
+              email: u.email,
+            }))
           );
           await authService.getLocalAuthService().signOut();
           await authService
@@ -310,17 +325,30 @@ export const signInWithGooglePopup = createAsyncThunk(
       return rejectWithValue(result.error);
     }
 
-    // Wait for auth service to process the login via its listeners
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Wait for auth service to complete its internal listeners and processing
+    // The auth service handles creating offline accounts and setting up the user
+    let attempts = 0;
+    const maxAttempts = 10; // 5 seconds max
 
-    const remoteState = authService.getState();
+    while (attempts < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      attempts++;
+
+      const authServiceState = authService.getState();
+      if (authServiceState.user && authServiceState.isRemoteAuthenticated) {
+        console.log(
+          '🔄 [AUTH SLICE] Google sign-in completed, auth service ready'
+        );
+        return await handlePostLoginEffects(authServiceState.user, true);
+      }
+    }
+
+    // Fallback if we timeout
+    const authServiceState = authService.getState();
     console.log(
-      '🔄 [AUTH SLICE] Google popup sign-in remote state:',
-      remoteState
+      '🔄 [AUTH SLICE] Google sign-in timeout, proceeding with current state'
     );
-
-    // Use shared post-login effects handler
-    return await handlePostLoginEffects(remoteState.user, true);
+    return await handlePostLoginEffects(authServiceState.user, true);
   }
 );
 
@@ -346,7 +374,6 @@ export const signInWithPassword = createAsyncThunk(
         ? transformLocalUserToAuthUser(localState.user)
         : null;
 
-      // Use shared post-login effects handler
       return await handlePostLoginEffects(localUser, false);
     }
 
@@ -359,12 +386,29 @@ export const signInWithPassword = createAsyncThunk(
       return rejectWithValue(result.error);
     }
 
-    // Wait for auth service to process the login via its listeners
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Wait for auth service to complete its internal listeners and processing
+    // The auth service's onAuthStateChange will trigger handleRemoteUserSignIn
+    let attempts = 0;
+    const maxAttempts = 10; // 5 seconds max
 
+    while (attempts < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      attempts++;
+
+      const authServiceState = authService.getState();
+      if (authServiceState.user && authServiceState.isRemoteAuthenticated) {
+        console.log(
+          '🔄 [AUTH SLICE] Email sign-in completed, auth service ready'
+        );
+        return await handlePostLoginEffects(authServiceState.user, true);
+      }
+    }
+
+    // Fallback if we timeout - might be email confirmation required
     const authServiceState = authService.getState();
-
-    // Use shared post-login effects handler
+    console.log(
+      '🔄 [AUTH SLICE] Email sign-in timeout, proceeding with current state'
+    );
     return await handlePostLoginEffects(authServiceState.user, true);
   }
 );
@@ -468,14 +512,43 @@ export const signOut = createAsyncThunk(
       };
     } else {
       // In online mode, sign out from remote auth
+      console.log('🔄 [AUTH SLICE] Starting remote sign-out');
       const result = await authService.signOut();
       if (result.error) {
         return rejectWithValue(result.error);
       }
 
-      // The auth service will handle switching back to shared account
-      // Return the current auth service state
+      // Wait for auth service to complete sign-out and transition to shared account
+      let attempts = 0;
+      const maxAttempts = 10; // 5 seconds max
+
+      while (attempts < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        attempts++;
+
+        const authServiceState = authService.getState();
+        // Check if we've transitioned to shared account (not remotely authenticated)
+        if (
+          !authServiceState.isRemoteAuthenticated &&
+          authServiceState.user?.isShared
+        ) {
+          console.log(
+            '🔄 [AUTH SLICE] Sign-out completed, switched to shared account'
+          );
+          return {
+            user: authServiceState.user,
+            session: authServiceState.session,
+            loading: false,
+            error: null,
+          };
+        }
+      }
+
+      // Fallback if timeout
       const authServiceState = authService.getState();
+      console.log(
+        '🔄 [AUTH SLICE] Sign-out timeout, proceeding with current state'
+      );
       return {
         user: authServiceState.user,
         session: authServiceState.session,
