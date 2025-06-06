@@ -245,30 +245,18 @@ export function LoginForm() {
 
       <div className="divider">OR</div>
 
-      {/* Email/Password option - subtle and less prominent */}
-      <div className="w-full space-y-3">
+      {/* Email/Password option - single subtle link */}
+      <div className="text-center">
         <button
           type="button"
-          className="btn btn-outline btn-sm w-full"
+          className="link link-primary text-sm"
           onClick={() => {
             setEmailPasswordMode('signin');
             setShowEmailPasswordForm(true);
           }}
           disabled={loading || !isConnected}
         >
-          Sign in with email & password
-        </button>
-
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm w-full text-xs"
-          onClick={() => {
-            setEmailPasswordMode('signup');
-            setShowEmailPasswordForm(true);
-          }}
-          disabled={loading || !isConnected}
-        >
-          Create account with email
+          Sign in with email instead
         </button>
       </div>
 

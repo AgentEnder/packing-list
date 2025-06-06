@@ -247,11 +247,11 @@ export function EmailPasswordForm({
             : "Don't have an account?"}{' '}
           <button
             type="button"
-            className="link link-primary text-sm"
+            className="link link-primary text-sm font-medium"
             onClick={onModeToggle}
             disabled={loading}
           >
-            {mode === 'signup' ? 'Sign in instead' : 'Create account'}
+            {mode === 'signup' ? 'Sign in instead' : 'Create one here'}
           </button>
         </p>
       </div>
