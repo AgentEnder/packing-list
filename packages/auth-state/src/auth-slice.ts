@@ -108,6 +108,65 @@ async function createOfflineAccountForOnlineUser(
   }
 }
 
+// Shared post-login effects handler
+async function handlePostLoginEffects(
+  user: AuthUser | null,
+  isRemoteAuth = false
+): Promise<{
+  user: AuthUser | null;
+  session: unknown | null;
+  loading: boolean;
+  error: string | null;
+  offlineAccounts: LocalAuthUser[];
+}> {
+  console.log(
+    '🔄 [AUTH SLICE] Handling post-login effects for user:',
+    user?.email
+  );
+
+  // Always refresh offline accounts after any login
+  const finalOfflineAccounts = await localAuthService.getLocalUsers();
+
+  // For remote authentication, auto-create offline account
+  if (isRemoteAuth && user && user.type === 'remote') {
+    console.log(
+      '🔄 [AUTH SLICE] Creating offline account for remote user:',
+      user.email
+    );
+    await createOfflineAccountForOnlineUser(user);
+    // Refresh accounts list after creation
+    const updatedAccounts = await localAuthService.getLocalUsers();
+    return {
+      user,
+      session: authService.getState().session,
+      loading: false,
+      error: null,
+      offlineAccounts: updatedAccounts,
+    };
+  }
+
+  // For local authentication, use local session
+  if (user?.type === 'local') {
+    const localState = localAuthService.getState();
+    return {
+      user,
+      session: localState.session,
+      loading: false,
+      error: null,
+      offlineAccounts: finalOfflineAccounts,
+    };
+  }
+
+  // For remote authentication without offline account creation
+  return {
+    user,
+    session: user ? authService.getState().session : null,
+    loading: false,
+    error: null,
+    offlineAccounts: finalOfflineAccounts,
+  };
+}
+
 // Async Thunks
 export const initializeAuth = createAsyncThunk(
   'auth/initializeAuth',
@@ -245,39 +304,23 @@ export const signInWithGooglePopup = createAsyncThunk(
       return rejectWithValue('Google sign-in not available in offline mode');
     }
 
-    console.log('Starting Google popup sign-in');
+    console.log('🔄 [AUTH SLICE] Starting Google popup sign-in');
     const result = await authService.signInWithGooglePopup();
     if (result.error) {
       return rejectWithValue(result.error);
     }
 
+    // Wait for auth service to process the login via its listeners
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     const remoteState = authService.getState();
-    console.log('Google popup sign-in remote state:', remoteState);
-
-    // Auto-create offline account for Google user
-    if (remoteState.user) {
-      console.log(
-        'Creating offline account for Google popup user:',
-        remoteState.user
-      );
-      await createOfflineAccountForOnlineUser(remoteState.user);
-    } else {
-      console.log('No user in Google popup sign-in remote state');
-    }
-
-    const finalOfflineAccounts = await localAuthService.getLocalUsers();
     console.log(
-      'Final offline accounts after Google popup sign-in:',
-      finalOfflineAccounts
+      '🔄 [AUTH SLICE] Google popup sign-in remote state:',
+      remoteState
     );
 
-    return {
-      user: remoteState.user,
-      session: remoteState.session,
-      loading: false,
-      error: null,
-      offlineAccounts: finalOfflineAccounts,
-    };
+    // Use shared post-login effects handler
+    return await handlePostLoginEffects(remoteState.user, true);
   }
 );
 
@@ -290,67 +333,58 @@ export const signInWithPassword = createAsyncThunk(
     const state = getState() as { auth: AuthState };
 
     if (state.auth.isOfflineMode) {
+      console.log(
+        '🔄 [AUTH SLICE] Offline mode: using local auth for email signin'
+      );
       const result = await localAuthService.signIn(email, password);
       if (result.error) {
         return rejectWithValue(result.error);
       }
+
       const localState = localAuthService.getState();
-      return {
-        user: localState.user
-          ? transformLocalUserToAuthUser(localState.user)
-          : null,
-        session: localState.session,
-        loading: false,
-        error: null,
-        offlineAccounts: await localAuthService.getLocalUsers(),
-      };
+      const localUser = localState.user
+        ? transformLocalUserToAuthUser(localState.user)
+        : null;
+
+      // Use shared post-login effects handler
+      return await handlePostLoginEffects(localUser, false);
     }
 
+    console.log(
+      '🔄 [AUTH SLICE] Online mode: using remote auth for email signin'
+    );
     // For online mode, use email/password authentication
     const result = await authService.signInWithEmail(email, password);
     if (result.error) {
       return rejectWithValue(result.error);
     }
 
-    // Auto-create offline account for email user
-    const authServiceState = authService.getState();
-    if (authServiceState.user) {
-      console.log(
-        'Creating offline account for email user:',
-        authServiceState.user
-      );
-      await createOfflineAccountForOnlineUser(authServiceState.user);
-    }
+    // Wait for auth service to process the login via its listeners
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const finalOfflineAccounts = await localAuthService.getLocalUsers();
-    return {
-      user: authServiceState.user,
-      session: authServiceState.session,
-      loading: false,
-      error: null,
-      offlineAccounts: finalOfflineAccounts,
-    };
+    const authServiceState = authService.getState();
+
+    // Use shared post-login effects handler
+    return await handlePostLoginEffects(authServiceState.user, true);
   }
 );
 
 export const signInOfflineWithoutPassword = createAsyncThunk(
   'auth/signInOfflineWithoutPassword',
-  async ({ email }: { email: string }, { getState, rejectWithValue }) => {
+  async ({ email }: { email: string }, { rejectWithValue }) => {
+    console.log('🔄 [AUTH SLICE] Local account signin for:', email);
     const result = await localAuthService.signInWithoutPassword(email);
     if (result.error) {
       return rejectWithValue(result.error);
     }
 
     const localState = localAuthService.getState();
-    return {
-      user: localState.user
-        ? transformLocalUserToAuthUser(localState.user)
-        : null,
-      session: localState.session,
-      loading: false,
-      error: null,
-      offlineAccounts: await localAuthService.getLocalUsers(),
-    };
+    const localUser = localState.user
+      ? transformLocalUserToAuthUser(localState.user)
+      : null;
+
+    // Use shared post-login effects handler
+    return await handlePostLoginEffects(localUser, false);
   }
 );
 
@@ -371,22 +405,22 @@ export const signUp = createAsyncThunk(
     const state = getState() as { auth: AuthState };
 
     if (state.auth.isOfflineMode) {
+      console.log('🔄 [AUTH SLICE] Offline mode: using local auth for signup');
       const result = await localAuthService.signUp(email, password, metadata);
       if (result.error) {
         return rejectWithValue(result.error);
       }
+
       const localState = localAuthService.getState();
-      return {
-        user: localState.user
-          ? transformLocalUserToAuthUser(localState.user)
-          : null,
-        session: localState.session,
-        loading: false,
-        error: null,
-        offlineAccounts: await localAuthService.getLocalUsers(),
-      };
+      const localUser = localState.user
+        ? transformLocalUserToAuthUser(localState.user)
+        : null;
+
+      // Use shared post-login effects handler
+      return await handlePostLoginEffects(localUser, false);
     }
 
+    console.log('🔄 [AUTH SLICE] Online mode: using remote auth for signup');
     // For online mode, use email/password signup
     const result = await authService.signUpWithEmail(email, password, metadata);
     if (result.error) {
@@ -396,13 +430,12 @@ export const signUp = createAsyncThunk(
     // Note: For email signup, user might need to confirm email before being signed in
     // The auth state will be updated through the auth state change listener if/when they confirm
     const authServiceState = authService.getState();
-    return {
-      user: authServiceState.user,
-      session: authServiceState.session,
-      loading: false,
-      error: null,
-      offlineAccounts: await localAuthService.getLocalUsers(),
-    };
+
+    // Use shared post-login effects handler (but no offline account creation until email confirmed)
+    return await handlePostLoginEffects(
+      authServiceState.user,
+      authServiceState.user ? true : false
+    );
   }
 );
 
