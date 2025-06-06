@@ -306,8 +306,30 @@ export const signInWithPassword = createAsyncThunk(
       };
     }
 
-    // For online mode, we only support Google sign-in now
-    return rejectWithValue('Password sign-in only available in offline mode');
+    // For online mode, use email/password authentication
+    const result = await authService.signInWithEmail(email, password);
+    if (result.error) {
+      return rejectWithValue(result.error);
+    }
+
+    // Auto-create offline account for email user
+    const authServiceState = authService.getState();
+    if (authServiceState.user) {
+      console.log(
+        'Creating offline account for email user:',
+        authServiceState.user
+      );
+      await createOfflineAccountForOnlineUser(authServiceState.user);
+    }
+
+    const finalOfflineAccounts = await localAuthService.getLocalUsers();
+    return {
+      user: authServiceState.user,
+      session: authServiceState.session,
+      loading: false,
+      error: null,
+      offlineAccounts: finalOfflineAccounts,
+    };
   }
 );
 
@@ -365,8 +387,22 @@ export const signUp = createAsyncThunk(
       };
     }
 
-    // For online mode, we only support Google sign-in now
-    return rejectWithValue('Sign-up only available in offline mode');
+    // For online mode, use email/password signup
+    const result = await authService.signUpWithEmail(email, password, metadata);
+    if (result.error) {
+      return rejectWithValue(result.error);
+    }
+
+    // Note: For email signup, user might need to confirm email before being signed in
+    // The auth state will be updated through the auth state change listener if/when they confirm
+    const authServiceState = authService.getState();
+    return {
+      user: authServiceState.user,
+      session: authServiceState.session,
+      loading: false,
+      error: null,
+      offlineAccounts: await localAuthService.getLocalUsers(),
+    };
   }
 );
 

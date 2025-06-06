@@ -50,3 +50,12 @@ vite.config.*.timestamp*
 vitest.config.*.timestamp*
 test-output
 test-results
+
+# Supabase
+.branches
+.temp
+
+# dotenvx
+.env.keys
+.env.local
+.env.*.local

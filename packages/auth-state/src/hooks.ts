@@ -8,6 +8,7 @@ import {
   signInWithGooglePopup,
   signInWithPassword,
   signInOfflineWithoutPassword,
+  signUp,
   signOut,
   setOfflinePasscode,
   removeOfflinePasscode,
@@ -274,6 +275,8 @@ export function useAuth() {
       dispatch(signInWithPassword({ email, password })),
     signInOfflineWithoutPassword: (email: string) =>
       dispatch(signInOfflineWithoutPassword({ email })),
+    signUp: (email: string, password: string, metadata?: { name?: string }) =>
+      dispatch(signUp({ email, password, metadata })),
     signOut: () => dispatch(signOut(undefined)),
     setOfflinePasscode: (
       currentPassword: string | undefined,

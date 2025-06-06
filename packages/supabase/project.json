@@ -1,0 +1,12 @@
+{
+  "name": "supabase",
+  "targets": {
+    "start": {
+      "command": "supabase start",
+      "options": {
+        "cwd": "{projectRoot}"
+      },
+      "continuous": true
+    }
+  }
+}

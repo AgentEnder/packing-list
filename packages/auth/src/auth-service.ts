@@ -655,6 +655,93 @@ export class AuthService {
     this.listeners = [];
     this.localAuthService.destroy();
   }
+
+  // Email/password authentication methods
+  async signUpWithEmail(
+    email: string,
+    password: string,
+    metadata?: { name?: string }
+  ): Promise<{ error?: unknown }> {
+    if (!this.supabaseAvailable) {
+      return { error: 'Remote authentication not available' };
+    }
+
+    try {
+      console.log('🔧 [AUTH SERVICE] Starting email signup for:', email);
+      const supabase = getSupabaseClient();
+
+      const { error, data } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: metadata
+            ? {
+                name: metadata.name,
+                full_name: metadata.name,
+              }
+            : undefined,
+        },
+      });
+
+      if (error) {
+        console.error('🔧 [AUTH SERVICE] Email signup error:', error);
+        return { error: error.message };
+      }
+
+      if (data.user && !data.user.email_confirmed_at) {
+        console.log('🔧 [AUTH SERVICE] Email confirmation required');
+        return {
+          error:
+            'Please check your email and click the confirmation link to complete signup.',
+        };
+      }
+
+      console.log('🔧 [AUTH SERVICE] Email signup successful!');
+      return {};
+    } catch (error) {
+      console.error('🔧 [AUTH SERVICE] Exception in signUpWithEmail:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  async signInWithEmail(
+    email: string,
+    password: string
+  ): Promise<{ error?: unknown }> {
+    if (!this.supabaseAvailable) {
+      return { error: 'Remote authentication not available' };
+    }
+
+    try {
+      console.log('🔧 [AUTH SERVICE] Starting email signin for:', email);
+      const supabase = getSupabaseClient();
+
+      const { error, data } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('🔧 [AUTH SERVICE] Email signin error:', error);
+        return { error: error.message };
+      }
+
+      if (data.user) {
+        console.log('🔧 [AUTH SERVICE] Email signin successful!');
+        // The auth state change listener will handle the user sign-in
+        return {};
+      }
+
+      return { error: 'No user returned from signin' };
+    } catch (error) {
+      console.error('🔧 [AUTH SERVICE] Exception in signInWithEmail:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
 }
 
 export const authService = new AuthService();

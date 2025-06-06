@@ -50,6 +50,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-redux": "^9.2.0",
+    "supabase": "^2.24.3",
     "tailwindcss": "^4.1.7",
     "tmp": "^0.2.3",
     "ts-jest": "^29.3.4",

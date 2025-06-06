@@ -393,3 +393,311 @@ describe('Auth Service', () => {
     });
   });
 });
+
+describe('Email/Password Authentication', () => {
+  let mockSupabaseAuth: any;
+
+  beforeEach(() => {
+    // Reset all mocks
+    vi.clearAllMocks();
+
+    // Mock Supabase auth with email/password methods
+    mockSupabaseAuth = {
+      getUser: vi.fn(),
+      getSession: vi
+        .fn()
+        .mockResolvedValue({ data: { session: null }, error: null }),
+      signInWithOAuth: vi.fn(),
+      signInWithPassword: vi.fn(),
+      signUp: vi.fn(),
+      signOut: vi.fn(),
+      onAuthStateChange: vi.fn(() => ({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      })),
+    };
+
+    (getSupabaseClient as any).mockReturnValue({
+      auth: mockSupabaseAuth,
+    });
+  });
+
+  describe('Email Signup', () => {
+    it('should handle successful email signup', async () => {
+      mockSupabaseAuth.signUp.mockResolvedValue({
+        data: {
+          user: {
+            id: 'test-user-id',
+            email: 'test@example.com',
+            email_confirmed_at: '2023-01-01T00:00:00Z',
+          },
+          session: { access_token: 'test-token' },
+        },
+        error: null,
+      });
+
+      const result = await authService.signUpWithEmail(
+        'test@example.com',
+        'password123',
+        { name: 'Test User' }
+      );
+
+      expect(mockSupabaseAuth.signUp).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password123',
+        options: {
+          data: {
+            name: 'Test User',
+            full_name: 'Test User',
+          },
+        },
+      });
+
+      expect(result.error).toBeUndefined();
+    });
+
+    it('should handle signup with email confirmation required', async () => {
+      mockSupabaseAuth.signUp.mockResolvedValue({
+        data: {
+          user: {
+            id: 'test-user-id',
+            email: 'test@example.com',
+            email_confirmed_at: null, // Email not confirmed
+          },
+          session: null,
+        },
+        error: null,
+      });
+
+      const result = await authService.signUpWithEmail(
+        'test@example.com',
+        'password123'
+      );
+
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('confirmation link');
+    });
+
+    it('should handle signup errors', async () => {
+      mockSupabaseAuth.signUp.mockResolvedValue({
+        data: null,
+        error: { message: 'User already registered' },
+      });
+
+      const result = await authService.signUpWithEmail(
+        'test@example.com',
+        'password123'
+      );
+
+      expect(result.error).toBe('User already registered');
+    });
+
+    it('should handle signup without metadata', async () => {
+      mockSupabaseAuth.signUp.mockResolvedValue({
+        data: {
+          user: {
+            id: 'test-user-id',
+            email: 'test@example.com',
+            email_confirmed_at: '2023-01-01T00:00:00Z',
+          },
+          session: { access_token: 'test-token' },
+        },
+        error: null,
+      });
+
+      const result = await authService.signUpWithEmail(
+        'test@example.com',
+        'password123'
+      );
+
+      expect(mockSupabaseAuth.signUp).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password123',
+        options: {
+          data: undefined,
+        },
+      });
+
+      expect(result.error).toBeUndefined();
+    });
+
+    it('should handle signup when Supabase is not available', async () => {
+      // Mock getSupabaseClient to throw an error to simulate Supabase not being available
+      (getSupabaseClient as any).mockImplementation(() => {
+        throw new Error('Supabase not configured');
+      });
+
+      const result = await authService.signUpWithEmail(
+        'test@example.com',
+        'password123'
+      );
+
+      expect(result.error).toBeDefined();
+      // The error will be caught and handled gracefully
+      expect(typeof result.error).toBe('string');
+    });
+
+    it('should handle signup network errors', async () => {
+      mockSupabaseAuth.signUp.mockRejectedValue(new Error('Network error'));
+
+      const result = await authService.signUpWithEmail(
+        'test@example.com',
+        'password123'
+      );
+
+      expect(result.error).toBe('Network error');
+    });
+  });
+
+  describe('Email Signin', () => {
+    it('should handle successful email signin', async () => {
+      mockSupabaseAuth.signInWithPassword.mockResolvedValue({
+        data: {
+          user: {
+            id: 'test-user-id',
+            email: 'test@example.com',
+          },
+          session: { access_token: 'test-token' },
+        },
+        error: null,
+      });
+
+      const result = await authService.signInWithEmail(
+        'test@example.com',
+        'password123'
+      );
+
+      expect(mockSupabaseAuth.signInWithPassword).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password123',
+      });
+
+      expect(result.error).toBeUndefined();
+    });
+
+    it('should handle signin with invalid credentials', async () => {
+      mockSupabaseAuth.signInWithPassword.mockResolvedValue({
+        data: null,
+        error: { message: 'Invalid login credentials' },
+      });
+
+      const result = await authService.signInWithEmail(
+        'test@example.com',
+        'wrongpassword'
+      );
+
+      expect(result.error).toBe('Invalid login credentials');
+    });
+
+    it('should handle signin with missing user data', async () => {
+      mockSupabaseAuth.signInWithPassword.mockResolvedValue({
+        data: {
+          user: null,
+          session: null,
+        },
+        error: null,
+      });
+
+      const result = await authService.signInWithEmail(
+        'test@example.com',
+        'password123'
+      );
+
+      expect(result.error).toBe('No user returned from signin');
+    });
+
+    it('should handle signin when Supabase is not available', async () => {
+      // Mock getSupabaseClient to throw an error to simulate Supabase not being available
+      (getSupabaseClient as any).mockImplementation(() => {
+        throw new Error('Supabase not configured');
+      });
+
+      const result = await authService.signInWithEmail(
+        'test@example.com',
+        'password123'
+      );
+
+      expect(result.error).toBeDefined();
+      // The error will be caught and handled gracefully
+      expect(typeof result.error).toBe('string');
+    });
+
+    it('should handle signin network errors', async () => {
+      mockSupabaseAuth.signInWithPassword.mockRejectedValue(
+        new Error('Network timeout')
+      );
+
+      const result = await authService.signInWithEmail(
+        'test@example.com',
+        'password123'
+      );
+
+      expect(result.error).toBe('Network timeout');
+    });
+
+    it('should handle email validation errors', async () => {
+      mockSupabaseAuth.signInWithPassword.mockResolvedValue({
+        data: null,
+        error: { message: 'Unable to validate email address: invalid format' },
+      });
+
+      const result = await authService.signInWithEmail(
+        'invalid-email',
+        'password123'
+      );
+
+      expect(result.error).toContain('invalid format');
+    });
+
+    it('should handle password strength errors', async () => {
+      mockSupabaseAuth.signInWithPassword.mockResolvedValue({
+        data: null,
+        error: { message: 'Password should be at least 6 characters' },
+      });
+
+      const result = await authService.signInWithEmail(
+        'test@example.com',
+        '123'
+      );
+
+      expect(result.error).toContain('at least 6 characters');
+    });
+  });
+
+  describe('Email Authentication Error Handling', () => {
+    it('should handle unknown signup errors gracefully', async () => {
+      mockSupabaseAuth.signUp.mockRejectedValue('Unknown error');
+
+      const result = await authService.signUpWithEmail(
+        'test@example.com',
+        'password123'
+      );
+
+      expect(result.error).toBe('Unknown error');
+    });
+
+    it('should handle unknown signin errors gracefully', async () => {
+      mockSupabaseAuth.signInWithPassword.mockRejectedValue('Unknown error');
+
+      const result = await authService.signInWithEmail(
+        'test@example.com',
+        'password123'
+      );
+
+      expect(result.error).toBe('Unknown error');
+    });
+
+    it('should handle API rate limiting', async () => {
+      mockSupabaseAuth.signInWithPassword.mockResolvedValue({
+        data: null,
+        error: { message: 'Too many requests' },
+      });
+
+      const result = await authService.signInWithEmail(
+        'test@example.com',
+        'password123'
+      );
+
+      expect(result.error).toBe('Too many requests');
+    });
+  });
+});
