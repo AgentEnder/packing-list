@@ -509,6 +509,7 @@ export const signOut = createAsyncThunk(
         session: null,
         loading: false,
         error: null,
+        offlineAccounts: await localAuthService.getLocalUsers(),
       };
     } else {
       // In online mode, sign out from remote auth
@@ -540,6 +541,7 @@ export const signOut = createAsyncThunk(
             session: authServiceState.session,
             loading: false,
             error: null,
+            offlineAccounts: await localAuthService.getLocalUsers(),
           };
         }
       }
@@ -554,6 +556,7 @@ export const signOut = createAsyncThunk(
         session: authServiceState.session,
         loading: false,
         error: null,
+        offlineAccounts: await localAuthService.getLocalUsers(),
       };
     }
   }
@@ -780,14 +783,24 @@ export const authSlice: Slice<AuthState> = createSlice({
         state.error = null;
       })
       .addCase(signOut.fulfilled, (state, action) => {
+        // Reset most state to initial values, but preserve:
+        // 1. Values returned from the thunk (user, session, error, offlineAccounts)
+        // 2. Important state flags (isInitialized, connectivity, mode settings)
         Object.assign(state, {
           ...initialState,
+          // Override with values from the signOut thunk
+          user: action.payload.user,
+          session: action.payload.session,
+          loading: action.payload.loading,
+          error: action.payload.error,
+          // Preserve important state flags
           isInitialized: true,
-          loading: false,
           connectivityState: state.connectivityState,
           isOfflineMode: state.isOfflineMode,
           forceOfflineMode: state.forceOfflineMode,
-          offlineAccounts: state.offlineAccounts,
+          // Use offlineAccounts from thunk if provided, otherwise preserve current
+          offlineAccounts:
+            action.payload.offlineAccounts ?? state.offlineAccounts,
           hasOfflinePasscode: state.hasOfflinePasscode,
         });
       })

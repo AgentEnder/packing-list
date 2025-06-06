@@ -687,5 +687,62 @@ describe('Auth Flow Coordination', () => {
       expect(state.error).toBe(null);
       expect(state.lastError).toBe(null);
     });
+
+    it('should reset auth state properly after sign-out to allow subsequent login attempts', async () => {
+      // Start with a signed-in remote user
+      store.dispatch({
+        type: 'auth/updateAuthState',
+        payload: {
+          user: mockRemoteUser,
+          session: { access_token: 'token123' },
+          isOfflineMode: false,
+          isAuthenticating: false,
+          loading: false,
+          error: null,
+        },
+      });
+
+      mockAuthService.signOut.mockResolvedValue({ error: null });
+      mockAuthService.getState.mockReturnValue({
+        user: mockSharedUser,
+        session: null,
+        error: null,
+        loading: false,
+        isRemoteAuthenticated: false,
+      });
+
+      // Perform sign-out
+      const signOutAction = signOut();
+      await store.dispatch(signOutAction);
+
+      // Check that auth state is properly reset for subsequent login attempts
+      const finalState = store.getState().auth;
+      expect(finalState.user).toEqual(mockSharedUser);
+      expect(finalState.loading).toBe(false);
+      expect(finalState.isAuthenticating).toBe(false);
+      expect(finalState.error).toBe(null);
+      expect(finalState.isInitialized).toBe(true);
+
+      // Now try to start a new sign-in flow to ensure it's not blocked
+      mockAuthService.signInWithGooglePopup.mockResolvedValue({ error: null });
+      mockAuthService.getState.mockReturnValue({
+        user: mockRemoteUser,
+        session: { access_token: 'new-token' },
+        error: null,
+        loading: false,
+        isRemoteAuthenticated: true,
+      });
+
+      const newSignInAction = signInWithGooglePopup();
+      const newSignInResult = await store.dispatch(newSignInAction);
+
+      // Should succeed without issues
+      expect(newSignInResult.type).toBe('auth/signInWithGooglePopup/fulfilled');
+      
+      const newState = store.getState().auth;
+      expect(newState.user).toEqual(mockRemoteUser);
+      expect(newState.isAuthenticating).toBe(false);
+      expect(newState.error).toBe(null);
+    });
   });
 }); 
