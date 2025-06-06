@@ -3,9 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "main": "./src/index.ts",
-  "scripts": {
-    "test": "vitest"
-  },
+  "scripts": {},
   "dependencies": {
     "@reduxjs/toolkit": "^2.5.0",
     "@packing-list/auth": "workspace:*",

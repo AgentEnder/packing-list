@@ -3,6 +3,20 @@ export interface ConnectivityState {
   isConnected: boolean; // More specific check for auth service connectivity
 }
 
+const connectivityServices: Map<string, ConnectivityService> = new Map();
+
+export function getConnectivityService(authServiceUrl?: string) {
+  const id = authServiceUrl || 'default';
+  const inMap = connectivityServices.get(id);
+  if (inMap) {
+    return inMap;
+  }
+
+  const service = new ConnectivityService(authServiceUrl);
+  connectivityServices.set(id, service);
+  return service;
+}
+
 export class ConnectivityService {
   private listeners: Array<(state: ConnectivityState) => void> = [];
   private currentState: ConnectivityState = {
@@ -11,8 +25,15 @@ export class ConnectivityService {
   };
   private checkInterval: number | null = null;
   private authServiceUrl: string;
+  private lastCheckTime = 0;
+  private minCheckInterval = 60000; // Minimum 60 seconds between checks
+  private periodicCheckInterval = 300000; // Check every 5 minutes instead of 30 seconds
 
   constructor(authServiceUrl?: string) {
+    console.log(
+      '🚀 [CONNECTIVITY SERVICE] Initializing connectivity service -',
+      authServiceUrl
+    );
     this.authServiceUrl = authServiceUrl || '';
     this.initializeConnectivity();
   }
@@ -24,7 +45,7 @@ export class ConnectivityService {
       window.addEventListener('offline', this.handleOnlineStatusChange);
     }
 
-    // Start periodic connectivity checks
+    // Start periodic connectivity checks (much less frequent)
     this.startPeriodicCheck();
 
     // Initial check
@@ -34,7 +55,8 @@ export class ConnectivityService {
   private handleOnlineStatusChange = () => {
     this.updateOnlineStatus(navigator.onLine);
     // When status changes, immediately check auth service connectivity
-    this.checkConnectivity();
+    // but respect the minimum check interval
+    this.checkConnectivityWithThrottling();
   };
 
   private updateOnlineStatus(isOnline: boolean) {
@@ -51,75 +73,35 @@ export class ConnectivityService {
     }
   }
 
+  private async checkConnectivityWithThrottling() {
+    const now = Date.now();
+    if (now - this.lastCheckTime < this.minCheckInterval) {
+      // Skip check if we've checked recently
+      return;
+    }
+
+    this.lastCheckTime = now;
+    await this.checkConnectivity();
+  }
+
   private async checkConnectivity() {
     if (typeof window === 'undefined') {
       this.updateConnectedStatus(false);
       return;
     }
 
-    if (!this.currentState.isOnline) {
-      this.updateConnectedStatus(false);
-      return;
-    }
-
-    try {
-      // Try to reach the auth service or a simple endpoint
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-
-      let testUrl = '/ping'; // Default fallback
-
-      if (this.authServiceUrl) {
-        try {
-          const url = new URL(this.authServiceUrl);
-          testUrl = `${url.origin}/ping`;
-        } catch {
-          // If authServiceUrl is invalid, try a simple connectivity test
-          testUrl = 'https://httpbin.org/status/200';
-        }
-      } else {
-        // Fallback connectivity test
-        testUrl = 'https://httpbin.org/status/200';
-      }
-
-      await fetch(testUrl, {
-        method: 'HEAD',
-        mode: 'no-cors', // Avoid CORS issues for simple connectivity test
-        signal: controller.signal,
-        cache: 'no-cache',
-      });
-
-      clearTimeout(timeoutId);
-      this.updateConnectedStatus(true);
-    } catch (error) {
-      // If the specific service check fails, try a simpler connectivity test
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-        await fetch('https://www.google.com/favicon.ico', {
-          method: 'HEAD',
-          mode: 'no-cors',
-          signal: controller.signal,
-          cache: 'no-cache',
-        });
-
-        clearTimeout(timeoutId);
-        // We can reach the internet, but maybe not our auth service
-        this.updateConnectedStatus(false);
-      } catch {
-        // No internet connectivity at all
-        this.updateConnectedStatus(false);
-      }
-    }
+    // Ultra-conservative approach: Only report disconnected if navigator.onLine is explicitly false
+    // This avoids false negatives from fetch failures in development environments
+    const isConnected = navigator.onLine;
+    this.updateConnectedStatus(isConnected);
   }
 
   private startPeriodicCheck() {
     if (typeof window === 'undefined') return;
-    // Check connectivity every 30 seconds
+    // Check connectivity every 5 minutes instead of 30 seconds
     this.checkInterval = window.setInterval(() => {
-      this.checkConnectivity();
-    }, 30000);
+      this.checkConnectivityWithThrottling();
+    }, this.periodicCheckInterval);
   }
 
   private notifyListeners() {
@@ -142,9 +124,9 @@ export class ConnectivityService {
     return this.currentState;
   }
 
-  // Manual connectivity check
+  // Manual connectivity check (also respects throttling)
   async checkNow(): Promise<ConnectivityState> {
-    await this.checkConnectivity();
+    await this.checkConnectivityWithThrottling();
     return this.currentState;
   }
 

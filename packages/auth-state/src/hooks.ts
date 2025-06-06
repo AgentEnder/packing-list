@@ -1,21 +1,20 @@
-import { useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useEffect, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import {
   clearError,
   updateConnectivityState,
   updateAuthState,
   initializeAuth,
+  signInWithGooglePopup,
   signInWithPassword,
   signInOfflineWithoutPassword,
-  signUp,
-  signInWithGoogle,
-  signInWithGooglePopup,
   signOut,
   setOfflinePasscode,
   removeOfflinePasscode,
   checkConnectivity,
   setForceOfflineMode as setForceOfflineModeAction,
   deleteAccount,
+  useAuthDispatch,
 } from './auth-slice.js';
 import {
   selectUser,
@@ -46,10 +45,14 @@ import {
   ConnectivityService,
   ConnectivityState,
 } from '@packing-list/auth';
+import { AnyAction, Dispatch } from '@reduxjs/toolkit';
+import { getConnectivityService } from '@packing-list/auth/src/connectivity.js';
 
 // Create service instances
 const localAuthService = new LocalAuthService();
-const connectivityService = new ConnectivityService();
+const connectivityService = getConnectivityService(
+  import.meta.env.PUBLIC_ENV__SUPABASE_URL
+);
 
 // Check if we're on the server (SSR)
 const isServer = (import.meta as any).env?.SSR;
@@ -75,7 +78,7 @@ function useSSRSafeDispatch() {
       // eslint-disable-next-line @typescript-eslint/no-empty-function
       return () => {}; // No-op function for SSR
     }
-    return useDispatch();
+    return useAuthDispatch();
   } catch {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     return () => {}; // No-op function if Redux context is not available
@@ -120,12 +123,39 @@ export function useAuth() {
     false
   );
 
+  // Helper function to determine if sign-in options should be shown
+  const shouldShowSignInOptions = useMemo(() => {
+    if (!user) return true;
+
+    // Always show sign-in options for shared account
+    if (
+      user.id === 'local-shared-user' ||
+      user.email === 'shared@local.device' ||
+      user.isShared === true
+    ) {
+      return true;
+    }
+
+    // Don't show sign-in options for authenticated users
+    return false;
+  }, [user]);
+
+  // Track if user is remotely authenticated (signed in with Google)
+  const isRemotelyAuthenticated = useMemo(() => {
+    if (isServer || isOfflineMode) return false;
+    try {
+      return authService.isRemotelyAuthenticated();
+    } catch {
+      return false;
+    }
+  }, [isOfflineMode]);
+
   // Initialize auth on mount and set up subscriptions (client-side only)
   useEffect(() => {
     if (isServer) return;
 
     // Initialize auth state
-    (dispatch as any)(initializeAuth());
+    dispatch(initializeAuth(undefined));
 
     // Subscribe to auth service changes (only for online auth state)
     const unsubscribeAuth = authService.subscribe((authState) => {
@@ -172,33 +202,12 @@ export function useAuth() {
     };
   }, [dispatch, isOfflineMode]);
 
-  // Auth action methods
-  const signIn = async (email: string, password: string) => {
-    return (dispatch as any)(signInWithPassword({ email, password }));
-  };
-
-  const signInOfflineWithoutPass = async (email: string) => {
-    return (dispatch as any)(signInOfflineWithoutPassword({ email }));
-  };
-
-  const signUpUser = async (
-    email: string,
-    password: string,
-    metadata?: { name?: string }
-  ) => {
-    return (dispatch as any)(signUp({ email, password, metadata }));
-  };
-
-  const signInWithGoogleAuth = async () => {
-    return (dispatch as any)(signInWithGoogle());
-  };
-
   const signInWithGooglePopupAuth = async () => {
-    return (dispatch as any)(signInWithGooglePopup());
+    return dispatch(signInWithGooglePopup(undefined));
   };
 
   const signOutUser = async () => {
-    return (dispatch as any)(signOut());
+    return dispatch(signOut(undefined));
   };
 
   const setOfflinePass = async (
@@ -206,7 +215,7 @@ export function useAuth() {
     newPasscode: string,
     userId?: string
   ) => {
-    return (dispatch as any)(
+    return dispatch(
       setOfflinePasscode({ currentPassword, newPasscode, userId })
     );
   };
@@ -215,17 +224,15 @@ export function useAuth() {
     currentPasscode: string,
     userId?: string
   ) => {
-    return (dispatch as any)(
-      removeOfflinePasscode({ currentPasscode, userId })
-    );
+    return dispatch(removeOfflinePasscode({ currentPasscode, userId }));
   };
 
   const deleteUserAccount = async () => {
-    return (dispatch as any)(deleteAccount());
+    return dispatch(deleteAccount(undefined));
   };
 
   const checkConnectivityNow = async () => {
-    return (dispatch as any)(checkConnectivity());
+    return dispatch(checkConnectivity(undefined));
   };
 
   const setForceOfflineMode = (force: boolean) => {
@@ -258,20 +265,37 @@ export function useAuth() {
     connectivityStatus,
     offlineAccounts,
     hasOfflinePasscode,
+    shouldShowSignInOptions,
+    isRemotelyAuthenticated,
 
-    // Actions
-    signIn,
-    signInOfflineWithoutPassword: signInOfflineWithoutPass,
-    signUp: signUpUser,
-    signInWithGoogle: signInWithGoogleAuth,
-    signInWithGooglePopup: signInWithGooglePopupAuth,
-    signOut: signOutUser,
-    setOfflinePasscode: setOfflinePass,
-    removeOfflinePasscode: removeOfflinePass,
-    deleteAccount: deleteUserAccount,
-    checkConnectivity: checkConnectivityNow,
-    setForceOfflineMode,
-    clearError: clearErrorAction,
+    // Actions - return thunks directly for better TypeScript support
+    signInWithGooglePopup: () => dispatch(signInWithGooglePopup(undefined)),
+    signInWithPassword: (email: string, password: string) =>
+      dispatch(signInWithPassword({ email, password })),
+    signInOfflineWithoutPassword: (email: string) =>
+      dispatch(signInOfflineWithoutPassword({ email })),
+    signOut: () => dispatch(signOut(undefined)),
+    setOfflinePasscode: (
+      currentPassword: string | undefined,
+      newPasscode: string,
+      userId?: string
+    ) => dispatch(setOfflinePasscode({ currentPassword, newPasscode, userId })),
+    removeOfflinePasscode: (currentPasscode: string, userId?: string) =>
+      dispatch(removeOfflinePasscode({ currentPasscode, userId })),
+    deleteAccount: () => dispatch(deleteAccount(undefined)),
+    checkConnectivity: () => dispatch(checkConnectivity(undefined)),
+    setForceOfflineMode: (force: boolean) =>
+      dispatch(setForceOfflineModeAction(force)),
+    clearError: () => dispatch(clearError(null)),
+
+    // Deprecated - keeping for backward compatibility but prefer the direct thunks above
+    signInWithGooglePopupAuth,
+    signOutUser,
+    setOfflinePass,
+    removeOfflinePass,
+    deleteUserAccount,
+    checkConnectivityNow,
+    clearErrorAction,
   };
 }
 

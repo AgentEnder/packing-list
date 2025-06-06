@@ -4,7 +4,8 @@
     "composite": true,
     "outDir": "./dist",
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "types": ["vite/client"]
   },
   "include": ["src/**/*"],
   "references": [

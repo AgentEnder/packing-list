@@ -3,17 +3,17 @@ import { useAuth, LoginForm } from '@packing-list/shared-components';
 import { Link } from '../../components/Link';
 
 export default function LoginPage() {
-  const { user } = useAuth();
+  const { user, shouldShowSignInOptions } = useAuth();
 
   useEffect(() => {
-    // Redirect to home if already logged in
-    if (user) {
+    // Redirect to home if already logged in with personal account (not shared)
+    if (user && !shouldShowSignInOptions) {
       window.location.href = '/';
     }
-  }, [user]);
+  }, [user, shouldShowSignInOptions]);
 
-  // Don't render anything if user is already logged in (during redirect)
-  if (user) {
+  // Don't render anything if user is already logged in with personal account (during redirect)
+  if (user && !shouldShowSignInOptions) {
     return null;
   }
 

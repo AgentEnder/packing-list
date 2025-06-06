@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useAppDispatch } from '@packing-list/state';
 import {
   UserManagement,
   OfflinePasscodeForm,
   useAuth,
+  Avatar,
 } from '@packing-list/shared-components';
 import { PageContainer } from '../../components/PageContainer';
 import { PageHeader } from '../../components/PageHeader';
@@ -118,12 +120,14 @@ export default function SettingsPage() {
                           className="flex items-center justify-between p-3 bg-base-200 rounded-lg"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="avatar placeholder">
-                              <div className="bg-neutral text-neutral-content w-8 h-8 rounded-full">
-                                <span className="text-xs">
-                                  {account.email.charAt(0).toUpperCase()}
-                                </span>
-                              </div>
+                            <div className="avatar">
+                              <Avatar
+                                src={account.avatar_url}
+                                alt={account.name || account.email}
+                                size={32}
+                                isOnline={isOnline}
+                                showOfflineIndicator={false}
+                              />
                             </div>
                             <div>
                               <div className="font-medium">

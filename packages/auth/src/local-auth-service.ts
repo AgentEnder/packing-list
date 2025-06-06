@@ -619,18 +619,26 @@ export class LocalAuthService {
   }
 
   async signInWithoutPassword(
-    email: string
+    emailOrId: string,
+    bypassPasscode = false
   ): Promise<{ user?: LocalAuthUser; error?: string }> {
     try {
-      // Find the user
-      const user = await this.getUserByEmail(email);
+      // Find the user by email or ID
+      let user = await this.getUserByEmail(emailOrId);
+
+      // If not found by email, try to find by ID
+      if (!user) {
+        const users = await this.getStoredUsers();
+        user = users.find((u) => u.id === emailOrId) || null;
+      }
 
       if (!user) {
         return { error: 'User not found' };
       }
 
       // Check if passcode is set for this specific user - if so, require it
-      if (user.passcode_hash) {
+      // UNLESS this is an automatic transition (bypassPasscode = true)
+      if (user.passcode_hash && !bypassPasscode) {
         return { error: 'Passcode is required for this account' };
       }
 

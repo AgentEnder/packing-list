@@ -3,31 +3,66 @@ import { useAuth } from '@packing-list/shared-components';
 import { Link } from '../../../components/Link';
 
 export default function AuthCallback() {
+  console.log('🎯 [CALLBACK] AuthCallback component is rendering');
+  console.log('🎯 [CALLBACK] window.location.href:', window.location.href);
+  console.log('🎯 [CALLBACK] document.referrer:', document.referrer);
+
   const { user, error } = useAuth();
   const [countdown, setCountdown] = useState(3);
   const [isPopup, setIsPopup] = useState(false);
 
+  console.log('🎯 [CALLBACK] Initial state - user:', user, 'error:', error);
+
   useEffect(() => {
     // Check if we're in a popup window
+    console.log('🎯 [CALLBACK] Callback page loaded');
+    console.log('🎯 [CALLBACK] window.opener:', window.opener);
+    console.log(
+      '🎯 [CALLBACK] window.opener !== window:',
+      window.opener !== window
+    );
+    console.log('🎯 [CALLBACK] window.opener exists:', !!window.opener);
+    console.log(
+      '🎯 [CALLBACK] window.opener && window.opener !== window:',
+      window.opener && window.opener !== window
+    );
+    console.log('🎯 [CALLBACK] Current URL:', window.location.href);
+    console.log('🎯 [CALLBACK] Current user:', user);
+    console.log('🎯 [CALLBACK] Current error:', error);
+
     const isInPopup = window.opener && window.opener !== window;
+    console.log('🎯 [CALLBACK] Detected popup mode:', isInPopup);
     setIsPopup(isInPopup);
 
     if (isInPopup) {
+      console.log(
+        '🎯 [CALLBACK] In popup mode - waiting for auth completion...'
+      );
       // We're in a popup - close it when auth completes
       if (user || error) {
+        console.log('🎯 [CALLBACK] Auth completed in popup:', {
+          user: !!user,
+          error,
+        });
         // Give a brief moment for state to settle, then close
         setTimeout(() => {
+          console.log('🎯 [CALLBACK] Closing popup window');
           window.close();
         }, 1000);
       }
     } else {
+      console.log('🎯 [CALLBACK] In regular page mode');
       // Regular page behavior - redirect after successful auth
       if (user) {
+        console.log(
+          '🎯 [CALLBACK] User authenticated, starting redirect countdown'
+        );
         // Start countdown before redirect
         const timer = setInterval(() => {
           setCountdown((prev) => {
             if (prev <= 1) {
               clearInterval(timer);
+              console.log('🎯 [CALLBACK] Redirecting to home page');
               window.location.href = '/';
               return 0;
             }

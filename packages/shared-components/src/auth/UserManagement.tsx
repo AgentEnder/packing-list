@@ -118,7 +118,11 @@ export function UserManagement({
 
   const handleSignOut = async () => {
     try {
-      await signOut();
+      const result = await signOut();
+      // Check if the thunk was rejected
+      if (result.type.endsWith('/rejected')) {
+        throw new Error((result.payload as string) || 'Sign out failed');
+      }
       showToast?.('Successfully signed out');
       onSignOut?.();
     } catch (error) {
@@ -135,16 +139,15 @@ export function UserManagement({
 
     setIsDeletingAccount(true);
     try {
-      const { error } = await deleteAccount();
-      if (error) {
-        showToast?.(
-          `Error deleting account: ${
-            typeof error === 'object' && 'message' in error
-              ? error.message
-              : 'Unknown error'
-          }`
-        );
+      const result = await deleteAccount();
+
+      // Check if the thunk was rejected
+      if (result.type.endsWith('/rejected')) {
+        const errorMessage =
+          (result.payload as string) || 'Unknown error occurred';
+        showToast?.(`Error deleting account: ${errorMessage}`);
       } else {
+        // Thunk was fulfilled - account deletion successful
         showToast?.('Account successfully deleted');
         onAccountDeleted?.();
       }

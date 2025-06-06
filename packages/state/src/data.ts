@@ -374,6 +374,9 @@ export const CREATE_DEMO_DATA: () => Partial<StoreType> = () =>
         isInitialized: false,
         lastError: null,
         isAuthenticating: false,
+        forceOfflineMode: false,
+        offlineAccounts: [],
+        hasOfflinePasscode: false,
       },
     })
   );
