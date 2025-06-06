@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     name: '@packing-list/state-tests',
     include: ['src/**/*.test.ts'],
-    environment: 'node',
+    environment: 'jsdom',
   },
   resolve: {
     // Handle TypeScript paths and module resolution

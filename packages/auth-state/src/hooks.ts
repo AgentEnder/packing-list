@@ -44,9 +44,9 @@ import {
   LocalAuthState,
   ConnectivityService,
   ConnectivityState,
+  getConnectivityService,
 } from '@packing-list/auth';
 import { AnyAction, Dispatch } from '@reduxjs/toolkit';
-import { getConnectivityService } from '@packing-list/auth/src/connectivity.js';
 
 // Create service instances
 const localAuthService = new LocalAuthService();

@@ -14,4 +14,8 @@ export {
 } from './local-auth-service.js';
 
 // Connectivity exports
-export { ConnectivityService, type ConnectivityState } from './connectivity.js';
+export {
+  ConnectivityService,
+  type ConnectivityState,
+  getConnectivityService,
+} from './connectivity.js';

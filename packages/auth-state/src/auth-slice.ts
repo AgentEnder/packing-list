@@ -13,8 +13,11 @@ import {
   AuthState as BaseAuthState,
 } from '@packing-list/auth';
 import { LocalAuthService, LocalAuthUser } from '@packing-list/auth';
-import { ConnectivityService, ConnectivityState } from '@packing-list/auth';
-import { getConnectivityService } from '@packing-list/auth/src/connectivity.js';
+import {
+  ConnectivityService,
+  ConnectivityState,
+  getConnectivityService,
+} from '@packing-list/auth';
 
 // Create service instances
 const localAuthService = new LocalAuthService();

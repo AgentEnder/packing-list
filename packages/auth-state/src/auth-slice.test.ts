@@ -111,7 +111,7 @@ describe('Auth Slice', () => {
         expect(store.getState().auth.lastError).toBe('Test error');
         
         // Clear the error
-        store.dispatch(authSlice.actions.clearError());
+        store.dispatch(authSlice.actions.clearError(null));
         
         const state = store.getState().auth;
         expect(state.error).toBe(null);
@@ -132,7 +132,7 @@ describe('Auth Slice', () => {
         }));
         
         // Reset
-        store.dispatch(authSlice.actions.resetAuthState());
+        store.dispatch(authSlice.actions.resetAuthState(null));
         
         const state = store.getState().auth;
         expect(state.user).toBe(null);
