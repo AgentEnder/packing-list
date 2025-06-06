@@ -245,23 +245,6 @@ export function LoginForm() {
 
       <div className="divider">OR</div>
 
-      {/* Email/Password option - single subtle link */}
-      <div className="text-center">
-        <button
-          type="button"
-          className="link link-primary text-sm"
-          onClick={() => {
-            setEmailPasswordMode('signin');
-            setShowEmailPasswordForm(true);
-          }}
-          disabled={loading || !isConnected}
-        >
-          Sign in with email instead
-        </button>
-      </div>
-
-      <div className="divider text-xs opacity-50">OR</div>
-
       {/* Local account option */}
       <button
         type="button"
@@ -271,10 +254,21 @@ export function LoginForm() {
         Use Local Account (Works Offline)
       </button>
 
-      <div className="text-center">
+      <div className="text-center space-y-2">
         <p className="text-xs text-base-content/60">
           By signing in, you agree to our terms of service and privacy policy
         </p>
+        <button
+          type="button"
+          className="link link-primary text-xs opacity-70 hover:opacity-100"
+          onClick={() => {
+            setEmailPasswordMode('signin');
+            setShowEmailPasswordForm(true);
+          }}
+          disabled={loading || !isConnected}
+        >
+          Or sign in with email instead
+        </button>
       </div>
     </div>
   );

@@ -108,9 +108,9 @@ export function EmailPasswordForm({
   const displayError = localError || error;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3">
         <button
           type="button"
           className="btn btn-ghost btn-sm btn-circle"
@@ -119,13 +119,13 @@ export function EmailPasswordForm({
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div>
-          <h3 className="text-lg font-medium text-base-content">
-            {mode === 'signup' ? 'Create Account' : 'Sign In'} with Email
+          <h3 className="text-xl font-semibold text-base-content">
+            {mode === 'signup' ? 'Create Account' : 'Welcome Back'}
           </h3>
-          <p className="text-sm text-base-content/70">
+          <p className="text-sm text-base-content/60 mt-1">
             {mode === 'signup'
-              ? 'Create an account to sync across devices'
-              : 'Sign in with your email and password'}
+              ? 'Enter your details to get started'
+              : 'Enter your credentials to continue'}
           </p>
         </div>
       </div>
@@ -138,23 +138,21 @@ export function EmailPasswordForm({
       )}
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {/* Name field for signup */}
         {mode === 'signup' && (
           <div className="form-control">
-            <label className="label">
-              <span className="label-text">Full Name</span>
+            <label className="label pb-1">
+              <span className="label-text font-medium">Full Name</span>
             </label>
-            <div className="input-group">
-              <span className="bg-base-200">
-                <User className="w-4 h-4" />
-              </span>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-base-content/40" />
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                className="input input-bordered w-full"
+                className="input input-bordered w-full pl-10 h-12"
                 placeholder="Enter your full name"
                 disabled={loading}
                 required
@@ -165,20 +163,18 @@ export function EmailPasswordForm({
 
         {/* Email field */}
         <div className="form-control">
-          <label className="label">
-            <span className="label-text">Email</span>
+          <label className="label pb-1">
+            <span className="label-text font-medium">Email Address</span>
           </label>
-          <div className="input-group">
-            <span className="bg-base-200">
-              <Mail className="w-4 h-4" />
-            </span>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-base-content/40" />
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleInputChange}
-              className="input input-bordered w-full"
-              placeholder="Enter your email"
+              className="input input-bordered w-full pl-10 h-12"
+              placeholder="Enter your email address"
               disabled={loading}
               required
             />
@@ -187,19 +183,17 @@ export function EmailPasswordForm({
 
         {/* Password field */}
         <div className="form-control">
-          <label className="label">
-            <span className="label-text">Password</span>
+          <label className="label pb-1">
+            <span className="label-text font-medium">Password</span>
           </label>
-          <div className="input-group">
-            <span className="bg-base-200">
-              <Lock className="w-4 h-4" />
-            </span>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-base-content/40" />
             <input
               type={showPassword ? 'text' : 'password'}
               name="password"
               value={formData.password}
               onChange={handleInputChange}
-              className="input input-bordered w-full"
+              className="input input-bordered w-full pl-10 pr-12 h-12"
               placeholder="Enter your password"
               disabled={loading}
               required
@@ -207,7 +201,7 @@ export function EmailPasswordForm({
             />
             <button
               type="button"
-              className="btn btn-ghost btn-square"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/40 hover:text-base-content/70 transition-colors"
               onClick={() => setShowPassword(!showPassword)}
               disabled={loading}
             >
@@ -219,9 +213,9 @@ export function EmailPasswordForm({
             </button>
           </div>
           {mode === 'signup' && (
-            <label className="label">
-              <span className="label-text-alt text-base-content/60">
-                Minimum 6 characters
+            <label className="label pt-1">
+              <span className="label-text-alt text-base-content/50 text-xs">
+                Minimum 6 characters required
               </span>
             </label>
           )}
@@ -230,7 +224,9 @@ export function EmailPasswordForm({
         {/* Submit Button */}
         <button
           type="submit"
-          className={`btn btn-primary w-full ${loading ? 'loading' : ''}`}
+          className={`btn btn-primary w-full h-12 text-base ${
+            loading ? 'loading' : ''
+          }`}
           disabled={loading}
         >
           {loading
@@ -241,27 +237,27 @@ export function EmailPasswordForm({
 
       {/* Mode Toggle */}
       <div className="text-center">
-        <p className="text-sm text-base-content/70">
+        <p className="text-sm text-base-content/60">
           {mode === 'signup'
             ? 'Already have an account?'
             : "Don't have an account?"}{' '}
           <button
             type="button"
-            className="link link-primary text-sm font-medium"
+            className="link link-primary font-medium hover:no-underline"
             onClick={onModeToggle}
             disabled={loading}
           >
-            {mode === 'signup' ? 'Sign in instead' : 'Create one here'}
+            {mode === 'signup' ? 'Sign in' : 'Create one'}
           </button>
         </p>
       </div>
 
       {/* Email confirmation note for signup */}
       {mode === 'signup' && (
-        <div className="alert alert-info">
-          <div className="text-sm">
-            <strong>Note:</strong> You may need to check your email and click a
-            confirmation link before you can sign in.
+        <div className="alert alert-info bg-info/10 border-info/20">
+          <div className="text-sm text-info-content">
+            <strong>Email Verification:</strong> You may need to verify your
+            email before you can sign in.
           </div>
         </div>
       )}
