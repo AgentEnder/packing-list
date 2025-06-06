@@ -8,6 +8,7 @@
     "types": ["vite/client"]
   },
   "include": ["src/**/*"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"],
   "references": [
     {
       "path": "../auth"

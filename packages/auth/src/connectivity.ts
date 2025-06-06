@@ -85,8 +85,9 @@ export class ConnectivityService {
   }
 
   private async checkConnectivity() {
-    if (typeof window === 'undefined') {
-      this.updateConnectedStatus(false);
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+      // For SSR compatibility, default to connected state
+      this.updateConnectedStatus(true);
       return;
     }
 
@@ -134,11 +135,11 @@ export class ConnectivityService {
     if (typeof window !== 'undefined') {
       window.removeEventListener('online', this.handleOnlineStatusChange);
       window.removeEventListener('offline', this.handleOnlineStatusChange);
-    }
 
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
-      this.checkInterval = null;
+      if (this.checkInterval) {
+        window.clearInterval(this.checkInterval);
+        this.checkInterval = null;
+      }
     }
 
     this.listeners = [];
