@@ -40,7 +40,7 @@ export function OfflinePasscodeForm({
       account.id === targetUserId || account.email === targetUserEmail
   );
 
-  const handleSetPasscode = async (e: React.FormEvent) => {
+  const handleSetPasscode = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
@@ -66,12 +66,14 @@ export function OfflinePasscodeForm({
       setCurrentPassword('');
       setNewPasscode('');
       setConfirmPasscode('');
-    } catch (error: any) {
-      setError(error?.message || 'Failed to set passcode');
+    } catch (error: unknown) {
+      setError(
+        error instanceof Error ? error.message : 'Failed to set passcode'
+      );
     }
   };
 
-  const handleRemovePasscode = async (e: React.FormEvent) => {
+  const handleRemovePasscode = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
@@ -81,8 +83,10 @@ export function OfflinePasscodeForm({
       setSuccess('Offline passcode removed successfully');
       setIsRemoving(false);
       setCurrentPasscodeForRemoval('');
-    } catch (error: any) {
-      setError(error?.message || 'Failed to remove passcode');
+    } catch (error: unknown) {
+      setError(
+        error instanceof Error ? error.message : 'Failed to remove passcode'
+      );
     }
   };
 
@@ -229,7 +233,8 @@ export function OfflinePasscodeForm({
                 <button
                   type="button"
                   className="btn btn-ghost"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault();
                     setIsChangingPasscode(false);
                     setCurrentPassword('');
                     setNewPasscode('');
@@ -273,7 +278,8 @@ export function OfflinePasscodeForm({
                 <button
                   type="button"
                   className="btn btn-ghost"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault();
                     setIsRemoving(false);
                     setCurrentPasscodeForRemoval('');
                     setError(null);

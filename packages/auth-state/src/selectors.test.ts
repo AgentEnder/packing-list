@@ -99,12 +99,16 @@ describe('Auth Selectors', () => {
     });
 
     it('selectUserName should return undefined when user has no name', () => {
-      const state = createMockRootState({
-        user: { ...createMockAuthState().user!, name: undefined },
-      });
-      const result = selectUserName(state);
+      const mockAuthState = createMockAuthState();
+      const user = mockAuthState.user;
+      if (user) {
+        const state = createMockRootState({
+          user: { ...user, name: undefined },
+        });
+        const result = selectUserName(state);
 
-      expect(result).toBeUndefined();
+        expect(result).toBeUndefined();
+      }
     });
 
     it('selectUserAvatar should return user avatar URL', () => {
@@ -115,12 +119,16 @@ describe('Auth Selectors', () => {
     });
 
     it('selectUserAvatar should return undefined when user has no avatar', () => {
-      const state = createMockRootState({
-        user: { ...createMockAuthState().user!, avatar_url: undefined },
-      });
-      const result = selectUserAvatar(state);
+      const mockAuthState = createMockAuthState();
+      const user = mockAuthState.user;
+      if (user) {
+        const state = createMockRootState({
+          user: { ...user, avatar_url: undefined },
+        });
+        const result = selectUserAvatar(state);
 
-      expect(result).toBeUndefined();
+        expect(result).toBeUndefined();
+      }
     });
   });
 
@@ -209,7 +217,15 @@ describe('Auth Selectors', () => {
     });
 
     it('selectOfflineAccounts should return offline accounts', () => {
-      const accounts = [{ id: '1', email: 'test@example.com' }];
+      const accounts = [
+        {
+          id: '1',
+          email: 'test@example.com',
+          created_at: '2023-01-01T00:00:00Z',
+          password_hash: 'mock-hash',
+          name: 'Test User',
+        },
+      ];
       const state = createMockRootState({ offlineAccounts: accounts });
       const result = selectOfflineAccounts(state);
 

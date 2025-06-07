@@ -10,7 +10,8 @@
     "@packing-list/state": "workspace:*",
     "@packing-list/model": "workspace:*",
     "@packing-list/shared-components": "workspace:*",
-    "@packing-list/shared-utils": "workspace:*"
+    "@packing-list/shared-utils": "workspace:*",
+    "@packing-list/auth-state": "workspace:*"
   },
   "nx": {
     "targets": {

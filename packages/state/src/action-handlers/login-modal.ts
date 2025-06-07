@@ -8,10 +8,7 @@ export type CloseLoginModalAction = {
   type: 'CLOSE_LOGIN_MODAL';
 };
 
-export const openLoginModalHandler = (
-  state: StoreType,
-  action: OpenLoginModalAction
-): StoreType => {
+export const openLoginModalHandler = (state: StoreType): StoreType => {
   return {
     ...state,
     ui: {
@@ -23,10 +20,7 @@ export const openLoginModalHandler = (
   };
 };
 
-export const closeLoginModalHandler = (
-  state: StoreType,
-  action: CloseLoginModalAction
-): StoreType => {
+export const closeLoginModalHandler = (state: StoreType): StoreType => {
   return {
     ...state,
     ui: {

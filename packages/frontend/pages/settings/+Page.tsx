@@ -1,10 +1,9 @@
-import { useState } from 'react';
 import { useAppDispatch } from '@packing-list/state';
 import {
   UserManagement,
   OfflinePasscodeForm,
-  useAuth,
   Avatar,
+  useAuth,
 } from '@packing-list/shared-components';
 import { PageContainer } from '../../components/PageContainer';
 import { PageHeader } from '../../components/PageHeader';

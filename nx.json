@@ -75,7 +75,8 @@
   "targetDefaults": {
     "test": {
       "dependsOn": ["^build"],
-      "options": { "args": ["--watch=false"] }
+      "//": "vitest by default uses watch mode, vitest run runs tests without watch mode",
+      "options": { "args": ["run"] }
     },
     "build": {
       "dependsOn": ["^build"],
@@ -85,6 +86,11 @@
         { "env": "PUBLIC_ENV__BASE_URL" }
       ],
       "cache": true
+    },
+    "lint": {
+      "options": {
+        "max-warnings": 0
+      }
     }
   },
   "nxCloudId": "684107bdefa0532521431c03"

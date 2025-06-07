@@ -16,6 +16,7 @@ import {
   setForceOfflineMode as setForceOfflineModeAction,
   deleteAccount,
   useAuthDispatch,
+  type AuthState,
 } from './auth-slice.js';
 import {
   selectUser,
@@ -43,11 +44,9 @@ import {
   authService,
   LocalAuthService,
   LocalAuthState,
-  ConnectivityService,
   ConnectivityState,
   getConnectivityService,
 } from '@packing-list/auth';
-import { AnyAction, Dispatch } from '@reduxjs/toolkit';
 
 // Create service instances
 const localAuthService = new LocalAuthService();
@@ -56,11 +55,11 @@ const connectivityService = getConnectivityService(
 );
 
 // Check if we're on the server (SSR)
-const isServer = (import.meta as any).env?.SSR;
+const isServer = (import.meta as { env?: { SSR?: boolean } }).env?.SSR;
 
 // SSR-safe hook that provides fallback values when Redux is not available
 function useSSRSafeSelector<T, T2>(
-  selector: (state: any) => T,
+  selector: (state: { auth: AuthState }) => T,
   fallbackValue: T2
 ): T | T2 {
   try {
@@ -234,10 +233,6 @@ export function useAuth() {
 
   const checkConnectivityNow = async () => {
     return dispatch(checkConnectivity(undefined));
-  };
-
-  const setForceOfflineMode = (force: boolean) => {
-    dispatch(setForceOfflineModeAction(force));
   };
 
   const clearErrorAction = () => {

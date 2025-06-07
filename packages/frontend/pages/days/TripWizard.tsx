@@ -3,7 +3,6 @@ import { TripEvent } from '@packing-list/model';
 import { Timeline, Modal } from '@packing-list/shared-components';
 import { uuid } from '../../utils/uuid';
 import { RulePackSelector } from '../../components/RulePackSelector';
-import { useAppDispatch, useAppSelector } from '@packing-list/state';
 
 interface Destination {
   id: string;

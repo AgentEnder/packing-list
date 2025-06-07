@@ -7,17 +7,9 @@ import {
   UnknownAction,
 } from '@reduxjs/toolkit';
 import { useDispatch } from 'react-redux';
-import {
-  authService,
-  AuthUser,
-  AuthState as BaseAuthState,
-} from '@packing-list/auth';
+import { authService, AuthUser } from '@packing-list/auth';
 import { LocalAuthService, LocalAuthUser } from '@packing-list/auth';
-import {
-  ConnectivityService,
-  ConnectivityState,
-  getConnectivityService,
-} from '@packing-list/auth';
+import { ConnectivityState, getConnectivityService } from '@packing-list/auth';
 
 // Create service instances
 const localAuthService = new LocalAuthService();
@@ -80,34 +72,6 @@ function transformLocalUserToAuthUser(localUser: LocalAuthUser): AuthUser {
   };
 }
 
-async function createOfflineAccountForOnlineUser(
-  onlineUser: AuthUser
-): Promise<void> {
-  console.log('Creating offline account for online user:', onlineUser);
-
-  // Check if offline account already exists
-  const existingOfflineUsers = await localAuthService.getLocalUsers();
-  console.log('Existing offline users:', existingOfflineUsers);
-
-  const existingOfflineUser = existingOfflineUsers.find(
-    (u: LocalAuthUser) => u.email === onlineUser.email
-  );
-
-  if (!existingOfflineUser) {
-    console.log('No existing offline user found, creating new one');
-    // Create offline account without password (will use passwordless access until passcode is set)
-    const result = await localAuthService.createOfflineAccountForOnlineUser({
-      id: onlineUser.id,
-      email: onlineUser.email,
-      name: onlineUser.name,
-      avatar_url: onlineUser.avatar_url,
-    });
-    console.log('Offline account creation result:', result);
-  } else {
-    console.log('Offline user already exists:', existingOfflineUser);
-  }
-}
-
 // Shared post-login effects handler
 async function handlePostLoginEffects(
   user: AuthUser | null,
@@ -167,7 +131,7 @@ async function handlePostLoginEffects(
 // Async Thunks
 export const initializeAuth = createAsyncThunk(
   'auth/initializeAuth',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { getState }) => {
     // Check connectivity with timeout to prevent blocking auth init
     let connectivityState: ConnectivityState;
     try {
@@ -180,7 +144,7 @@ export const initializeAuth = createAsyncThunk(
         connectivityPromise,
         timeoutPromise,
       ]);
-    } catch (error) {
+    } catch {
       // If connectivity check times out or fails, assume online for better UX
       // Better to err on the side of trying remote auth first
       connectivityState = { isOnline: true, isConnected: true };

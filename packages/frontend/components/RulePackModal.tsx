@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { RulePack } from '@packing-list/model';
 import { useAppDispatch, useAppSelector } from '@packing-list/state';
 import { Modal } from '@packing-list/shared-components';
@@ -12,7 +12,6 @@ import {
   Tag,
   Calendar,
   Plus,
-  X,
   Sun,
   Briefcase,
   Tent,

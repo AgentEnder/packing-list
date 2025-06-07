@@ -2,17 +2,23 @@ import { createClient } from '@supabase/supabase-js';
 
 let _supabase: ReturnType<typeof createClient> | null = null;
 
+// Extend the Window interface to include our custom properties
+declare global {
+  interface Window {
+    PUBLIC_ENV__SUPABASE_URL?: string;
+    PUBLIC_ENV__SUPABASE_ANON_KEY?: string;
+  }
+}
+
 function getSupabaseConfig() {
   const supabaseUrl =
-    (typeof window !== 'undefined' &&
-      (window as any).PUBLIC_ENV__SUPABASE_URL) ||
+    (typeof window !== 'undefined' && window.PUBLIC_ENV__SUPABASE_URL) ||
     (typeof process !== 'undefined' && process.env.PUBLIC_ENV__SUPABASE_URL) ||
     (typeof import.meta !== 'undefined' &&
       import.meta.env?.PUBLIC_ENV__SUPABASE_URL);
 
   const supabaseAnonKey =
-    (typeof window !== 'undefined' &&
-      (window as any).PUBLIC_ENV__SUPABASE_ANON_KEY) ||
+    (typeof window !== 'undefined' && window.PUBLIC_ENV__SUPABASE_ANON_KEY) ||
     (typeof process !== 'undefined' &&
       process.env.PUBLIC_ENV__SUPABASE_ANON_KEY) ||
     (typeof import.meta !== 'undefined' &&

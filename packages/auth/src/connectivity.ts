@@ -24,7 +24,6 @@ export class ConnectivityService {
     isConnected: typeof navigator !== 'undefined' ? navigator.onLine : true, // Assume connected initially
   };
   private checkInterval: number | null = null;
-  private authServiceUrl: string;
   private lastCheckTime = 0;
   private minCheckInterval = 60000; // Minimum 60 seconds between checks
   private periodicCheckInterval = 300000; // Check every 5 minutes instead of 30 seconds
@@ -34,7 +33,7 @@ export class ConnectivityService {
       '🚀 [CONNECTIVITY SERVICE] Initializing connectivity service -',
       authServiceUrl
     );
-    this.authServiceUrl = authServiceUrl || '';
+    // authServiceUrl parameter kept for API compatibility but not stored since it's not used
     this.initializeConnectivity();
   }
 

@@ -192,7 +192,7 @@ describe('Auth Flow Coordination', () => {
       const result = await store.dispatch(action);
 
       expect(result.type).toBe('auth/signInWithGooglePopup/fulfilled');
-      expect((result.payload as any).user).toEqual(mockRemoteUser);
+      expect((result.payload as { user: typeof mockRemoteUser }).user).toEqual(mockRemoteUser);
     }, 10000); // Increase timeout for polling test
 
     it('should handle Google sign-in failure', async () => {
@@ -313,7 +313,7 @@ describe('Auth Flow Coordination', () => {
       const result = await store.dispatch(action);
 
       expect(result.type).toBe('auth/signInWithPassword/fulfilled');
-      expect((result.payload as any).user).toBe(null);
+      expect((result.payload as { user: null }).user).toBe(null);
     }, 10000); // Increase timeout for polling test
 
     it('should handle email/password sign-in failure', async () => {
@@ -495,7 +495,7 @@ describe('Auth Flow Coordination', () => {
       expect(mockAuthService.signOut).toHaveBeenCalledOnce();
 
       // The result should contain the shared user
-      expect((result.payload as any).user).toEqual(mockSharedUser);
+      expect((result.payload as { user: typeof mockSharedUser }).user).toEqual(mockSharedUser);
     }, 10000); // Increase timeout for polling test
 
     it('should handle offline sign-out switching to shared account', async () => {
@@ -534,7 +534,7 @@ describe('Auth Flow Coordination', () => {
       );
 
       // The result should contain the shared user
-      expect((result.payload as any).user.email).toBe('shared@local.device');
+      expect((result.payload as { user: { email: string } }).user.email).toBe('shared@local.device');
     });
 
     it('should handle sign-out failure', async () => {

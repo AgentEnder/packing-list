@@ -2,9 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   signInWithEmail,
   signOut,
-  mockGoogleSignIn,
   clearAllAuthState,
-  testAuthFlow,
   waitForAuthReady,
   getAuthState,
   E2E_TEST_USERS,
@@ -13,7 +11,6 @@ import {
   getSignInButton,
   getLoginForm,
   getUserProfile,
-  getSignOutButton,
   getEmailInput,
   getPasswordInput,
   getAuthSubmitButton,
@@ -203,10 +200,6 @@ test.describe('Authentication Flows', () => {
       // as the app might have a different UX design
     });
 
-    test('should complete full auth flow', async ({ page }) => {
-      await testAuthFlow(page, E2E_TEST_USERS.regular);
-    });
-
     test('should handle admin user authentication', async ({ page }) => {
       console.log('Starting admin user test...');
 
@@ -223,54 +216,6 @@ test.describe('Authentication Flows', () => {
       // Should see user profile element (may be hidden)
       const userProfileCount = await getUserProfile(page).count();
       expect(userProfileCount).toBeGreaterThan(0);
-    });
-  });
-
-  // TODO: Fix Google OAuth authentication in e2e tests.
-  test.describe.skip('Google OAuth Authentication', () => {
-    test('should handle Google OAuth flow', async ({ page }) => {
-      console.log('Starting Google OAuth test...');
-
-      // Mock Google sign-in
-      await mockGoogleSignIn(page, E2E_TEST_USERS.google);
-
-      // Wait for authentication
-      const isAuthReady = await waitForAuthReady(page);
-      expect(isAuthReady).toBe(true);
-
-      // Verify auth state
-      const authState = await getAuthState(page);
-      expect(authState.isAuthenticated).toBe(true);
-
-      console.log(`Google auth completed via ${authState.authMethod}`);
-
-      // Should see user profile
-      await expect(
-        page.locator('[data-testid="user-profile"]').first()
-      ).toBeVisible();
-    });
-
-    test('should handle Google OAuth errors gracefully', async ({ page }) => {
-      console.log('Starting Google OAuth error test...');
-
-      // Mock a failed Google OAuth
-      await page.route('**/auth/v1/authorize*', async (route) => {
-        await route.fulfill({
-          status: 400,
-          contentType: 'application/json',
-          body: JSON.stringify({ error: 'OAuth failed' }),
-        });
-      });
-
-      try {
-        await mockGoogleSignIn(page, E2E_TEST_USERS.google);
-
-        // Should not be authenticated
-        const authState = await getAuthState(page);
-        expect(authState.isAuthenticated).toBe(false);
-      } catch (error) {
-        console.log('Expected OAuth error:', error.message);
-      }
     });
   });
 

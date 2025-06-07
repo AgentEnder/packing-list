@@ -1,15 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from './useAuth.js';
 import { useLoginModal } from './useLoginModal.js';
-import {
-  User,
-  Mail,
-  Shield,
-  LogOut,
-  Trash2,
-  AlertTriangle,
-  Calendar,
-} from 'lucide-react';
+import { User, Mail, Shield, LogOut, Trash2, Calendar } from 'lucide-react';
 import { intervalToDuration } from 'date-fns';
 import { Modal } from '../Dialog.js';
 

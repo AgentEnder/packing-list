@@ -1,6 +1,5 @@
+import React, { useState, useCallback, useEffect } from 'react';
 import { DefaultItemRule, Calculation } from '@packing-list/model';
-import { useState, useCallback, useEffect } from 'react';
-import { X } from 'lucide-react';
 import { Modal, ConfirmDialog } from '@packing-list/shared-components';
 import { CategorySelector } from '../../../components/CategorySelector';
 import { ConditionsList } from './ConditionsList';

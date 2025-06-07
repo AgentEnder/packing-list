@@ -11,6 +11,25 @@ export interface AuthUser {
   isShared?: boolean; // true for the default shared local account
 }
 
+// Type for remote user from Supabase
+interface RemoteUser {
+  id: string;
+  email?: string;
+  created_at?: string;
+  user_metadata?: {
+    full_name?: string;
+    name?: string;
+    display_name?: string;
+    avatar_url?: string;
+    picture?: string;
+  };
+  identities?: Array<{
+    identity_data?: {
+      picture?: string;
+    };
+  }>;
+}
+
 export interface AuthState {
   user: AuthUser; // Always has a user, never null
   session: unknown | null; // Remote session, null for local users
@@ -98,7 +117,7 @@ export class AuthService {
   private supabaseAvailable: boolean;
   private initializationPromise: Promise<void>;
   private localAuthService: LocalAuthService;
-  private lastRemoteUser: any = null; // Track last known remote user for connectivity loss
+  private lastRemoteUser: RemoteUser | null = null; // Track last known remote user for connectivity loss
 
   constructor() {
     this.supabaseAvailable = isSupabaseAvailable();
@@ -154,7 +173,7 @@ export class AuthService {
 
       if (session?.user) {
         // We have a remote session, create/load the associated local user
-        await this.handleRemoteUserSignIn(session.user, session);
+        await this.handleRemoteUserSignIn(session.user as RemoteUser, session);
       } else {
         // No remote session, stay with local user
         this.updateState({
@@ -170,10 +189,15 @@ export class AuthService {
             session &&
             typeof session === 'object' &&
             'user' in session &&
-            session?.user
+            session?.user &&
+            typeof session.user === 'object' &&
+            'id' in session.user
           ) {
             // Remote user signed in
-            await this.handleRemoteUserSignIn(session.user, session);
+            await this.handleRemoteUserSignIn(
+              session.user as RemoteUser,
+              session
+            );
           } else {
             // Remote user signed out, return to shared local user
             await this.handleRemoteUserSignOut();
@@ -217,8 +241,10 @@ export class AuthService {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async handleRemoteUserSignIn(remoteUser: any, session: unknown) {
+  private async handleRemoteUserSignIn(
+    remoteUser: RemoteUser,
+    session: unknown
+  ) {
     const personalLocalUserId = getPersonalLocalUserId(remoteUser.id);
 
     // Track this remote user for connectivity loss scenarios
@@ -547,7 +573,7 @@ export class AuthService {
       }
 
       if (data.url) {
-        console.log('🔧 [AUTH SERVICE] Got OAuth URL:', data.url);
+        console.log('�� [AUTH SERVICE] Got OAuth URL:', data.url);
         console.log('🔧 [AUTH SERVICE] Opening popup window...');
 
         // Open popup window for Google OAuth

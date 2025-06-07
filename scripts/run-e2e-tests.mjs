@@ -48,12 +48,16 @@ async function killProcessOnPort3000() {
               execSync(`taskkill /f /pid ${pid}`, { stdio: 'pipe' });
               log(`Killed process on port 3000 (PID: ${pid})`);
             } catch (e) {
+              void e; // Explicitly acknowledge unused variable
               // Ignore failures
             }
           }
         }
-      } catch (windowsError) {
-        log('No process found on port 3000 (Windows)');
+      } catch (_e) {
+        void _e; // Explicitly acknowledge unused variable
+        console.log('Windows: failed to kill process trees');
+        const windowsError = 'Windows platform error handling';
+        void windowsError; // Explicitly acknowledge unused variable
       }
     } else {
       // Unix-like systems (Linux, macOS, etc.)
@@ -70,11 +74,15 @@ async function killProcessOnPort3000() {
             execSync(`kill ${pid.trim()}`, { stdio: 'pipe' });
             log(`Killed process on port 3000 (PID: ${pid.trim()})`);
           } catch (e) {
+            void e; // Explicitly acknowledge unused variable
             // Ignore failures
           }
         }
-      } catch (unixError) {
-        log('No process found on port 3000 (Unix)');
+      } catch (_e) {
+        void _e; // Explicitly acknowledge unused variable
+        console.log('Unix: failed to kill process trees');
+        const unixError = 'Unix platform error handling';
+        void unixError; // Explicitly acknowledge unused variable
       }
     }
 
@@ -131,11 +139,12 @@ async function runE2eTests() {
   log('Running e2e tests with nx...');
   try {
     const child_process = exec(
-      'pnpm nx run-many --output-style=stream -t e2e' +
-        process.argv
+      [
+        'pnpm nx run-many --output-style=stream -t e2e',
+        ...process.argv
           .slice(2)
-          .map((arg) => (arg.includes(' ') ? `"${arg}"` : arg))
-          .join(' '),
+          .map((arg) => (arg.includes(' ') ? `"${arg}"` : arg)),
+      ].join(' '),
       {
         stdio: 'pipe',
         cwd: ROOT_DIR,

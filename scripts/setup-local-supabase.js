@@ -89,11 +89,9 @@ async function waitForSupabaseServices() {
         colorLog('green', '✅ Supabase services are running');
         return true;
       }
-    } catch (e) {
-      // Service not ready yet - in quiet mode the error details are already shown by runCommand
-      if (!quiet) {
-        console.log('Service not ready yet, continuing to wait...');
-      }
+    } catch (_e) {
+      void _e; // Explicitly acknowledge unused variable
+      // Ignore errors - container might not exist
     }
 
     attempts++;
@@ -120,7 +118,8 @@ async function getSupabaseAnonKey() {
       const match = result.stdout.match(/anon key:\s*(.+)/);
       return match ? match[1].trim() : null;
     }
-  } catch {
+  } catch (_e) {
+    void _e; // Explicitly acknowledge unused variable
     // Could not get status - error already logged by runCommand
   }
 
@@ -213,7 +212,8 @@ async function main() {
         cwd: 'packages/supabase',
         preferLocal: true,
       });
-    } catch {
+    } catch (_e) {
+      void _e; // Explicitly acknowledge unused variable
       colorLog('red', '❌ Failed to initialize Supabase');
       process.exit(1);
     }
@@ -228,7 +228,9 @@ async function main() {
       cwd: 'packages/supabase',
       preferLocal: true,
     });
-  } catch (error) {
+  } catch (_error) {
+    void _error; // Explicitly acknowledge unused variable
+    // Migration might already exist
     colorLog('red', '❌ Failed to start Supabase services');
     log('');
     log('Try running the following commands manually:');

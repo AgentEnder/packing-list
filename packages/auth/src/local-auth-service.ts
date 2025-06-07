@@ -102,7 +102,11 @@ export class LocalAuthService {
     if (!this.db) return [];
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([USERS_STORE], 'readonly');
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+      const transaction = this.db.transaction([USERS_STORE], 'readonly');
       const store = transaction.objectStore(USERS_STORE);
       const request = store.getAll();
 
@@ -115,7 +119,11 @@ export class LocalAuthService {
     if (!this.db) return;
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([USERS_STORE], 'readwrite');
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+      const transaction = this.db.transaction([USERS_STORE], 'readwrite');
       const store = transaction.objectStore(USERS_STORE);
       const request = store.put(user);
 
@@ -128,7 +136,11 @@ export class LocalAuthService {
     if (!this.db) return;
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([USERS_STORE], 'readwrite');
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+      const transaction = this.db.transaction([USERS_STORE], 'readwrite');
       const store = transaction.objectStore(USERS_STORE);
       const request = store.delete(userId);
 
@@ -141,7 +153,11 @@ export class LocalAuthService {
     if (!this.db) return null;
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([USERS_STORE], 'readonly');
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+      const transaction = this.db.transaction([USERS_STORE], 'readonly');
       const store = transaction.objectStore(USERS_STORE);
       const index = store.index('email');
       const request = index.get(email);
@@ -158,7 +174,11 @@ export class LocalAuthService {
     if (!this.db) return null;
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([SESSION_STORE], 'readonly');
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+      const transaction = this.db.transaction([SESSION_STORE], 'readonly');
       const store = transaction.objectStore(SESSION_STORE);
       const request = store.get('current');
 
@@ -174,7 +194,11 @@ export class LocalAuthService {
     if (!this.db) return;
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([SESSION_STORE], 'readwrite');
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+      const transaction = this.db.transaction([SESSION_STORE], 'readwrite');
       const store = transaction.objectStore(SESSION_STORE);
       const request = store.put({ id: 'current', ...session });
 
@@ -187,7 +211,11 @@ export class LocalAuthService {
     if (!this.db) return;
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([SESSION_STORE], 'readwrite');
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+      const transaction = this.db.transaction([SESSION_STORE], 'readwrite');
       const store = transaction.objectStore(SESSION_STORE);
       const request = store.delete('current');
 
@@ -259,7 +287,6 @@ export class LocalAuthService {
   ): Promise<{ user?: LocalAuthUser; error?: string }> {
     try {
       // Check if user already exists
-      const users = await this.getStoredUsers();
       const existingUser = await this.getUserByEmail(email);
 
       if (existingUser) {
@@ -305,7 +332,6 @@ export class LocalAuthService {
     password: string
   ): Promise<{ user?: LocalAuthUser; error?: string }> {
     try {
-      const users = await this.getStoredUsers();
       const user = await this.getUserByEmail(email);
 
       if (!user) {

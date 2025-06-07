@@ -227,6 +227,9 @@ importers:
 
   packages/frontend:
     dependencies:
+      '@packing-list/auth-state':
+        specifier: workspace:*
+        version: link:../auth-state
       '@packing-list/model':
         specifier: workspace:*
         version: link:../model
