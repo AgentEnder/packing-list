@@ -131,11 +131,12 @@ async function runE2eTests() {
   log('Running e2e tests with nx...');
   try {
     const child_process = exec(
-      'pnpm nx run-many --output-style=stream -t e2e' +
-        process.argv
+      [
+        'pnpm nx run-many --output-style=stream -t e2e',
+        ...process.argv
           .slice(2)
-          .map((arg) => (arg.includes(' ') ? `"${arg}"` : arg))
-          .join(' '),
+          .map((arg) => (arg.includes(' ') ? `"${arg}"` : arg)),
+      ].join(' '),
       {
         stdio: 'pipe',
         cwd: ROOT_DIR,

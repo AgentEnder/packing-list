@@ -259,7 +259,6 @@ export class LocalAuthService {
   ): Promise<{ user?: LocalAuthUser; error?: string }> {
     try {
       // Check if user already exists
-      const users = await this.getStoredUsers();
       const existingUser = await this.getUserByEmail(email);
 
       if (existingUser) {
@@ -305,7 +304,6 @@ export class LocalAuthService {
     password: string
   ): Promise<{ user?: LocalAuthUser; error?: string }> {
     try {
-      const users = await this.getStoredUsers();
       const user = await this.getUserByEmail(email);
 
       if (!user) {
