@@ -1,28 +1,23 @@
 import { ReactNode } from 'react';
+import { Modal as SharedModal } from '@packing-list/shared-components';
 
 export type ModalProps = {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
+  title?: string;
 };
 
-export const Modal = ({ open, onClose, children }: ModalProps) => {
-  if (!open) return null;
-
+export const Modal = ({ open, onClose, children, title }: ModalProps) => {
   return (
-    <dialog className={`modal ${open ? 'modal-open' : ''}`}>
-      <div className="modal-box relative">
-        <button
-          className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-          onClick={onClose}
-        >
-          ✕
-        </button>
-        {children}
-      </div>
-      <form method="dialog" className="modal-backdrop" onClick={onClose}>
-        <button>close</button>
-      </form>
-    </dialog>
+    <SharedModal
+      isOpen={open}
+      onClose={onClose}
+      title={title}
+      size="md"
+      showCloseButton={!title} // Only show close button if no title (for backward compatibility)
+    >
+      {children}
+    </SharedModal>
   );
 };

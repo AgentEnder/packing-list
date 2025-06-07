@@ -6,13 +6,38 @@ import { UnknownAction } from '@reduxjs/toolkit';
 describe('store', () => {
   it('should initialize with default state when no context provided', () => {
     const store = createStore({});
-    expect(store.getState()).toEqual(initialState);
+    const state = store.getState();
+
+    // Extract just the app state (without auth) for comparison
+    const { auth, ...appState } = state;
+    expect(appState).toEqual(initialState);
+
+    // Verify auth state exists and has expected structure
+    expect(auth).toBeDefined();
+    expect(auth).toHaveProperty('user');
+    expect(auth).toHaveProperty('loading');
+    expect(auth).toHaveProperty('isOfflineMode');
   });
 
   it('should use SSR state when provided', () => {
     const ssrState: StoreType = {
       ...initialState,
       people: [{ id: 'test', name: 'Test Person', age: 30, gender: 'other' }],
+      // Add a minimal auth state for SSR
+      auth: {
+        user: null,
+        session: null,
+        loading: true,
+        error: null,
+        lastError: null,
+        isAuthenticating: false,
+        isInitialized: false,
+        isOfflineMode: false,
+        forceOfflineMode: false,
+        connectivityState: { isOnline: true, isConnected: true },
+        offlineAccounts: [],
+        hasOfflinePasscode: false,
+      },
     };
     const store = createStore({
       isClient: true,
@@ -45,6 +70,21 @@ describe('store', () => {
     const ssrState: StoreType = {
       ...initialState,
       people: [person],
+      // Add a minimal auth state for SSR
+      auth: {
+        user: null,
+        session: null,
+        loading: true,
+        error: null,
+        lastError: null,
+        isAuthenticating: false,
+        isInitialized: false,
+        isOfflineMode: false,
+        forceOfflineMode: false,
+        connectivityState: { isOnline: true, isConnected: true },
+        offlineAccounts: [],
+        hasOfflinePasscode: false,
+      },
     };
     const store = createStore({ isClient: true, redux: { ssrState } });
 
@@ -63,6 +103,21 @@ describe('store', () => {
     const ssrState: StoreType = {
       ...initialState,
       people: [person],
+      // Add a minimal auth state for SSR
+      auth: {
+        user: null,
+        session: null,
+        loading: true,
+        error: null,
+        lastError: null,
+        isAuthenticating: false,
+        isInitialized: false,
+        isOfflineMode: false,
+        forceOfflineMode: false,
+        connectivityState: { isOnline: true, isConnected: true },
+        offlineAccounts: [],
+        hasOfflinePasscode: false,
+      },
     };
     const store = createStore({ isClient: true, redux: { ssrState } });
 

@@ -20,6 +20,9 @@
     },
     {
       "path": "./packages/auth"
+    },
+    {
+      "path": "./packages/auth-state"
     }
   ]
 }

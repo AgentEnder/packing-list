@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch } from '@packing-list/state';
+import { Modal } from '@packing-list/shared-components';
 
 const HAS_SEEN_DEMO_KEY = 'has-seen-demo';
 const SESSION_DEMO_CHOICE_KEY = 'session-demo-choice';
@@ -38,25 +39,27 @@ export function DemoDataModal() {
     setIsOpen(false);
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="modal modal-open z-[10000]">
-      <div className="modal-box my-0 sm:my-8 max-h-[calc(100vh-4rem)]">
-        <h3 className="font-bold text-lg">Welcome to Smart Packing List!</h3>
-        <p className="py-4">
-          Would you like to start with a demo trip to see how everything works,
-          or would you prefer to start fresh with your own trip?
-        </p>
-        <div className="modal-action">
-          <button className="btn btn-primary" onClick={handleLoadDemo}>
-            Load Demo Trip
-          </button>
-          <button className="btn" onClick={handleStartFresh}>
-            Start Fresh
-          </button>
-        </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={handleStartFresh}
+      title="Welcome to Smart Packing List!"
+      size="md"
+      zIndex="z-[10000]"
+      modalBoxClassName="my-0 sm:my-8 max-h-[calc(100vh-4rem)]"
+    >
+      <p className="py-4">
+        Would you like to start with a demo trip to see how everything works, or
+        would you prefer to start fresh with your own trip?
+      </p>
+      <div className="modal-action">
+        <button className="btn btn-primary" onClick={handleLoadDemo}>
+          Load Demo Trip
+        </button>
+        <button className="btn" onClick={handleStartFresh}>
+          Start Fresh
+        </button>
       </div>
-    </div>
+    </Modal>
   );
 }

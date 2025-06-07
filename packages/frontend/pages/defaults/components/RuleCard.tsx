@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@packing-list/state';
 import { CalculationDisplay } from './CalculationDisplay';
 import { RuleFormModal } from './RuleFormModal';
+import { ConfirmDialog } from '@packing-list/shared-components';
 
 type RuleCardProps = {
   rule: DefaultItemRule;
@@ -280,42 +281,17 @@ export const RuleCard = ({ rule, people, days }: RuleCardProps) => {
       />
 
       {/* Delete Confirmation Modal */}
-      <dialog
-        className={`modal ${showDeleteConfirm ? 'modal-open' : ''}`}
-        aria-labelledby="delete-modal-title"
-        aria-modal="true"
-        role="dialog"
-      >
-        <div className="modal-box">
-          <h3 id="delete-modal-title" className="font-bold text-lg">
-            Delete Rule?
-          </h3>
-          <p className="py-4">
-            Are you sure you want to delete &quot;{rule.name}&quot;? This cannot
-            be undone.
-          </p>
-          <div className="modal-action">
-            <button
-              className="btn"
-              onClick={handleCancelDelete}
-              aria-label="Cancel delete"
-            >
-              Cancel
-            </button>
-            <button
-              className="btn btn-error"
-              onClick={handleConfirmDelete}
-              aria-label="Confirm delete"
-              data-testid="confirm-delete-button"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-        <form method="dialog" className="modal-backdrop">
-          <button>close</button>
-        </form>
-      </dialog>
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={handleCancelDelete}
+        title="Delete Rule?"
+        message={`Are you sure you want to delete "${rule.name}"? This cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmVariant="error"
+        onConfirm={handleConfirmDelete}
+        data-testid="delete-rule-confirm-modal"
+      />
     </>
   );
 };

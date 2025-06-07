@@ -1,17 +1,194 @@
+import { useState } from 'react';
 import { useAuth } from './useAuth.js';
+import { LocalAccountSelector } from './LocalAccountSelector.js';
+import { EmailPasswordForm } from './EmailPasswordForm.js';
+import { useLoginModal } from './useLoginModal.js';
+
+interface LocalAccount {
+  id: string;
+  email: string;
+  name?: string;
+  avatar_url?: string;
+  passcode_hash?: string;
+}
 
 export function LoginForm() {
-  const { signInWithGooglePopup, loading, error } = useAuth();
+  const {
+    signInWithGooglePopup,
+    signInOfflineWithoutPassword,
+    loading,
+    error,
+    isOfflineMode,
+    isConnected,
+    shouldShowSignInOptions,
+    user,
+    offlineAccounts,
+  } = useAuth();
+  const { closeLoginModal } = useLoginModal();
+  const [showLocalForm, setShowLocalForm] = useState(false);
+  const [showEmailPasswordForm, setShowEmailPasswordForm] = useState(false);
+  const [emailPasswordMode, setEmailPasswordMode] = useState<
+    'signin' | 'signup'
+  >('signin');
+  const [localMode, setLocalMode] = useState<'signin' | 'signup'>('signin');
+
+  // Cast offlineAccounts to proper type since useAuth returns unknown[]
+  const typedOfflineAccounts = (offlineAccounts || []) as LocalAccount[];
+
+  // If user is signed in and not using shared account, close modal automatically
+  if (user && !shouldShowSignInOptions) {
+    // Auto-close modal when user successfully logs in
+    setTimeout(() => closeLoginModal(), 0);
+    return (
+      <div className="text-center">
+        <p className="text-base-content/70">
+          Successfully signed in! Closing...
+        </p>
+      </div>
+    );
+  }
 
   const handleGoogleSignIn = async () => {
-    const result = await signInWithGooglePopup();
-    if (result?.error) {
-      console.error('Google sign-in error:', result.error);
+    console.log('🚀 [MAIN WINDOW] Starting Google popup sign-in');
+    console.log('🚀 [MAIN WINDOW] isConnected:', isConnected);
+    console.log('🚀 [MAIN WINDOW] isOfflineMode:', isOfflineMode);
+
+    try {
+      const result = await signInWithGooglePopup();
+
+      // Check if the thunk was rejected
+      if (result.type.endsWith('/rejected')) {
+        const errorMessage =
+          (result.payload as string) || 'Google sign-in failed';
+        console.error('🚀 [MAIN WINDOW] Google sign-in error:', errorMessage);
+      } else {
+        console.log('🚀 [MAIN WINDOW] Google sign-in successful');
+        // Close modal after successful login
+        setTimeout(() => closeLoginModal(), 100);
+      }
+    } catch (error) {
+      console.error('🚀 [MAIN WINDOW] Exception during Google sign-in:', error);
     }
   };
 
+  const handleLocalAccountSelect = async (account: LocalAccount) => {
+    console.log(
+      '🚀 [MAIN WINDOW] Signing in with local account:',
+      account.email
+    );
+
+    try {
+      const result = await signInOfflineWithoutPassword(account.email);
+
+      // Check if the thunk was rejected
+      if (result.type.endsWith('/rejected')) {
+        const errorMessage =
+          (result.payload as string) || 'Local sign-in failed';
+        console.error('🚀 [MAIN WINDOW] Local sign-in error:', errorMessage);
+      } else {
+        console.log('🚀 [MAIN WINDOW] Local sign-in successful');
+        // Close modal after successful login
+        setTimeout(() => closeLoginModal(), 100);
+      }
+    } catch (error) {
+      console.error('🚀 [MAIN WINDOW] Exception during local sign-in:', error);
+    }
+  };
+
+  const handleCreateNewAccount = () => {
+    setShowLocalForm(true);
+    setLocalMode('signup');
+  };
+
+  const handleEmailPasswordSuccess = () => {
+    setShowEmailPasswordForm(false);
+    // Close modal after successful login
+    setTimeout(() => closeLoginModal(), 100);
+  };
+
+  const handleEmailPasswordModeToggle = () => {
+    setEmailPasswordMode((prev) => (prev === 'signin' ? 'signup' : 'signin'));
+  };
+
+  // Show email/password form
+  if (showEmailPasswordForm) {
+    return (
+      <EmailPasswordForm
+        mode={emailPasswordMode}
+        onModeToggle={handleEmailPasswordModeToggle}
+        onBack={() => setShowEmailPasswordForm(false)}
+        onSuccess={handleEmailPasswordSuccess}
+      />
+    );
+  }
+
+  // If offline, show local account selector
+  if (isOfflineMode) {
+    if (showLocalForm) {
+      return (
+        <div className="text-center">
+          <h3 className="text-lg font-medium text-base-content">
+            {localMode === 'signup'
+              ? 'Create Local Account'
+              : 'Sign In Locally'}
+          </h3>
+          <p className="text-sm text-base-content/70 mt-2">
+            Create a local account that works offline
+          </p>
+          {/* LocalAccountForm component would go here when it's available */}
+          <div className="alert alert-info mt-4">
+            <span>Local account creation form coming soon...</span>
+          </div>
+          <button
+            className="btn btn-outline mt-4"
+            onClick={() => setShowLocalForm(false)}
+          >
+            Back to Account Selection
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <LocalAccountSelector
+        accounts={typedOfflineAccounts}
+        onAccountSelect={handleLocalAccountSelect}
+        onCreateNew={handleCreateNewAccount}
+        loading={loading}
+        error={error}
+      />
+    );
+  }
+
+  // If user explicitly wants local account (but online)
+  if (showLocalForm) {
+    return (
+      <div className="text-center">
+        <h3 className="text-lg font-medium text-base-content">
+          {localMode === 'signup' ? 'Create Local Account' : 'Sign In Locally'}
+        </h3>
+        <p className="text-sm text-base-content/70 mt-2">
+          Create or sign in with a local account that works offline
+        </p>
+        {/* LocalAccountForm component would go here when it's available */}
+        <div className="alert alert-info mt-4">
+          <span>Local account form coming soon...</span>
+        </div>
+        <button
+          className="btn btn-outline mt-4"
+          onClick={() => setShowLocalForm(false)}
+        >
+          Back to Sign In
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col items-center space-y-6 relative">
+    <div
+      className="flex flex-col items-center space-y-6 relative"
+      data-testid="login-form"
+    >
       <div className="text-center">
         <h3 className="text-lg font-medium text-base-content">
           Sign in to your account
@@ -22,19 +199,35 @@ export function LoginForm() {
       </div>
 
       {error && (
-        <div className="alert alert-error w-full">
+        <div className="alert alert-error w-full" data-testid="login-error">
           <span>{error}</span>
         </div>
       )}
 
-      <div className="relative w-full">
+      {/* Connection status indicator */}
+      {!isConnected && (
+        <div
+          className="alert alert-warning w-full"
+          data-testid="connection-warning"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+            <span className="text-sm">
+              Limited connectivity - some features may not work
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div className="relative w-full flex flex-col">
         <button
           type="button"
           className={`btn btn-primary btn-lg w-full ${
             loading ? 'loading' : ''
           }`}
           onClick={handleGoogleSignIn}
-          disabled={loading}
+          disabled={loading || !isConnected}
+          data-testid="google-sign-in-button"
         >
           {!loading && (
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -59,6 +252,19 @@ export function LoginForm() {
           {loading ? 'Signing in...' : 'Continue with Google'}
         </button>
 
+        <button
+          type="button"
+          className="link link-primary text-xs opacity-70 hover:opacity-100 ml-auto mt-2"
+          onClick={() => {
+            setEmailPasswordMode('signin');
+            setShowEmailPasswordForm(true);
+          }}
+          disabled={loading || !isConnected}
+          data-testid="email-sign-in-link"
+        >
+          Or sign in with email instead
+        </button>
+
         {/* Custom loading overlay for better visibility in modals */}
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-base-100/80 rounded-lg z-50">
@@ -67,7 +273,19 @@ export function LoginForm() {
         )}
       </div>
 
-      <div className="text-center">
+      <div className="divider">OR</div>
+
+      {/* Local account option */}
+      <button
+        type="button"
+        className="btn btn-outline btn-sm w-full"
+        onClick={() => setShowLocalForm(true)}
+        data-testid="local-account-button"
+      >
+        Use Local Account (Works Offline)
+      </button>
+
+      <div className="text-center space-y-2">
         <p className="text-xs text-base-content/60">
           By signing in, you agree to our terms of service and privacy policy
         </p>

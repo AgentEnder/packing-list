@@ -1,8 +1,9 @@
-import { useState, ChangeEvent, FormEvent, ReactNode } from 'react';
+import { useState, ChangeEvent, FormEvent } from 'react';
 import { useAppDispatch, useAppSelector, StoreType } from '@packing-list/state';
 import { uuid } from '../../utils/uuid';
 import { createSelector } from '@reduxjs/toolkit';
 import { TripEvent } from '@packing-list/model';
+import { Modal } from '@packing-list/shared-components';
 import { TripWizard } from './TripWizard';
 import { TripDays } from './TripDays';
 import { PageHeader } from '../../components/PageHeader';
@@ -17,34 +18,7 @@ const eventTypes = [
   { value: 'arrive_home', label: 'Arrive Home' },
 ];
 
-// Modal component
-function Modal({
-  open,
-  onClose,
-  children,
-}: {
-  open: boolean;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  if (!open) return null;
-  return (
-    <dialog className={`modal ${open ? 'modal-open' : ''}`}>
-      <div className="modal-box relative">
-        <button
-          className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-          onClick={onClose}
-        >
-          ✕
-        </button>
-        {children}
-      </div>
-      <form method="dialog" className="modal-backdrop" onClick={onClose}>
-        <button>close</button>
-      </form>
-    </dialog>
-  );
-}
+// Modal component using shared Dialog
 
 // Selector for tripEvents
 const selectTripEvents = createSelector(
@@ -161,7 +135,7 @@ export default function DaysPage() {
       />
 
       {/* Manual Event Modal */}
-      <Modal open={modalOpen} onClose={closeModal}>
+      <Modal isOpen={modalOpen} onClose={closeModal} title="Add Event">
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <select
             className="select select-bordered"

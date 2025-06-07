@@ -1,9 +1,8 @@
-import { useState } from 'react';
 import { useAuth } from './useAuth.js';
+import { Avatar } from './Avatar.js';
 
 export function UserProfile() {
-  const { user, signOut, loading } = useAuth();
-  const [imageError, setImageError] = useState(false);
+  const { user, signOut, loading, isOnline } = useAuth();
 
   if (!user) {
     return null;
@@ -13,68 +12,52 @@ export function UserProfile() {
     await signOut();
   };
 
-  const handleImageError = () => {
-    setImageError(true);
-  };
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((word) => word.charAt(0))
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const getProxiedImageUrl = (url: string) => {
-    // Use a CORS proxy for Google images
-    if (url && url.includes('googleusercontent.com')) {
-      return `https://images.weserv.nl/?url=${encodeURIComponent(
-        url
-      )}&w=40&h=40&fit=cover&mask=circle`;
-    }
-    return url;
-  };
-
   const displayName = user.name || user.email;
-  const initials = getInitials(displayName);
-  const avatarUrl = user.avatar_url
-    ? getProxiedImageUrl(user.avatar_url)
-    : null;
 
   return (
-    <div className="dropdown dropdown-end">
+    <div className="dropdown dropdown-end" data-testid="user-profile">
       <div
         tabIndex={0}
         role="button"
         className="btn btn-ghost btn-circle avatar"
+        data-testid="user-profile-avatar"
       >
-        <div className="w-10 rounded-full">
-          {avatarUrl && !imageError ? (
-            <img
-              src={avatarUrl}
-              alt={displayName}
-              onError={handleImageError}
-              className="w-10 h-10 rounded-full object-cover"
-            />
-          ) : (
-            <div className="bg-primary text-primary-content rounded-full w-10 h-10 flex items-center justify-center text-sm font-medium">
-              {initials}
-            </div>
-          )}
-        </div>
+        <Avatar
+          src={user.avatar_url}
+          alt={displayName}
+          size={40}
+          isOnline={isOnline}
+        />
       </div>
       <ul
         tabIndex={0}
-        className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52"
+        className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-64"
+        data-testid="user-profile-menu"
       >
         <li>
           <div className="justify-between">
-            <span>{user.name || 'User'}</span>
+            <span className="truncate" data-testid="user-name">
+              {user.name || 'User'}
+            </span>
+            {!isOnline && (
+              <span
+                className="badge badge-error badge-sm ml-2 flex-shrink-0"
+                data-testid="offline-badge"
+              >
+                Offline
+              </span>
+            )}
           </div>
         </li>
         <li>
-          <span className="text-sm opacity-70">{user.email}</span>
+          <div className="tooltip tooltip-top" data-tip={user.email}>
+            <span
+              className="text-sm opacity-70 truncate block w-full text-left"
+              data-testid="user-email"
+            >
+              {user.email}
+            </span>
+          </div>
         </li>
         <li>
           <hr />
@@ -84,6 +67,7 @@ export function UserProfile() {
             onClick={handleSignOut}
             disabled={loading}
             className={loading ? 'loading' : ''}
+            data-testid="sign-out-button"
           >
             Sign Out
           </button>
