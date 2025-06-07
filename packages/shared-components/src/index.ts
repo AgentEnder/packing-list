@@ -1,5 +1,9 @@
 export * from './lib/Timeline.js';
 
+// Modal component
+export { Modal, ConfirmDialog } from './Dialog.js';
+export type { ModalProps, ConfirmDialogProps } from './Dialog.js';
+
 // Auth components
 export { AuthGuard } from './auth/AuthGuard.js';
 export { useAuth } from './auth/useAuth.js';

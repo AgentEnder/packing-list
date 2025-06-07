@@ -5,6 +5,7 @@ import { CategorySelector } from '../../../components/CategorySelector';
 import { ConditionsList } from './ConditionsList';
 import { ItemCalculationForm } from './ItemCalculationForm';
 import { useAppDispatch } from '@packing-list/state';
+import { ConfirmDialog } from '@packing-list/shared-components';
 
 const DEFAULT_CALCULATION: Calculation = {
   baseQuantity: 1,
@@ -171,41 +172,16 @@ export const CreateRuleForm = () => {
       </form>
 
       {/* Discard Confirmation Modal */}
-      <dialog
-        className={`modal ${showDiscardModal ? 'modal-open' : ''}`}
-        aria-labelledby="discard-modal-title"
-        aria-modal="true"
-        role="dialog"
-      >
-        <div className="modal-box">
-          <h3 id="discard-modal-title" className="font-bold text-lg">
-            Discard Changes?
-          </h3>
-          <p className="py-4">
-            Are you sure you want to discard your changes? This cannot be
-            undone.
-          </p>
-          <div className="modal-action">
-            <button
-              className="btn"
-              onClick={() => setShowDiscardModal(false)}
-              aria-label="Cancel discard"
-            >
-              Cancel
-            </button>
-            <button
-              className="btn btn-error"
-              onClick={handleDiscard}
-              aria-label="Confirm discard"
-            >
-              Discard
-            </button>
-          </div>
-        </div>
-        <form method="dialog" className="modal-backdrop">
-          <button>close</button>
-        </form>
-      </dialog>
+      <ConfirmDialog
+        isOpen={showDiscardModal}
+        onClose={() => setShowDiscardModal(false)}
+        title="Discard Changes?"
+        message="Are you sure you want to discard your changes? This cannot be undone."
+        confirmText="Discard"
+        cancelText="Cancel"
+        confirmVariant="error"
+        onConfirm={handleDiscard}
+      />
     </div>
   );
 };

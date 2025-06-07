@@ -1,8 +1,9 @@
 import { useState, ChangeEvent, useEffect } from 'react';
 import { TripEvent } from '@packing-list/model';
-import { Timeline } from '@packing-list/shared-components';
+import { Timeline, Modal } from '@packing-list/shared-components';
 import { uuid } from '../../utils/uuid';
 import { RulePackSelector } from '../../components/RulePackSelector';
+import { useAppDispatch, useAppSelector } from '@packing-list/state';
 
 interface Destination {
   id: string;
@@ -574,45 +575,33 @@ export function TripWizard({
     }
   };
 
-  if (!open) return null;
-
   return (
-    <dialog className={`modal ${open ? 'modal-open' : ''}`}>
-      <div className="modal-box w-11/12 max-w-2xl">
-        <button
-          className="btn btn-sm btn-circle absolute right-2 top-2"
-          onClick={handleClose}
-        >
-          ✕
-        </button>
+    <Modal
+      isOpen={open}
+      onClose={handleClose}
+      title={currentEvents.length > 0 ? 'Edit Trip' : 'Configure Trip'}
+      size="2xl"
+      modalBoxClassName="w-11/12 max-w-2xl"
+    >
+      {/* Steps indicator */}
+      <ul className="steps steps-horizontal w-full mb-6">
+        {steps.map((step) => (
+          <li
+            key={step.id}
+            className={getStepClasses(step)}
+            onClick={() => handleStepClick(step.id)}
+          >
+            {step.title}
+            {step.optional && (
+              <span className="text-xs text-base-content/60 ml-1">
+                (Optional)
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
 
-        <h3 className="font-bold text-lg mb-4">
-          {currentEvents.length > 0 ? 'Edit Trip' : 'Configure Trip'}
-        </h3>
-
-        {/* Steps indicator */}
-        <ul className="steps steps-horizontal w-full mb-6">
-          {steps.map((step) => (
-            <li
-              key={step.id}
-              className={getStepClasses(step)}
-              onClick={() => handleStepClick(step.id)}
-            >
-              {step.title}
-              {step.optional && (
-                <span className="text-xs text-base-content/60 ml-1">
-                  (Optional)
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-
-        {renderStep()}
-      </div>
-      <form method="dialog" className="modal-backdrop" onClick={handleClose}>
-        <button>close</button>
-      </form>
-    </dialog>
+      {renderStep()}
+    </Modal>
   );
 }
