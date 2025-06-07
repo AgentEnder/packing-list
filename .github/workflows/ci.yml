@@ -44,7 +44,9 @@ jobs:
         uses: nrwl/nx-set-shas@v4
 
       - name: Run Checks
-        run: pnpm nx affected -t lint,test,build,e2e --parallel=3
+        run: |
+          pnpm nx affected -t lint,test,build --parallel=3
+          pnpm test:e2e
         env:
           CI: true
           PUBLIC_ENV__BASE_URL: /

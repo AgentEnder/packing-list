@@ -15,11 +15,12 @@ export function UserProfile() {
   const displayName = user.name || user.email;
 
   return (
-    <div className="dropdown dropdown-end">
+    <div className="dropdown dropdown-end" data-testid="user-profile">
       <div
         tabIndex={0}
         role="button"
         className="btn btn-ghost btn-circle avatar"
+        data-testid="user-profile-avatar"
       >
         <Avatar
           src={user.avatar_url}
@@ -31,12 +32,18 @@ export function UserProfile() {
       <ul
         tabIndex={0}
         className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-64"
+        data-testid="user-profile-menu"
       >
         <li>
           <div className="justify-between">
-            <span className="truncate">{user.name || 'User'}</span>
+            <span className="truncate" data-testid="user-name">
+              {user.name || 'User'}
+            </span>
             {!isOnline && (
-              <span className="badge badge-error badge-sm ml-2 flex-shrink-0">
+              <span
+                className="badge badge-error badge-sm ml-2 flex-shrink-0"
+                data-testid="offline-badge"
+              >
                 Offline
               </span>
             )}
@@ -44,7 +51,10 @@ export function UserProfile() {
         </li>
         <li>
           <div className="tooltip tooltip-top" data-tip={user.email}>
-            <span className="text-sm opacity-70 truncate block w-full text-left">
+            <span
+              className="text-sm opacity-70 truncate block w-full text-left"
+              data-testid="user-email"
+            >
               {user.email}
             </span>
           </div>
@@ -57,6 +67,7 @@ export function UserProfile() {
             onClick={handleSignOut}
             disabled={loading}
             className={loading ? 'loading' : ''}
+            data-testid="sign-out-button"
           >
             Sign Out
           </button>

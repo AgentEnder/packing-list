@@ -185,7 +185,10 @@ export function LoginForm() {
   }
 
   return (
-    <div className="flex flex-col items-center space-y-6 relative">
+    <div
+      className="flex flex-col items-center space-y-6 relative"
+      data-testid="login-form"
+    >
       <div className="text-center">
         <h3 className="text-lg font-medium text-base-content">
           Sign in to your account
@@ -196,14 +199,17 @@ export function LoginForm() {
       </div>
 
       {error && (
-        <div className="alert alert-error w-full">
+        <div className="alert alert-error w-full" data-testid="login-error">
           <span>{error}</span>
         </div>
       )}
 
       {/* Connection status indicator */}
       {!isConnected && (
-        <div className="alert alert-warning w-full">
+        <div
+          className="alert alert-warning w-full"
+          data-testid="connection-warning"
+        >
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
             <span className="text-sm">
@@ -221,6 +227,7 @@ export function LoginForm() {
           }`}
           onClick={handleGoogleSignIn}
           disabled={loading || !isConnected}
+          data-testid="google-sign-in-button"
         >
           {!loading && (
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -253,6 +260,7 @@ export function LoginForm() {
             setShowEmailPasswordForm(true);
           }}
           disabled={loading || !isConnected}
+          data-testid="email-sign-in-link"
         >
           Or sign in with email instead
         </button>
@@ -272,6 +280,7 @@ export function LoginForm() {
         type="button"
         className="btn btn-outline btn-sm w-full"
         onClick={() => setShowLocalForm(true)}
+        data-testid="local-account-button"
       >
         Use Local Account (Works Offline)
       </button>

@@ -122,13 +122,14 @@ export function EmailPasswordForm({
   const displayError = localError || error;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="email-password-form">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
           type="button"
           className="btn btn-ghost btn-sm btn-circle"
           onClick={onBack}
+          data-testid="back-to-login-button"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -146,13 +147,17 @@ export function EmailPasswordForm({
 
       {/* Error Alert */}
       {displayError && (
-        <div className="alert alert-error">
+        <div className="alert alert-error" data-testid="form-error">
           <span className="text-sm">{displayError}</span>
         </div>
       )}
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-5"
+        data-testid="auth-form"
+      >
         {/* Name field for signup */}
         {mode === 'signup' && (
           <div className="form-control">
@@ -170,6 +175,7 @@ export function EmailPasswordForm({
                 placeholder="Enter your full name"
                 disabled={loading}
                 required
+                data-testid="name-input"
               />
             </div>
           </div>
@@ -191,6 +197,7 @@ export function EmailPasswordForm({
               placeholder="Enter your email address"
               disabled={loading}
               required
+              data-testid="email-input"
             />
           </div>
         </div>
@@ -212,12 +219,14 @@ export function EmailPasswordForm({
               disabled={loading}
               required
               minLength={6}
+              data-testid="password-input"
             />
             <button
               type="button"
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/40 hover:text-base-content/70 transition-colors"
               onClick={() => setShowPassword(!showPassword)}
               disabled={loading}
+              data-testid="toggle-password-visibility"
             >
               {showPassword ? (
                 <EyeOff className="w-4 h-4" />
@@ -252,12 +261,14 @@ export function EmailPasswordForm({
                 placeholder="Enter your password again"
                 disabled={loading}
                 required
+                data-testid="confirm-password-input"
               />
               <button
                 type="button"
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/40 hover:text-base-content/70 transition-colors"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 disabled={loading}
+                data-testid="toggle-confirm-password-visibility"
               >
                 {showConfirmPassword ? (
                   <EyeOff className="w-4 h-4" />
@@ -276,6 +287,7 @@ export function EmailPasswordForm({
             loading ? 'loading' : ''
           }`}
           disabled={loading}
+          data-testid="auth-submit-button"
         >
           {loading
             ? `${mode === 'signup' ? 'Creating Account...' : 'Signing In...'}`
@@ -291,6 +303,7 @@ export function EmailPasswordForm({
             type="button"
             className="link link-primary font-medium"
             onClick={onBack}
+            data-testid="back-to-google-link"
           >
             Google sign-in
           </button>{' '}
@@ -310,6 +323,7 @@ export function EmailPasswordForm({
             className="link link-primary font-medium hover:no-underline"
             onClick={onModeToggle}
             disabled={loading}
+            data-testid="auth-mode-toggle"
           >
             {mode === 'signup' ? 'Sign in' : 'Create one'}
           </button>
@@ -318,7 +332,10 @@ export function EmailPasswordForm({
 
       {/* Email confirmation note for signup */}
       {mode === 'signup' && (
-        <div className="alert alert-info bg-info/10 border-info/20">
+        <div
+          className="alert alert-info bg-info/10 border-info/20"
+          data-testid="email-verification-note"
+        >
           <div className="text-sm text-info-content">
             <strong>Email Verification:</strong> You may need to verify your
             email before you can sign in.

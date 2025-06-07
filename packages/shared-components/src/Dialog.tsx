@@ -150,10 +150,18 @@ export function ConfirmDialog({
     <Modal {...modalProps} onClose={onClose}>
       <p className="py-4">{message}</p>
       <div className="modal-action">
-        <button className="btn" onClick={handleCancel}>
+        <button
+          className="btn"
+          onClick={handleCancel}
+          data-testid="confirm-dialog-cancel-button"
+        >
           {cancelText}
         </button>
-        <button className={confirmButtonClass} onClick={handleConfirm}>
+        <button
+          className={confirmButtonClass}
+          onClick={handleConfirm}
+          data-testid="confirm-continue-button"
+        >
           {confirmText}
         </button>
       </div>

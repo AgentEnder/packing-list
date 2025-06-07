@@ -60,3 +60,4 @@ test-results
 .env.keys
 .env.local
 .env.*.local
+.env.backup

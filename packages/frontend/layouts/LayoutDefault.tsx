@@ -107,6 +107,7 @@ export default function LayoutDefault({
               <button
                 className="btn btn-ghost btn-sm"
                 onClick={handleLoginClick}
+                data-testid="sign-in-button"
               >
                 <LogIn className="w-4 h-4" />
                 Sign In
@@ -147,6 +148,7 @@ export default function LayoutDefault({
               <button
                 className="btn btn-primary btn-sm"
                 onClick={handleLoginClick}
+                data-testid="sign-in-button"
               >
                 <LogIn className="w-4 h-4" />
                 Sign In
