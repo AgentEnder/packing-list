@@ -1,4 +1,10 @@
-import type { Change, Trip, Person } from '@packing-list/model';
+import type {
+  Change,
+  Trip,
+  Person,
+  TripItem,
+  RuleOverride,
+} from '@packing-list/model';
 import { getSyncService } from './sync.js';
 
 export class ChangeTracker {
@@ -52,7 +58,7 @@ export class ChangeTracker {
    */
   async trackItemChange(
     operation: 'create' | 'update' | 'delete',
-    item: any,
+    item: TripItem,
     userId: string,
     tripId: string
   ): Promise<void> {
@@ -74,18 +80,23 @@ export class ChangeTracker {
    */
   async trackRuleOverrideChange(
     operation: 'create' | 'update' | 'delete',
-    ruleOverride: any,
+    ruleOverride: RuleOverride,
     userId: string,
     tripId: string
   ): Promise<void> {
+    // Generate a composite ID for rule overrides since they don't have a single ID field
+    const entityId = `${ruleOverride.ruleId}_${ruleOverride.tripId}_${
+      ruleOverride.personId || 'all'
+    }_${ruleOverride.dayIndex || 'all'}`;
+
     const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
       entityType: 'rule_override',
-      entityId: ruleOverride.id,
+      entityId,
       operation,
       data: ruleOverride,
       userId,
       tripId,
-      version: ruleOverride.version || 1,
+      version: 1, // Rule overrides don't have versions, so default to 1
     };
 
     await this.syncService.trackChange(change);
