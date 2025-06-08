@@ -23,6 +23,9 @@
     },
     {
       "path": "./packages/auth-state"
+    },
+    {
+      "path": "./packages/offline-storage"
     }
   ]
 }

@@ -1,0 +1,119 @@
+@startuml Multi-Trip Database Schema
+!define table(name) entity name
+!define pk(x) <u>x</u>
+!define fk(x) #x
+
+title Multi-Trip Packing List Database Schema
+
+table(auth.users) {
+  pk(id) : UUID
+  --
+  email : TEXT
+  encrypted_password : TEXT
+  created_at : TIMESTAMPTZ
+  updated_at : TIMESTAMPTZ
+  ...other auth fields
+}
+
+table(user_profiles) {
+  pk(id) : UUID
+  --
+  preferences : JSONB
+  created_at : TIMESTAMPTZ
+  updated_at : TIMESTAMPTZ
+}
+
+table(trips) {
+  pk(id) : UUID
+  --
+  fk(user_id) : UUID
+  title : TEXT
+  description : TEXT
+  days : JSONB
+  trip_events : JSONB
+  settings : JSONB
+  created_at : TIMESTAMPTZ
+  updated_at : TIMESTAMPTZ
+  last_synced_at : TIMESTAMPTZ
+  version : INTEGER
+  is_deleted : BOOLEAN
+}
+
+table(trip_people) {
+  pk(id) : UUID
+  --
+  fk(trip_id) : UUID
+  name : TEXT
+  age : INTEGER
+  settings : JSONB
+  created_at : TIMESTAMPTZ
+  updated_at : TIMESTAMPTZ
+  version : INTEGER
+  is_deleted : BOOLEAN
+}
+
+table(trip_items) {
+  pk(id) : UUID
+  --
+  fk(trip_id) : UUID
+  name : TEXT
+  category : TEXT
+  quantity : INTEGER
+  packed : BOOLEAN
+  notes : TEXT
+  fk(person_id) : UUID
+  day_index : INTEGER
+  created_at : TIMESTAMPTZ
+  updated_at : TIMESTAMPTZ
+  version : INTEGER
+  is_deleted : BOOLEAN
+}
+
+table(trip_rule_overrides) {
+  pk(id) : UUID
+  --
+  fk(trip_id) : UUID
+  rule_id : TEXT
+  override_data : JSONB
+  created_at : TIMESTAMPTZ
+  updated_at : TIMESTAMPTZ
+  version : INTEGER
+  is_deleted : BOOLEAN
+}
+
+table(sync_changes) {
+  pk(id) : UUID
+  --
+  fk(user_id) : UUID
+  entity_type : TEXT
+  entity_id : UUID
+  operation : TEXT
+  data : JSONB
+  version : INTEGER
+  device_id : TEXT
+  created_at : TIMESTAMPTZ
+}
+
+' Relationships
+auth.users ||--|| user_profiles : "extends"
+auth.users ||--o{ trips : "owns"
+trips ||--o{ trip_people : "contains"
+trips ||--o{ trip_items : "contains"
+trips ||--o{ trip_rule_overrides : "has"
+trip_people ||--o{ trip_items : "assigned to"
+auth.users ||--o{ sync_changes : "tracks"
+
+' Notes
+note right of trips
+  Each user can have multiple trips.
+  Soft deletion via is_deleted flag.
+  Version tracking for conflict resolution.
+end note
+
+note right of sync_changes
+  Tracks all changes for sync.
+  Used for conflict resolution.
+  Includes device_id for tracking.
+end note
+
+@enduml 

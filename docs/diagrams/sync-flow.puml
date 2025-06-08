@@ -1,0 +1,154 @@
+@startuml Offline-First Sync Flow
+!theme plain
+
+title Offline-First Sync Flow
+
+actor User
+participant "React UI" as UI
+participant "Redux Store" as Redux
+participant "IndexedDB" as IDB
+participant "Sync Service" as Sync
+participant "Supabase" as DB
+participant "Conflict Resolver" as Resolver
+
+== User Makes Change (Offline-First) ==
+
+User -> UI: Modify trip data
+activate UI
+
+UI -> Redux: Dispatch action
+activate Redux
+
+Redux -> Redux: Update state optimistically
+Redux -> IDB: Save change locally
+activate IDB
+IDB -> IDB: Store in pending changes
+IDB --> Redux: Confirm saved
+deactivate IDB
+
+Redux -> Sync: Queue for sync
+activate Sync
+Sync -> Sync: Add to pending queue
+deactivate Sync
+
+Redux --> UI: State updated
+UI --> User: Show updated UI
+deactivate Redux
+deactivate UI
+
+== Background Sync (When Online) ==
+
+Sync -> Sync: Check online status
+activate Sync
+
+alt Online
+  Sync -> IDB: Get pending changes
+  activate IDB
+  IDB --> Sync: Return pending changes
+  deactivate IDB
+  
+  loop For each pending change
+    Sync -> DB: Push change
+    activate DB
+    
+    alt No conflict
+      DB --> Sync: Success + new version
+      Sync -> IDB: Mark change as synced
+      activate IDB
+      IDB --> Sync: Confirmed
+      deactivate IDB
+      
+    else Conflict detected
+      DB --> Sync: Conflict data
+      deactivate DB
+      
+      Sync -> Resolver: Handle conflict
+      activate Resolver
+      
+      alt Auto-resolvable
+        Resolver -> Resolver: Apply resolution strategy
+        Resolver --> Sync: Resolved data
+        Sync -> DB: Push resolved change
+        activate DB
+        DB --> Sync: Success
+        deactivate DB
+        
+      else Manual resolution needed
+        Resolver -> Redux: Add to conflicts
+        Redux -> UI: Show conflict UI
+        Resolver --> Sync: Conflict stored
+      end
+      deactivate Resolver
+    end
+  end
+  
+  == Pull Remote Changes ==
+  
+  Sync -> DB: Get changes since last sync
+  activate DB
+  DB --> Sync: Remote changes
+  deactivate DB
+  
+  loop For each remote change
+    Sync -> IDB: Check for local conflicts
+    activate IDB
+    IDB --> Sync: Conflict status
+    deactivate IDB
+    
+    alt No conflict
+      Sync -> Redux: Apply remote change
+      Redux -> IDB: Update local data
+      activate IDB
+      IDB --> Redux: Confirmed
+      deactivate IDB
+      Redux -> UI: Update UI
+      
+    else Conflict
+      Sync -> Resolver: Handle conflict
+      activate Resolver
+      Resolver -> Redux: Store conflict
+      Resolver --> Sync: Conflict handled
+      deactivate Resolver
+    end
+  end
+  
+  Sync -> IDB: Update last sync timestamp
+  activate IDB
+  IDB --> Sync: Confirmed
+  deactivate IDB
+
+else Offline
+  Sync -> Sync: Keep changes queued
+  note right: Changes accumulate until online
+end
+
+deactivate Sync
+
+== Manual Conflict Resolution ==
+
+User -> UI: Resolve conflict
+UI -> Resolver: User choice
+activate Resolver
+
+Resolver -> Redux: Apply resolution
+Redux -> IDB: Update local data
+activate IDB
+IDB --> Redux: Confirmed
+deactivate IDB
+
+Redux -> Sync: Queue resolved change
+Resolver --> UI: Conflict resolved
+deactivate Resolver
+
+UI --> User: Show resolution result
+
+note over User, DB
+  Key Principles:
+  1. All changes happen locally first (optimistic updates)
+  2. UI never blocks on network operations
+  3. Changes are queued and synced in background
+  4. Conflicts are detected and resolved gracefully
+  5. System works fully offline
+end note
+
+@enduml 
