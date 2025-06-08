@@ -10,11 +10,33 @@ export const updatePackingListViewHandler = (
   state: StoreType,
   action: UpdatePackingListViewAction
 ): StoreType => {
+  const selectedTripId = state.trips.selectedTripId;
+
+  // Early return if no trip is selected
+  if (!selectedTripId || !state.trips.byId[selectedTripId]) {
+    console.warn('Cannot update packing list view: no trip selected');
+    return state;
+  }
+
+  const selectedTripData = state.trips.byId[selectedTripId];
+
+  // Update the packing list view for the selected trip
+  const updatedTripData = {
+    ...selectedTripData,
+    packingListView: {
+      ...selectedTripData.packingListView,
+      ...action.payload,
+    },
+  };
+
   return {
     ...state,
-    packingListView: {
-      ...state.packingListView,
-      ...action.payload,
+    trips: {
+      ...state.trips,
+      byId: {
+        ...state.trips.byId,
+        [selectedTripId]: updatedTripData,
+      },
     },
   };
 };
