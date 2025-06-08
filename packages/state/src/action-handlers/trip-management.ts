@@ -19,6 +19,10 @@ export interface SelectTripAction {
   };
 }
 
+export interface ToggleTripSelectorAction {
+  type: 'TOGGLE_TRIP_SELECTOR';
+}
+
 export interface DeleteTripAction {
   type: 'DELETE_TRIP';
   payload: {
@@ -108,6 +112,23 @@ export function selectTripHandler(
       tripSelector: {
         ...state.ui.tripSelector,
         isOpen: false, // Close selector when trip is selected
+      },
+    },
+  };
+}
+
+export function toggleTripSelectorHandler(
+  state: StoreType,
+  action: ToggleTripSelectorAction
+): StoreType {
+  void action; // Explicitly void unused parameter
+  return {
+    ...state,
+    ui: {
+      ...state.ui,
+      tripSelector: {
+        ...state.ui.tripSelector,
+        isOpen: !state.ui.tripSelector.isOpen,
       },
     },
   };
