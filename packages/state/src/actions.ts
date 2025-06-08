@@ -56,6 +56,10 @@ import {
   LoadDemoDataAction,
 } from './action-handlers/load-demo-data.js';
 import {
+  clearDemoDataHandler,
+  ClearDemoDataAction,
+} from './action-handlers/clear-demo-data.js';
+import {
   clearTripDataHandler,
   ClearTripDataAction,
 } from './action-handlers/clear-trip-data.js';
@@ -128,6 +132,7 @@ export type AllActions =
   | CalculatePackingListAction
   | ToggleItemPackedAction
   | LoadDemoDataAction
+  | ClearDemoDataAction
   | ClearTripDataAction
   | ToggleRulePackAction
   | CreateRulePackAction
@@ -163,6 +168,7 @@ export const Mutations: {
   CALCULATE_PACKING_LIST: calculatePackingListHandler,
   TOGGLE_ITEM_PACKED: toggleItemPackedHandler,
   LOAD_DEMO_DATA: loadDemoDataHandler,
+  CLEAR_DEMO_DATA: clearDemoDataHandler,
   CLEAR_TRIP_DATA: clearTripDataHandler,
   TOGGLE_RULE_PACK: toggleRulePackHandler,
   CREATE_RULE_PACK: createRulePackHandler,
