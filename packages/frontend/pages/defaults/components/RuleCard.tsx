@@ -1,8 +1,8 @@
 import {
   DefaultItemRule,
-  Person,
   Day,
   getAllCategories,
+  LegacyPerson as Person,
 } from '@packing-list/model';
 import {
   calculateRuleTotal,

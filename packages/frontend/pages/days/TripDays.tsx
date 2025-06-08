@@ -1,4 +1,10 @@
-import { StoreType, useAppSelector, useAppDispatch } from '@packing-list/state';
+import {
+  StoreType,
+  useAppSelector,
+  useAppDispatch,
+  selectCurrentTrip,
+  selectCalculatedItems,
+} from '@packing-list/state';
 import { createSelector } from '@reduxjs/toolkit';
 import { useMemo } from 'react';
 import { Calendar } from 'lucide-react';
@@ -7,12 +13,12 @@ import { format, isSameMonth, parseISO } from 'date-fns';
 import { TripDayRow } from './TripDayRow';
 
 const selectTripInfo = createSelector(
-  (state: StoreType) => state.trip,
-  (state: StoreType) => state.calculated.packingListItems,
-  (trip, packingListItems) => ({
-    days: trip.days,
-    tripEvents: trip.tripEvents || [],
-    packingListItems,
+  selectCurrentTrip,
+  selectCalculatedItems,
+  (trip, calculatedItems) => ({
+    days: trip?.days || [],
+    tripEvents: trip?.tripEvents || [],
+    packingListItems: calculatedItems?.packingListItems || [],
   })
 );
 
