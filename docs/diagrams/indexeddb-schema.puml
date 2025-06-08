@@ -1,0 +1,196 @@
+@startuml IndexedDB Offline Storage Schema
+!theme plain
+
+title IndexedDB Offline Storage Schema
+
+package "PackingListOfflineDB" {
+  
+  object "Object Stores" as stores {
+    userPreferences : Key-Value store
+    trips : Primary key = id
+    tripPeople : Primary key = id
+    tripItems : Primary key = id
+    syncChanges : Primary key = id
+    syncConflicts : Primary key = id
+    syncMetadata : Key-Value store
+  }
+
+  class userPreferences {
+    **Key-Value Store**
+    --
+    key: 'preferences'
+    value: UserPreferences
+    --
+    defaultTimeZone: string
+    theme: 'light' | 'dark' | 'system'
+    defaultTripDuration: number
+    autoSyncEnabled: boolean
+  }
+
+  class trips {
+    **Primary Key:** id
+    **Indexes:**
+    - userId
+    - updatedAt  
+    - activeTrips [userId, isDeleted]
+    --
+    id: string
+    userId: string
+    title: string
+    description?: string
+    days: Day[]
+    tripEvents?: TripEvent[]
+    settings: TripSettings
+    createdAt: string
+    updatedAt: string
+    lastSyncedAt?: string
+    version: number
+    isDeleted: boolean
+  }
+
+  class tripPeople {
+    **Primary Key:** id
+    **Indexes:**
+    - tripId
+    - activeByTrip [tripId, isDeleted]
+    --
+    id: string
+    tripId: string
+    name: string
+    age?: number
+    gender?: string
+    settings?: Record<string, unknown>
+    createdAt: string
+    updatedAt: string
+    version: number
+    isDeleted: boolean
+  }
+
+  class tripItems {
+    **Primary Key:** id
+    **Indexes:**
+    - tripId
+    - personId
+    - dayIndex [tripId, dayIndex]
+    - activeByTrip [tripId, isDeleted]
+    --
+    id: string
+    tripId: string
+    name: string
+    category?: string
+    quantity: number
+    packed: boolean
+    notes?: string
+    personId?: string
+    dayIndex?: number
+    createdAt: string
+    updatedAt: string
+    version: number
+    isDeleted: boolean
+  }
+
+  class syncChanges {
+    **Primary Key:** id
+    **Indexes:**
+    - timestamp
+    - entityType
+    - synced
+    - pendingChanges (synced)
+    --
+    id: string
+    entityType: 'trip' | 'person' | 'item' | 'rule_override'
+    entityId: string
+    operation: 'create' | 'update' | 'delete'
+    data: unknown
+    timestamp: number
+    userId: string
+    tripId?: string
+    version: number
+    synced: boolean
+  }
+
+  class syncConflicts {
+    **Primary Key:** id
+    **Indexes:**
+    - entityType
+    - timestamp
+    --
+    id: string
+    entityType: string
+    entityId: string
+    localVersion: unknown
+    serverVersion: unknown
+    conflictType: 'update_conflict' | 'delete_conflict'
+    timestamp: number
+  }
+
+  class syncMetadata {
+    **Key-Value Store**
+    --
+    'lastSyncTimestamp': number
+    'deviceId': string
+  }
+}
+
+package "Query Patterns" {
+  
+  note as queryPatterns
+    **Common Query Patterns:**
+    
+    **Get User's Active Trips:**
+    trips.index('activeTrips').getAll([userId, false])
+    
+    **Get Trip People:**
+    tripPeople.index('activeByTrip').getAll([tripId, false])
+    
+    **Get Trip Items for Day:**
+    tripItems.index('dayIndex').getAll([tripId, dayIndex])
+    
+    **Get Pending Sync Changes:**
+    syncChanges.index('pendingChanges').getAll(false)
+    
+    **Get Changes Since Timestamp:**
+    syncChanges.index('timestamp').getAll(IDBKeyRange.lowerBound(timestamp))
+  end note
+}
+
+package "Sync Operations" {
+  
+  note as syncOps
+    **Sync Operation Flow:**
+    
+    1. **Local Change:**
+       - Update primary store
+       - Add entry to syncChanges (synced: false)
+    
+    2. **Background Sync:**
+       - Query syncChanges for unsynced items
+       - Push to Supabase
+       - Mark as synced or store conflicts
+    
+    3. **Pull Changes:**
+       - Get remote changes since lastSyncTimestamp
+       - Detect conflicts with local changes
+       - Apply or store in syncConflicts
+    
+    4. **Conflict Resolution:**
+       - User resolves via UI
+       - Update primary store
+       - Queue resolved change for sync
+  end note
+}
+
+' Relationships
+trips ||--o{ tripPeople : contains
+trips ||--o{ tripItems : contains
+tripPeople ||--o{ tripItems : "assigned to"
+
+syncChanges --> trips : references
+syncChanges --> tripPeople : references  
+syncChanges --> tripItems : references
+
+syncConflicts --> trips : conflicts with
+syncConflicts --> tripPeople : conflicts with
+syncConflicts --> tripItems : conflicts with
+
+@enduml 
