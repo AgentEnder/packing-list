@@ -89,6 +89,22 @@ import {
   closeLoginModalHandler,
   CloseLoginModalAction,
 } from './action-handlers/login-modal.js';
+import {
+  createTripHandler,
+  CreateTripAction,
+  selectTripHandler,
+  SelectTripAction,
+  deleteTripHandler,
+  DeleteTripAction,
+  loadTripsHandler,
+  LoadTripsAction,
+  loadTripDataHandler,
+  LoadTripDataAction,
+  openTripSelectorHandler,
+  OpenTripSelectorAction,
+  closeTripSelectorHandler,
+  CloseTripSelectorAction,
+} from './action-handlers/trip-management.js';
 
 export type ActionHandler<T extends AllActions> = (
   state: StoreType,
@@ -121,7 +137,14 @@ export type AllActions =
   | CloseRulePackModalAction
   | SetRulePackModalTabAction
   | OpenLoginModalAction
-  | CloseLoginModalAction;
+  | CloseLoginModalAction
+  | CreateTripAction
+  | SelectTripAction
+  | DeleteTripAction
+  | LoadTripsAction
+  | LoadTripDataAction
+  | OpenTripSelectorAction
+  | CloseTripSelectorAction;
 
 export const Mutations: {
   [K in StoreActions]: ActionHandler<Extract<AllActions, { type: K }>>;
@@ -150,4 +173,11 @@ export const Mutations: {
   SET_RULE_PACK_MODAL_TAB: setRulePackModalTabHandler,
   OPEN_LOGIN_MODAL: openLoginModalHandler,
   CLOSE_LOGIN_MODAL: closeLoginModalHandler,
+  CREATE_TRIP: createTripHandler,
+  SELECT_TRIP: selectTripHandler,
+  DELETE_TRIP: deleteTripHandler,
+  LOAD_TRIPS: loadTripsHandler,
+  LOAD_TRIP_DATA: loadTripDataHandler,
+  OPEN_TRIP_SELECTOR: openTripSelectorHandler,
+  CLOSE_TRIP_SELECTOR: closeTripSelectorHandler,
 };
