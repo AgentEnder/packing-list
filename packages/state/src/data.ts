@@ -1,8 +1,8 @@
 import {
   DefaultItemRule,
   PackingListViewState,
-  Person,
-  Trip,
+  LegacyPerson as Person,
+  LegacyTrip as Trip,
   TripEvent,
 } from '@packing-list/model';
 import { StoreType } from './store.js';
