@@ -1,6 +1,5 @@
 import type { Change, SyncConflict, SyncState } from '@packing-list/model';
 import { getDatabase } from '@packing-list/offline-storage';
-import { TripStorage } from '@packing-list/offline-storage';
 
 export interface SyncOptions {
   supabaseUrl?: string;
@@ -8,12 +7,23 @@ export interface SyncOptions {
   autoSyncInterval?: number; // milliseconds
 }
 
-// Environment detection
+// Environment detection with proper type guards
 const isBrowser = typeof window !== 'undefined';
 const hasNavigator = typeof navigator !== 'undefined';
 
+// Type-safe access to browser globals
+const getNavigatorOnline = (): boolean => {
+  return hasNavigator ? navigator.onLine : true;
+};
+
+const addWindowEventListener = (event: string, handler: () => void): void => {
+  if (isBrowser) {
+    window.addEventListener(event, handler);
+  }
+};
+
 export class SyncService {
-  private isOnline = hasNavigator ? navigator.onLine : true; // Assume online in non-browser environments
+  private isOnline = getNavigatorOnline();
   private isSyncing = false;
   private syncTimer: NodeJS.Timeout | null = null;
   private options: SyncOptions;
@@ -132,8 +142,7 @@ export class SyncService {
    */
   async resolveConflict(
     conflictId: string,
-    resolution: 'local' | 'server' | 'manual',
-    manualData?: unknown
+    resolution: 'local' | 'server' | 'manual'
   ): Promise<void> {
     const db = await getDatabase();
     const conflict = await db.get('syncConflicts', conflictId);
@@ -143,21 +152,8 @@ export class SyncService {
       return;
     }
 
-    let resolvedData: unknown;
-    switch (resolution) {
-      case 'local':
-        resolvedData = conflict.localVersion;
-        break;
-      case 'server':
-        resolvedData = conflict.serverVersion;
-        break;
-      case 'manual':
-        resolvedData = manualData;
-        break;
-    }
-
     // Apply the resolution
-    await this.applyConflictResolution(conflict, resolvedData);
+    await this.applyConflictResolution(conflict);
 
     // Remove the conflict
     await db.delete('syncConflicts', conflictId);
@@ -176,7 +172,7 @@ export class SyncService {
       return;
     }
 
-    window.addEventListener('online', () => {
+    addWindowEventListener('online', () => {
       console.log('[SyncService] Went online');
       this.isOnline = true;
       this.notifySubscribers();
@@ -187,7 +183,7 @@ export class SyncService {
       }
     });
 
-    window.addEventListener('offline', () => {
+    addWindowEventListener('offline', () => {
       console.log('[SyncService] Went offline');
       this.isOnline = false;
       this.notifySubscribers();
@@ -260,7 +256,7 @@ export class SyncService {
       .objectStore('syncChanges')
       .index('synced');
 
-    return await index.getAll(false); // synced = false
+    return await index.getAll(IDBKeyRange.only(false)); // synced = false
   }
 
   private async getConflicts(): Promise<SyncConflict[]> {
@@ -315,7 +311,7 @@ export class SyncService {
 
     // Create a mock server version for demonstration
     const serverVersion = {
-      ...localChange.data,
+      ...(localChange.data as Record<string, unknown>),
       serverModified: true,
       timestamp: Date.now() + 1000, // Simulate server being newer
     };
@@ -334,10 +330,7 @@ export class SyncService {
     console.log(`[SyncService] Created conflict: ${conflict.id}`);
   }
 
-  private async applyConflictResolution(
-    conflict: SyncConflict,
-    resolvedData: unknown
-  ): Promise<void> {
+  private async applyConflictResolution(conflict: SyncConflict): Promise<void> {
     // TODO: Apply the resolved data to the appropriate entity
     console.log(
       `[SyncService] MOCK: Applying conflict resolution for ${conflict.entityType}:${conflict.entityId}`

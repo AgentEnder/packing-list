@@ -25,11 +25,7 @@ export class ConflictResolver {
     conflictId: string,
     strategy: ConflictResolutionStrategy
   ): Promise<void> {
-    await this.syncService.resolveConflict(
-      conflictId,
-      strategy.strategy,
-      strategy.manualData
-    );
+    await this.syncService.resolveConflict(conflictId, strategy.strategy);
 
     console.log(
       `[ConflictResolver] Resolved conflict ${conflictId} using ${
@@ -88,8 +84,8 @@ export class ConflictResolver {
     confidence: 'high' | 'medium' | 'low';
   } {
     // Simple heuristics for conflict resolution
-    const localVersion = conflict.localVersion as any;
-    const serverVersion = conflict.serverVersion as any;
+    const localVersion = conflict.localVersion as Record<string, unknown>;
+    const serverVersion = conflict.serverVersion as Record<string, unknown>;
 
     // If local version has more recent timestamp, prefer local
     if (localVersion?.timestamp && serverVersion?.timestamp) {
@@ -150,8 +146,8 @@ export class ConflictResolver {
    * Create a merged version of conflicting data
    */
   createMergedVersion(conflict: SyncConflict): unknown {
-    const localVersion = conflict.localVersion as any;
-    const serverVersion = conflict.serverVersion as any;
+    const localVersion = conflict.localVersion as Record<string, unknown>;
+    const serverVersion = conflict.serverVersion as Record<string, unknown>;
 
     if (typeof localVersion === 'object' && typeof serverVersion === 'object') {
       // Simple merge: server data takes precedence, but keep local additions
@@ -160,8 +156,8 @@ export class ConflictResolver {
         ...serverVersion,
         // Keep timestamp as the more recent one
         timestamp: Math.max(
-          localVersion?.timestamp || 0,
-          serverVersion?.timestamp || 0
+          (localVersion?.timestamp as number) || 0,
+          (serverVersion?.timestamp as number) || 0
         ),
         // Mark as merged for tracking
         mergedFrom: {
