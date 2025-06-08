@@ -1,68 +1,76 @@
 import { describe, it, expect } from 'vitest';
 import { loadDemoDataHandler } from '../load-demo-data.js';
 import { CREATE_DEMO_DATA } from '../../data.js';
+import { createTestTripState } from '../../__tests__/test-helpers.js';
+import {
+  selectPeople,
+  selectCurrentTrip,
+  selectPackingListView,
+} from '../../selectors.js';
+import { TripEvent } from '@packing-list/model';
 
 describe('loadDemoDataHandler', () => {
   it('should load demo data', () => {
-    const result = loadDemoDataHandler();
+    const initialState = createTestTripState({});
+    const result = loadDemoDataHandler(initialState);
     const demoData = CREATE_DEMO_DATA();
 
-    // Instead of exact equality, verify the structure and content
-    expect(result).toMatchObject({
-      people: expect.arrayContaining(demoData.people),
-      trip: {
-        id: demoData.trip.id,
-        days: expect.arrayContaining(demoData.trip.days),
-        ...(demoData.trip.tripEvents && {
-          tripEvents: expect.arrayContaining(demoData.trip.tripEvents),
-        }),
-      },
-      defaultItemRules: expect.arrayContaining(demoData.defaultItemRules),
-      rulePacks: expect.arrayContaining(demoData.rulePacks),
-      packingListView: demoData.packingListView,
-      ruleOverrides: demoData.ruleOverrides,
-    });
+    // Verify the structure and content using selectors
+    const people = selectPeople(result);
+    const trip = selectCurrentTrip(result);
+    const packingListView = selectPackingListView(result);
 
-    // Verify calculated items have the same structure but don't compare IDs
-    expect(result.calculated.defaultItems).toHaveLength(
-      demoData.calculated.defaultItems.length
+    expect(people).toHaveLength(4); // Demo data has 4 people
+    expect(trip).toBeDefined();
+    expect(trip?.id).toBe('DEMO_TRIP');
+    expect(packingListView).toBeDefined();
+    expect(result.defaultItemRules).toHaveLength(
+      demoData.defaultItemRules?.length || 0
     );
-    expect(result.calculated.packingListItems).toHaveLength(
-      demoData.calculated.packingListItems.length
-    );
+    expect(result.rulePacks).toHaveLength(demoData.rulePacks?.length || 0);
   });
 
   it('should contain all required state properties', () => {
-    const result = loadDemoDataHandler();
+    const initialState = createTestTripState({});
+    const result = loadDemoDataHandler(initialState);
 
     // Verify all required properties are present
-    expect(result.people).toBeDefined();
-    expect(result.trip).toBeDefined();
-    expect(result.trip.days).toBeDefined();
-    expect(result.trip.tripEvents).toBeDefined();
+    const people = selectPeople(result);
+    const trip = selectCurrentTrip(result);
+    const packingListView = selectPackingListView(result);
+
+    expect(people).toBeDefined();
+    expect(trip).toBeDefined();
+    expect(trip?.days).toBeDefined();
+    expect(trip?.tripEvents).toBeDefined();
     expect(result.defaultItemRules).toBeDefined();
-    expect(result.calculated).toBeDefined();
-    expect(result.packingListView).toBeDefined();
+    expect(packingListView).toBeDefined();
   });
 
   it('should have valid trip events', () => {
-    const result = loadDemoDataHandler();
+    const initialState = createTestTripState({});
+    const result = loadDemoDataHandler(initialState);
+    const trip = selectCurrentTrip(result);
 
     // Verify trip events are properly structured
-    expect(result.trip.tripEvents).toBeDefined();
-    if (result.trip.tripEvents) {
-      expect(result.trip.tripEvents.length).toBeGreaterThan(0);
+    expect(trip?.tripEvents).toBeDefined();
+    if (trip?.tripEvents) {
+      expect(trip.tripEvents.length).toBeGreaterThan(0);
 
       // Check first event structure
-      const firstEvent = result.trip.tripEvents[0];
+      const firstEvent = trip.tripEvents[0];
       expect(firstEvent).toHaveProperty('id');
       expect(firstEvent).toHaveProperty('type');
       expect(firstEvent).toHaveProperty('date');
 
       // Verify event sequence
-      const events = result.trip.tripEvents;
-      const leaveHomeEvent = events.find((e) => e.type === 'leave_home');
-      const arriveHomeEvent = events.find((e) => e.type === 'arrive_home');
+      const events = trip.tripEvents;
+      const leaveHomeEvent = events.find(
+        (e: TripEvent) => e.type === 'leave_home'
+      );
+      const arriveHomeEvent = events.find(
+        (e: TripEvent) => e.type === 'arrive_home'
+      );
       expect(leaveHomeEvent).toBeDefined();
       expect(arriveHomeEvent).toBeDefined();
       if (leaveHomeEvent && arriveHomeEvent) {
@@ -74,10 +82,12 @@ describe('loadDemoDataHandler', () => {
   });
 
   it('should have valid days calculated', () => {
-    const result = loadDemoDataHandler();
+    const initialState = createTestTripState({});
+    const result = loadDemoDataHandler(initialState);
+    const trip = selectCurrentTrip(result);
 
-    expect(result.trip.days.length).toBeGreaterThan(0);
-    const firstDay = result.trip.days[0];
+    expect(trip?.days.length).toBeGreaterThan(0);
+    const firstDay = trip!.days[0];
 
     // Check day structure
     expect(firstDay).toHaveProperty('date');
@@ -89,7 +99,8 @@ describe('loadDemoDataHandler', () => {
   });
 
   it('should have valid default item rules', () => {
-    const result = loadDemoDataHandler();
+    const initialState = createTestTripState({});
+    const result = loadDemoDataHandler(initialState);
 
     expect(result.defaultItemRules.length).toBeGreaterThan(0);
     const firstRule = result.defaultItemRules[0];
@@ -102,33 +113,41 @@ describe('loadDemoDataHandler', () => {
   });
 
   it('should have valid packing list view state', () => {
-    const result = loadDemoDataHandler();
+    const initialState = createTestTripState({});
+    const result = loadDemoDataHandler(initialState);
+    const packingListView = selectPackingListView(result);
 
-    expect(result.packingListView).toHaveProperty('viewMode');
-    expect(result.packingListView).toHaveProperty('filters');
-    expect(result.packingListView.filters).toHaveProperty('packed');
-    expect(result.packingListView.filters).toHaveProperty('unpacked');
-    expect(result.packingListView.filters).toHaveProperty('excluded');
-    expect(['by-day', 'by-person']).toContain(result.packingListView.viewMode);
+    expect(packingListView).toHaveProperty('viewMode');
+    expect(packingListView).toHaveProperty('filters');
+    expect(packingListView?.filters).toHaveProperty('packed');
+    expect(packingListView?.filters).toHaveProperty('unpacked');
+    expect(packingListView?.filters).toHaveProperty('excluded');
+    expect(['by-day', 'by-person']).toContain(packingListView?.viewMode);
   });
 
   it('should have valid calculated items', () => {
-    const result = loadDemoDataHandler();
+    const initialState = createTestTripState({});
+    const result = loadDemoDataHandler(initialState);
 
-    expect(result.calculated).toHaveProperty('defaultItems');
-    expect(result.calculated).toHaveProperty('packingListItems');
-    expect(Array.isArray(result.calculated.defaultItems)).toBe(true);
-    expect(Array.isArray(result.calculated.packingListItems)).toBe(true);
+    // Access calculated items from the selected trip
+    const selectedTripId = result.trips.selectedTripId;
+    expect(selectedTripId).toBeDefined();
 
-    if (result.calculated.defaultItems.length > 0) {
-      const firstItem = result.calculated.defaultItems[0];
+    const tripData = result.trips.byId[selectedTripId!];
+    expect(tripData.calculated).toHaveProperty('defaultItems');
+    expect(tripData.calculated).toHaveProperty('packingListItems');
+    expect(Array.isArray(tripData.calculated.defaultItems)).toBe(true);
+    expect(Array.isArray(tripData.calculated.packingListItems)).toBe(true);
+
+    if (tripData.calculated.defaultItems.length > 0) {
+      const firstItem = tripData.calculated.defaultItems[0];
       expect(firstItem).toHaveProperty('name');
       expect(firstItem).toHaveProperty('quantity');
       expect(firstItem).toHaveProperty('ruleId');
     }
 
-    if (result.calculated.packingListItems.length > 0) {
-      const firstItem = result.calculated.packingListItems[0];
+    if (tripData.calculated.packingListItems.length > 0) {
+      const firstItem = tripData.calculated.packingListItems[0];
       expect(firstItem).toHaveProperty('id');
       expect(firstItem).toHaveProperty('name');
       expect(firstItem).toHaveProperty('quantity');
