@@ -15,20 +15,24 @@ import {
   PackingListViewState,
   PackingListItem,
   RulePack,
+  TripSummary,
 } from '@packing-list/model';
 import { DEFAULT_RULE_PACKS } from './default-rule-packs.js';
 
+// New multi-trip store structure
 export type StoreType = {
-  people: Person[];
-  defaultItemRules: DefaultItemRule[];
-  trip: Trip;
-  calculated: {
-    defaultItems: Item[];
-    packingListItems: PackingListItem[];
+  // Multi-trip state
+  trips: {
+    summaries: TripSummary[]; // List of all user's trips
+    selectedTripId: string | null; // Currently selected trip ID
+    byId: Record<string, TripData>; // Full trip data by ID
   };
-  ruleOverrides: RuleOverride[];
-  packingListView: PackingListViewState;
+
+  // Global state (not trip-specific)
   rulePacks: RulePack[];
+  defaultItemRules: DefaultItemRule[]; // These might become trip-specific later
+
+  // UI state
   ui: {
     rulePackModal: {
       isOpen: boolean;
@@ -38,30 +42,66 @@ export type StoreType = {
     loginModal: {
       isOpen: boolean;
     };
+    tripSelector: {
+      isOpen: boolean;
+    };
   };
+
+  // Auth state
   auth: AuthState;
 };
 
-export const initialState: Omit<StoreType, 'auth'> = {
-  people: [],
-  defaultItemRules: [],
-  trip: {
-    id: 'new-trip',
-    days: [],
-  },
+// Trip-specific data structure
+export type TripData = {
+  // Trip info
+  trip: Trip;
+  people: Person[];
+  ruleOverrides: RuleOverride[];
+  packingListView: PackingListViewState;
+
+  // Calculated data
   calculated: {
-    defaultItems: [],
-    packingListItems: [],
-  },
-  ruleOverrides: [],
-  packingListView: {
-    viewMode: 'by-day',
-    filters: {
-      packed: true,
-      unpacked: true,
-      excluded: false,
+    defaultItems: Item[];
+    packingListItems: PackingListItem[];
+  };
+
+  // Loading states
+  isLoading: boolean;
+  lastSynced?: string;
+};
+
+// Helper function to create empty trip data
+export function createEmptyTripData(tripId: string): TripData {
+  return {
+    trip: {
+      id: tripId,
+      days: [],
     },
+    people: [],
+    ruleOverrides: [],
+    packingListView: {
+      viewMode: 'by-day',
+      filters: {
+        packed: true,
+        unpacked: true,
+        excluded: false,
+      },
+    },
+    calculated: {
+      defaultItems: [],
+      packingListItems: [],
+    },
+    isLoading: false,
+  };
+}
+
+export const initialState: Omit<StoreType, 'auth'> = {
+  trips: {
+    summaries: [],
+    selectedTripId: null,
+    byId: {},
   },
+  defaultItemRules: [],
   rulePacks: DEFAULT_RULE_PACKS,
   ui: {
     rulePackModal: {
@@ -70,6 +110,9 @@ export const initialState: Omit<StoreType, 'auth'> = {
       selectedPackId: undefined,
     },
     loginModal: {
+      isOpen: false,
+    },
+    tripSelector: {
       isOpen: false,
     },
   },
