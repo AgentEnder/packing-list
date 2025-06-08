@@ -15,9 +15,7 @@ describe('clearDemoDataHandler', () => {
     expect(demoState.trips.byId['DEMO_TRIP']).toBeDefined();
 
     // Clear demo data
-    const result = clearDemoDataHandler(demoState, {
-      type: 'CLEAR_DEMO_DATA',
-    });
+    const result = clearDemoDataHandler(demoState);
 
     // Verify demo trip is removed
     expect(result.trips.summaries).toHaveLength(1);
@@ -54,9 +52,7 @@ describe('clearDemoDataHandler', () => {
   it('should preserve other state properties', () => {
     const demoState = CREATE_DEMO_DATA() as StoreType;
 
-    const result = clearDemoDataHandler(demoState, {
-      type: 'CLEAR_DEMO_DATA',
-    });
+    const result = clearDemoDataHandler(demoState);
 
     // Verify other state is preserved
     expect(result.defaultItemRules).toEqual(demoState.defaultItemRules);
@@ -94,9 +90,7 @@ describe('clearDemoDataHandler', () => {
       },
     };
 
-    const result = clearDemoDataHandler(stateWithMultipleTrips, {
-      type: 'CLEAR_DEMO_DATA',
-    });
+    const result = clearDemoDataHandler(stateWithMultipleTrips);
 
     // Should have the regular trip plus the new trip (2 total)
     expect(result.trips.summaries).toHaveLength(2);

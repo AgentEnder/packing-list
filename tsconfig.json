@@ -26,6 +26,9 @@
     },
     {
       "path": "./packages/offline-storage"
+    },
+    {
+      "path": "./packages/sync"
     }
   ]
 }
