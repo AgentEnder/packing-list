@@ -74,18 +74,34 @@ jobs:
 
       - name: Setup environment variables
         run: |
-          # Get the anon key from Supabase status
+          # Get the anon key from Supabase status - fix the parsing
           cd packages/supabase
-          ANON_KEY=$(supabase status | grep "anon key" | cut -d'│' -f3 | tr -d ' ')
+          ANON_KEY=$(supabase status | grep "anon key:" | awk '{print $3}')
           echo "LOCAL_SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
 
-          # Create .env.e2e file for E2E tests
-          cat > ../.env.e2e << EOF
+          # Also set the environment variables directly for this session
+          echo "PUBLIC_ENV__SUPABASE_URL=http://localhost:54321" >> $GITHUB_ENV
+          echo "PUBLIC_ENV__SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
+
+          # Create .env.e2e file for E2E tests in the root directory
+          cd ..
+          cat > .env.e2e << EOF
           PUBLIC_ENV__SUPABASE_ANON_KEY=$ANON_KEY
           PUBLIC_ENV__SUPABASE_URL=http://localhost:54321
           EOF
 
           echo "✅ Created .env.e2e file with local Supabase configuration"
+          echo "🔑 Anon key: ${ANON_KEY:0:20}..."
+
+      - name: Verify environment setup
+        run: |
+          echo "🔍 Environment Variables:"
+          echo "PUBLIC_ENV__SUPABASE_URL: $PUBLIC_ENV__SUPABASE_URL"
+          echo "PUBLIC_ENV__SUPABASE_ANON_KEY: ${PUBLIC_ENV__SUPABASE_ANON_KEY:0:20}..."
+          echo ""
+          echo "📄 .env.e2e file contents:"
+          cat .env.e2e
+          echo ""
 
       - name: Verify Supabase setup
         run: |
@@ -107,8 +123,8 @@ jobs:
           CI: true
           PUBLIC_ENV__BASE_URL: /
           PUBLIC_ENV__LOCATION: 'http://localhost:3000'
-          PUBLIC_ENV__SUPABASE_URL: http://localhost:54321
-          PUBLIC_ENV__SUPABASE_ANON_KEY: ${{ env.LOCAL_SUPABASE_ANON_KEY }}
+          PUBLIC_ENV__SUPABASE_URL: ${{ env.PUBLIC_ENV__SUPABASE_URL }}
+          PUBLIC_ENV__SUPABASE_ANON_KEY: ${{ env.PUBLIC_ENV__SUPABASE_ANON_KEY }}
 
       - name: Upload Playwright Report
         uses: actions/upload-artifact@v4
