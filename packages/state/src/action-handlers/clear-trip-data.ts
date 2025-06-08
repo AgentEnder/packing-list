@@ -4,7 +4,10 @@ export type ClearTripDataAction = {
   type: 'CLEAR_TRIP_DATA';
 };
 
-export const clearTripDataHandler = (state: StoreType): StoreType => {
+export const clearTripDataHandler = (
+  state: StoreType,
+  action: ClearTripDataAction
+): StoreType => {
   const selectedTripId = state.trips.selectedTripId;
 
   // Early return if no trip is selected
