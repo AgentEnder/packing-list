@@ -1,0 +1,25 @@
+{
+  "name": "@packing-list/sync",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "nx": {
+    "name": "sync"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@packing-list/model": "workspace:*",
+    "@packing-list/offline-storage": "workspace:*",
+    "@packing-list/auth-state": "workspace:*"
+  }
+}
