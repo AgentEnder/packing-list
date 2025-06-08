@@ -87,7 +87,8 @@ describe('loadDemoDataHandler', () => {
     const trip = selectCurrentTrip(result);
 
     expect(trip?.days.length).toBeGreaterThan(0);
-    const firstDay = trip!.days[0];
+    if (!trip) return;
+    const firstDay = trip.days[0];
 
     // Check day structure
     expect(firstDay).toHaveProperty('date');
@@ -132,8 +133,9 @@ describe('loadDemoDataHandler', () => {
     // Access calculated items from the selected trip
     const selectedTripId = result.trips.selectedTripId;
     expect(selectedTripId).toBeDefined();
+    if (!selectedTripId) return;
 
-    const tripData = result.trips.byId[selectedTripId!];
+    const tripData = result.trips.byId[selectedTripId];
     expect(tripData.calculated).toHaveProperty('defaultItems');
     expect(tripData.calculated).toHaveProperty('packingListItems');
     expect(Array.isArray(tripData.calculated.defaultItems)).toBe(true);
