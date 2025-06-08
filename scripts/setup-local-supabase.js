@@ -154,7 +154,22 @@ async function runCommand(command, args, options = {}) {
   }
 }
 
+async function checkIfSupabaseIsRunning() {
+  const result = await runCommand('supabase', ['status'], {
+    cwd: 'packages/supabase',
+    preferLocal: true,
+  });
+
+  return result.stdout?.includes('API URL:');
+}
+
 async function main() {
+  const isSupabaseRunning = await checkIfSupabaseIsRunning();
+  if (isSupabaseRunning) {
+    colorLog('green', '✅ Supabase is already running');
+    return;
+  }
+
   log('🚀 Setting up Supabase for local development...', true);
   log('', true);
 

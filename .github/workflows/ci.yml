@@ -15,6 +15,9 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
+    env:
+      NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_CLOUD_MAIN || secrets.NX_CLOUD_PR }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
