@@ -1,6 +1,10 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { StoreType } from '../store.js';
-import { PackingListItem, Day, Person } from '@packing-list/model';
+import {
+  PackingListItem,
+  Day,
+  LegacyPerson as Person,
+} from '@packing-list/model';
 import { selectPeople } from '../selectors.js';
 
 export type DayGroup = {
@@ -192,9 +196,9 @@ const selectViewSpecificGroupedItems = createSelector(
   [selectSplitItems, selectPackingListViewState, selectPeople, selectDays],
   ({ viewSpecificItems }, viewState, people, days): ItemGroup[] => {
     if (viewState.viewMode === 'by-day') {
-      return days.map((day, index) => {
+      return days.map((day: Day, index: number) => {
         const dayItems = viewSpecificItems.filter(
-          (item) => item.dayIndex === index
+          (item: PackingListItem) => item.dayIndex === index
         );
         const groupedDayItems = groupItemsByDay(dayItems);
         return {
@@ -205,9 +209,9 @@ const selectViewSpecificGroupedItems = createSelector(
         };
       });
     } else {
-      return people.map((person) => {
+      return people.map((person: Person) => {
         const personItems = viewSpecificItems.filter(
-          (item) => item.personId === person.id
+          (item: PackingListItem) => item.personId === person.id
         );
         const groupedPersonItems = groupItemsByPerson(personItems);
         return {
