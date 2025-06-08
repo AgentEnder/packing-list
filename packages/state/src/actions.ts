@@ -98,6 +98,8 @@ import {
   CreateTripAction,
   selectTripHandler,
   SelectTripAction,
+  toggleTripSelectorHandler,
+  ToggleTripSelectorAction,
   deleteTripHandler,
   DeleteTripAction,
   loadTripsHandler,
@@ -145,6 +147,7 @@ export type AllActions =
   | CloseLoginModalAction
   | CreateTripAction
   | SelectTripAction
+  | ToggleTripSelectorAction
   | DeleteTripAction
   | LoadTripsAction
   | LoadTripDataAction
@@ -186,4 +189,5 @@ export const Mutations: {
   LOAD_TRIP_DATA: loadTripDataHandler,
   OPEN_TRIP_SELECTOR: openTripSelectorHandler,
   CLOSE_TRIP_SELECTOR: closeTripSelectorHandler,
+  TOGGLE_TRIP_SELECTOR: toggleTripSelectorHandler,
 };

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Link } from '../components/Link';
 import { DemoBanner } from '../components/DemoBanner';
 import { ToastContainer } from '../components/Toast';
+import { TripSelector } from '../components/TripSelector';
 import { useAppDispatch } from '@packing-list/state';
 import {
   useAuth,
@@ -91,7 +92,7 @@ export default function LayoutDefault({
               <Menu className="w-5 h-5 stroke-current" />
             </label>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 flex items-center gap-2">
             <Link
               href="/"
               className="btn btn-ghost normal-case text-xl"
@@ -99,6 +100,7 @@ export default function LayoutDefault({
             >
               Packing List
             </Link>
+            <TripSelector />
           </div>
           <div className="flex-none">
             {user && !shouldShowSignInOptions ? (
@@ -155,6 +157,12 @@ export default function LayoutDefault({
               </button>
             )}
           </div>
+
+          {/* Trip Selector for Desktop */}
+          <div className="hidden lg:block mb-4">
+            <TripSelector />
+          </div>
+
           <ul className="menu menu-lg gap-2">
             <li>
               <Link
