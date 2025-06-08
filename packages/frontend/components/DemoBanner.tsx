@@ -5,7 +5,7 @@ const SESSION_DEMO_CHOICE_KEY = 'session-demo-choice';
 
 export function DemoBanner() {
   // Check if we have the demo trip loaded by checking its ID
-  const tripId = useAppSelector((state) => state.trip.id);
+  const tripId = useAppSelector((state) => state.trips.selectedTripId);
   const dispatch = useAppDispatch();
   const isVisible = tripId === 'DEMO_TRIP';
 
