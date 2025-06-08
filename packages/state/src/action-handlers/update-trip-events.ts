@@ -13,16 +13,36 @@ export const updateTripEventsHandler = (
   state: StoreType,
   action: UpdateTripEventsAction
 ): StoreType => {
+  const selectedTripId = state.trips.selectedTripId;
+
+  // Early return if no trip is selected
+  if (!selectedTripId || !state.trips.byId[selectedTripId]) {
+    console.warn('Cannot update trip events: no trip selected');
+    return state;
+  }
+
   const tripEvents = action.payload;
   const days = enumerateTripDays(tripEvents);
+  const selectedTripData = state.trips.byId[selectedTripId];
 
-  // First update trip events and days
-  const stateWithUpdatedTrip = {
-    ...state,
+  // First update trip events and days in the selected trip
+  const updatedTripData = {
+    ...selectedTripData,
     trip: {
-      ...state.trip,
+      ...selectedTripData.trip,
       tripEvents,
       days,
+    },
+  };
+
+  const stateWithUpdatedTrip = {
+    ...state,
+    trips: {
+      ...state.trips,
+      byId: {
+        ...state.trips.byId,
+        [selectedTripId]: updatedTripData,
+      },
     },
   };
 
