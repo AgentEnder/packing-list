@@ -49,7 +49,7 @@ describe('DemoBanner Component', () => {
     fireEvent.click(clearButton);
 
     expect(sessionStorage.getItem('session-demo-choice')).toBe('fresh');
-    expect(mockDispatch).toHaveBeenCalledWith({ type: 'CLEAR_TRIP_DATA' });
+    expect(mockDispatch).toHaveBeenCalledWith({ type: 'CLEAR_DEMO_DATA' });
   });
 
   it('renders with correct styling', () => {

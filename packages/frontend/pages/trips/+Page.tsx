@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import { useAppSelector, useAppDispatch } from '@packing-list/state';
+import {
+  useAppSelector,
+  useAppDispatch,
+  selectAccurateTripSummaries,
+} from '@packing-list/state';
 import { Link } from '../../components/Link';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
@@ -19,7 +23,7 @@ import {
 
 export default function TripsPage() {
   const dispatch = useAppDispatch();
-  const tripSummaries = useAppSelector((state) => state.trips.summaries);
+  const tripSummaries = useAppSelector(selectAccurateTripSummaries);
   const selectedTripId = useAppSelector((state) => state.trips.selectedTripId);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tripToDelete, setTripToDelete] = useState<string | null>(null);
