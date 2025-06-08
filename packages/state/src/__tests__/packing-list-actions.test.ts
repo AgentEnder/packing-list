@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { PackingListItem, PackingListViewState } from '@packing-list/model';
-import { StoreType, initialState } from '../store.js';
+import { StoreType } from '../store.js';
 import { toggleItemPackedHandler } from '../action-handlers/toggle-item-packed.js';
 import { updatePackingListViewHandler } from '../action-handlers/update-packing-list-view.js';
+import { createTestTripState } from './test-helpers.js';
 
 describe('Packing List Actions', () => {
   describe('toggleItemPacked', () => {
@@ -21,13 +22,9 @@ describe('Packing List Actions', () => {
       };
 
       // Set up initial state with our test item
-      const testState: StoreType = {
-        ...initialState,
-        calculated: {
-          ...initialState.calculated,
-          packingListItems: [testItem],
-        },
-      };
+      const testState = createTestTripState({});
+      const tripId = testState.trips.selectedTripId!;
+      testState.trips.byId[tripId].calculated.packingListItems = [testItem];
 
       // Toggle the item to packed
       const toggleAction = {
@@ -38,11 +35,15 @@ describe('Packing List Actions', () => {
       };
 
       const resultState = toggleItemPackedHandler(testState, toggleAction);
-      expect(resultState.calculated.packingListItems[0].isPacked).toBe(true);
+      const resultTripData = resultState.trips.byId[tripId];
+      expect(resultTripData.calculated.packingListItems[0].isPacked).toBe(true);
 
       // Toggle it back to unpacked
       const resultState2 = toggleItemPackedHandler(resultState, toggleAction);
-      expect(resultState2.calculated.packingListItems[0].isPacked).toBe(false);
+      const resultTripData2 = resultState2.trips.byId[tripId];
+      expect(resultTripData2.calculated.packingListItems[0].isPacked).toBe(
+        false
+      );
     });
 
     it('should only toggle the specified item', () => {
@@ -71,13 +72,9 @@ describe('Packing List Actions', () => {
         },
       ];
 
-      const testState: StoreType = {
-        ...initialState,
-        calculated: {
-          ...initialState.calculated,
-          packingListItems: items,
-        },
-      };
+      const testState = createTestTripState({});
+      const tripId = testState.trips.selectedTripId!;
+      testState.trips.byId[tripId].calculated.packingListItems = items;
 
       const toggleAction = {
         type: 'TOGGLE_ITEM_PACKED' as const,
@@ -87,13 +84,17 @@ describe('Packing List Actions', () => {
       };
 
       const resultState = toggleItemPackedHandler(testState, toggleAction);
-      expect(resultState.calculated.packingListItems[0].isPacked).toBe(true);
-      expect(resultState.calculated.packingListItems[1].isPacked).toBe(false);
+      const resultTripData = resultState.trips.byId[tripId];
+      expect(resultTripData.calculated.packingListItems[0].isPacked).toBe(true);
+      expect(resultTripData.calculated.packingListItems[1].isPacked).toBe(
+        false
+      );
     });
   });
 
   describe('updatePackingListView', () => {
     it('should update view mode', () => {
+      const testState = createTestTripState({});
       const updateAction = {
         type: 'UPDATE_PACKING_LIST_VIEW' as const,
         payload: {
@@ -101,14 +102,14 @@ describe('Packing List Actions', () => {
         },
       };
 
-      const resultState = updatePackingListViewHandler(
-        initialState,
-        updateAction
-      );
-      expect(resultState.packingListView.viewMode).toBe('by-person');
+      const resultState = updatePackingListViewHandler(testState, updateAction);
+      const tripId = resultState.trips.selectedTripId!;
+      const resultTripData = resultState.trips.byId[tripId];
+      expect(resultTripData.packingListView.viewMode).toBe('by-person');
     });
 
     it('should update filters', () => {
+      const testState = createTestTripState({});
       const updateAction = {
         type: 'UPDATE_PACKING_LIST_VIEW' as const,
         payload: {
@@ -120,11 +121,10 @@ describe('Packing List Actions', () => {
         },
       };
 
-      const resultState = updatePackingListViewHandler(
-        initialState,
-        updateAction
-      );
-      expect(resultState.packingListView.filters).toEqual({
+      const resultState = updatePackingListViewHandler(testState, updateAction);
+      const tripId = resultState.trips.selectedTripId!;
+      const resultTripData = resultState.trips.byId[tripId];
+      expect(resultTripData.packingListView.filters).toEqual({
         packed: false,
         unpacked: true,
         excluded: true,
@@ -132,15 +132,16 @@ describe('Packing List Actions', () => {
     });
 
     it('should preserve existing view state when updating partially', () => {
-      const testState: StoreType = {
-        ...initialState,
-        packingListView: {
-          viewMode: 'by-day',
-          filters: {
-            packed: true,
-            unpacked: true,
-            excluded: false,
-          },
+      const testState = createTestTripState({});
+      const tripId = testState.trips.selectedTripId!;
+
+      // Set initial view state
+      testState.trips.byId[tripId].packingListView = {
+        viewMode: 'by-day',
+        filters: {
+          packed: true,
+          unpacked: true,
+          excluded: false,
         },
       };
 
@@ -156,7 +157,8 @@ describe('Packing List Actions', () => {
       };
 
       const resultState = updatePackingListViewHandler(testState, updateAction);
-      expect(resultState.packingListView).toEqual({
+      const resultTripData = resultState.trips.byId[tripId];
+      expect(resultTripData.packingListView).toEqual({
         viewMode: 'by-day', // Preserved
         filters: {
           packed: false,

@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { calculatePackingListHandler } from '../calculate-packing-list.js';
-import { StoreType, initialState } from '../../store.js';
-import { DefaultItemRule, Person, Day } from '@packing-list/model';
+import { StoreType } from '../../store.js';
+import {
+  DefaultItemRule,
+  LegacyPerson as Person,
+  Day,
+} from '@packing-list/model';
+import { createTestTripState } from '../../__tests__/test-helpers.js';
 
 describe('calculatePackingListHandler', () => {
   it('should calculate items for multiple people and days', () => {
@@ -80,26 +85,27 @@ describe('calculatePackingListHandler', () => {
       },
     ];
 
-    const testState: StoreType = {
-      ...initialState,
-      people,
-      trip: {
-        ...initialState.trip,
-        days,
-      },
-      defaultItemRules: rules,
-    };
+    const testState = createTestTripState({ people });
+    const tripId = testState.trips.selectedTripId!;
+
+    // Update with test data
+    testState.defaultItemRules = rules;
+    testState.trips.byId[tripId].trip.days = days;
+    testState.trips.byId[tripId].people = people;
 
     const result = calculatePackingListHandler(testState);
+    const resultTripId = result.trips.selectedTripId!;
+    const packingListItems =
+      result.trips.byId[resultTripId].calculated.packingListItems;
 
     // Should have 6 items total:
     // - 2 swimsuits (1 per person for beach day)
     // - 2 jackets (1 per person for cold day)
     // - 2 toothbrushes (1 per person, no conditions)
-    expect(result.calculated.packingListItems).toHaveLength(6);
+    expect(packingListItems).toHaveLength(6);
 
     // Check swimsuits
-    const swimsuits = result.calculated.packingListItems.filter(
+    const swimsuits = packingListItems.filter(
       (item) => item.ruleId === 'swimsuit'
     );
     expect(swimsuits).toHaveLength(2);
@@ -107,15 +113,13 @@ describe('calculatePackingListHandler', () => {
     expect(swimsuits[1].dayIndex).toBe(0);
 
     // Check jackets
-    const jackets = result.calculated.packingListItems.filter(
-      (item) => item.ruleId === 'jacket'
-    );
+    const jackets = packingListItems.filter((item) => item.ruleId === 'jacket');
     expect(jackets).toHaveLength(2);
     expect(jackets[0].dayIndex).toBe(1); // Cold day
     expect(jackets[1].dayIndex).toBe(1);
 
     // Check toothbrushes
-    const toothbrushes = result.calculated.packingListItems.filter(
+    const toothbrushes = packingListItems.filter(
       (item) => item.ruleId === 'toothbrush'
     );
     expect(toothbrushes).toHaveLength(2);
@@ -192,25 +196,26 @@ describe('calculatePackingListHandler', () => {
       },
     ];
 
-    const testState: StoreType = {
-      ...initialState,
-      people,
-      trip: {
-        ...initialState.trip,
-        days,
-      },
-      defaultItemRules: rules,
-    };
+    const testState = createTestTripState({ people });
+    const tripId = testState.trips.selectedTripId!;
+
+    // Update with test data
+    testState.defaultItemRules = rules;
+    testState.trips.byId[tripId].trip.days = days;
+    testState.trips.byId[tripId].people = people;
 
     const result = calculatePackingListHandler(testState);
+    const resultTripId = result.trips.selectedTripId!;
+    const packingListItems =
+      result.trips.byId[resultTripId].calculated.packingListItems;
 
     // Should have 3 items total:
     // - 2 diaper items for the child (1 per day)
     // - 1 phone charger for the adult
-    expect(result.calculated.packingListItems).toHaveLength(3);
+    expect(packingListItems).toHaveLength(3);
 
     // Check diapers
-    const diapers = result.calculated.packingListItems.filter(
+    const diapers = packingListItems.filter(
       (item) => item.ruleId === 'diapers'
     );
     expect(diapers).toHaveLength(2);
@@ -220,9 +225,7 @@ describe('calculatePackingListHandler', () => {
     expect(diapers[1].quantity).toBe(5);
 
     // Check phone charger
-    const chargers = result.calculated.packingListItems.filter(
-      (item) => item.ruleId === 'phone'
-    );
+    const chargers = packingListItems.filter((item) => item.ruleId === 'phone');
     expect(chargers).toHaveLength(1);
     expect(chargers[0].personId).toBe('adult1');
     expect(chargers[0].quantity).toBe(1);
@@ -273,30 +276,29 @@ describe('calculatePackingListHandler', () => {
       },
     ];
 
-    const testState: StoreType = {
-      ...initialState,
-      people,
-      trip: {
-        ...initialState.trip,
-        days,
-      },
-      defaultItemRules: rules,
-    };
+    const testState = createTestTripState({ people });
+    const tripId = testState.trips.selectedTripId!;
+
+    // Update with test data
+    testState.defaultItemRules = rules;
+    testState.trips.byId[tripId].trip.days = days;
+    testState.trips.byId[tripId].people = people;
 
     const result = calculatePackingListHandler(testState);
+    const resultTripId = result.trips.selectedTripId!;
+    const packingListItems =
+      result.trips.byId[resultTripId].calculated.packingListItems;
 
     // Check laundry detergent
     // 7 days with every 3 days pattern (rounded up) = 3 items
-    const laundry = result.calculated.packingListItems.filter(
+    const laundry = packingListItems.filter(
       (item) => item.ruleId === 'laundry'
     );
     expect(laundry).toHaveLength(3);
 
     // Check socks
     // 7 days with every 2 days pattern (rounded down) = 3 items
-    const socks = result.calculated.packingListItems.filter(
-      (item) => item.ruleId === 'socks'
-    );
+    const socks = packingListItems.filter((item) => item.ruleId === 'socks');
     expect(socks).toHaveLength(3);
   });
 });

@@ -15,7 +15,8 @@ vi.mock('@packing-list/state', () => ({
   selectGroupedItems: vi.fn(),
   selectPackingListViewMode: (state: any) => state.packingListView.viewMode,
 
-  selectTrip: (state: any) => state.trip,
+  selectCurrentTrip: (state: any) => state.trip,
+  selectTripDays: (state: any) => state.trip?.days || [],
 
   selectPeople: (state: any) => state.people,
 
@@ -124,7 +125,7 @@ describe('PackingList', () => {
       if (selector === state.selectPackingListViewMode)
         return mockViewState.viewMode;
       if (selector === state.selectGroupedItems) return mockGroupedItems;
-      if (selector === state.selectTrip) return mockState.trip;
+      if (selector === state.selectCurrentTrip) return mockState.trip;
       if (selector === state.selectPeople) return mockState.people;
       if (selector === state.selectDefaultItemRules)
         return mockState.defaultItemRules;
@@ -229,7 +230,7 @@ describe('PackingList', () => {
     (state.useAppSelector as any).mockImplementation((selector: any) => {
       if (selector === state.selectPackingListViewState) return mockViewState;
       if (selector === state.selectGroupedItems) return itemsWithNotes;
-      if (selector === state.selectTrip) return mockState.trip;
+      if (selector === state.selectCurrentTrip) return mockState.trip;
       if (selector === state.selectPeople) return mockState.people;
       if (selector === state.selectDefaultItemRules)
         return mockState.defaultItemRules;
@@ -299,7 +300,8 @@ describe('PackingList', () => {
       if (selector === state.selectPackingListViewState) return mockViewState;
       if (selector === state.selectGroupedItems)
         return { groupedItems: [], groupedGeneralItems: [] };
-      if (selector === state.selectTrip) return { id: 'test-trip', days: [] };
+      if (selector === state.selectCurrentTrip)
+        return { id: 'test-trip', days: [] };
       if (selector === state.selectPeople) return [];
       if (selector === state.selectDefaultItemRules) return [];
       return {};
@@ -420,7 +422,7 @@ describe('PackingList', () => {
     (state.useAppSelector as any).mockImplementation((selector: any) => {
       if (selector === state.selectPackingListViewState) return mockViewState;
       if (selector === state.selectGroupedItems) return itemsWithCategories;
-      if (selector === state.selectTrip) return mockState.trip;
+      if (selector === state.selectCurrentTrip) return mockState.trip;
       if (selector === state.selectPeople) return mockState.people;
       if (selector === state.selectDefaultItemRules)
         return mockState.defaultItemRules;
@@ -469,7 +471,7 @@ describe('PackingList', () => {
     (state.useAppSelector as any).mockImplementation((selector: any) => {
       if (selector === state.selectPackingListViewState) return mockViewState;
       if (selector === state.selectGroupedItems) return itemsWithGeneral;
-      if (selector === state.selectTrip) return mockState.trip;
+      if (selector === state.selectCurrentTrip) return mockState.trip;
       if (selector === state.selectPeople) return mockState.people;
       if (selector === state.selectDefaultItemRules)
         return mockState.defaultItemRules;
@@ -508,7 +510,7 @@ describe('PackingList', () => {
     (state.useAppSelector as any).mockImplementation((selector: any) => {
       if (selector === state.selectPackingListViewState) return mockViewState;
       if (selector === state.selectGroupedItems) return itemsWithOverride;
-      if (selector === state.selectTrip) return mockState.trip;
+      if (selector === state.selectCurrentTrip) return mockState.trip;
       if (selector === state.selectPeople) return mockState.people;
       if (selector === state.selectDefaultItemRules)
         return mockState.defaultItemRules;
@@ -545,7 +547,7 @@ describe('PackingList', () => {
       if (selector === state.selectPackingListViewState) return mockViewState;
       if (selector === state.selectGroupedItems)
         return { groupedItems: [], groupedGeneralItems: [] };
-      if (selector === state.selectTrip) return mockState.trip;
+      if (selector === state.selectCurrentTrip) return mockState.trip;
       if (selector === state.selectPeople) return [];
       if (selector === state.selectDefaultItemRules) return [];
       return {};
@@ -585,7 +587,7 @@ describe('PackingList', () => {
     (state.useAppSelector as any).mockImplementation((selector: any) => {
       if (selector === state.selectPackingListViewState) return mockViewState;
       if (selector === state.selectGroupedItems) return itemsWithCategories;
-      if (selector === state.selectTrip) return mockState.trip;
+      if (selector === state.selectCurrentTrip) return mockState.trip;
       if (selector === state.selectPeople) return mockState.people;
       if (selector === state.selectDefaultItemRules)
         return mockState.defaultItemRules;
@@ -628,7 +630,7 @@ describe('PackingList', () => {
       if (selector === state.selectPackingListViewMode)
         return mockViewState.viewMode;
       if (selector === state.selectGroupedItems) return itemsWithDayRange;
-      if (selector === state.selectTrip) return mockState.trip;
+      if (selector === state.selectCurrentTrip) return mockState.trip;
       if (selector === state.selectPeople) return mockState.people;
       if (selector === state.selectDefaultItemRules)
         return mockState.defaultItemRules;

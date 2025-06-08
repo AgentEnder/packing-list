@@ -5,35 +5,52 @@ import {
   selectGroupedItems,
 } from './packing-list.js';
 import type { StoreType } from '../store.js';
-import type { PackingListItem, Person, Day } from '@packing-list/model';
+import type {
+  PackingListItem,
+  LegacyPerson as Person,
+  Day,
+} from '@packing-list/model';
+import { createTestTripState } from '../__tests__/test-helpers.js';
 
 // Helper function to create a basic store state
 const createMockState = (
   packingListItems: PackingListItem[] = [],
   people: Person[] = [],
   days: Day[] = []
-): StoreType => ({
-  defaultItemRules: [],
-  people,
-  trip: {
-    id: 'test-trip',
-    days,
-  },
-  ruleOverrides: [],
-  rulePacks: [],
-  packingListView: {
-    filters: {
-      packed: true,
-      unpacked: true,
-      excluded: false,
+): StoreType => {
+  const state = createTestTripState({ people });
+  const tripId = state.trips.selectedTripId!;
+
+  // Update the trip data with the provided test data
+  state.trips.byId[tripId] = {
+    ...state.trips.byId[tripId],
+    people,
+    trip: {
+      ...state.trips.byId[tripId].trip,
+      days,
     },
-    viewMode: 'by-day',
-  },
-  calculated: {
-    defaultItems: [],
-    packingListItems,
-  },
-});
+    calculated: {
+      defaultItems: [],
+      packingListItems,
+    },
+    packingListView: {
+      filters: {
+        packed: true,
+        unpacked: true,
+        excluded: false,
+      },
+      viewMode: 'by-day',
+    },
+  };
+
+  return state;
+};
+
+// Helper function to get the current trip data
+const getCurrentTripData = (state: StoreType) => {
+  const tripId = state.trips.selectedTripId!;
+  return state.trips.byId[tripId];
+};
 
 describe('Packing List Selectors', () => {
   describe('selectFilteredItems', () => {
@@ -82,7 +99,7 @@ describe('Packing List Selectors', () => {
 
       // Test with only packed items
       state = createMockState(items);
-      state.packingListView.filters = {
+      getCurrentTripData(state).packingListView.filters = {
         packed: true,
         unpacked: false,
         excluded: false,
@@ -93,7 +110,7 @@ describe('Packing List Selectors', () => {
 
       // Test with only unpacked items
       state = createMockState(items);
-      state.packingListView.filters = {
+      getCurrentTripData(state).packingListView.filters = {
         packed: false,
         unpacked: true,
         excluded: false,
@@ -104,7 +121,7 @@ describe('Packing List Selectors', () => {
 
       // Test with excluded items
       state = createMockState(items);
-      state.packingListView.filters = {
+      getCurrentTripData(state).packingListView.filters = {
         packed: false,
         unpacked: false,
         excluded: true,
@@ -115,7 +132,7 @@ describe('Packing List Selectors', () => {
 
       // Test with all filters enabled
       state = createMockState(items);
-      state.packingListView.filters = {
+      getCurrentTripData(state).packingListView.filters = {
         packed: true,
         unpacked: true,
         excluded: true,
@@ -155,7 +172,7 @@ describe('Packing List Selectors', () => {
       ];
 
       const state = createMockState(items);
-      state.packingListView.viewMode = 'by-day';
+      getCurrentTripData(state).packingListView.viewMode = 'by-day';
 
       const result = selectSplitItems(state);
       expect(result.viewSpecificItems).toHaveLength(1);
@@ -193,7 +210,7 @@ describe('Packing List Selectors', () => {
       ];
 
       const state = createMockState(items);
-      state.packingListView.viewMode = 'by-person';
+      getCurrentTripData(state).packingListView.viewMode = 'by-person';
 
       const result = selectSplitItems(state);
       expect(result.viewSpecificItems).toHaveLength(1);
@@ -261,7 +278,7 @@ describe('Packing List Selectors', () => {
       ];
 
       const state = createMockState(items, [], days);
-      state.packingListView.viewMode = 'by-day';
+      getCurrentTripData(state).packingListView.viewMode = 'by-day';
 
       const result = selectGroupedItems(state);
 
@@ -336,7 +353,7 @@ describe('Packing List Selectors', () => {
       ];
 
       const state = createMockState(items, people);
-      state.packingListView.viewMode = 'by-person';
+      getCurrentTripData(state).packingListView.viewMode = 'by-person';
 
       const result = selectGroupedItems(state);
 
@@ -399,7 +416,7 @@ describe('Packing List Selectors', () => {
       ];
 
       const state = createMockState(items, people);
-      state.packingListView.viewMode = 'by-person';
+      getCurrentTripData(state).packingListView.viewMode = 'by-person';
 
       const result = selectGroupedItems(state);
 
