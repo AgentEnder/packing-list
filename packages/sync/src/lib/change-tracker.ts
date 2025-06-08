@@ -76,6 +76,77 @@ export class ChangeTracker {
   }
 
   /**
+   * Track a packing status change (optimized for frequent updates)
+   * This creates a lightweight change record focused on packing status
+   */
+  async trackPackingStatusChange(
+    itemId: string,
+    isPacked: boolean,
+    userId: string,
+    tripId: string,
+    metadata?: {
+      timestamp?: number;
+      previousStatus?: boolean;
+      bulkOperation?: boolean;
+    }
+  ): Promise<void> {
+    const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+      entityType: 'item',
+      entityId: itemId,
+      operation: 'update',
+      data: {
+        id: itemId,
+        packed: isPacked,
+        updatedAt: new Date().toISOString(),
+        // Only include the packing status change for efficient sync
+        _packingStatusOnly: true,
+        _previousStatus: metadata?.previousStatus,
+        _bulkOperation: metadata?.bulkOperation || false,
+      },
+      userId,
+      tripId,
+      version: 1, // Increment will be handled by server
+    };
+
+    await this.syncService.trackChange(change);
+  }
+
+  /**
+   * Track multiple packing status changes as a batch operation
+   * This is more efficient for bulk packing/unpacking scenarios
+   */
+  async trackBulkPackingChanges(
+    changes: Array<{
+      itemId: string;
+      isPacked: boolean;
+      previousStatus?: boolean;
+    }>,
+    userId: string,
+    tripId: string
+  ): Promise<void> {
+    // Create a single batch change for all packing updates
+    const batchChange: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+      entityType: 'item',
+      entityId: `bulk_packing_${Date.now()}`, // Unique ID for batch operation
+      operation: 'update',
+      data: {
+        bulkPackingUpdate: true,
+        changes: changes.map((change) => ({
+          itemId: change.itemId,
+          packed: change.isPacked,
+          previousStatus: change.previousStatus,
+        })),
+        updatedAt: new Date().toISOString(),
+      },
+      userId,
+      tripId,
+      version: 1,
+    };
+
+    await this.syncService.trackChange(batchChange);
+  }
+
+  /**
    * Track a rule override change
    */
   async trackRuleOverrideChange(
@@ -132,6 +203,19 @@ export class ChangeTracker {
   async hasConflicts(): Promise<boolean> {
     const count = await this.getConflictsCount();
     return count > 0;
+  }
+
+  /**
+   * Get pending packing changes specifically
+   */
+  async getPendingPackingChanges(): Promise<number> {
+    const state = await this.syncService.getSyncState();
+    return state.pendingChanges.filter(
+      (change) =>
+        change.entityType === 'item' &&
+        (change.data as { _packingStatusOnly?: boolean })
+          ?._packingStatusOnly === true
+    ).length;
   }
 }
 

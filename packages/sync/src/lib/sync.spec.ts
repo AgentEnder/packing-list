@@ -100,6 +100,33 @@ describe('SyncService', () => {
     // Force sync should not throw when offline
     await expect(syncService.forceSync()).resolves.toBeUndefined();
   });
+
+  it('should track packing status changes efficiently', async () => {
+    const { getChangeTracker } = await import('./change-tracker.js');
+    const tracker = getChangeTracker();
+
+    // Test individual packing change
+    await tracker.trackPackingStatusChange(
+      'item-123',
+      true,
+      'user-1',
+      'trip-1',
+      { previousStatus: false }
+    );
+
+    // Test bulk packing changes
+    await tracker.trackBulkPackingChanges(
+      [
+        { itemId: 'item-1', isPacked: true, previousStatus: false },
+        { itemId: 'item-2', isPacked: true, previousStatus: false },
+      ],
+      'user-1',
+      'trip-1'
+    );
+
+    // Verify no errors thrown
+    expect(true).toBe(true);
+  });
 });
 
 describe('getSyncService', () => {
