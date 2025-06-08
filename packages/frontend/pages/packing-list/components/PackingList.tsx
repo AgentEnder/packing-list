@@ -99,15 +99,15 @@ export const PackingList: React.FC = () => {
     return (
       <li
         key={`${groupedItem.baseItem.id}-${groupedItem.displayName}`}
-        className="card bg-base-100 shadow-sm"
+        className="card bg-base-100 shadow-sm overflow-visible"
         data-testid="packing-item"
       >
-        <div className="relative flex items-center gap-1.5 p-1.5 overflow-hidden rounded-lg">
+        <div className="relative flex items-center gap-1.5 p-1.5 overflow-visible rounded-lg">
           <div
             className="absolute inset-0 bg-success/30 transition-all duration-300 ease-in-out z-0"
             style={{ width: `${progress}%` }}
           />
-          <div className="relative z-10 flex items-center gap-1.5 min-w-0 flex-1">
+          <div className="relative z-10 flex items-center gap-1.5 min-w-0 flex-1 hover:z-15">
             <button
               className="btn btn-xs sm:btn-sm btn-square shrink-0"
               onClick={() => handleOpenPackDialog(groupedItem)}
@@ -128,7 +128,7 @@ export const PackingList: React.FC = () => {
               </button>
               {groupedItem.baseItem.notes && (
                 <div
-                  className="tooltip tooltip-right"
+                  className="tooltip tooltip-right before:z-[100]"
                   data-tip={groupedItem.baseItem.notes}
                 >
                   <Info

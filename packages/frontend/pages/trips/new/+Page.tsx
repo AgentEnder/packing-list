@@ -3,6 +3,8 @@ import { useAppDispatch } from '@packing-list/state';
 import { Link } from '../../../components/Link';
 import { PageHeader } from '../../../components/PageHeader';
 import { PageContainer } from '../../../components/PageContainer';
+import { TripWizard } from '../../days/TripWizard';
+import type { TripEvent } from '@packing-list/model';
 import {
   MapPin,
   Calendar,
@@ -70,7 +72,9 @@ const TRIP_TEMPLATES = [
 
 export default function NewTripPage() {
   const dispatch = useAppDispatch();
-  const [step, setStep] = useState<'template' | 'details'>('template');
+  const [step, setStep] = useState<'template' | 'details' | 'wizard'>(
+    'template'
+  );
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -79,6 +83,8 @@ export default function NewTripPage() {
     endDate: '',
     location: '',
   });
+  const [tripEvents, setTripEvents] = useState<TripEvent[]>([]);
+  const [showWizard, setShowWizard] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const template = TRIP_TEMPLATES.find((t) => t.id === selectedTemplate);
@@ -108,6 +114,54 @@ export default function NewTripPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (canSubmit) {
+      // Move to wizard step instead of creating trip immediately
+      setStep('wizard');
+      setShowWizard(true);
+    }
+  };
+
+  const handleWizardSave = async (events: TripEvent[]) => {
+    setIsSubmitting(true);
+    setTripEvents(events);
+
+    try {
+      const tripId = `trip-${Date.now()}`;
+
+      dispatch({
+        type: 'CREATE_TRIP',
+        payload: {
+          tripId,
+          title: formData.title || 'New Trip',
+          description: formData.description,
+        },
+      });
+
+      // Update trip events for the new trip
+      if (events.length > 0) {
+        dispatch({
+          type: 'UPDATE_TRIP_EVENTS',
+          payload: events,
+        });
+      }
+
+      // Navigate to the new trip
+      await navigate('/');
+    } catch (error) {
+      console.error('Failed to create trip:', error);
+    } finally {
+      setIsSubmitting(false);
+      setShowWizard(false);
+    }
+  };
+
+  const handleWizardClose = () => {
+    setShowWizard(false);
+    // Stay on details step so user can modify basic info if needed
+  };
+
+  const handleSkipDates = async () => {
     setIsSubmitting(true);
 
     try {
@@ -148,7 +202,8 @@ export default function NewTripPage() {
 
         <div className="mb-6">
           <p className="text-base-content/70">
-            Choose a template to get started quickly, or create a custom trip
+            Choose a template to get started quickly. After basic details,
+            you&apos;ll configure your trip dates and destinations.
           </p>
         </div>
 
@@ -207,7 +262,9 @@ export default function NewTripPage() {
 
       <div className="mb-6">
         <p className="text-base-content/70">
-          Configure your {template?.name.toLowerCase()} details
+          Provide basic information for your {template?.name.toLowerCase()}.
+          Next, you&apos;ll be able to configure dates, destinations, and
+          packing rules.
         </p>
       </div>
 
@@ -292,26 +349,53 @@ export default function NewTripPage() {
           </div>
 
           {/* Submit */}
-          <div className="flex gap-3 pt-4">
-            <Link href="/trips" className="btn btn-ghost">
-              Cancel
-            </Link>
+          <div className="flex flex-col gap-3 pt-4">
+            <div className="flex gap-3">
+              <Link href="/trips" className="btn btn-ghost">
+                Cancel
+              </Link>
+              <button
+                type="submit"
+                disabled={!canSubmit || isSubmitting}
+                className="btn btn-primary gap-2 flex-1"
+                data-testid="create-trip-submit"
+              >
+                {isSubmitting ? (
+                  <span className="loading loading-spinner loading-sm"></span>
+                ) : (
+                  <Calendar className="w-4 h-4" />
+                )}
+                {isSubmitting ? 'Creating...' : 'Configure Trip Dates'}
+              </button>
+            </div>
+
+            <div className="divider">OR</div>
+
             <button
-              type="submit"
+              type="button"
+              onClick={handleSkipDates}
               disabled={!canSubmit || isSubmitting}
-              className="btn btn-primary gap-2"
-              data-testid="create-trip-submit"
+              className="btn btn-outline gap-2"
+              data-testid="skip-dates-submit"
             >
-              {isSubmitting ? (
-                <span className="loading loading-spinner loading-sm"></span>
-              ) : (
-                <Check className="w-4 h-4" />
-              )}
-              {isSubmitting ? 'Creating...' : 'Create Trip'}
+              <Check className="w-4 h-4" />
+              Create Trip Without Dates
             </button>
+
+            <p className="text-sm text-base-content/60 text-center">
+              You can always add trip dates later from the Days page
+            </p>
           </div>
         </form>
       </div>
+
+      {/* Trip Wizard Modal */}
+      <TripWizard
+        open={showWizard}
+        onClose={handleWizardClose}
+        onSave={handleWizardSave}
+        currentEvents={tripEvents}
+      />
     </PageContainer>
   );
 }

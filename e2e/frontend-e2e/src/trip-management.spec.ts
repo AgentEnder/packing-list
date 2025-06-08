@@ -11,7 +11,7 @@ test.describe('Trip Management', () => {
     await expect(page.getByText('Create Your First Trip')).toBeVisible();
   });
 
-  test('should create a new trip', async ({ page }) => {
+  test('should create a new trip with wizard', async ({ page }) => {
     // Click on create first trip
     await page.getByTestId('create-first-trip-link').click();
 
@@ -33,8 +33,33 @@ test.describe('Trip Management', () => {
       .fill('Family trip to the beach');
     await page.getByTestId('trip-location-input').fill('Hawaii');
 
-    // Submit the form
+    // Submit to open the wizard
     await page.getByTestId('create-trip-submit').click();
+
+    // Should open the trip wizard modal
+    await expect(page.getByText('Configure Trip')).toBeVisible();
+    await expect(page.getByText('Trip Duration')).toBeVisible();
+
+    // Fill in basic trip dates
+    await page.locator('input[name="leaveHomeDate"]').fill('2024-07-01');
+    await page.locator('input[name="arriveHomeDate"]').fill('2024-07-10');
+
+    // Click Next to go to destinations
+    await page.getByText('Next').click();
+    await expect(page.getByText('Add Destinations')).toBeVisible();
+
+    // Add a destination
+    await page.locator('input[name="location"]').fill('Honolulu');
+    await page.locator('input[name="arriveDate"]').fill('2024-07-02');
+    await page.locator('input[name="leaveDate"]').fill('2024-07-09');
+    await page.getByText('Add Destination').click();
+
+    // Go to review step
+    await page.getByText('Next').click();
+    await expect(page.getByText('Review Your Trip')).toBeVisible();
+
+    // Save the trip
+    await page.getByText('Save Trip').click();
 
     // Should navigate back to home and show the new trip
     await expect(page).toHaveURL('/');
@@ -42,12 +67,34 @@ test.describe('Trip Management', () => {
     await expect(page.getByText('Summer Vacation 2024')).toBeVisible();
   });
 
+  test('should create a new trip without dates', async ({ page }) => {
+    // Click on create first trip
+    await page.getByTestId('create-first-trip-link').click();
+
+    // Select a template
+    await page.getByTestId('template-business').click();
+
+    // Fill in trip details
+    await page.getByTestId('trip-title-input').fill('Quick Business Trip');
+    await page
+      .getByTestId('trip-description-input')
+      .fill('Short meeting in the city');
+
+    // Skip dates and create immediately
+    await page.getByTestId('skip-dates-submit').click();
+
+    // Should navigate back to home and show the new trip
+    await expect(page).toHaveURL('/');
+    await expect(page.getByTestId('trip-selector')).toBeVisible();
+    await expect(page.getByText('Quick Business Trip')).toBeVisible();
+  });
+
   test('should manage multiple trips', async ({ page }) => {
     // Create first trip
     await page.getByTestId('create-first-trip-link').click();
     await page.getByTestId('template-business').click();
     await page.getByTestId('trip-title-input').fill('Business Trip NYC');
-    await page.getByTestId('create-trip-submit').click();
+    await page.getByTestId('skip-dates-submit').click();
 
     // Navigate to trips page
     await page.getByTestId('trip-selector').click();
@@ -61,7 +108,7 @@ test.describe('Trip Management', () => {
     await page.getByText('New Trip').click();
     await page.getByTestId('template-weekend').click();
     await page.getByTestId('trip-title-input').fill('Weekend Getaway');
-    await page.getByTestId('create-trip-submit').click();
+    await page.getByTestId('skip-dates-submit').click();
 
     // Go back to trips page
     await page.getByTestId('trip-selector').click();
@@ -80,13 +127,13 @@ test.describe('Trip Management', () => {
     await page.getByTestId('create-first-trip-link').click();
     await page.getByTestId('template-business').click();
     await page.getByTestId('trip-title-input').fill('Trip A');
-    await page.getByTestId('create-trip-submit').click();
+    await page.getByTestId('skip-dates-submit').click();
 
     await page.getByTestId('trip-selector').click();
     await page.getByTestId('create-trip-link').click();
     await page.getByTestId('template-vacation').click();
     await page.getByTestId('trip-title-input').fill('Trip B');
-    await page.getByTestId('create-trip-submit').click();
+    await page.getByTestId('skip-dates-submit').click();
 
     // Current trip should be Trip B
     await expect(page.getByTestId('trip-selector')).toContainText('Trip B');
@@ -104,7 +151,7 @@ test.describe('Trip Management', () => {
     await page.getByTestId('create-first-trip-link').click();
     await page.getByTestId('template-business').click();
     await page.getByTestId('trip-title-input').fill('Trip to Delete');
-    await page.getByTestId('create-trip-submit').click();
+    await page.getByTestId('skip-dates-submit').click();
 
     // Go to trips management
     await page.getByTestId('trip-selector').click();
@@ -128,7 +175,7 @@ test.describe('Trip Management', () => {
     await page.getByTestId('create-first-trip-link').click();
     await page.getByTestId('template-vacation').click();
     await page.getByTestId('trip-title-input').fill('Original Trip');
-    await page.getByTestId('create-trip-submit').click();
+    await page.getByTestId('skip-dates-submit').click();
 
     // Go to trips management
     await page.getByTestId('trip-selector').click();

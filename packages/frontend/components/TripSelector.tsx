@@ -1,11 +1,15 @@
 import React from 'react';
-import { useAppSelector, useAppDispatch } from '@packing-list/state';
+import {
+  useAppSelector,
+  useAppDispatch,
+  selectAccurateTripSummaries,
+} from '@packing-list/state';
 import { ChevronDown, Plus, MapPin } from 'lucide-react';
 import { Link } from './Link';
 
 export const TripSelector: React.FC = () => {
   const dispatch = useAppDispatch();
-  const tripSummaries = useAppSelector((state) => state.trips.summaries);
+  const tripSummaries = useAppSelector(selectAccurateTripSummaries);
   const selectedTripId = useAppSelector((state) => state.trips.selectedTripId);
   const isOpen = useAppSelector((state) => state.ui.tripSelector.isOpen);
 
