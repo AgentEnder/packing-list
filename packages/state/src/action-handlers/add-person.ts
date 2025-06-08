@@ -12,10 +12,32 @@ export const addPersonHandler = (
   state: StoreType,
   action: AddPersonAction
 ): StoreType => {
-  // First add the person
+  const selectedTripId = state.trips.selectedTripId;
+
+  // Early return if no trip is selected
+  if (!selectedTripId || !state.trips.byId[selectedTripId]) {
+    console.warn('Cannot add person: no trip selected');
+    return state;
+  }
+
+  const selectedTripData = state.trips.byId[selectedTripId];
+
+  // Create updated trip data with new person
+  const updatedTripData = {
+    ...selectedTripData,
+    people: [...selectedTripData.people, action.payload],
+  };
+
+  // Update state with new trip data
   const stateWithNewPerson = {
     ...state,
-    people: [...state.people, action.payload],
+    trips: {
+      ...state.trips,
+      byId: {
+        ...state.trips.byId,
+        [selectedTripId]: updatedTripData,
+      },
+    },
   };
 
   // Then recalculate default items

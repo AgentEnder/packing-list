@@ -2,10 +2,15 @@ import { createSelector } from '@reduxjs/toolkit';
 import { StoreType } from '../store.js';
 import {
   PackingListItem,
-  Day,
   LegacyPerson as Person,
+  Day,
 } from '@packing-list/model';
-import { selectPeople } from '../selectors.js';
+import {
+  selectPeople,
+  selectTripDays,
+  selectPackingListView,
+  selectCalculatedItems,
+} from '../selectors.js';
 
 export type DayGroup = {
   type: 'day';
@@ -44,15 +49,19 @@ export type GroupedItemsResult = {
   groupedGeneralItems: GroupedItem[];
 };
 
-// Basic selectors
-export const selectPackingListItems = (state: StoreType) =>
-  state.calculated.packingListItems;
-export const selectPackingListViewState = (state: StoreType) =>
-  state.packingListView;
-export const selectDays = (state: StoreType) => state.trip.days;
+// Basic selectors - updated to use new store structure
+export const selectPackingListItems = createSelector(
+  [selectCalculatedItems],
+  (calculated) => calculated.packingListItems
+);
 
-export const selectPackingListViewMode = (state: StoreType) =>
-  state.packingListView.viewMode;
+export const selectPackingListViewState = selectPackingListView;
+export const selectDays = selectTripDays;
+
+export const selectPackingListViewMode = createSelector(
+  [selectPackingListView],
+  (packingListView) => packingListView.viewMode
+);
 
 // Filter items based on view state
 export const selectFilteredItems: (state: StoreType) => PackingListItem[] =
