@@ -123,6 +123,9 @@ importers:
       jsdom:
         specifier: ^26.1.0
         version: 26.1.0
+      jsonc-eslint-parser:
+        specifier: ^2.1.0
+        version: 2.4.0
       nx:
         specifier: 21.1.2
         version: 21.1.2(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.17))(@swc/types@0.1.22)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.17))
@@ -286,6 +289,21 @@ importers:
       '@packing-list/shared-utils':
         specifier: workspace:*
         version: link:../shared-utils
+
+  packages/sync:
+    dependencies:
+      '@packing-list/auth-state':
+        specifier: workspace:*
+        version: link:../auth-state
+      '@packing-list/model':
+        specifier: workspace:*
+        version: link:../model
+      '@packing-list/offline-storage':
+        specifier: workspace:*
+        version: link:../offline-storage
+      tslib:
+        specifier: ^2.3.0
+        version: 2.8.1
 
 packages:
 
