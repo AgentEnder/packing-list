@@ -2,7 +2,6 @@ import {
   DefaultItemRule,
   PackingListViewState,
   LegacyPerson as Person,
-  LegacyTrip as Trip,
   TripEvent,
 } from '@packing-list/model';
 import { StoreType } from './store.js';
@@ -335,56 +334,80 @@ const packingListView: PackingListViewState = {
   },
 };
 
-const trip: Trip = {
-  id: 'DEMO_TRIP',
-  days: enumerateTripDays(tripEvents),
-  tripEvents,
-};
+export const CREATE_DEMO_DATA: () => Partial<StoreType> = () => {
+  const tripId = 'DEMO_TRIP';
 
-export const CREATE_DEMO_DATA: () => Partial<StoreType> = () =>
-  calculatePackingListHandler(
-    calculateDefaultItems({
-      people,
-      ruleOverrides: [],
-      packingListView,
-      defaultItemRules,
-      trip,
-      calculated: {
-        defaultItems: [],
-        packingListItems: [],
+  // Create the trip data structure
+  const tripData = {
+    trip: {
+      id: tripId,
+      days: enumerateTripDays(tripEvents),
+      tripEvents,
+    },
+    people,
+    ruleOverrides: [],
+    packingListView,
+    calculated: {
+      defaultItems: [],
+      packingListItems: [],
+    },
+    isLoading: false,
+  };
+
+  // Create the trip summary
+  const tripSummary = {
+    tripId,
+    title: 'Demo Trip: Houston & Miami',
+    description:
+      'A sample multi-city trip to demonstrate the packing list functionality',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    totalItems: 0,
+    packedItems: 0,
+    totalPeople: people.length,
+  };
+
+  // Create the full state with proper multi-trip structure
+  const baseState: StoreType = {
+    trips: {
+      summaries: [tripSummary],
+      selectedTripId: tripId,
+      byId: {
+        [tripId]: tripData,
       },
-      rulePacks: DEFAULT_RULE_PACKS,
-      ui: {
-        rulePackModal: {
-          isOpen: false,
-          activeTab: 'browse',
-          selectedPackId: undefined,
-        },
-        loginModal: {
-          isOpen: false,
-        },
-        tripSelector: {
-          isOpen: false,
-        },
+    },
+    defaultItemRules,
+    rulePacks: DEFAULT_RULE_PACKS,
+    ui: {
+      rulePackModal: {
+        isOpen: false,
+        activeTab: 'browse',
+        selectedPackId: undefined,
       },
-      trips: {
-        summaries: [],
-        selectedTripId: null,
-        byId: {},
+      loginModal: {
+        isOpen: false,
       },
-      auth: {
-        user: null,
-        session: null,
-        loading: false,
-        error: null,
-        isOfflineMode: false,
-        connectivityState: { isOnline: false, isConnected: false },
-        isInitialized: false,
-        lastError: null,
-        isAuthenticating: false,
-        forceOfflineMode: false,
-        offlineAccounts: [],
-        hasOfflinePasscode: false,
+      tripSelector: {
+        isOpen: false,
       },
-    })
-  );
+    },
+    auth: {
+      user: null,
+      session: null,
+      loading: false,
+      error: null,
+      isOfflineMode: false,
+      connectivityState: { isOnline: false, isConnected: false },
+      isInitialized: false,
+      lastError: null,
+      isAuthenticating: false,
+      forceOfflineMode: false,
+      offlineAccounts: [],
+      hasOfflinePasscode: false,
+    },
+  };
+
+  // Calculate default items and packing list for the demo trip
+  const stateWithDefaultItems = calculateDefaultItems(baseState);
+  return calculatePackingListHandler(stateWithDefaultItems);
+};

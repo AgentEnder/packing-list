@@ -165,7 +165,12 @@ function createAppReducer(): Reducer<Omit<StoreType, 'auth'>> {
     }
 
     if ('type' in action && typeof action.type === 'string') {
-      console.warn(`Unknown action: ${action.type}`);
+      if (
+        !action.type.startsWith('@@redux') &&
+        !action.type.startsWith('auth')
+      ) {
+        console.warn(`Unknown action: ${action.type}`);
+      }
     }
     return state;
   };
