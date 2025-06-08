@@ -363,6 +363,14 @@ export const CREATE_DEMO_DATA: () => Partial<StoreType> = () =>
         loginModal: {
           isOpen: false,
         },
+        tripSelector: {
+          isOpen: false,
+        },
+      },
+      trips: {
+        summaries: [],
+        selectedTripId: null,
+        byId: {},
       },
       auth: {
         user: null,

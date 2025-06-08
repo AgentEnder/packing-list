@@ -1,14 +1,14 @@
 import {
   PackingListItem,
   DefaultItemRule,
-  Person,
   Day,
+  LegacyPerson,
 } from '@packing-list/model';
 import { StoreType } from '../store.js';
 import {
-  compare,
   calculateRuleHash,
   calculateItemQuantity,
+  compare,
 } from '@packing-list/shared-utils';
 
 export type CalculatePackingListAction = {
@@ -17,48 +17,57 @@ export type CalculatePackingListAction = {
 
 function getApplicablePeople(
   rule: DefaultItemRule,
-  people: Person[]
+  people: LegacyPerson[]
 ): string[] {
-  const applicablePeople = people
-    .filter(
-      (person) =>
-        rule.conditions?.every((condition) => {
-          if (condition.type === 'person') {
-            const value = person[condition.field as keyof Person];
-            const matches = compare(value, condition.operator, condition.value);
-            return matches;
+  if (!rule.conditions || rule.conditions.length === 0) {
+    return people.map((p) => p.id);
+  }
+
+  const conditions = rule.conditions;
+  return people
+    .filter((person) =>
+      conditions.every((condition) => {
+        if (condition.type === 'person') {
+          const value = person[condition.field as keyof LegacyPerson];
+          if (value === undefined) {
+            return false;
           }
-          return true;
-        }) ?? true
+          return compare(value, condition.operator, condition.value);
+        }
+        return true;
+      })
     )
     .map((p) => p.id);
-
-  return applicablePeople;
 }
 
 function getApplicableDays(rule: DefaultItemRule, days: Day[]): number[] {
-  const applicableDays = days
-    .map((_, index) => index)
-    .filter(
-      (dayIndex) =>
-        rule.conditions?.every((condition) => {
-          if (condition.type === 'day') {
-            const value = days[dayIndex][condition.field as keyof Day];
-            const matches = compare(value, condition.operator, condition.value);
-            return matches;
-          }
-          return true;
-        }) ?? true
-    );
+  if (!rule.conditions || rule.conditions.length === 0) {
+    return days.map((_, index) => index);
+  }
 
-  return applicableDays;
+  const conditions = rule.conditions;
+  return days
+    .map((day, index) => ({ day, index }))
+    .filter(({ day }) =>
+      conditions.every((condition) => {
+        if (condition.type === 'day') {
+          const value = day[condition.field as keyof Day];
+          if (value === undefined) {
+            return false;
+          }
+          return compare(value, condition.operator, condition.value);
+        }
+        return true;
+      })
+    )
+    .map(({ index }) => index);
 }
 
 function createItemInstances(
   rule: DefaultItemRule,
   applicablePeople: string[],
   applicableDays: number[],
-  people: Person[],
+  people: LegacyPerson[],
   days: Day[],
   ruleHash: string,
   isOverridden = false,
@@ -316,20 +325,30 @@ function createItemInstances(
 }
 
 export const calculatePackingListHandler = (state: StoreType): StoreType => {
+  const selectedTripId = state.trips.selectedTripId;
+
+  // Early return if no trip is selected
+  if (!selectedTripId || !state.trips.byId[selectedTripId]) {
+    return state;
+  }
+
+  const selectedTripData = state.trips.byId[selectedTripId];
   const packingListItems: PackingListItem[] = [];
 
   // Process each default item rule
   for (const rule of state.defaultItemRules) {
     const ruleHash = calculateRuleHash(rule);
 
-    const override = state.ruleOverrides.find((o) => o.ruleId === rule.id);
+    const override = selectedTripData.ruleOverrides.find(
+      (o) => o.ruleId === rule.id
+    );
 
     if (override?.isExcluded) {
       continue;
     }
 
-    const applicablePeople = getApplicablePeople(rule, state.people);
-    const applicableDays = getApplicableDays(rule, state.trip.days);
+    const applicablePeople = getApplicablePeople(rule, selectedTripData.people);
+    const applicableDays = getApplicableDays(rule, selectedTripData.trip.days);
 
     if (override) {
       // Handle person-specific override
@@ -338,7 +357,9 @@ export const calculatePackingListHandler = (state: StoreType): StoreType => {
           continue;
         }
 
-        const person = state.people.find((p) => p.id === override.personId);
+        const person = selectedTripData.people.find(
+          (p) => p.id === override.personId
+        );
         if (!person) {
           continue;
         }
@@ -355,7 +376,7 @@ export const calculatePackingListHandler = (state: StoreType): StoreType => {
             [override.personId],
             relevantDays,
             relevantPeople,
-            state.trip.days,
+            selectedTripData.trip.days,
             ruleHash,
             true,
             override.overrideCount
@@ -373,8 +394,8 @@ export const calculatePackingListHandler = (state: StoreType): StoreType => {
             rule,
             applicablePeople,
             [override.dayIndex],
-            state.people,
-            [state.trip.days[override.dayIndex]],
+            selectedTripData.people,
+            [selectedTripData.trip.days[override.dayIndex]],
             ruleHash,
             true,
             override.overrideCount
@@ -388,8 +409,8 @@ export const calculatePackingListHandler = (state: StoreType): StoreType => {
             rule,
             applicablePeople,
             applicableDays,
-            state.people,
-            state.trip.days,
+            selectedTripData.people,
+            selectedTripData.trip.days,
             ruleHash,
             true,
             override.overrideCount
@@ -403,8 +424,8 @@ export const calculatePackingListHandler = (state: StoreType): StoreType => {
           rule,
           applicablePeople,
           applicableDays,
-          state.people,
-          state.trip.days,
+          selectedTripData.people,
+          selectedTripData.trip.days,
           ruleHash
         )
       );
@@ -412,7 +433,7 @@ export const calculatePackingListHandler = (state: StoreType): StoreType => {
   }
 
   // Preserve packed status from existing items
-  const existingItems = state.calculated.packingListItems;
+  const existingItems = selectedTripData.calculated.packingListItems;
 
   const updatedItems = packingListItems.map((item) => {
     const existing = existingItems.find(
@@ -425,11 +446,22 @@ export const calculatePackingListHandler = (state: StoreType): StoreType => {
     return existing ? { ...item, isPacked: existing.isPacked } : item;
   });
 
+  const updatedTripData = {
+    ...selectedTripData,
+    calculated: {
+      ...selectedTripData.calculated,
+      packingListItems: updatedItems,
+    },
+  };
+
   return {
     ...state,
-    calculated: {
-      ...state.calculated,
-      packingListItems: updatedItems,
+    trips: {
+      ...state.trips,
+      byId: {
+        ...state.trips.byId,
+        [selectedTripId]: updatedTripData,
+      },
     },
   };
 };
