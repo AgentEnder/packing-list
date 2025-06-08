@@ -40,6 +40,59 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase local services
+        run: |
+          cd packages/supabase
+          supabase start --ignore-health-check
+
+      - name: Wait for Supabase services
+        run: |
+          timeout=120
+          while [ $timeout -gt 0 ]; do
+            if cd packages/supabase && supabase status 2>/dev/null | grep -q "API URL"; then
+              echo "✅ Supabase services are ready"
+              break
+            fi
+            echo "⏳ Waiting for Supabase services... ($timeout seconds left)"
+            sleep 5
+            timeout=$((timeout - 5))
+          done
+          if [ $timeout -eq 0 ]; then
+            echo "❌ Timeout waiting for Supabase services"
+            cd packages/supabase && supabase status || true
+            docker ps || true
+            exit 1
+          fi
+
+      - name: Setup environment variables
+        run: |
+          # Get the anon key from Supabase status
+          cd packages/supabase
+          ANON_KEY=$(supabase status | grep "anon key" | cut -d'│' -f3 | tr -d ' ')
+          echo "LOCAL_SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
+
+          # Create .env.e2e file for E2E tests
+          cat > ../.env.e2e << EOF
+          PUBLIC_ENV__SUPABASE_ANON_KEY=$ANON_KEY
+          PUBLIC_ENV__SUPABASE_URL=http://localhost:54321
+          EOF
+
+          echo "✅ Created .env.e2e file with local Supabase configuration"
+
+      - name: Verify Supabase setup
+        run: |
+          cd packages/supabase
+          echo "📊 Supabase Status:"
+          supabase status
+          echo ""
+          echo "🔧 Docker containers:"
+          docker ps --filter "name=supabase" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
       - name: Derive appropriate SHAs for nx affected commands
         uses: nrwl/nx-set-shas@v4
 
@@ -51,8 +104,22 @@ jobs:
           CI: true
           PUBLIC_ENV__BASE_URL: /
           PUBLIC_ENV__LOCATION: 'http://localhost:3000'
-          PUBLIC_ENV__SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          PUBLIC_ENV__SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          PUBLIC_ENV__SUPABASE_URL: http://localhost:54321
+          PUBLIC_ENV__SUPABASE_ANON_KEY: ${{ env.LOCAL_SUPABASE_ANON_KEY }}
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: e2e/frontend-e2e/playwright-report/
+          retention-days: 7
+
+      - name: Stop Supabase services
+        if: always()
+        run: |
+          cd packages/supabase
+          supabase stop || true
 
       - name: Deploy
         run: pnpm nx deploy frontend
