@@ -7,9 +7,8 @@ import { HelpBlurb } from '../../../components/HelpBlurb';
 import {
   selectPackingListViewState,
   selectGroupedItems,
-  selectTrip,
+  selectCurrentTrip,
   selectPeople,
-  selectDefaultItemRules,
   GroupedItem,
 } from '@packing-list/state';
 import {
@@ -31,9 +30,9 @@ export const PackingList: React.FC = () => {
   const viewState = useAppSelector(selectPackingListViewState);
   const { groupedItems, groupedGeneralItems } =
     useAppSelector(selectGroupedItems);
-  const trip = useAppSelector(selectTrip);
+  const trip = useAppSelector(selectCurrentTrip);
   const people = useAppSelector(selectPeople);
-  const defaultItemRules = useAppSelector(selectDefaultItemRules);
+  const defaultItemRules = useAppSelector((state) => state.defaultItemRules);
   const categories = getAllCategories();
 
   const [selectedItem, setSelectedItem] = useState<GroupedItem | null>(null);
@@ -209,7 +208,7 @@ export const PackingList: React.FC = () => {
   const hasAnyItems =
     groupedItems.some((group) => group.items.length > 0) ||
     groupedGeneralItems.length > 0;
-  const hasTrip = trip.days.length > 0;
+  const hasTrip = trip?.days.length > 0;
   const hasPeople = people.length > 0;
   const hasRules = defaultItemRules.length > 0;
 
