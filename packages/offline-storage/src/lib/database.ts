@@ -3,10 +3,12 @@ import type {
   Trip,
   Person,
   TripItem,
-  Change,
-  SyncConflict,
   UserPreferences,
 } from '@packing-list/model';
+import type {
+  Change,
+  SyncConflict,
+} from '@packing-list/model/src/lib/SyncTypes.js';
 
 export interface OfflineDB {
   // User data
