@@ -1,5 +1,4 @@
 import {
-  StoreType,
   useAppSelector,
   useAppDispatch,
   selectCurrentTrip,

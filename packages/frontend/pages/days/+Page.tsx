@@ -1,5 +1,5 @@
 import { useState, ChangeEvent, FormEvent } from 'react';
-import { useAppDispatch, useAppSelector, StoreType } from '@packing-list/state';
+import { useAppDispatch, useAppSelector } from '@packing-list/state';
 import { uuid } from '../../utils/uuid';
 import { createSelector } from '@reduxjs/toolkit';
 import { TripEvent } from '@packing-list/model';
