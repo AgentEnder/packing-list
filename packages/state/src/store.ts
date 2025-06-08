@@ -9,8 +9,8 @@ import { Mutations, type StoreActions } from './actions.js';
 import {
   Item,
   DefaultItemRule,
-  Trip,
-  Person,
+  LegacyTrip as Trip,
+  LegacyPerson as Person,
   RuleOverride,
   PackingListViewState,
   PackingListItem,

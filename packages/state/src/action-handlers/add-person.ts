@@ -1,4 +1,4 @@
-import { Person } from '@packing-list/model';
+import { LegacyPerson as Person } from '@packing-list/model';
 import { StoreType } from '../store.js';
 import { calculateDefaultItems } from './calculate-default-items.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';

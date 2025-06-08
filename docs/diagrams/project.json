@@ -1,0 +1,12 @@
+{
+  "name": "docs-diagrams",
+  "targets": {
+    "ensure-plantuml-installed": {
+      "command": "node ./scripts/ensure-plantuml-installed.js"
+    },
+    "validate-diagrams": {
+      "command": "node ./scripts/validate-diagrams.js",
+      "dependsOn": ["ensure-plantuml-installed"]
+    }
+  }
+}

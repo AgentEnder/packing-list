@@ -1,6 +1,7 @@
-import { createSelector, Selector } from '@reduxjs/toolkit';
+import { createSelector } from '@reduxjs/toolkit';
+import type { Selector } from '@reduxjs/toolkit';
 import type { StoreType } from './store.js';
-import type { Day, Person } from '@packing-list/model';
+import type { Day, LegacyPerson as Person } from '@packing-list/model';
 
 export const selectPeople: Selector<StoreType, Person[]> = createSelector(
   (state: StoreType) => state.people,
