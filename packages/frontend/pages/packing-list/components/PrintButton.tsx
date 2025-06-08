@@ -1,6 +1,10 @@
 import React, { useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useAppSelector, useAppDispatch } from '@packing-list/state';
+import {
+  useAppSelector,
+  useAppDispatch,
+  selectTripDays,
+} from '@packing-list/state';
 import { Printer } from 'lucide-react';
 import {
   selectGroupedItems,
@@ -186,12 +190,12 @@ const PrintMessagePortal: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
-export const PrintButton: React.FC = () => {
+export function PrintButton() {
   const dispatch = useAppDispatch();
   const viewState = useAppSelector(selectPackingListViewState);
   const { groupedItems, groupedGeneralItems } =
     useAppSelector(selectGroupedItems);
-  const days = useAppSelector((state) => state.trip.days);
+  const days = useAppSelector(selectTripDays);
 
   const handlePrint = useCallback(() => {
     // Create a new window for printing
@@ -447,4 +451,4 @@ export const PrintButton: React.FC = () => {
       </button>
     </>
   );
-};
+}

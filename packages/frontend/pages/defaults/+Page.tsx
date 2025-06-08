@@ -1,4 +1,9 @@
-import { StoreType, useAppSelector } from '@packing-list/state';
+import {
+  StoreType,
+  useAppSelector,
+  selectPeople,
+  selectTripDays,
+} from '@packing-list/state';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { RuleFormModal } from './components/RuleFormModal';
@@ -7,13 +12,14 @@ import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
 import { RulePackSelector } from '../../components/RulePackSelector';
+import { RulePackModal } from '../../components/RulePackModal';
 
 export default function DefaultsPage() {
-  const defaultRules = useAppSelector(
+  const defaultItemRules = useAppSelector(
     (state: StoreType) => state.defaultItemRules
   );
-  const people = useAppSelector((state: StoreType) => state.people);
-  const days = useAppSelector((state: StoreType) => state.trip.days);
+  const people = useAppSelector(selectPeople);
+  const days = useAppSelector(selectTripDays);
 
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
 
@@ -85,13 +91,15 @@ export default function DefaultsPage() {
         </button>
       </div>
 
-      <RuleList rules={defaultRules} people={people} days={days} />
+      <RuleList rules={defaultItemRules} people={people} days={days} />
 
       {/* Rule Form Modal */}
       <RuleFormModal
         isOpen={isRuleModalOpen}
         onClose={() => setIsRuleModalOpen(false)}
       />
+
+      <RulePackModal />
     </PageContainer>
   );
 }

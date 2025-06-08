@@ -1,4 +1,9 @@
-import { useAppSelector } from '@packing-list/state';
+import {
+  useAppSelector,
+  selectPeople,
+  selectCurrentTrip,
+  selectCalculatedItems,
+} from '@packing-list/state';
 import { Link } from '../../components/Link';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
@@ -6,11 +11,12 @@ import { HelpBlurb } from '../../components/HelpBlurb';
 import { DemoDataModal } from '../../components/DemoDataModal';
 
 export default function Page() {
-  const people = useAppSelector((state) => state.people);
-  const trip = useAppSelector((state) => state.trip);
-  const defaultItems = useAppSelector((state) => state.calculated.defaultItems);
+  const people = useAppSelector(selectPeople);
+  const trip = useAppSelector(selectCurrentTrip);
+  const calculatedItems = useAppSelector(selectCalculatedItems);
+  const defaultItems = calculatedItems?.defaultItems || [];
 
-  const hasTrip = trip.days.length > 0;
+  const hasTrip = trip?.days.length > 0;
   const hasPeople = people.length > 0;
   const hasDefaultItems = defaultItems.length > 0;
 
@@ -53,7 +59,7 @@ export default function Page() {
           <div className="stats stats-vertical lg:stats-horizontal shadow">
             <div className="stat">
               <div className="stat-title">Trip Length</div>
-              <div className="stat-value">{trip.days.length}</div>
+              <div className="stat-value">{trip?.days.length || 0}</div>
               <div className="stat-desc">days</div>
             </div>
 

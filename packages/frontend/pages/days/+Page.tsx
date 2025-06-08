@@ -9,6 +9,7 @@ import { TripDays } from './TripDays';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
+import { selectCurrentTrip } from '@packing-list/state';
 
 // Event types
 const eventTypes = [
@@ -22,8 +23,8 @@ const eventTypes = [
 
 // Selector for tripEvents
 const selectTripEvents = createSelector(
-  (state: StoreType) => state.trip,
-  (trip) => trip.tripEvents ?? []
+  selectCurrentTrip,
+  (trip) => trip?.tripEvents || []
 );
 
 export default function DaysPage() {
