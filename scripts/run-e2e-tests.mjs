@@ -204,6 +204,7 @@ async function main() {
       success('E2E test run completed successfully!');
     } else {
       error('E2E tests failed, but environment has been restored');
+      process.exitCode = 1;
     }
   } catch (err) {
     error(`E2E test run failed: ${err.message}`);
