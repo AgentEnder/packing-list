@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
 import type { StoreType } from '../store.js';
-import type { DefaultItemRule, Person, Day } from '@packing-list/model';
+import type {
+  DefaultItemRule,
+  LegacyPerson as Person,
+  Day,
+} from '@packing-list/model';
+import { createTestTripState } from '../__tests__/test-helpers.js';
 
 describe('calculatePackingListHandler', () => {
   // Helper function to create a Day object
@@ -17,45 +22,30 @@ describe('calculatePackingListHandler', () => {
     travel: false,
   });
 
-  // Helper function to create a basic store state
+  // Helper function to create a basic store state with new multi-trip structure
   const createMockState = (
     rules: DefaultItemRule[] = [],
     people: Person[] = [],
-    days: Day[] = [],
-    ruleOverrides: StoreType['ruleOverrides'] = []
-  ): StoreType => ({
-    defaultItemRules: rules,
-    people,
-    trip: {
-      id: 'test-trip',
-      days,
-    },
-    ruleOverrides,
-    rulePacks: [],
-    packingListView: {
-      filters: {
-        packed: true,
-        unpacked: true,
-        excluded: false,
-      },
-      viewMode: 'by-day',
-    },
-    calculated: {
-      defaultItems: [],
-      packingListItems: [],
-    },
-    ui: {
-      rulePackModal: {
-        isOpen: false,
-        activeTab: 'browse',
-      },
-    },
-  });
+    days: Day[] = []
+  ): StoreType => {
+    const state = createTestTripState({ people });
+    const tripId = state.trips.selectedTripId!;
+
+    // Update with provided test data
+    state.defaultItemRules = rules;
+    state.trips.byId[tripId].trip.days = days;
+    state.trips.byId[tripId].people = people;
+    state.trips.byId[tripId].calculated.packingListItems = [];
+    state.trips.byId[tripId].calculated.defaultItems = [];
+
+    return state;
+  };
 
   it('should handle empty state', () => {
     const state = createMockState();
     const result = calculatePackingListHandler(state);
-    expect(result.calculated.packingListItems).toEqual([]);
+    const tripId = result.trips.selectedTripId!;
+    expect(result.trips.byId[tripId].calculated.packingListItems).toEqual([]);
   });
 
   it('should create basic items without conditions', () => {
@@ -79,10 +69,13 @@ describe('calculatePackingListHandler', () => {
     );
 
     const result = calculatePackingListHandler(state);
-    expect(result.calculated.packingListItems).toHaveLength(2); // One for each person
-    expect(result.calculated.packingListItems[0].name).toContain('Toothbrush');
-    expect(result.calculated.packingListItems[0].personName).toBe('Alice');
-    expect(result.calculated.packingListItems[1].personName).toBe('Bob');
+    const tripId = result.trips.selectedTripId!;
+    const packingListItems =
+      result.trips.byId[tripId].calculated.packingListItems;
+    expect(packingListItems).toHaveLength(2); // One for each person
+    expect(packingListItems[0].name).toContain('Toothbrush');
+    expect(packingListItems[0].personName).toBe('Alice');
+    expect(packingListItems[1].personName).toBe('Bob');
   });
 
   it('should handle person conditions', () => {
@@ -114,8 +107,11 @@ describe('calculatePackingListHandler', () => {
     );
 
     const result = calculatePackingListHandler(state);
-    expect(result.calculated.packingListItems).toHaveLength(1); // Only for the adult
-    expect(result.calculated.packingListItems[0].personName).toBe('Adult');
+    const tripId = result.trips.selectedTripId!;
+    const packingListItems =
+      result.trips.byId[tripId].calculated.packingListItems;
+    expect(packingListItems).toHaveLength(1); // Only for the adult
+    expect(packingListItems[0].personName).toBe('Adult');
   });
 
   it('should handle day conditions', () => {
@@ -148,9 +144,12 @@ describe('calculatePackingListHandler', () => {
     );
 
     const result = calculatePackingListHandler(state);
-    expect(result.calculated.packingListItems).toHaveLength(2); // Only for sunny days
-    expect(result.calculated.packingListItems[0].dayIndex).toBe(0);
-    expect(result.calculated.packingListItems[1].dayIndex).toBe(2);
+    const tripId = result.trips.selectedTripId!;
+    const packingListItems =
+      result.trips.byId[tripId].calculated.packingListItems;
+    expect(packingListItems).toHaveLength(2); // Only for sunny days
+    expect(packingListItems[0].dayIndex).toBe(0);
+    expect(packingListItems[1].dayIndex).toBe(2);
   });
 
   // TODO: Overrides is not fleshed out yet.
@@ -171,25 +170,17 @@ describe('calculatePackingListHandler', () => {
         { id: 'person1', name: 'Alice', age: 25, gender: 'female' },
         { id: 'person2', name: 'Bob', age: 30, gender: 'male' },
       ],
-      [createDay('2024-01-01')],
-      [
-        {
-          ruleId: 'rule1',
-          tripId: 'test-trip',
-          personId: 'person1',
-          overrideCount: 3,
-          isExcluded: false,
-        },
-      ]
+      [createDay('2024-01-01')]
     );
 
     const result = calculatePackingListHandler(state);
-    const aliceItems = result.calculated.packingListItems.filter(
-      (item) => item.personId === 'person1'
-    );
-    const bobItems = result.calculated.packingListItems.filter(
-      (item) => item.personId === 'person2'
-    );
+    const tripId = result.trips.selectedTripId!;
+    const aliceItems = result.trips.byId[
+      tripId
+    ].calculated.packingListItems.filter((item) => item.personId === 'person1');
+    const bobItems = result.trips.byId[
+      tripId
+    ].calculated.packingListItems.filter((item) => item.personId === 'person2');
 
     expect(aliceItems[0].quantity).toBe(3); // Overridden
     expect(bobItems[0].quantity).toBe(1); // Default
@@ -214,24 +205,38 @@ describe('calculatePackingListHandler', () => {
 
     // First calculation
     const firstResult = calculatePackingListHandler(initialState);
+    const tripId = firstResult.trips.selectedTripId!;
 
     // Mark item as packed
     const stateWithPackedItems: StoreType = {
-      ...initialState,
-      calculated: {
-        defaultItems: [],
-        packingListItems: [
-          {
-            ...firstResult.calculated.packingListItems[0],
-            isPacked: true,
+      ...firstResult,
+      trips: {
+        ...firstResult.trips,
+        byId: {
+          ...firstResult.trips.byId,
+          [tripId]: {
+            ...firstResult.trips.byId[tripId],
+            calculated: {
+              ...firstResult.trips.byId[tripId].calculated,
+              packingListItems: [
+                {
+                  ...firstResult.trips.byId[tripId].calculated
+                    .packingListItems[0],
+                  isPacked: true,
+                },
+              ],
+            },
           },
-        ],
+        },
       },
     };
 
     // Recalculate
     const result = calculatePackingListHandler(stateWithPackedItems);
-    expect(result.calculated.packingListItems[0].isPacked).toBe(true);
+    const resultTripId = result.trips.selectedTripId!;
+    expect(
+      result.trips.byId[resultTripId].calculated.packingListItems[0].isPacked
+    ).toBe(true);
   });
 
   it('should handle day patterns correctly', () => {
@@ -262,10 +267,13 @@ describe('calculatePackingListHandler', () => {
     );
 
     const result = calculatePackingListHandler(state);
-    expect(result.calculated.packingListItems).toHaveLength(2); // Should create 2 groups: days 1-3 and 4-5
-    expect(result.calculated.packingListItems[0].dayStart).toBe(0);
-    expect(result.calculated.packingListItems[0].dayEnd).toBe(2);
-    expect(result.calculated.packingListItems[1].dayStart).toBe(3);
-    expect(result.calculated.packingListItems[1].dayEnd).toBe(4);
+    const tripId = result.trips.selectedTripId!;
+    const packingListItems =
+      result.trips.byId[tripId].calculated.packingListItems;
+    expect(packingListItems).toHaveLength(2); // Should create 2 groups: days 1-3 and 4-5
+    expect(packingListItems[0].dayStart).toBe(0);
+    expect(packingListItems[0].dayEnd).toBe(2);
+    expect(packingListItems[1].dayStart).toBe(3);
+    expect(packingListItems[1].dayEnd).toBe(4);
   });
 });
