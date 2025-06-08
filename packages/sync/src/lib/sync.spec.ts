@@ -1,6 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SyncService, getSyncService, initializeSyncService } from './sync.js';
 
+// Mock IDBKeyRange for test environment
+(global as typeof globalThis & { IDBKeyRange: unknown }).IDBKeyRange = {
+  only: vi.fn((value) => ({ only: value })),
+  bound: vi.fn(),
+  lowerBound: vi.fn(),
+  upperBound: vi.fn(),
+};
+
 // Mock the offline-storage module
 vi.mock('@packing-list/offline-storage', () => ({
   getDatabase: vi.fn().mockResolvedValue({
