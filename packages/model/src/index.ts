@@ -11,3 +11,9 @@ export * from './lib/RuleOverride.js';
 export * from './lib/PackingListView.js';
 export * from './lib/TripEvent.js';
 export * from './lib/Category.js';
+
+// New multi-trip types
+export * from './lib/UserPreferences.js';
+export * from './lib/SyncTypes.js';
+export * from './lib/TripSummary.js';
+export * from './lib/TripItem.js';

@@ -1,0 +1,196 @@
+@startuml Multi-Trip Model Architecture
+!theme plain
+
+title Multi-Trip TypeScript Model Architecture
+
+package "Core Models" {
+  class Trip {
+    +id: string
+    +userId: string
+    +title: string
+    +description?: string
+    +days: Day[]
+    +tripEvents?: TripEvent[]
+    +createdAt: string
+    +updatedAt: string
+    +lastSyncedAt?: string
+    +settings: TripSettings
+    +version: number
+    +isDeleted: boolean
+  }
+
+  class TripSettings {
+    +defaultTimeZone: string
+    +packingViewMode: 'by-day' | 'by-category'
+  }
+
+  class Person {
+    +id: string
+    +tripId: string
+    +name: string
+    +age?: number
+    +gender?: string
+    +settings?: Record<string, unknown>
+    +createdAt: string
+    +updatedAt: string
+    +version: number
+    +isDeleted: boolean
+  }
+
+  class TripItem {
+    +id: string
+    +tripId: string
+    +name: string
+    +category?: string
+    +quantity: number
+    +packed: boolean
+    +notes?: string
+    +personId?: string
+    +dayIndex?: number
+    +createdAt: string
+    +updatedAt: string
+    +version: number
+    +isDeleted: boolean
+  }
+
+  class Day {
+    +date: string
+    +weather?: Weather
+    +activities?: Activity[]
+  }
+
+  class TripEvent {
+    +id: string
+    +type: 'leave_home' | 'arrive_home' | 'leave_destination' | 'arrive_destination'
+    +date: string
+    +location?: string
+    +notes?: string
+  }
+}
+
+package "User & Preferences" {
+  class UserPreferences {
+    +defaultTimeZone: string
+    +theme: 'light' | 'dark' | 'system'
+    +defaultTripDuration: number
+    +autoSyncEnabled: boolean
+  }
+
+  class TripSummary {
+    +tripId: string
+    +title: string
+    +description?: string
+    +createdAt: string
+    +updatedAt: string
+    +totalItems: number
+    +packedItems: number
+    +totalPeople: number
+  }
+}
+
+package "Sync & Conflict Resolution" {
+  class Change {
+    +id: string
+    +entityType: 'trip' | 'person' | 'item' | 'rule_override'
+    +entityId: string
+    +operation: 'create' | 'update' | 'delete'
+    +data: unknown
+    +timestamp: number
+    +userId: string
+    +tripId?: string
+    +version: number
+    +synced: boolean
+  }
+
+  class SyncConflict {
+    +id: string
+    +entityType: string
+    +entityId: string
+    +localVersion: unknown
+    +serverVersion: unknown
+    +conflictType: 'update_conflict' | 'delete_conflict'
+    +timestamp: number
+  }
+
+  class SyncState {
+    +lastSyncTimestamp: number
+    +pendingChanges: Change[]
+    +isOnline: boolean
+    +isSyncing: boolean
+    +conflicts: SyncConflict[]
+  }
+}
+
+package "Redux Store Structure" {
+  class StoreType {
+    +trips: Map<string, Trip>
+    +activeTrip: ActiveTripState
+    +user: UserState
+    +sync: SyncState
+    +ui: UIState
+    +auth: AuthState
+  }
+
+  class ActiveTripState {
+    +tripId: string | null
+    +people: Person[]
+    +items: TripItem[]
+    +calculated: CalculatedState
+    +ruleOverrides: RuleOverride[]
+    +packingListView: PackingListViewState
+  }
+
+  class UserState {
+    +id: string | null
+    +preferences: UserPreferences
+    +rulePacks: RulePack[]
+  }
+
+  class UIState {
+    +tripSelector: { isOpen: boolean }
+    +rulePackModal: RulePackModalState
+    +loginModal: { isOpen: boolean }
+  }
+}
+
+' Relationships
+Trip ||--|| TripSettings : contains
+Trip ||--o{ Day : has
+Trip ||--o{ TripEvent : has
+Trip ||--o{ Person : contains
+Trip ||--o{ TripItem : contains
+
+Person ||--o{ TripItem : assigned
+
+StoreType ||-- ActiveTripState : contains
+StoreType ||-- UserState : contains
+StoreType ||-- SyncState : contains
+StoreType ||-- UIState : contains
+
+SyncState ||--o{ Change : tracks
+SyncState ||--o{ SyncConflict : resolves
+
+UserState ||-- UserPreferences : has
+
+' Notes
+note right of Trip
+  Core entity representing a single trip.
+  Associated with a user and contains all trip data.
+  Includes sync tracking for offline-first functionality.
+end note
+
+note right of Change
+  Tracks all local changes for sync.
+  Enables conflict detection and resolution.
+  Supports offline-first architecture.
+end note
+
+note right of StoreType
+  New Redux store structure supporting:
+  - Multiple trips per user
+  - Active trip concept
+  - Offline sync capabilities
+  - User preferences
+end note
+
+@enduml 
