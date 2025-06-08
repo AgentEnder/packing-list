@@ -1,12 +1,12 @@
 import './tailwind.css';
 import './style.css';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 // import logoUrl from '../assets/logo.svg';
 import { Link } from '../components/Link';
 import { DemoBanner } from '../components/DemoBanner';
 import { ToastContainer } from '../components/Toast';
 import { TripSelector } from '../components/TripSelector';
-import { useAppDispatch } from '@packing-list/state';
+import { useAppDispatch, useAppSelector } from '@packing-list/state';
 import {
   useAuth,
   useLoginModal,
@@ -36,18 +36,25 @@ export default function LayoutDefault({
   const { user, shouldShowSignInOptions, loading, isRemotelyAuthenticated } =
     useAuth();
   const dispatch = useAppDispatch();
+  const selectedTripId = useAppSelector((state) => state.trips.selectedTripId);
   const { openLoginModal, closeLoginModal } = useLoginModal();
+  const demoDataLoadedRef = useRef(false);
 
   useEffect(() => {
     // Check if user has made a choice this session
     if (typeof window !== 'undefined') {
       const sessionChoice = sessionStorage.getItem(SESSION_DEMO_CHOICE_KEY);
       if (sessionChoice === 'demo') {
-        // If they chose demo data this session, load it
-        dispatch({ type: 'LOAD_DEMO_DATA' });
+        // Only load demo data if:
+        // 1. We haven't loaded it in this component instance, AND
+        // 2. The current trip is not already the demo trip
+        if (!demoDataLoadedRef.current && selectedTripId !== 'DEMO_TRIP') {
+          dispatch({ type: 'LOAD_DEMO_DATA' });
+          demoDataLoadedRef.current = true;
+        }
       }
     }
-  }, [dispatch]);
+  }, [dispatch, selectedTripId]);
 
   const handleLinkClick = () => {
     setIsDrawerOpen(false);

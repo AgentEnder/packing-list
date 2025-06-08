@@ -12,6 +12,40 @@ export const selectTripSummaries: Selector<StoreType, TripSummary[]> = (
   state
 ) => state.trips.summaries;
 
+// Calculate accurate trip summaries from current data
+export const selectAccurateTripSummaries: Selector<StoreType, TripSummary[]> =
+  createSelector(
+    [selectTripSummaries, (state: StoreType) => state.trips.byId],
+    (summaries, tripsById) => {
+      return summaries.map((summary) => {
+        const tripData = tripsById[summary.tripId];
+        if (!tripData) {
+          return summary;
+        }
+
+        // Calculate people count
+        const totalPeople = tripData.people.length;
+
+        // Calculate item counts from packing list
+        const packingListItems = tripData.calculated.packingListItems;
+        const totalItems = packingListItems.reduce(
+          (sum, item) => sum + item.quantity,
+          0
+        );
+        const packedItems = packingListItems
+          .filter((item) => item.isPacked)
+          .reduce((sum, item) => sum + item.quantity, 0);
+
+        return {
+          ...summary,
+          totalPeople,
+          totalItems,
+          packedItems,
+        };
+      });
+    }
+  );
+
 export const selectSelectedTripId: Selector<StoreType, string | null> = (
   state
 ) => state.trips.selectedTripId;

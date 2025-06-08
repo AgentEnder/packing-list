@@ -11,7 +11,7 @@ export function DemoBanner() {
 
   const handleClearDemo = () => {
     sessionStorage.setItem(SESSION_DEMO_CHOICE_KEY, 'fresh');
-    dispatch({ type: 'CLEAR_TRIP_DATA' });
+    dispatch({ type: 'CLEAR_DEMO_DATA' });
   };
 
   if (!isVisible) {
