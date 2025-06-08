@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { calculatePackingListHandler } from '../calculate-packing-list.js';
-import { StoreType } from '../../store.js';
 import {
   DefaultItemRule,
   LegacyPerson as Person,

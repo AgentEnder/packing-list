@@ -5,10 +5,7 @@ export type LoadDemoDataAction = {
   type: 'LOAD_DEMO_DATA';
 };
 
-export const loadDemoDataHandler = (
-  state: StoreType,
-  action: LoadDemoDataAction
-): StoreType => {
+export const loadDemoDataHandler = (state: StoreType): StoreType => {
   // CREATE_DEMO_DATA now returns a complete StoreType, but we need to preserve auth state
   const demoData = CREATE_DEMO_DATA();
 
