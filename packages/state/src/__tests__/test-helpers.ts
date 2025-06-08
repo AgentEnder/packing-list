@@ -75,3 +75,11 @@ export function createTestPerson(overrides: Partial<Person> = {}): Person {
     ...overrides,
   };
 }
+
+export const getSelectedTripId = (state: StoreType): string => {
+  const tripId = state.trips.selectedTripId;
+  if (!tripId) {
+    throw new Error('No trip selected in test state');
+  }
+  return tripId;
+};

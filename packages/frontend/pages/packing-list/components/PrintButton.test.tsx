@@ -12,6 +12,7 @@ vi.mock('@packing-list/state', () => ({
   useAppDispatch: vi.fn(),
   selectGroupedItems: vi.fn(),
   selectPackingListViewState: vi.fn(),
+  selectTripDays: vi.fn(),
 }));
 
 // Mock window.open

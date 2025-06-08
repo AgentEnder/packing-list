@@ -5,10 +5,7 @@ export type ClearDemoDataAction = {
   type: 'CLEAR_DEMO_DATA';
 };
 
-export const clearDemoDataHandler = (
-  state: StoreType,
-  action: ClearDemoDataAction
-): StoreType => {
+export const clearDemoDataHandler = (state: StoreType): StoreType => {
   // Create a new fresh trip to replace the demo
   const newTripId = `trip-${Date.now()}`;
   const now = new Date().toISOString();

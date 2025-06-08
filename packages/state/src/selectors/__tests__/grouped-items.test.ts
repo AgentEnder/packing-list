@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { selectGroupedItems } from '../packing-list.js';
-import { StoreType, initialState } from '../../store.js';
-import { PackingListItem, Person, Day } from '@packing-list/model';
+import {
+  PackingListItem,
+  LegacyPerson as Person,
+  Day,
+} from '@packing-list/model';
+import { createTestTripState } from '../../__tests__/test-helpers.js';
 
 describe('selectGroupedItems', () => {
   it('should group items by day', () => {
@@ -61,23 +65,18 @@ describe('selectGroupedItems', () => {
       },
     ];
 
-    const testState: StoreType = {
-      ...initialState,
-      calculated: {
-        ...initialState.calculated,
-        packingListItems: items,
-      },
-      trip: {
-        ...initialState.trip,
-        days,
-      },
-      packingListView: {
-        viewMode: 'by-day',
-        filters: {
-          packed: true,
-          unpacked: true,
-          excluded: false,
-        },
+    const testState = createTestTripState({});
+    const tripId = testState.trips.selectedTripId!;
+
+    // Update the trip data with test data
+    testState.trips.byId[tripId].calculated.packingListItems = items;
+    testState.trips.byId[tripId].trip.days = days;
+    testState.trips.byId[tripId].packingListView = {
+      viewMode: 'by-day',
+      filters: {
+        packed: true,
+        unpacked: true,
+        excluded: false,
       },
     };
 
@@ -149,20 +148,17 @@ describe('selectGroupedItems', () => {
       },
     ];
 
-    const testState: StoreType = {
-      ...initialState,
-      calculated: {
-        ...initialState.calculated,
-        packingListItems: items,
-      },
-      people,
-      packingListView: {
-        viewMode: 'by-person',
-        filters: {
-          packed: true,
-          unpacked: true,
-          excluded: false,
-        },
+    const testState = createTestTripState({ people });
+    const tripId = testState.trips.selectedTripId!;
+
+    // Update the trip data with test data
+    testState.trips.byId[tripId].calculated.packingListItems = items;
+    testState.trips.byId[tripId].packingListView = {
+      viewMode: 'by-person',
+      filters: {
+        packed: true,
+        unpacked: true,
+        excluded: false,
       },
     };
 
@@ -214,19 +210,17 @@ describe('selectGroupedItems', () => {
       },
     ];
 
-    const testState: StoreType = {
-      ...initialState,
-      calculated: {
-        ...initialState.calculated,
-        packingListItems: items,
-      },
-      packingListView: {
-        viewMode: 'by-day',
-        filters: {
-          packed: true,
-          unpacked: true,
-          excluded: false,
-        },
+    const testState = createTestTripState({});
+    const tripId = testState.trips.selectedTripId!;
+
+    // Update the trip data with test data
+    testState.trips.byId[tripId].calculated.packingListItems = items;
+    testState.trips.byId[tripId].packingListView = {
+      viewMode: 'by-day',
+      filters: {
+        packed: true,
+        unpacked: true,
+        excluded: false,
       },
     };
 
@@ -277,20 +271,17 @@ describe('selectGroupedItems', () => {
       },
     ];
 
-    const testState: StoreType = {
-      ...initialState,
-      calculated: {
-        ...initialState.calculated,
-        packingListItems: items,
-      },
-      people,
-      packingListView: {
-        viewMode: 'by-person',
-        filters: {
-          packed: true,
-          unpacked: true,
-          excluded: false,
-        },
+    const testState = createTestTripState({ people });
+    const tripId = testState.trips.selectedTripId!;
+
+    // Update the trip data with test data
+    testState.trips.byId[tripId].calculated.packingListItems = items;
+    testState.trips.byId[tripId].packingListView = {
+      viewMode: 'by-person',
+      filters: {
+        packed: true,
+        unpacked: true,
+        excluded: false,
       },
     };
 
