@@ -2,10 +2,10 @@
   "name": "docs-diagrams",
   "targets": {
     "ensure-plantuml-installed": {
-      "command": "node ./scripts/ensure-plantuml-installed.js"
+      "command": "node ./scripts/ensure-plantuml-installed.cjs"
     },
-    "validate-diagrams": {
-      "command": "node ./scripts/validate-diagrams.js",
+    "test": {
+      "command": "node ./scripts/validate-diagrams.cjs",
       "dependsOn": ["ensure-plantuml-installed"]
     }
   }

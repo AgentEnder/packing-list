@@ -53,6 +53,7 @@ CREATE TABLE public.trip_people (
   trip_id UUID REFERENCES public.trips(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
   age INTEGER,
+  gender TEXT,
   settings JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -60,7 +61,8 @@ CREATE TABLE public.trip_people (
   is_deleted BOOLEAN DEFAULT FALSE,
   
   CONSTRAINT trip_people_name_not_empty CHECK (LENGTH(TRIM(name)) > 0),
-  CONSTRAINT trip_people_age_valid CHECK (age IS NULL OR (age >= 0 AND age <= 150))
+  CONSTRAINT trip_people_age_valid CHECK (age IS NULL OR (age >= 0 AND age <= 150)),
+  CONSTRAINT trip_people_gender_valid CHECK (gender IS NULL OR gender IN ('male', 'female', 'other', 'prefer-not-to-say'))
 );
 
 -- ============================================================================

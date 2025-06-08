@@ -1,7 +1,7 @@
 // @ts-check
 
 const { join } = require('path');
-const { existsSync } = require('fs');
+const { existsSync, mkdirSync } = require('fs');
 const { writeFileSync } = require('fs');
 const { workspaceRoot } = require('@nx/devkit');
 
@@ -15,6 +15,7 @@ async function downloadPlantUml() {
     'https://github.com/plantuml/plantuml/releases/download/v1.2025.3/plantuml-mit-1.2025.3.jar';
   const response = await fetch(url);
   const data = await response.arrayBuffer();
+  mkdirSync(join(workspaceRoot, 'tmp'), { recursive: true });
   writeFileSync(join(workspaceRoot, 'tmp', 'plantuml.jar'), Buffer.from(data));
 }
 
