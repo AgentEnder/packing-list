@@ -58,7 +58,8 @@ function getGitChanges() {
     const lines = result.split('\n').filter((line) => line.trim());
     const changedFiles = lines.filter((line) => /^\s*[AM?]/.test(line));
     return changedFiles.length;
-  } catch (error) {
+  } catch (_error) {
+    void _error; // Explicitly acknowledge unused variable
     log('Warning: Could not get git status');
     return 0;
   }
@@ -144,7 +145,8 @@ echo "✅ Container operations completed!"
     cleanup: () => {
       try {
         fs.rmSync(tmpDir, { recursive: true, force: true });
-      } catch (error) {
+      } catch (_error) {
+        void _error; // Explicitly acknowledge unused variable
         // Ignore cleanup errors
       }
     },
@@ -182,7 +184,8 @@ function checkDiskSpace() {
         log('   docker system prune --all -f  # if using Docker');
       }
     }
-  } catch (error) {
+  } catch (_error) {
+    void _error; // Explicitly acknowledge unused variable
     // Ignore disk space check errors
   }
 }

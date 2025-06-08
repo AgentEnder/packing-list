@@ -1,6 +1,6 @@
+import React, { useState, useCallback, useEffect } from 'react';
 import { DefaultItemRule, Calculation } from '@packing-list/model';
-import { useState, useCallback, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { Modal, ConfirmDialog } from '@packing-list/shared-components';
 import { CategorySelector } from '../../../components/CategorySelector';
 import { ConditionsList } from './ConditionsList';
 import { ItemCalculationForm } from './ItemCalculationForm';
@@ -112,174 +112,126 @@ export const RuleFormModal = ({
   return (
     <>
       {/* Main Modal */}
-      <div
-        className="modal modal-open"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="rule-form-modal-title"
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        title={isEditing ? 'Edit Rule' : 'Create New Rule'}
+        size="xl"
+        modalBoxClassName="max-w-4xl"
         data-testid="rule-form-modal"
+        ariaLabelledBy="rule-form-modal-title"
       >
-        <div className="modal-box max-w-4xl">
-          <div className="flex justify-between items-center mb-4">
-            <h2 id="rule-form-modal-title" className="text-xl font-bold">
-              {isEditing ? 'Edit Rule' : 'Create New Rule'}
-            </h2>
+        <form
+          onSubmit={handleSubmit}
+          aria-label={`${isEditing ? 'Edit' : 'Create'} Rule Form`}
+        >
+          <div className="space-y-6">
+            {/* Basic Info */}
+            <div className="form-control w-full">
+              <label htmlFor="rule-form-name" className="label">
+                <span className="label-text font-medium">Name</span>
+              </label>
+              <input
+                id="rule-form-name"
+                type="text"
+                className="input input-bordered w-full"
+                value={formRule.name}
+                onChange={(e) =>
+                  setFormRule((prev) => ({ ...prev, name: e.target.value }))
+                }
+                placeholder="Rule name"
+                data-testid="rule-form-name-input"
+                required
+                aria-required="true"
+              />
+            </div>
+
+            <CategorySelector
+              selectedCategoryId={formRule.categoryId}
+              selectedSubcategoryId={formRule.subcategoryId}
+              onCategoryChange={(categoryId, subcategoryId) =>
+                setFormRule((prev) => ({
+                  ...prev,
+                  categoryId,
+                  subcategoryId,
+                }))
+              }
+              testIdPrefix="rule-form-"
+            />
+
+            <div className="form-control w-full">
+              <label htmlFor="rule-form-notes" className="label">
+                <span className="label-text font-medium">Notes (optional)</span>
+              </label>
+              <textarea
+                id="rule-form-notes"
+                className="textarea textarea-bordered w-full h-24"
+                value={formRule.notes || ''}
+                onChange={(e) =>
+                  setFormRule((prev) => ({ ...prev, notes: e.target.value }))
+                }
+                placeholder="Add any helpful notes about this rule..."
+                data-testid="rule-form-notes-input"
+                aria-label="Rule description"
+              />
+            </div>
+
+            <ItemCalculationForm
+              calculation={formRule.calculation}
+              onCalculationChange={(calculation) =>
+                setFormRule((prev) => ({ ...prev, calculation }))
+              }
+              testIdPrefix="rule-form-"
+            />
+
+            <div className="divider" role="separator">
+              Conditions
+            </div>
+
+            <ConditionsList
+              conditions={formRule.conditions}
+              onConditionsChange={(conditions) =>
+                setFormRule((prev) => ({ ...prev, conditions }))
+              }
+              testIdPrefix="rule-form-"
+            />
+          </div>
+
+          <div className="modal-action">
             <button
-              className="btn btn-ghost btn-sm btn-circle"
+              type="button"
+              className="btn"
               onClick={handleClose}
-              data-testid="close-rule-form-modal"
-              aria-label="Close modal"
+              data-testid="rule-form-cancel-button"
+              aria-label="Cancel"
             >
-              <X className="w-4 h-4" />
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={!formRule.name || !formRule.categoryId}
+              data-testid="rule-form-save-button"
+              aria-disabled={!formRule.name || !formRule.categoryId}
+            >
+              {isEditing ? 'Update Rule' : 'Create Rule'}
             </button>
           </div>
-
-          <form
-            onSubmit={handleSubmit}
-            aria-label={`${isEditing ? 'Edit' : 'Create'} Rule Form`}
-          >
-            <div className="space-y-6">
-              {/* Basic Info */}
-              <div className="form-control w-full">
-                <label htmlFor="rule-form-name" className="label">
-                  <span className="label-text font-medium">Name</span>
-                </label>
-                <input
-                  id="rule-form-name"
-                  type="text"
-                  className="input input-bordered w-full"
-                  value={formRule.name}
-                  onChange={(e) =>
-                    setFormRule((prev) => ({ ...prev, name: e.target.value }))
-                  }
-                  placeholder="Rule name"
-                  data-testid="rule-form-name-input"
-                  required
-                  aria-required="true"
-                />
-              </div>
-
-              <CategorySelector
-                selectedCategoryId={formRule.categoryId}
-                selectedSubcategoryId={formRule.subcategoryId}
-                onCategoryChange={(categoryId, subcategoryId) =>
-                  setFormRule((prev) => ({
-                    ...prev,
-                    categoryId,
-                    subcategoryId,
-                  }))
-                }
-                testIdPrefix="rule-form-"
-              />
-
-              <div className="form-control w-full">
-                <label htmlFor="rule-form-notes" className="label">
-                  <span className="label-text font-medium">
-                    Notes (optional)
-                  </span>
-                </label>
-                <textarea
-                  id="rule-form-notes"
-                  className="textarea textarea-bordered w-full h-24"
-                  value={formRule.notes || ''}
-                  onChange={(e) =>
-                    setFormRule((prev) => ({ ...prev, notes: e.target.value }))
-                  }
-                  placeholder="Add any helpful notes about this rule..."
-                  data-testid="rule-form-notes-input"
-                  aria-label="Rule description"
-                />
-              </div>
-
-              <ItemCalculationForm
-                calculation={formRule.calculation}
-                onCalculationChange={(calculation) =>
-                  setFormRule((prev) => ({ ...prev, calculation }))
-                }
-                testIdPrefix="rule-form-"
-              />
-
-              <div className="divider" role="separator">
-                Conditions
-              </div>
-
-              <ConditionsList
-                conditions={formRule.conditions}
-                onConditionsChange={(conditions) =>
-                  setFormRule((prev) => ({ ...prev, conditions }))
-                }
-                testIdPrefix="rule-form-"
-              />
-            </div>
-
-            <div className="modal-action">
-              <button
-                type="button"
-                className="btn"
-                onClick={handleClose}
-                data-testid="rule-form-cancel-button"
-                aria-label="Cancel"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={!formRule.name || !formRule.categoryId}
-                data-testid="rule-form-save-button"
-                aria-disabled={!formRule.name || !formRule.categoryId}
-              >
-                {isEditing ? 'Update Rule' : 'Create Rule'}
-              </button>
-            </div>
-          </form>
-        </div>
-        <form method="dialog" className="modal-backdrop" onClick={handleClose}>
-          <button>close</button>
         </form>
-      </div>
+      </Modal>
 
       {/* Discard Confirmation Modal */}
-      {showDiscardModal && (
-        <div
-          className="modal modal-open"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="discard-modal-title"
-          data-testid="discard-rule-modal"
-        >
-          <div className="modal-box">
-            <h3 id="discard-modal-title" className="font-bold text-lg">
-              Discard Changes?
-            </h3>
-            <p className="py-4">
-              Are you sure you want to discard your changes? This cannot be
-              undone.
-            </p>
-            <div className="modal-action">
-              <button
-                className="btn"
-                onClick={() => setShowDiscardModal(false)}
-                data-testid="discard-cancel-button"
-                aria-label="Cancel discard"
-              >
-                Cancel
-              </button>
-              <button
-                className="btn btn-error"
-                onClick={handleDiscard}
-                data-testid="discard-confirm-button"
-                aria-label="Confirm discard"
-              >
-                Discard
-              </button>
-            </div>
-          </div>
-          <form method="dialog" className="modal-backdrop">
-            <button>close</button>
-          </form>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={showDiscardModal}
+        onClose={() => setShowDiscardModal(false)}
+        title="Discard Changes?"
+        message="Are you sure you want to discard your changes? This cannot be undone."
+        confirmText="Discard"
+        cancelText="Cancel"
+        confirmVariant="error"
+        onConfirm={handleDiscard}
+        data-testid="discard-rule-modal"
+      />
     </>
   );
 };

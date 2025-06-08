@@ -4,7 +4,103 @@
 
 ✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/js?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+A packing list application with comprehensive authentication flows and local Supabase development setup.
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js & pnpm
+- Docker Desktop or Podman
+- No global installs required (Supabase CLI is included locally)
+
+### Development Setup
+
+1. **Install dependencies**
+
+   ```bash
+   pnpm install
+   ```
+
+2. **Set up local Supabase**
+
+   ```bash
+   pnpm setup:supabase
+   ```
+
+3. **Start the application**
+
+   ```bash
+   pnpm nx serve frontend
+   ```
+
+4. **Run e2e tests**
+   ```bash
+   pnpm nx e2e frontend-e2e
+   ```
+
+### 🔐 Authentication Testing
+
+The app includes comprehensive authentication flows with test users for e2e testing:
+
+- **Regular User**: `e2e-test@example.com` / `testpassword123`
+- **Admin User**: `e2e-admin@example.com` / `adminpassword123`
+- **Google OAuth**: `e2e-google@example.com` (mocked for testing)
+
+See [Supabase Local Setup Guide](docs/SUPABASE_LOCAL_SETUP.md) for detailed authentication testing documentation.
+
+### 📚 Documentation
+
+- [Authentication Setup](docs/AUTHENTICATION.md) - Authentication implementation details
+- [Supabase Local Development](docs/SUPABASE_LOCAL_SETUP.md) - Complete local setup guide
+- [Contributing](CONTRIBUTING.md) - Development workflow and guidelines
+
+## 📋 Available Commands
+
+### Development
+
+```bash
+pnpm nx serve frontend          # Start frontend dev server
+pnpm nx test auth              # Run auth package tests
+pnpm nx test auth-state        # Run auth state tests
+pnpm nx lint                   # Lint all projects
+pnpm nx build                  # Build all projects
+```
+
+### Supabase
+
+```bash
+cd packages/supabase
+supabase start                 # Start local Supabase
+supabase stop                  # Stop local Supabase
+supabase status                # Check service status
+supabase db reset              # Reset database with seed data
+supabase studio                # Open Supabase Studio
+```
+
+### Testing
+
+```bash
+pnpm nx e2e frontend-e2e                    # Run all e2e tests
+pnpm nx e2e frontend-e2e --grep "auth"      # Run auth e2e tests
+pnpm nx run-many -t test                    # Run all unit tests
+pnpm nx run-many -t lint,test,build         # Run CI checks
+```
+
+## 🏗️ Architecture
+
+This workspace includes:
+
+- **Frontend** (`packages/frontend`) - Vike + React application
+- **Auth** (`packages/auth`) - Authentication service with Supabase
+- **Auth State** (`packages/auth-state`) - Redux-based auth state management
+- **Shared Components** (`packages/shared-components`) - Reusable React components
+- **Supabase** (`packages/supabase`) - Local Supabase configuration and seeds
+- **E2E Tests** (`e2e/frontend-e2e`) - Comprehensive end-to-end testing
+
+[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/js?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created.
+
+[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/js?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
 
 ## Generate a library
 
@@ -97,12 +193,13 @@ Nx Console is an editor extension that enriches your developer experience. It le
 
 Learn more:
 
-- [Learn more about this workspace setup](https://nx.dev/nx-api/js?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
+- [Learn more about this workspace setup](https://nx.dev/nx-api/js?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 - [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 - [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 - [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 
 And join the Nx community:
+
 - [Discord](https://go.nx.dev/community)
 - [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
 - [Our Youtube channel](https://www.youtube.com/@nxdevtools)

@@ -1,4 +1,5 @@
-import { supabase } from './supabase-client.js';
+import { getSupabaseClient, isSupabaseAvailable } from './supabase-client.js';
+import { LocalAuthService, type LocalAuthUser } from './local-auth-service.js';
 
 export interface AuthUser {
   id: string;
@@ -6,13 +7,73 @@ export interface AuthUser {
   name?: string;
   avatar_url?: string;
   created_at?: string;
+  type: 'local' | 'remote';
+  isShared?: boolean; // true for the default shared local account
+}
+
+// Type for remote user from Supabase
+interface RemoteUser {
+  id: string;
+  email?: string;
+  created_at?: string;
+  user_metadata?: {
+    full_name?: string;
+    name?: string;
+    display_name?: string;
+    avatar_url?: string;
+    picture?: string;
+  };
+  identities?: Array<{
+    identity_data?: {
+      picture?: string;
+    };
+  }>;
 }
 
 export interface AuthState {
-  user: AuthUser | null;
-  session: unknown | null;
+  user: AuthUser; // Always has a user, never null
+  session: unknown | null; // Remote session, null for local users
   loading: boolean;
   error: string | null;
+  isRemoteAuthenticated: boolean; // true when connected to Google
+}
+
+// Generate a consistent ID for the shared local user
+function getSharedLocalUserId(): string {
+  return 'local-shared-user';
+}
+
+// Generate a personal local user ID based on remote user ID
+function getPersonalLocalUserId(remoteUserId: string): string {
+  return `local-${remoteUserId}`;
+}
+
+// Create the default shared local user
+function createSharedLocalUser(): AuthUser {
+  return {
+    id: getSharedLocalUserId(),
+    email: 'shared@local.device', // Unique email that won't conflict with real users
+    name: 'Shared Account',
+    type: 'local',
+    isShared: true,
+    created_at: new Date().toISOString(),
+  };
+}
+
+// Convert LocalAuthUser to AuthUser
+function convertLocalUser(
+  localUser: LocalAuthUser,
+  isShared = false
+): AuthUser {
+  return {
+    id: localUser.id,
+    email: localUser.email,
+    name: localUser.name,
+    avatar_url: localUser.avatar_url,
+    created_at: localUser.created_at,
+    type: 'local',
+    isShared,
+  };
 }
 
 function getBaseUrl(): string {
@@ -26,7 +87,7 @@ function getBaseUrl(): string {
   const origin =
     (typeof window !== 'undefined'
       ? window.location.origin
-      : 'http://localhost:3000') + envBaseUrl;
+      : 'http://localhost:3000') + (envBaseUrl ? envBaseUrl : '');
 
   if (origin) {
     return origin;
@@ -47,18 +108,55 @@ function getBaseUrl(): string {
 export class AuthService {
   private listeners: Array<(state: AuthState) => void> = [];
   private currentState: AuthState = {
-    user: null,
+    user: createSharedLocalUser(), // Start with shared user, will be updated during init
     session: null,
     loading: true,
     error: null,
+    isRemoteAuthenticated: false,
   };
+  private supabaseAvailable: boolean;
+  private initializationPromise: Promise<void>;
+  private localAuthService: LocalAuthService;
+  private lastRemoteUser: RemoteUser | null = null; // Track last known remote user for connectivity loss
 
   constructor() {
-    this.initializeAuth();
+    this.supabaseAvailable = isSupabaseAvailable();
+    this.localAuthService = new LocalAuthService();
+    this.initializationPromise = this.initializeAuth();
   }
 
   private async initializeAuth() {
+    // Check if there's a current local user session
+    await new Promise<void>((resolve) => {
+      const unsubscribe = this.localAuthService.subscribe((localState) => {
+        if (!localState.loading) {
+          if (localState.user) {
+            // Use the existing local user
+            this.updateState({
+              user: convertLocalUser(localState.user),
+            });
+          } else {
+            // No local user, check if we need to create the shared user
+            this.ensureSharedLocalUser();
+          }
+          unsubscribe();
+          resolve();
+        }
+      });
+    });
+
+    if (!this.supabaseAvailable) {
+      // If Supabase is not available, just use local user
+      this.updateState({
+        loading: false,
+        error: null,
+      });
+      return;
+    }
+
     try {
+      const supabase = getSupabaseClient();
+
       // Get initial session
       const {
         data: { session },
@@ -67,120 +165,304 @@ export class AuthService {
 
       if (error) {
         this.updateState({
-          user: null,
-          session: null,
           loading: false,
           error: error.message,
         });
         return;
       }
 
-      this.updateState({
-        user: session?.user ? this.transformUser(session.user) : null,
-        session,
-        loading: false,
-        error: null,
-      });
-
-      // Listen for auth changes
-      supabase.auth.onAuthStateChange((event: unknown, session: unknown) => {
+      if (session?.user) {
+        // We have a remote session, create/load the associated local user
+        await this.handleRemoteUserSignIn(session.user as RemoteUser, session);
+      } else {
+        // No remote session, stay with local user
         this.updateState({
-          user:
-            session &&
-            typeof session === 'object' &&
-            'user' in session &&
-            session?.user
-              ? this.transformUser(session.user)
-              : null,
-          session,
           loading: false,
           error: null,
         });
-      });
+      }
+
+      // Listen for auth changes
+      supabase.auth.onAuthStateChange(
+        async (event: unknown, session: unknown) => {
+          if (
+            session &&
+            typeof session === 'object' &&
+            'user' in session &&
+            session?.user &&
+            typeof session.user === 'object' &&
+            'id' in session.user
+          ) {
+            // Remote user signed in
+            await this.handleRemoteUserSignIn(
+              session.user as RemoteUser,
+              session
+            );
+          } else {
+            // Remote user signed out, return to shared local user
+            await this.handleRemoteUserSignOut();
+          }
+        }
+      );
     } catch (error) {
       console.error('Auth initialization error:', error);
       this.updateState({
-        user: null,
-        session: null,
         loading: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private transformUser(user: any): AuthUser {
-    const avatarUrl =
-      user.user_metadata?.avatar_url ||
-      user.user_metadata?.picture ||
-      user.identities?.[0]?.identity_data?.picture;
-
-    // If we have a Google avatar, consider caching it
-    if (avatarUrl && avatarUrl.includes('googleusercontent.com')) {
-      this.cacheUserAvatar(user.id, avatarUrl).catch(console.error);
-    }
-
-    return {
-      id: user.id,
-      email: user.email || '',
-      name:
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
-        user.user_metadata?.display_name,
-      avatar_url: avatarUrl,
-      created_at: user.created_at,
-    };
-  }
-
-  private async cacheUserAvatar(
-    userId: string,
-    avatarUrl: string
-  ): Promise<string | null> {
+  private async ensureSharedLocalUser() {
+    // Create the shared local user if it doesn't exist
     try {
-      // Check if we already have a cached version
-      const { data: existingFile } = await supabase.storage
-        .from('avatars')
-        .list('', {
-          search: `${userId}`,
-        });
+      const localUsers = await this.localAuthService.getLocalUsers();
+      const sharedUser = localUsers.find(
+        (u) => u.id === getSharedLocalUserId()
+      );
 
-      if (existingFile && existingFile.length > 0) {
-        // Return the cached URL
-        const { data } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(`${userId}.jpg`);
-        return data.publicUrl;
+      if (!sharedUser) {
+        const sharedUserData = createSharedLocalUser();
+        await this.localAuthService.signUp(
+          sharedUserData.email, // Use email for signup
+          'local-shared-password', // Default password for shared user
+          { name: sharedUserData.name }
+        );
       }
 
-      // Download the image
-      const response = await fetch(avatarUrl);
-      if (!response.ok) return null;
+      // Sign in as shared user by email
+      await this.localAuthService.signInWithoutPassword(
+        'shared@local.device',
+        true
+      ); // bypass passcode for shared account
+    } catch (error) {
+      console.warn('Failed to ensure shared local user:', error);
+      // Keep using the in-memory shared user
+    }
+  }
+
+  private async handleRemoteUserSignIn(
+    remoteUser: RemoteUser,
+    session: unknown
+  ) {
+    const personalLocalUserId = getPersonalLocalUserId(remoteUser.id);
+
+    // Track this remote user for connectivity loss scenarios
+    this.lastRemoteUser = remoteUser;
+
+    try {
+      // Check if personal local user already exists and create/update if needed
+      const localUsers = await this.localAuthService.getLocalUsers();
+      let personalLocalUser = localUsers.find(
+        (u) => u.id === personalLocalUserId
+      );
+
+      // Get avatar URL and convert to base64 if available
+      const avatarUrl =
+        remoteUser.user_metadata?.avatar_url ||
+        remoteUser.user_metadata?.picture ||
+        remoteUser.identities?.[0]?.identity_data?.picture;
+
+      let base64Avatar: string | undefined;
+      if (avatarUrl) {
+        base64Avatar = await this.downloadAndConvertToBase64(avatarUrl);
+      }
+
+      if (!personalLocalUser) {
+        // Create personal local user based on remote user for future offline use
+        const result =
+          await this.localAuthService.createOfflineAccountForOnlineUser({
+            id: personalLocalUserId,
+            email: remoteUser.email || '',
+            name:
+              remoteUser.user_metadata?.full_name ||
+              remoteUser.user_metadata?.name ||
+              remoteUser.user_metadata?.display_name ||
+              'Local User',
+            avatar_url: base64Avatar,
+          });
+
+        if (result.user) {
+          personalLocalUser = result.user;
+        }
+      } else if (
+        base64Avatar &&
+        personalLocalUser.avatar_url !== base64Avatar
+      ) {
+        // Update existing user with new avatar if it's different
+        await this.localAuthService.updateProfile({
+          avatar_url: base64Avatar,
+        });
+        personalLocalUser.avatar_url = base64Avatar;
+      }
+
+      // Create remote user object for current session
+      const remoteAuthUser: AuthUser = {
+        id: remoteUser.id,
+        email: remoteUser.email || '',
+        name:
+          remoteUser.user_metadata?.full_name ||
+          remoteUser.user_metadata?.name ||
+          remoteUser.user_metadata?.display_name ||
+          'Remote User',
+        avatar_url: base64Avatar,
+        created_at: remoteUser.created_at,
+        type: 'remote',
+        isShared: false,
+      };
+
+      // Update state to reflect successful remote authentication
+      this.updateState({
+        user: remoteAuthUser,
+        session: session, // Keep the remote session
+        loading: false,
+        error: null,
+        isRemoteAuthenticated: true, // Successfully authenticated remotely
+      });
+
+      console.log(
+        '🔧 [AUTH SERVICE] Successfully signed in with remote user:',
+        remoteUser.email
+      );
+      return;
+    } catch (error) {
+      console.error('Failed to handle remote user sign in:', error);
+      this.updateState({
+        loading: false,
+        error: 'Failed to process remote user account',
+      });
+    }
+  }
+
+  private async downloadAndConvertToBase64(
+    imageUrl: string
+  ): Promise<string | undefined> {
+    try {
+      console.log('🔧 [AUTH SERVICE] Downloading avatar from:', imageUrl);
+
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        console.warn(
+          'Failed to download avatar:',
+          response.status,
+          response.statusText
+        );
+        return undefined;
+      }
 
       const blob = await response.blob();
 
-      // Upload to Supabase Storage
-      const { data, error } = await supabase.storage
-        .from('avatars')
-        .upload(`${userId}.jpg`, blob, {
-          cacheControl: '3600',
-          upsert: true,
+      // Convert blob to base64 data URI
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          console.log(
+            '🔧 [AUTH SERVICE] Avatar converted to base64, size:',
+            result.length
+          );
+          resolve(result);
+        };
+        reader.onerror = () => {
+          console.error('Failed to convert avatar to base64');
+          reject(reader.error);
+        };
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error('Error downloading and converting avatar:', error);
+      return undefined;
+    }
+  }
+
+  private async handleRemoteUserSignOut() {
+    // Check if we have a last known remote user and if this might be a connectivity loss
+    if (this.lastRemoteUser && this.supabaseAvailable) {
+      try {
+        // Try to determine if this is connectivity loss vs explicit sign-out
+        // If we can't reach Supabase, assume connectivity loss
+        const supabase = getSupabaseClient();
+        const { error } = await supabase.auth.getSession();
+
+        if (
+          error &&
+          (error.message.includes('network') || error.message.includes('fetch'))
+        ) {
+          // This looks like a connectivity issue, switch to personal local account
+          await this.switchToPersonalLocalAccount();
+          return;
+        }
+      } catch (networkError) {
+        // Network error confirmed, switch to personal local account
+        console.log(
+          '🔧 [AUTH SERVICE] Network error detected, switching to personal local account:',
+          networkError
+        );
+        await this.switchToPersonalLocalAccount();
+        return;
+      }
+    }
+
+    // This is an explicit sign-out or we have no previous remote user
+    // Clear the last remote user and return to shared account
+    this.lastRemoteUser = null;
+    await this.switchToSharedLocalAccount();
+  }
+
+  private async switchToPersonalLocalAccount() {
+    if (!this.lastRemoteUser) return;
+
+    try {
+      const personalLocalUserId = getPersonalLocalUserId(
+        this.lastRemoteUser.id
+      );
+      const localUsers = await this.localAuthService.getLocalUsers();
+      const personalLocalUser = localUsers.find(
+        (u) => u.id === personalLocalUserId
+      );
+
+      if (personalLocalUser) {
+        // Sign in as the personal local user
+        await this.localAuthService.signInWithoutPassword(
+          personalLocalUser.email,
+          true // bypass passcode for automatic transition due to connectivity loss
+        );
+
+        this.updateState({
+          user: convertLocalUser(personalLocalUser),
+          session: null, // No remote session due to connectivity loss
+          loading: false,
+          error: null,
+          isRemoteAuthenticated: false, // Lost remote connection
         });
 
-      if (error) {
-        console.error('Error uploading avatar:', error);
-        return null;
+        console.log(
+          '🔧 [AUTH SERVICE] Switched to personal local account due to connectivity loss'
+        );
+        return;
       }
-
-      // Get the public URL
-      const { data: publicUrl } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(data.path);
-
-      return publicUrl.publicUrl;
     } catch (error) {
-      console.error('Error caching avatar:', error);
-      return null;
+      console.error('Failed to switch to personal local account:', error);
     }
+
+    // If we can't find/access the personal local account, fall back to shared
+    await this.switchToSharedLocalAccount();
+  }
+
+  private async switchToSharedLocalAccount() {
+    // Sign out from local auth and return to shared user
+    await this.localAuthService.signOut();
+    await this.ensureSharedLocalUser();
+
+    this.updateState({
+      user: createSharedLocalUser(),
+      session: null,
+      loading: false,
+      error: null,
+      isRemoteAuthenticated: false,
+    });
+
+    console.log('🔧 [AUTH SERVICE] Switched to shared local account');
   }
 
   private updateState(newState: Partial<AuthState>) {
@@ -188,9 +470,23 @@ export class AuthService {
     this.listeners.forEach((listener) => listener(this.currentState));
   }
 
+  // Wait for auth initialization to complete
+  async waitForInitialization(): Promise<void> {
+    await this.initializationPromise;
+  }
+
   subscribe(listener: (state: AuthState) => void): () => void {
     this.listeners.push(listener);
-    listener(this.currentState);
+
+    // If already initialized, call listener immediately
+    if (!this.currentState.loading) {
+      listener(this.currentState);
+    } else {
+      // Wait for initialization, then call listener
+      this.initializationPromise.then(() => {
+        listener(this.currentState);
+      });
+    }
 
     return () => {
       const index = this.listeners.indexOf(listener);
@@ -204,74 +500,65 @@ export class AuthService {
     return this.currentState;
   }
 
-  async signInWithPassword(
-    email: string,
-    password: string
-  ): Promise<{ error?: unknown }> {
-    this.updateState({ loading: true, error: null });
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      this.updateState({ loading: false, error: error.message });
-      return { error };
-    }
-
-    return {};
+  // Get the current local user (always available)
+  getCurrentUser(): AuthUser {
+    return this.currentState.user;
   }
 
-  async signUp(
-    email: string,
-    password: string,
-    metadata?: { name?: string }
-  ): Promise<{ error?: unknown }> {
-    this.updateState({ loading: true, error: null });
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: metadata,
-      },
-    });
-
-    if (error) {
-      this.updateState({ loading: false, error: error.message });
-      return { error };
-    }
-
-    return {};
+  // Check if user is remotely authenticated
+  isRemotelyAuthenticated(): boolean {
+    return this.currentState.isRemoteAuthenticated;
   }
 
-  async signInWithGoogle(): Promise<{ error?: unknown }> {
-    this.updateState({ loading: true, error: null });
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${getBaseUrl()}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      this.updateState({ loading: false, error: error.message });
-      return { error };
-    }
-
-    return {};
+  // Check if using shared local account
+  isUsingSharedAccount(): boolean {
+    return this.currentState.user.isShared === true;
   }
 
-  async signInWithGooglePopup(): Promise<{ error?: unknown }> {
-    this.updateState({ loading: true, error: null });
+  // Check if user has a personal local account available (from previous Google sign-in)
+  async hasPersonalLocalAccount(): Promise<boolean> {
+    if (!this.lastRemoteUser) return false;
 
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const personalLocalUserId = getPersonalLocalUserId(
+        this.lastRemoteUser.id
+      );
+      const localUsers = await this.localAuthService.getLocalUsers();
+      return localUsers.some((u) => u.id === personalLocalUserId);
+    } catch {
+      return false;
+    }
+  }
+
+  // Check if sign-in buttons should be shown
+  // Returns true when user is on shared account OR not remotely authenticated
+  shouldShowSignInOptions(): boolean {
+    return this.isUsingSharedAccount() || !this.isRemotelyAuthenticated();
+  }
+
+  // Get access to local auth service for local operations
+  getLocalAuthService(): LocalAuthService {
+    return this.localAuthService;
+  }
+
+  // Google popup authentication (only supported remote auth method)
+  async signInWithGooglePopup(): Promise<{ error?: unknown }> {
+    if (!this.supabaseAvailable) {
+      return { error: 'Remote authentication not available' };
+    }
+
+    try {
+      console.log('🔧 [AUTH SERVICE] Starting Google popup OAuth request');
+      const baseUrl = getBaseUrl();
+      const redirectTo = `${baseUrl}/auth/callback`;
+      console.log('🔧 [AUTH SERVICE] Base URL:', baseUrl);
+      console.log('🔧 [AUTH SERVICE] Redirect URL:', redirectTo);
+
+      const supabase = getSupabaseClient();
+      const { error, data } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${getBaseUrl()}/auth/callback`,
+          redirectTo,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -281,12 +568,15 @@ export class AuthService {
       });
 
       if (error) {
-        this.updateState({ loading: false, error: error.message });
-        return { error };
+        console.error('🔧 [AUTH SERVICE] OAuth request error:', error);
+        return { error: error.message };
       }
 
-      if (data?.url) {
-        // Open popup window
+      if (data.url) {
+        console.log('�� [AUTH SERVICE] Got OAuth URL:', data.url);
+        console.log('🔧 [AUTH SERVICE] Opening popup window...');
+
+        // Open popup window for Google OAuth
         const popup = window.open(
           data.url,
           'google-auth',
@@ -294,178 +584,188 @@ export class AuthService {
         );
 
         if (!popup) {
-          this.updateState({
-            loading: false,
-            error: 'Popup was blocked. Please enable popups for this site.',
-          });
-          return { error: 'Popup blocked' };
+          console.error('🔧 [AUTH SERVICE] Failed to open popup window');
+          return {
+            error:
+              'Failed to open popup window. Please allow popups for this site.',
+          };
         }
 
-        // Listen for auth completion with timeout
+        console.log(
+          '🔧 [AUTH SERVICE] Popup opened successfully, starting polling...'
+        );
+
+        // Listen for auth completion
         return new Promise((resolve) => {
-          let resolved = false;
-
-          // Set a timeout to avoid waiting indefinitely
-          const timeout = setTimeout(() => {
-            if (!resolved) {
-              resolved = true;
-              subscription?.unsubscribe();
-              try {
-                popup.close();
-              } catch {
-                // Ignore COOP errors when closing popup
-              }
-              this.updateState({
-                loading: false,
-                error: 'Authentication timed out. Please try again.',
-              });
-              resolve({ error: 'Authentication timeout' });
-            }
-          }, 60000); // 60 second timeout
-
-          // Handle auth state change
-          const {
-            data: { subscription },
-          } = supabase.auth.onAuthStateChange((event, session) => {
-            if (
-              (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') &&
-              session &&
-              !resolved
-            ) {
-              resolved = true;
-              clearTimeout(timeout);
-              subscription.unsubscribe();
-
-              try {
-                popup.close();
-              } catch {
-                // Ignore COOP errors when closing popup
-              }
-
-              this.updateState({ loading: false });
-              resolve({});
-            }
-          });
-
-          // Check if popup was closed manually (with error handling for COOP)
           const checkClosed = setInterval(() => {
-            try {
-              if (popup.closed && !resolved) {
-                resolved = true;
-                clearTimeout(timeout);
-                clearInterval(checkClosed);
-                subscription.unsubscribe();
-
-                // Check if we have a session after popup closes
-                supabase.auth.getSession().then(({ data: { session } }) => {
-                  if (session) {
-                    this.updateState({ loading: false });
-                    resolve({});
-                  } else {
-                    this.updateState({
-                      loading: false,
-                      error: 'Authentication was cancelled or failed',
-                    });
-                    resolve({ error: 'Authentication cancelled' });
-                  }
+            if (popup.closed) {
+              console.log(
+                '🔧 [AUTH SERVICE] Popup closed, checking session...'
+              );
+              clearInterval(checkClosed);
+              // Check if auth was successful by checking current session
+              setTimeout(async () => {
+                const { data: sessionData, error: sessionError } =
+                  await supabase.auth.getSession();
+                console.log('🔧 [AUTH SERVICE] Session check result:', {
+                  sessionData: !!sessionData?.session,
+                  sessionError,
                 });
-              }
-            } catch {
-              // COOP error - can't access popup.closed
-              // This is normal and we'll rely on the auth state change or timeout
+                if (sessionData?.session && !sessionError) {
+                  console.log('🔧 [AUTH SERVICE] Authentication successful!');
+                  resolve({});
+                } else {
+                  console.error(
+                    '🔧 [AUTH SERVICE] Authentication failed or cancelled'
+                  );
+                  resolve({ error: 'Authentication was cancelled or failed' });
+                }
+              }, 500);
             }
-          }, 1000);
+          }, 500);
+
+          // Timeout after 5 minutes
+          setTimeout(() => {
+            if (!popup.closed) {
+              console.error(
+                '🔧 [AUTH SERVICE] Authentication timed out, closing popup'
+              );
+              popup.close();
+              clearInterval(checkClosed);
+              resolve({ error: 'Authentication timed out' });
+            }
+          }, 300000);
         });
       }
 
-      this.updateState({ loading: false, error: 'No auth URL received' });
-      return { error: 'No auth URL received' };
+      console.log('🔧 [AUTH SERVICE] No URL in OAuth response');
+      return {};
     } catch (error) {
-      this.updateState({
-        loading: false,
+      console.error(
+        '🔧 [AUTH SERVICE] Exception in signInWithGooglePopup:',
+        error
+      );
+      return {
         error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return { error };
+      };
     }
   }
 
   async signOut(): Promise<{ error?: unknown }> {
-    this.updateState({ loading: true, error: null });
-
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      this.updateState({ loading: false, error: error.message });
-      return { error };
+    if (!this.supabaseAvailable || !this.currentState.isRemoteAuthenticated) {
+      // If not remotely authenticated, there's nothing to sign out from
+      return {};
     }
 
-    return {};
-  }
-
-  async resetPassword(email: string): Promise<{ error?: unknown }> {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${getBaseUrl()}/auth/reset-password`,
-    });
-
-    return { error };
-  }
-
-  async updatePassword(password: string): Promise<{ error?: unknown }> {
-    const { error } = await supabase.auth.updateUser({ password });
-    return { error };
-  }
-
-  async deleteAccount(): Promise<{ error?: unknown }> {
-    this.updateState({ loading: true, error: null });
-
     try {
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        this.updateState({ loading: false, error: 'No user found' });
-        return { error: 'No user found' };
-      }
+      // Clear the last remote user first to ensure explicit sign-out behavior
+      this.lastRemoteUser = null;
 
-      // Delete user's cached avatar from storage if it exists
-      try {
-        await supabase.storage.from('avatars').remove([`${user.id}.jpg`]);
-      } catch (error) {
-        // Ignore storage errors - avatar might not exist
-        console.warn('Could not delete avatar:', error);
-      }
-
-      // Note: We would delete user data from other tables here
-      // For now, we'll just delete the auth user
-      // In a real app, you'd want to delete all associated data:
-      // - User preferences
-      // - Trip data
-      // - Any other user-related records
-
-      // Delete the auth user (this also signs them out)
-      const { error } = await supabase.auth.admin.deleteUser(user.id);
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.auth.signOut();
 
       if (error) {
-        this.updateState({ loading: false, error: error.message });
-        return { error };
+        return { error: error.message };
       }
 
-      // Clear local state
-      this.updateState({
-        user: null,
-        session: null,
-        loading: false,
-        error: null,
-      });
-
+      // The auth state change listener will handle transitioning back to shared local user
       return {};
     } catch (error) {
-      this.updateState({
-        loading: false,
+      return {
         error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  destroy() {
+    this.listeners = [];
+    this.localAuthService.destroy();
+  }
+
+  // Email/password authentication methods
+  async signUpWithEmail(
+    email: string,
+    password: string,
+    metadata?: { name?: string }
+  ): Promise<{ error?: unknown }> {
+    if (!this.supabaseAvailable) {
+      return { error: 'Remote authentication not available' };
+    }
+
+    try {
+      console.log('🔧 [AUTH SERVICE] Starting email signup for:', email);
+      const supabase = getSupabaseClient();
+
+      const { error, data } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: metadata
+            ? {
+                name: metadata.name,
+                full_name: metadata.name,
+              }
+            : undefined,
+        },
       });
-      return { error };
+
+      if (error) {
+        console.error('🔧 [AUTH SERVICE] Email signup error:', error);
+        return { error: error.message };
+      }
+
+      if (data.user && !data.user.email_confirmed_at) {
+        console.log('🔧 [AUTH SERVICE] Email confirmation required');
+        return {
+          error:
+            'Please check your email and click the confirmation link to complete signup.',
+        };
+      }
+
+      console.log('🔧 [AUTH SERVICE] Email signup successful!');
+      return {};
+    } catch (error) {
+      console.error('🔧 [AUTH SERVICE] Exception in signUpWithEmail:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  async signInWithEmail(
+    email: string,
+    password: string
+  ): Promise<{ error?: unknown }> {
+    if (!this.supabaseAvailable) {
+      return { error: 'Remote authentication not available' };
+    }
+
+    try {
+      console.log('🔧 [AUTH SERVICE] Starting email signin for:', email);
+      const supabase = getSupabaseClient();
+
+      const { error, data } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('🔧 [AUTH SERVICE] Email signin error:', error);
+        return { error: error.message };
+      }
+
+      if (data.user) {
+        console.log('🔧 [AUTH SERVICE] Email signin successful!');
+        // The auth state change listener will handle the user sign-in
+        return {};
+      }
+
+      return { error: 'No user returned from signin' };
+    } catch (error) {
+      console.error('🔧 [AUTH SERVICE] Exception in signInWithEmail:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
     }
   }
 }

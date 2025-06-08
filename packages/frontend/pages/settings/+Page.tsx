@@ -1,13 +1,41 @@
 import { useAppDispatch } from '@packing-list/state';
-import { UserManagement } from '@packing-list/shared-components';
+import {
+  UserManagement,
+  OfflinePasscodeForm,
+  Avatar,
+  useAuth,
+} from '@packing-list/shared-components';
 import { PageContainer } from '../../components/PageContainer';
 import { PageHeader } from '../../components/PageHeader';
-import { Settings, AlertTriangle, EyeOff, Calendar } from 'lucide-react';
+import {
+  Settings,
+  AlertTriangle,
+  EyeOff,
+  Calendar,
+  Wifi,
+  WifiOff,
+  Shield,
+  Users,
+} from 'lucide-react';
 import { showToast } from '../../components/Toast';
 import { HELP_ALL_KEY } from '../../components/HelpBlurb';
 
+// Simple interface to type offline accounts
+interface OfflineAccount {
+  id: string;
+  email: string;
+  name?: string;
+  avatar_url?: string;
+  passcode_hash?: string;
+}
+
 export default function SettingsPage() {
   const dispatch = useAppDispatch();
+  const { user, isAuthenticated, offlineAccounts, isOfflineMode, isOnline } =
+    useAuth();
+
+  // Cast offlineAccounts to proper type since useAuth returns unknown[]
+  const typedOfflineAccounts = (offlineAccounts || []) as OfflineAccount[];
 
   const handleResetHelpBlurbs = () => {
     localStorage.removeItem(HELP_ALL_KEY);
@@ -33,6 +61,121 @@ export default function SettingsPage() {
       <PageHeader title="Settings" />
 
       <div className="space-y-4">
+        {/* Connection Status */}
+        <div className="card bg-base-100 shadow-xl">
+          <div className="card-body">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="card-title flex items-center gap-2">
+                  {isOnline ? (
+                    <Wifi className="w-5 h-5 text-success" />
+                  ) : (
+                    <WifiOff className="w-5 h-5 text-error" />
+                  )}
+                  Connection Status
+                </h2>
+                <p className="text-base-content/70">
+                  {isOnline
+                    ? 'Connected to the internet'
+                    : 'Offline mode active'}
+                  {isOfflineMode && ' - Using offline authentication'}
+                </p>
+              </div>
+              <div
+                className={`badge badge-lg ${
+                  isOnline ? 'badge-success' : 'badge-error'
+                }`}
+              >
+                {isOnline ? 'Online' : 'Offline'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Offline Account Management */}
+        {isAuthenticated && (
+          <div className="space-y-4">
+            <div className="card bg-base-100 shadow-xl">
+              <div className="card-body">
+                <h2 className="card-title flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Offline Accounts
+                </h2>
+                <p className="text-base-content/70 mb-4">
+                  Manage your offline accounts and their security settings.
+                  Offline accounts allow you to use the app without an internet
+                  connection.
+                </p>
+
+                {typedOfflineAccounts.length > 0 ? (
+                  <div className="space-y-3">
+                    <h3 className="font-semibold">
+                      Available Offline Accounts:
+                    </h3>
+                    <div className="grid gap-2">
+                      {typedOfflineAccounts.map((account) => (
+                        <div
+                          key={account.id}
+                          className="flex items-center justify-between p-3 bg-base-200 rounded-lg"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="avatar">
+                              <Avatar
+                                src={account.avatar_url}
+                                alt={account.name || account.email}
+                                size={32}
+                                isOnline={isOnline}
+                                showOfflineIndicator={false}
+                              />
+                            </div>
+                            <div>
+                              <div className="font-medium">
+                                {account.name || account.email}
+                              </div>
+                              <div className="text-sm text-base-content/70">
+                                {account.email}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {account.passcode_hash ? (
+                              <div className="badge badge-success gap-1">
+                                <Shield className="w-3 h-3" />
+                                Protected
+                              </div>
+                            ) : (
+                              <div className="badge badge-warning gap-1">
+                                <Shield className="w-3 h-3" />
+                                Unprotected
+                              </div>
+                            )}
+                            {account.id === user?.id && (
+                              <div className="badge badge-primary">Current</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="alert alert-info">
+                    <div className="flex items-center gap-2">
+                      <Settings className="w-4 h-4" />
+                      <span>
+                        No offline accounts found. Sign in online to create an
+                        offline account automatically.
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Offline Passcode Management */}
+            {user && <OfflinePasscodeForm />}
+          </div>
+        )}
+
         <div className="card bg-base-100 shadow-xl">
           <div className="card-body">
             <h2 className="card-title">Help & Tutorials</h2>
@@ -78,13 +221,15 @@ export default function SettingsPage() {
         </div>
 
         {/* User Management Component */}
-        <UserManagement
-          showToast={showToast}
-          onAccountDeleted={() => {
-            // Redirect to home after account deletion
-            window.location.href = '/';
-          }}
-        />
+        {isAuthenticated && (
+          <UserManagement
+            showToast={showToast}
+            onAccountDeleted={() => {
+              // Redirect to home after account deletion
+              window.location.href = '/';
+            }}
+          />
+        )}
       </div>
     </PageContainer>
   );

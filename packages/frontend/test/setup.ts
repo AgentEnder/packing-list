@@ -12,6 +12,63 @@ declare module 'vitest' {
 
 expect.extend(matchers);
 
+// Mock environment variables for Supabase
+process.env.PUBLIC_ENV__SUPABASE_URL = 'http://localhost:54321';
+process.env.PUBLIC_ENV__SUPABASE_ANON_KEY = 'mock-anon-key';
+
+// Mock IndexedDB for Node.js test environment
+const mockIndexedDB = {
+  open: vi.fn(() => {
+    const mockObjectStore = {
+      put: vi.fn(),
+      get: vi.fn(() => ({ onsuccess: null, onerror: null })),
+      getAll: vi.fn(() => ({ onsuccess: null, onerror: null, result: [] })),
+      delete: vi.fn(),
+      clear: vi.fn(),
+    };
+
+    const mockTransaction = {
+      objectStore: vi.fn(() => mockObjectStore),
+      onsuccess: null as ((event: any) => void) | null,
+      onerror: null as ((event: any) => void) | null,
+    };
+
+    const request = {
+      result: {
+        createObjectStore: vi.fn(() => mockObjectStore),
+        transaction: vi.fn(() => mockTransaction),
+      },
+      onsuccess: null as ((event: any) => void) | null,
+      onerror: null as ((event: any) => void) | null,
+      onupgradeneeded: null as ((event: any) => void) | null,
+    };
+
+    // Simulate successful DB opening
+    setTimeout(() => {
+      if (request.onsuccess) {
+        request.onsuccess({ target: request });
+      }
+    }, 0);
+
+    return request;
+  }),
+  deleteDatabase: vi.fn(),
+};
+
+Object.defineProperty(global, 'indexedDB', {
+  value: mockIndexedDB,
+  writable: true,
+});
+
+// Mock window.open for popup auth
+Object.defineProperty(global, 'open', {
+  value: vi.fn(() => ({
+    closed: false,
+    close: vi.fn(),
+  })),
+  writable: true,
+});
+
 // Mock ResizeObserver
 global.ResizeObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),

@@ -104,6 +104,14 @@ export function RulePackSelector({
                 borderWidth: '1px',
               }}
               data-testid={`rule-pack-${pack.name}`}
+              onClick={() => {
+                dispatch({ type: 'OPEN_RULE_PACK_MODAL' });
+                dispatch({ type: 'SET_SELECTED_RULE_PACK', pack });
+                dispatch({
+                  type: 'SET_RULE_PACK_MODAL_TAB',
+                  payload: { tab: 'details', packId: pack.id },
+                });
+              }}
             >
               <div className="card-body p-4">
                 <div className="flex items-start justify-between">
@@ -129,12 +137,15 @@ export function RulePackSelector({
                   </div>
                 </div>
 
-                <div className="card-actions justify-end mt-4">
+                <div className="card-actions justify-end mt-auto">
                   <button
                     className={`btn btn-sm ${
                       active ? 'btn-outline btn-error' : 'btn-primary'
                     }`}
-                    onClick={() => handleTogglePack(pack)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleTogglePack(pack);
+                    }}
                     data-testid={`${active ? 'remove' : 'apply'}-pack-${
                       pack.name
                     }-button`}

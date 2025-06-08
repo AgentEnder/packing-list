@@ -32,8 +32,9 @@ export default function LayoutDefault({
   children: React.ReactNode;
 }) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const { user, shouldShowSignInOptions, loading, isRemotelyAuthenticated } =
+    useAuth();
   const dispatch = useAppDispatch();
-  const { user, loading } = useAuth();
   const { openLoginModal, closeLoginModal } = useLoginModal();
 
   useEffect(() => {
@@ -55,12 +56,12 @@ export default function LayoutDefault({
     openLoginModal();
   };
 
-  // Close login modal when user successfully logs in
+  // Close login modal when user successfully signs in with Google
   useEffect(() => {
-    if (user) {
+    if (isRemotelyAuthenticated) {
       closeLoginModal();
     }
-  }, [user, closeLoginModal]);
+  }, [isRemotelyAuthenticated, closeLoginModal]);
 
   if (loading) {
     return (
@@ -100,12 +101,13 @@ export default function LayoutDefault({
             </Link>
           </div>
           <div className="flex-none">
-            {user ? (
+            {user && !shouldShowSignInOptions ? (
               <UserProfile />
             ) : (
               <button
                 className="btn btn-ghost btn-sm"
                 onClick={handleLoginClick}
+                data-testid="sign-in-button"
               >
                 <LogIn className="w-4 h-4" />
                 Sign In
@@ -140,12 +142,13 @@ export default function LayoutDefault({
             >
               Packing List
             </Link>
-            {user ? (
+            {user && !shouldShowSignInOptions ? (
               <UserProfile />
             ) : (
               <button
                 className="btn btn-primary btn-sm"
                 onClick={handleLoginClick}
+                data-testid="sign-in-button"
               >
                 <LogIn className="w-4 h-4" />
                 Sign In

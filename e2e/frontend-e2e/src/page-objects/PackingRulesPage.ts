@@ -259,7 +259,7 @@ export class PackingRulesPage {
     await ruleCard.getByTestId('delete-rule-button').click();
 
     // Confirm deletion in the modal
-    await this.page.getByTestId('confirm-delete-button').click();
+    await this.page.getByTestId('confirm-continue-button').click();
 
     // Wait for the rule to disappear
     await this.page

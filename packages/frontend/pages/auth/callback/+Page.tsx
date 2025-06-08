@@ -3,29 +3,134 @@ import { useAuth } from '@packing-list/shared-components';
 import { Link } from '../../../components/Link';
 
 export default function AuthCallback() {
+  console.log('🎯 [CALLBACK] AuthCallback component is rendering');
+  console.log('🎯 [CALLBACK] window.location.href:', window.location.href);
+  console.log('🎯 [CALLBACK] document.referrer:', document.referrer);
+
   const { user, error } = useAuth();
   const [countdown, setCountdown] = useState(3);
+  const [isPopup, setIsPopup] = useState(false);
+
+  console.log('🎯 [CALLBACK] Initial state - user:', user, 'error:', error);
 
   useEffect(() => {
-    // The auth service will automatically handle the callback
-    // and update the auth state
-    if (user) {
-      // Start countdown before redirect
-      const timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            window.location.href = '/';
-            return 0;
-          }
-          return prev - 1;
+    // Check if we're in a popup window
+    console.log('🎯 [CALLBACK] Callback page loaded');
+    console.log('🎯 [CALLBACK] window.opener:', window.opener);
+    console.log(
+      '🎯 [CALLBACK] window.opener !== window:',
+      window.opener !== window
+    );
+    console.log('🎯 [CALLBACK] window.opener exists:', !!window.opener);
+    console.log(
+      '🎯 [CALLBACK] window.opener && window.opener !== window:',
+      window.opener && window.opener !== window
+    );
+    console.log('🎯 [CALLBACK] Current URL:', window.location.href);
+    console.log('🎯 [CALLBACK] Current user:', user);
+    console.log('🎯 [CALLBACK] Current error:', error);
+
+    const isInPopup = window.opener && window.opener !== window;
+    console.log('🎯 [CALLBACK] Detected popup mode:', isInPopup);
+    setIsPopup(isInPopup);
+
+    if (isInPopup) {
+      console.log(
+        '🎯 [CALLBACK] In popup mode - waiting for auth completion...'
+      );
+      // We're in a popup - close it when auth completes
+      if (user || error) {
+        console.log('🎯 [CALLBACK] Auth completed in popup:', {
+          user: !!user,
+          error,
         });
-      }, 1000);
+        // Give a brief moment for state to settle, then close
+        setTimeout(() => {
+          console.log('🎯 [CALLBACK] Closing popup window');
+          window.close();
+        }, 1000);
+      }
+    } else {
+      console.log('🎯 [CALLBACK] In regular page mode');
+      // Regular page behavior - redirect after successful auth
+      if (user) {
+        console.log(
+          '🎯 [CALLBACK] User authenticated, starting redirect countdown'
+        );
+        // Start countdown before redirect
+        const timer = setInterval(() => {
+          setCountdown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              console.log('🎯 [CALLBACK] Redirecting to home page');
+              window.location.href = '/';
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
 
-      return () => clearInterval(timer);
+        return () => clearInterval(timer);
+      }
     }
-  }, [user]);
+  }, [user, error]);
 
+  // If we're in a popup, show minimal UI
+  if (isPopup) {
+    if (error) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-base-200">
+          <div className="card w-full max-w-md shadow-2xl bg-base-100">
+            <div className="card-body text-center">
+              <div className="text-error text-4xl mb-4">⚠️</div>
+              <h2 className="card-title justify-center text-error text-lg">
+                Authentication Failed
+              </h2>
+              <p className="text-sm text-base-content/70 mb-4">{error}</p>
+              <p className="text-xs text-base-content/50">
+                This window will close automatically...
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (user) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-base-200">
+          <div className="card w-full max-w-md shadow-2xl bg-base-100">
+            <div className="card-body text-center">
+              <div className="text-success text-4xl mb-4">✅</div>
+              <h2 className="card-title justify-center text-success text-lg">
+                Success!
+              </h2>
+              <p className="text-sm text-base-content/70 mb-4">
+                Welcome, {user.name || user.email}!
+              </p>
+              <p className="text-xs text-base-content/50">Closing window...</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-base-200">
+        <div className="card w-full max-w-md shadow-2xl bg-base-100">
+          <div className="card-body text-center">
+            <span className="loading loading-spinner loading-lg text-primary"></span>
+            <h2 className="card-title justify-center text-lg">
+              Completing Authentication
+            </h2>
+            <p className="text-sm text-base-content/70">Please wait...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Regular page behavior (not in popup)
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-base-200">

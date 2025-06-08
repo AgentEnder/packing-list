@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@packing-list/model": "workspace:*",
-    "@packing-list/shared-utils": "workspace:*"
+    "@packing-list/shared-utils": "workspace:*",
+    "@packing-list/auth-state": "workspace:*"
   },
   "devDependencies": {}
 }

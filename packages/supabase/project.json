@@ -1,0 +1,14 @@
+{
+  "name": "supabase",
+  "targets": {
+    "start": {
+      "command": "node scripts/setup-local-supabase.js"
+    },
+    "clean": {
+      "command": "node scripts/cleanup-supabase.js",
+      "options": {
+        "cwd": "packages/supabase"
+      }
+    }
+  }
+}

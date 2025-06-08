@@ -1,16 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from './useAuth.js';
 import { useLoginModal } from './useLoginModal.js';
-import {
-  User,
-  Mail,
-  Shield,
-  LogOut,
-  Trash2,
-  AlertTriangle,
-  Calendar,
-} from 'lucide-react';
+import { User, Mail, Shield, LogOut, Trash2, Calendar } from 'lucide-react';
 import { intervalToDuration } from 'date-fns';
+import { Modal } from '../Dialog.js';
 
 interface UserManagementProps {
   onSignOut?: () => void;
@@ -118,7 +111,11 @@ export function UserManagement({
 
   const handleSignOut = async () => {
     try {
-      await signOut();
+      const result = await signOut();
+      // Check if the thunk was rejected
+      if (result.type.endsWith('/rejected')) {
+        throw new Error((result.payload as string) || 'Sign out failed');
+      }
       showToast?.('Successfully signed out');
       onSignOut?.();
     } catch (error) {
@@ -135,16 +132,15 @@ export function UserManagement({
 
     setIsDeletingAccount(true);
     try {
-      const { error } = await deleteAccount();
-      if (error) {
-        showToast?.(
-          `Error deleting account: ${
-            typeof error === 'object' && 'message' in error
-              ? error.message
-              : 'Unknown error'
-          }`
-        );
+      const result = await deleteAccount();
+
+      // Check if the thunk was rejected
+      if (result.type.endsWith('/rejected')) {
+        const errorMessage =
+          (result.payload as string) || 'Unknown error occurred';
+        showToast?.(`Error deleting account: ${errorMessage}`);
       } else {
+        // Thunk was fulfilled - account deletion successful
         showToast?.('Account successfully deleted');
         onAccountDeleted?.();
       }
@@ -226,77 +222,63 @@ export function UserManagement({
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="font-bold text-lg text-error">
-              <AlertTriangle className="w-5 h-5 inline mr-2" />
-              Delete Account
-            </h3>
-
-            <div className="py-4">
-              <div className="alert alert-error mb-4">
-                <AlertTriangle className="w-4 h-4" />
-                <div>
-                  <h4 className="font-bold">This action cannot be undone!</h4>
-                  <div className="text-sm">
-                    This will permanently delete your account and all associated
-                    data including:
-                  </div>
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeleteConfirmText('');
+        }}
+        title="Delete Account"
+        size="md"
+        data-testid="delete-confirm-modal"
+      >
+        <div className="space-y-4">
+          <div className="alert alert-error">
+            <div className="flex">
+              <Trash2 className="w-5 h-5" />
+              <div>
+                <h4 className="font-bold">This action cannot be undone!</h4>
+                <div className="text-sm">
+                  This will permanently delete your account and all associated
+                  data.
                 </div>
               </div>
-
-              <ul className="list-disc list-inside text-sm space-y-1 mb-4">
-                <li>Your profile and account information</li>
-                <li>All trip data and packing lists</li>
-                <li>Saved preferences and settings</li>
-                <li>Profile pictures and attachments</li>
-              </ul>
-
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">
-                    Type <strong>DELETE</strong> to confirm:
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  className="input input-bordered"
-                  value={deleteConfirmText}
-                  onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  placeholder="Type DELETE here"
-                />
-              </div>
-            </div>
-
-            <div className="modal-action">
-              <button
-                className="btn"
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  setDeleteConfirmText('');
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                className={`btn btn-error ${
-                  isDeletingAccount ? 'loading' : ''
-                }`}
-                onClick={handleDeleteAccount}
-                disabled={isDeletingAccount || deleteConfirmText !== 'DELETE'}
-              >
-                {!isDeletingAccount && <Trash2 className="w-4 h-4" />}
-                Delete Account
-              </button>
             </div>
           </div>
-          <form method="dialog" className="modal-backdrop">
-            <button onClick={() => setShowDeleteConfirm(false)}>close</button>
-          </form>
+          <p>
+            To confirm, type <strong>DELETE</strong> in the box below:
+          </p>
+          <input
+            type="text"
+            className="input input-bordered w-full"
+            placeholder="Type DELETE to confirm"
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            disabled={isDeletingAccount}
+          />
         </div>
-      )}
+
+        <div className="modal-action">
+          <button
+            className="btn"
+            onClick={() => {
+              setShowDeleteConfirm(false);
+              setDeleteConfirmText('');
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            className={`btn btn-error ${isDeletingAccount ? 'loading' : ''}`}
+            onClick={handleDeleteAccount}
+            disabled={isDeletingAccount || deleteConfirmText !== 'DELETE'}
+          >
+            {!isDeletingAccount && <Trash2 className="w-4 h-4" />}
+            Delete Account
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
