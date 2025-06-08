@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { updatePackingListViewHandler } from '../update-packing-list-view.js';
-import type { PackingListViewState } from '@packing-list/model';
 import {
   createTestTripState,
   createTestPerson,
