@@ -24,6 +24,14 @@ export default function TripWizardPage() {
     }
   }, [tripData]);
 
+  // Reset wizard when accessing directly (not through flow)
+  useEffect(() => {
+    if (flow.current === null && tripData) {
+      // Accessing wizard directly, reset to first step
+      dispatch({ type: 'RESET_WIZARD' });
+    }
+  }, [flow.current, tripData, dispatch]);
+
   const handleSave = (events: TripEvent[]) => {
     dispatch({ type: 'UPDATE_TRIP_EVENTS', payload: events });
 

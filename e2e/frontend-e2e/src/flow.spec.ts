@@ -49,8 +49,6 @@ test.describe('Trip Creation Flow', () => {
     // Check that initial events are populated
     await tripWizardPage.verifyInitialEvents('Hawaii');
 
-    // Navigate to review step and save
-    await tripWizardPage.navigateToReviewStep();
     await tripWizardPage.saveWizard();
     await peoplePage.verifyPeoplePage();
 
@@ -70,7 +68,12 @@ test.describe('Trip Creation Flow', () => {
     // Start at new trip page and create a trip
     await tripCreationPage.goto();
     await tripCreationPage.selectTemplate('vacation');
-    await tripCreationPage.fillTripDetails({ title: 'Test Vacation' });
+    await tripCreationPage.fillTripDetails({
+      title: 'Test Vacation',
+      location: 'Hawaii',
+      startDate: '2025-01-01',
+      endDate: '2025-01-05',
+    });
     await tripCreationPage.submitTripDetails();
 
     // Navigate through the flow

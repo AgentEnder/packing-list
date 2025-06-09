@@ -107,12 +107,18 @@ import {
   InitFlowAction,
   AdvanceFlowAction,
   ResetFlowAction,
+  SetWizardStepAction,
+  ResetWizardAction,
   initFlow,
   advanceFlow,
   resetFlow,
+  setWizardStep,
+  resetWizard,
   initFlowHandler,
   advanceFlowHandler,
   resetFlowHandler,
+  setWizardStepHandler,
+  resetWizardHandler,
 } from './action-handlers/flow.js';
 
 export type ActionHandler<T extends AllActions> = (
@@ -154,7 +160,9 @@ export type AllActions =
   | UpdateTripSummaryAction
   | InitFlowAction
   | AdvanceFlowAction
-  | ResetFlowAction;
+  | ResetFlowAction
+  | SetWizardStepAction
+  | ResetWizardAction;
 
 export const Mutations: {
   [K in StoreActions]: ActionHandler<Extract<AllActions, { type: K }>>;
@@ -191,10 +199,14 @@ export const Mutations: {
   INIT_FLOW: initFlowHandler,
   ADVANCE_FLOW: advanceFlowHandler,
   RESET_FLOW: resetFlowHandler,
+  SET_WIZARD_STEP: setWizardStepHandler,
+  RESET_WIZARD: resetWizardHandler,
 };
 
 export const actions = {
   advanceFlow,
   resetFlow,
   initFlow,
+  setWizardStep,
+  resetWizard,
 };

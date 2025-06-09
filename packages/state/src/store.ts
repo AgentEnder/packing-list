@@ -44,6 +44,9 @@ export type StoreType = {
       steps: { path: string; label: string }[];
       current: number | null;
     };
+    tripWizard: {
+      currentStep: number;
+    };
   };
 
   // Auth state
@@ -115,6 +118,9 @@ export const initialState: Omit<StoreType, 'auth'> = {
     flow: {
       steps: [],
       current: null,
+    },
+    tripWizard: {
+      currentStep: 1,
     },
   },
 };
