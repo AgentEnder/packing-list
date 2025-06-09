@@ -332,7 +332,7 @@ export const PackingList: React.FC = () => {
                 <Link
                   href="/days"
                   className="link link-primary"
-                  dataTestId="setup-add-days-link"
+                  data-testid="setup-add-days-link"
                 >
                   <Calendar className="w-4 h-4 inline-block mr-2" />
                   Add trip days
@@ -348,7 +348,7 @@ export const PackingList: React.FC = () => {
                 <Link
                   href="/people"
                   className="link link-primary"
-                  dataTestId="setup-add-people-link"
+                  data-testid="setup-add-people-link"
                 >
                   <Users className="w-4 h-4 inline-block mr-2" />
                   Add people
@@ -364,7 +364,7 @@ export const PackingList: React.FC = () => {
                 <Link
                   href="/rules"
                   className="link link-primary"
-                  dataTestId="setup-add-rules-link"
+                  data-testid="setup-add-rules-link"
                 >
                   <ClipboardList className="w-4 h-4 inline-block mr-2" />
                   Add packing rules

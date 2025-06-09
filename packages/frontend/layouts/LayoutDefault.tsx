@@ -66,7 +66,7 @@ export default function LayoutDefault({
   useEffect(() => {
     if (typeof window !== 'undefined') {
       if (flowStepHref && path !== flowStepHref) {
-        dispatch(actions.resetFlow());
+        dispatch(actions.resetFlow(`${path} -> ${flowStepHref}`));
       }
     }
   }, [path]);

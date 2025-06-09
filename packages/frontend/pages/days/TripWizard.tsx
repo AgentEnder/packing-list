@@ -3,7 +3,7 @@ import { TripEvent } from '@packing-list/model';
 import { Timeline, Modal } from '@packing-list/shared-components';
 import { uuid } from '../../utils/uuid';
 import { RulePackSelector } from '../../components/RulePackSelector';
-import { useAppDispatch } from '@packing-list/state';
+import { useAppDispatch, useAppSelector } from '@packing-list/state';
 
 interface Destination {
   id: string;
@@ -73,7 +73,7 @@ export function TripWizard({
   fullPage = false,
 }: TripWizardProps) {
   const dispatch = useAppDispatch();
-  const [currentStep, setCurrentStep] = useState(1);
+  const currentStep = useAppSelector((s) => s.ui.tripWizard.currentStep);
   const [tripData, setTripData] = useState({
     leaveHomeDate: '',
     arriveHomeDate: '',
@@ -255,7 +255,7 @@ export function TripWizard({
       arriveNotes: '',
       leaveNotes: '',
     });
-    setCurrentStep(1);
+    dispatch({ type: 'SET_WIZARD_STEP', payload: { step: 1 } });
   };
 
   const canAccessStep = (stepId: number): boolean => {
@@ -281,7 +281,7 @@ export function TripWizard({
 
   const handleStepClick = (stepId: number) => {
     if (canAccessStep(stepId)) {
-      setCurrentStep(stepId);
+      dispatch({ type: 'SET_WIZARD_STEP', payload: { step: stepId } });
     }
   };
 
@@ -303,7 +303,12 @@ export function TripWizard({
   ) => (
     <div className="flex justify-between mt-6">
       {backStep ? (
-        <button className="btn" onClick={() => setCurrentStep(backStep)}>
+        <button
+          className="btn"
+          onClick={() =>
+            dispatch({ type: 'SET_WIZARD_STEP', payload: { step: backStep } })
+          }
+        >
           Back
         </button>
       ) : (
@@ -318,7 +323,9 @@ export function TripWizard({
         {nextStep && (
           <button
             className="btn btn-primary"
-            onClick={() => setCurrentStep(nextStep)}
+            onClick={() =>
+              dispatch({ type: 'SET_WIZARD_STEP', payload: { step: nextStep } })
+            }
             disabled={!canProceed || (currentStep === 1 && !isDateRangeValid())}
           >
             Next

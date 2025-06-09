@@ -1,6 +1,7 @@
 import { ChevronLeft } from 'lucide-react';
 import { useAppSelector, useAppDispatch, actions } from '@packing-list/state';
 import { Link } from './Link';
+import { navigate } from 'vike/client/router';
 
 export function FlowBackButton() {
   const flow = useAppSelector((s) => s?.ui?.flow);
@@ -11,15 +12,30 @@ export function FlowBackButton() {
   }
 
   const prevStep = flow.steps[flow.current - 1];
+  console.log(prevStep.path);
   const handleClick = () => {
+    // Calculate the target step before dispatching
+    const targetStepIndex = flow.current! - 1;
+    const targetStep = flow.steps[targetStepIndex];
+
+    // Update flow state first
     dispatch(actions.advanceFlow(-1));
+
+    // Then navigate to the target step
+    navigate(targetStep.path);
   };
+
   return flow && flow.current !== null && flow.current !== 0 ? (
     <Link
-      href={prevStep.path}
       className="btn btn-ghost gap-2"
-      onClick={handleClick}
+      href={prevStep.path}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleClick();
+      }}
       data-testid="flow-back-button"
+      style={{ cursor: 'pointer' }}
     >
       <ChevronLeft className="w-4 h-4" />
       {prevStep.label}

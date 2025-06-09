@@ -171,12 +171,10 @@ export default function NewTripPage() {
 
       // 2. Prepopulate with initial events (leave/arrive home etc.)
       const initialEvents = createInitialTripEvents();
-      if (initialEvents.length > 0) {
-        dispatch({
-          type: 'UPDATE_TRIP_EVENTS',
-          payload: initialEvents,
-        });
-      }
+      dispatch({
+        type: 'UPDATE_TRIP_EVENTS',
+        payload: initialEvents,
+      });
 
       // 3. Initialize the flow
       dispatch(
@@ -191,6 +189,9 @@ export default function NewTripPage() {
           current: 1,
         })
       );
+
+      // 4. Reset wizard to first step for new trip
+      dispatch({ type: 'RESET_WIZARD' });
 
       // Navigate to full-page wizard
       await navigate(`/trips/${tripId}/wizard`);
