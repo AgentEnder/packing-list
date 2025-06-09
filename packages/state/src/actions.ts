@@ -98,18 +98,10 @@ import {
   CreateTripAction,
   selectTripHandler,
   SelectTripAction,
-  toggleTripSelectorHandler,
-  ToggleTripSelectorAction,
   deleteTripHandler,
   DeleteTripAction,
-  loadTripsHandler,
-  LoadTripsAction,
-  loadTripDataHandler,
-  LoadTripDataAction,
-  openTripSelectorHandler,
-  OpenTripSelectorAction,
-  closeTripSelectorHandler,
-  CloseTripSelectorAction,
+  updateTripSummaryHandler,
+  UpdateTripSummaryAction,
 } from './action-handlers/trip-management.js';
 
 export type ActionHandler<T extends AllActions> = (
@@ -147,12 +139,8 @@ export type AllActions =
   | CloseLoginModalAction
   | CreateTripAction
   | SelectTripAction
-  | ToggleTripSelectorAction
   | DeleteTripAction
-  | LoadTripsAction
-  | LoadTripDataAction
-  | OpenTripSelectorAction
-  | CloseTripSelectorAction;
+  | UpdateTripSummaryAction;
 
 export const Mutations: {
   [K in StoreActions]: ActionHandler<Extract<AllActions, { type: K }>>;
@@ -185,9 +173,5 @@ export const Mutations: {
   CREATE_TRIP: createTripHandler,
   SELECT_TRIP: selectTripHandler,
   DELETE_TRIP: deleteTripHandler,
-  LOAD_TRIPS: loadTripsHandler,
-  LOAD_TRIP_DATA: loadTripDataHandler,
-  OPEN_TRIP_SELECTOR: openTripSelectorHandler,
-  CLOSE_TRIP_SELECTOR: closeTripSelectorHandler,
-  TOGGLE_TRIP_SELECTOR: toggleTripSelectorHandler,
+  UPDATE_TRIP_SUMMARY: updateTripSummaryHandler,
 };

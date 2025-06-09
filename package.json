@@ -47,6 +47,7 @@
     "@vitest/coverage-v8": "^3.2.2",
     "@vitest/ui": "^3.2.2",
     "daisyui": "^5.0.43",
+    "docsify-cli": "^4.4.4",
     "eslint": "^9.28.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-react": "^7.37.5",

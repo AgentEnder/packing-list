@@ -1,0 +1,22 @@
+{
+  "name": "docs",
+  "targets": {
+    "serve": {
+      "command": "mkdocs serve",
+      "options": {
+        "args": ["--dev-addr=localhost:3200", "-o"]
+      },
+      "dependsOn": ["ensure-mkdocs"]
+    },
+    "ensure-mkdocs": {
+      "command": "node ./scripts/ensure-mkdocs.cjs"
+    },
+    "ensure-plantuml-installed": {
+      "command": "node ./scripts/ensure-plantuml-installed.cjs"
+    },
+    "test": {
+      "command": "node ./scripts/validate-diagrams.cjs",
+      "dependsOn": ["ensure-plantuml-installed"]
+    }
+  }
+}

@@ -3,18 +3,29 @@ import { setupTestSession } from './utils.js';
 import { PackingRulesPage } from './page-objects/PackingRulesPage.js';
 import { PeoplePage } from './page-objects/PeoplePage.js';
 import { TripPage } from './page-objects/TripPage.js';
+import { TripManager } from './page-objects/trip-manager';
 
 test.describe('Packing Rules', () => {
   let packingRulesPage: PackingRulesPage;
   let peoplePage: PeoplePage;
   let tripPage: TripPage;
+  let tripManager: TripManager;
 
   test.beforeEach(async ({ page, context }) => {
-    // Start with a fresh session
-    await setupTestSession(page, context, false);
+    // Start with fresh session and create test data as needed
+    await setupTestSession(page, context, 'fresh');
     packingRulesPage = new PackingRulesPage(page);
     peoplePage = new PeoplePage(page);
     tripPage = new TripPage(page);
+    tripManager = new TripManager(page);
+
+    // Create a trip first using TripManager
+    await tripManager.createFirstTrip({
+      template: 'business',
+      title: 'Test Trip',
+      skipDates: true,
+    });
+
     await packingRulesPage.goto();
   });
 
@@ -68,9 +79,6 @@ test.describe('Packing Rules', () => {
         '[data-testid="rule-card"]:has-text("Simple Test")'
       );
       await expect(rule).toBeVisible();
-
-      // Wait a bit more for state to update
-      await page.waitForTimeout(2000);
 
       // Debug: Check if calculation display exists at all
       const calculationDisplay = rule.locator('.text-base-content\\/50');

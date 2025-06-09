@@ -42,9 +42,6 @@ export type StoreType = {
     loginModal: {
       isOpen: boolean;
     };
-    tripSelector: {
-      isOpen: boolean;
-    };
   };
 
   // Auth state
@@ -110,9 +107,6 @@ export const initialState: Omit<StoreType, 'auth'> = {
       selectedPackId: undefined,
     },
     loginModal: {
-      isOpen: false,
-    },
-    tripSelector: {
       isOpen: false,
     },
   },

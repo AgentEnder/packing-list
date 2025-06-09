@@ -30,7 +30,7 @@ export class RulePackModal {
     description: string,
     options: RulePackOptions = {}
   ) {
-    await this.page.getByTestId('create-pack-button').click();
+    await this.page.getByTestId('create-pack-button').last().click();
 
     await this.page.getByTestId('rule-pack-name-input').fill(name);
     await this.page
@@ -90,12 +90,8 @@ export class RulePackModal {
 
     await this.page.getByTestId('rule-pack-save-button').click();
 
-    // Wait for pack creation to complete and ensure we're back on browse tab
-    await this.page.waitForTimeout(1000);
-
     // Switch back to browse tab to make the pack visible and searchable
     await this.page.getByTestId('browse-tab').click();
-    await this.page.waitForTimeout(500);
   }
 
   async editPack(name: string, options: RulePackOptions = {}) {
@@ -181,7 +177,6 @@ export class RulePackModal {
 
   async isPackVisible(packName: string) {
     // Wait a moment for any filtering/search to take effect
-    await this.page.waitForTimeout(1000);
 
     // Use a more robust selector that can handle spaces in pack names
     const packElement = this.page.locator(`[data-testid="pack-${packName}"]`);
@@ -220,13 +215,11 @@ export class RulePackModal {
 
     // Clear any existing search first
     await searchInput.clear();
-    await this.page.waitForTimeout(500);
 
     // Fill the search term
     await searchInput.fill(query);
 
     // Wait for search to process and UI to update
-    await this.page.waitForTimeout(1500);
   }
 
   async clearCategory() {
@@ -245,7 +238,6 @@ export class RulePackModal {
     }
     await this.page.getByTestId('pack-category-select').selectOption(category);
     // Wait for filter to process
-    await this.page.waitForTimeout(1000);
   }
 
   async filterByTag(tag: string) {
@@ -256,7 +248,6 @@ export class RulePackModal {
     }
     await this.page.getByTestId(`filter-tag-${tag}-button`).click();
     // Wait for filter to process
-    await this.page.waitForTimeout(1000);
   }
 
   async getPackIcon(packName: string) {

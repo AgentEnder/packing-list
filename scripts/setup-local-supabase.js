@@ -80,7 +80,7 @@ async function waitForSupabaseServices() {
 
   while (attempts < maxAttempts) {
     try {
-      const result = await runCommand('supabase', ['status'], {
+      const result = await runCommand('pnpm', ['supabase', 'status'], {
         cwd: 'packages/supabase',
         preferLocal: true,
       });
@@ -109,7 +109,7 @@ async function waitForSupabaseServices() {
 
 async function getSupabaseAnonKey() {
   try {
-    const result = await runCommand('supabase', ['status'], {
+    const result = await runCommand('pnpm', ['supabase', 'status'], {
       cwd: 'packages/supabase',
       preferLocal: true,
     });
@@ -140,6 +140,7 @@ async function runCommand(command, args, options = {}) {
     // In quiet mode, show the error output so we can debug
     if (quiet && error.stderr) {
       colorLog('red', '❌ Command failed with error output:', true);
+      console.error(`> ${command} ${args.join(' ')}`);
       console.error(error.stderr);
     }
     if (quiet && error.stdout && !error.stderr) {
@@ -155,12 +156,15 @@ async function runCommand(command, args, options = {}) {
 }
 
 async function checkIfSupabaseIsRunning() {
-  const result = await runCommand('supabase', ['status'], {
-    cwd: 'packages/supabase',
-    preferLocal: true,
-  });
-
-  return result.stdout?.includes('API URL:');
+  try {
+    const result = await runCommand('pnpm', ['supabase', 'status'], {
+      cwd: 'packages/supabase',
+      preferLocal: true,
+    });
+    return result.stdout?.includes('API URL:');
+  } catch {
+    return false;
+  }
 }
 
 async function main() {
@@ -206,7 +210,7 @@ async function main() {
 
   // Check if Supabase is available locally
   try {
-    await runCommand('supabase', ['--version'], {
+    await runCommand('pnpm', ['supabase', '--version'], {
       preferLocal: true,
     });
     colorLog('green', '✅ Supabase CLI available locally');
@@ -223,7 +227,7 @@ async function main() {
   if (!existsSync('packages/supabase/config.toml')) {
     colorLog('yellow', '⚠️  Supabase not initialized, running init...');
     try {
-      await runCommand('supabase', ['init'], {
+      await runCommand('pnpm', ['supabase', 'init'], {
         cwd: 'packages/supabase',
         preferLocal: true,
       });
@@ -239,7 +243,7 @@ async function main() {
   // Start Supabase services
   log('🔄 Starting Supabase services...', true);
   try {
-    await runCommand('supabase', ['start'], {
+    await runCommand('pnpm', ['supabase', 'start'], {
       cwd: 'packages/supabase',
       preferLocal: true,
     });
@@ -265,7 +269,7 @@ async function main() {
   log('🔗 Supabase Local Development URLs:');
   log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   try {
-    await runCommand('supabase', ['status'], {
+    await runCommand('pnpm', ['supabase', 'status'], {
       cwd: 'packages/supabase',
       preferLocal: true,
     });
@@ -349,8 +353,6 @@ PUBLIC_ENV__LOCATION=http://localhost:3000
 main().catch((error) => {
   log('');
   colorLog('red', '❌ Setup failed with error:');
-  if (!quiet) {
-    console.error(error);
-  }
+  console.error(error);
   process.exit(1);
 });
