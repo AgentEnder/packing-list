@@ -115,11 +115,9 @@ export class TripManager {
   async switchToTrip(tripName: string) {
     await this.navigateToTripsPage();
 
-    // Find the trip card with the given name and click its switch button
-    const switchButton = this.page
-      .getByTestId(/^select-trip-/)
-      .filter({ hasText: 'Switch to Trip' })
-      .first();
+    // Find the trip card with the given name first, then locate its switch button
+    const tripCard = this.page.locator('.card').filter({ hasText: tripName });
+    const switchButton = tripCard.getByText('Switch to Trip');
 
     await switchButton.click();
     await this.navigateToHome();
@@ -131,14 +129,13 @@ export class TripManager {
   async deleteTrip(tripName: string) {
     await this.navigateToTripsPage();
 
-    // Find the trip menu and open it
-    const tripMenu = this.page.locator('[data-testid*="trip-menu-"]').first();
+    // Find the trip card with the given name first, then locate its menu
+    const tripCard = this.page.locator('.card').filter({ hasText: tripName });
+    const tripMenu = tripCard.locator('[data-testid*="trip-menu-"]');
     await tripMenu.click();
 
-    // Click delete button
-    const deleteButton = this.page
-      .locator('[data-testid*="delete-trip-"]')
-      .first();
+    // Click delete button within this trip card
+    const deleteButton = tripCard.locator('[data-testid*="delete-trip-"]');
     await deleteButton.click();
 
     // Confirm deletion
@@ -154,14 +151,15 @@ export class TripManager {
   async duplicateTrip(tripName: string) {
     await this.navigateToTripsPage();
 
-    // Find the trip menu and open it
-    const tripMenu = this.page.locator('[data-testid*="trip-menu-"]').first();
+    // Find the trip card with the given name first, then locate its menu
+    const tripCard = this.page.locator('.card').filter({ hasText: tripName });
+    const tripMenu = tripCard.locator('[data-testid*="trip-menu-"]');
     await tripMenu.click();
 
-    // Click duplicate button
-    const duplicateButton = this.page
-      .locator('[data-testid*="duplicate-trip-"]')
-      .first();
+    // Click duplicate button within this trip card
+    const duplicateButton = tripCard.locator(
+      '[data-testid*="duplicate-trip-"]'
+    );
     await duplicateButton.click();
 
     // Should stay on trips page
