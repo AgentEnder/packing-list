@@ -414,7 +414,8 @@ export function TripWizard({
                     <div>
                       <span className="font-medium">{dest.location}</span>
                       <span className="text-sm text-gray-500 ml-2">
-                        {formatDate(dest.arriveDate)} - {formatDate(dest.leaveDate)}
+                        {formatDate(dest.arriveDate)} -{' '}
+                        {formatDate(dest.leaveDate)}
                       </span>
                       {(dest.arriveNotes || dest.leaveNotes) && (
                         <div className="mt-2 text-sm">
