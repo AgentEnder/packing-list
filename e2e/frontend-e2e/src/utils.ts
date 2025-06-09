@@ -138,7 +138,7 @@ export async function setupTestSession(
         for (const dbName of deleteDbNames) {
           try {
             const deleteReq = indexedDB.deleteDatabase(dbName);
-            await new Promise<void>((resolve, reject) => {
+            await new Promise<void>((resolve) => {
               deleteReq.onsuccess = () => resolve();
               deleteReq.onerror = () => resolve(); // Don't fail if DB doesn't exist
               deleteReq.onblocked = () => {

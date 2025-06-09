@@ -4,7 +4,7 @@ function checkIfPythonInstalled() {
   try {
     execSync('python --version');
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 }
@@ -13,7 +13,7 @@ function checkIfMkdocsInstalled() {
   try {
     execSync('mkdocs --version');
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 }

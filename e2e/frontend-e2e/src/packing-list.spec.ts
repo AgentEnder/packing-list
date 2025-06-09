@@ -15,9 +15,7 @@ test.describe('Packing List View', () => {
       await packingListPage.goto();
     });
 
-    test('should show no trip selected state when no trip is selected', async ({
-      page,
-    }) => {
+    test('should show no trip selected state when no trip is selected', async () => {
       await tripManager.expectNoTripSelected();
     });
 
