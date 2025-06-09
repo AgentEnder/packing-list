@@ -34,7 +34,6 @@ export function createTestTripState(options: {
         [tripId]: tripData,
       },
     },
-    defaultItemRules: [],
     rulePacks: [],
     ui: {
       rulePackModal: {
@@ -43,9 +42,6 @@ export function createTestTripState(options: {
         selectedPackId: undefined,
       },
       loginModal: {
-        isOpen: false,
-      },
-      tripSelector: {
         isOpen: false,
       },
     },

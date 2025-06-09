@@ -1,9 +1,9 @@
 import {
-  StoreType,
   useAppSelector,
   selectPeople,
   selectTripDays,
   selectSelectedTripId,
+  selectDefaultItemRules,
 } from '@packing-list/state';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
@@ -17,9 +17,7 @@ import { RulePackSelector } from '../../components/RulePackSelector';
 
 export default function DefaultsPage() {
   const selectedTripId = useAppSelector(selectSelectedTripId);
-  const defaultItemRules = useAppSelector(
-    (state: StoreType) => state.defaultItemRules
-  );
+  const defaultItemRules = useAppSelector(selectDefaultItemRules);
   const people = useAppSelector(selectPeople);
   const days = useAppSelector(selectTripDays);
 

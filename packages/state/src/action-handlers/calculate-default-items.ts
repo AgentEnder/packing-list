@@ -16,7 +16,7 @@ export const calculateDefaultItems = (state: StoreType): StoreType => {
 
   const selectedTripData = state.trips.byId[selectedTripId];
 
-  const defaultItems = state.defaultItemRules.map((rule) => ({
+  const defaultItems = selectedTripData.defaultItemRules.map((rule) => ({
     name: rule.name,
     quantity: calculateRuleTotal(
       rule,

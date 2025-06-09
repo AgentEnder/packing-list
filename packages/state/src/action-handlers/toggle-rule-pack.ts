@@ -14,12 +14,20 @@ export const toggleRulePackHandler: ActionHandler<ToggleRulePackAction> = (
   state: StoreType,
   action: ToggleRulePackAction
 ): StoreType => {
+  const selectedTripId = state.trips.selectedTripId;
+
+  // Early return if no trip is selected
+  if (!selectedTripId || !state.trips.byId[selectedTripId]) {
+    return state;
+  }
+
+  const selectedTripData = state.trips.byId[selectedTripId];
   const packRuleIds = new Set(action.pack.rules.map((rule) => rule.id));
 
   // If activating, add all rules from the pack that aren't already present
   // and update their pack associations
   if (action.active) {
-    const defaultItemRules = [...state.defaultItemRules];
+    const defaultItemRules = [...selectedTripData.defaultItemRules];
 
     // Add new rules and update pack associations for existing ones
     action.pack.rules.forEach((packRule) => {
@@ -46,10 +54,21 @@ export const toggleRulePackHandler: ActionHandler<ToggleRulePackAction> = (
       }
     });
 
-    // Update state with new rules
+    // Update state with new rules for the current trip
+    const updatedTripData = {
+      ...selectedTripData,
+      defaultItemRules,
+    };
+
     const stateWithNewRules = {
       ...state,
-      defaultItemRules,
+      trips: {
+        ...state.trips,
+        byId: {
+          ...state.trips.byId,
+          [selectedTripId]: updatedTripData,
+        },
+      },
     };
 
     // Then recalculate default items
@@ -59,38 +78,48 @@ export const toggleRulePackHandler: ActionHandler<ToggleRulePackAction> = (
     return calculatePackingListHandler(stateWithDefaultItems);
   } else {
     // If deactivating, remove pack association and only remove rules that have no remaining packs
-    const defaultItemRules = state.defaultItemRules.reduce<DefaultItemRule[]>(
-      (acc, rule) => {
-        if (!packRuleIds.has(rule.id)) {
-          // Rule was never in this pack, keep it as is
-          acc.push(rule);
-          return acc;
-        }
-
-        // Remove this pack from the rule's associations
-        const updatedPackIds = (rule.packIds || []).filter(
-          (id) => id !== action.pack.id
-        );
-
-        // Keep the rule if:
-        // 1. It has remaining pack associations OR
-        // 2. It was never in any pack (packIds is undefined)
-        if (updatedPackIds.length > 0 || rule.packIds === undefined) {
-          acc.push({
-            ...rule,
-            packIds: updatedPackIds.length > 0 ? updatedPackIds : undefined,
-          });
-        }
-
+    const defaultItemRules = selectedTripData.defaultItemRules.reduce<
+      DefaultItemRule[]
+    >((acc, rule) => {
+      if (!packRuleIds.has(rule.id)) {
+        // Rule was never in this pack, keep it as is
+        acc.push(rule);
         return acc;
-      },
-      []
-    );
+      }
 
-    // Update state with filtered rules
+      // Remove this pack from the rule's associations
+      const updatedPackIds = (rule.packIds || []).filter(
+        (id) => id !== action.pack.id
+      );
+
+      // Keep the rule if:
+      // 1. It has remaining pack associations OR
+      // 2. It was never in any pack (packIds is undefined)
+      if (updatedPackIds.length > 0 || rule.packIds === undefined) {
+        acc.push({
+          ...rule,
+          packIds: updatedPackIds.length > 0 ? updatedPackIds : undefined,
+        });
+      }
+
+      return acc;
+    }, []);
+
+    // Update state with filtered rules for the current trip
+    const updatedTripData = {
+      ...selectedTripData,
+      defaultItemRules,
+    };
+
     const stateWithNewRules = {
       ...state,
-      defaultItemRules,
+      trips: {
+        ...state.trips,
+        byId: {
+          ...state.trips.byId,
+          [selectedTripId]: updatedTripData,
+        },
+      },
     };
 
     // Then recalculate default items

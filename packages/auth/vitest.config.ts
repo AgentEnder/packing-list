@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    name: '@packing-list/state-tests',
+    name: '@packing-list/auth-tests',
     include: ['src/**/*.test.ts'],
     environment: 'jsdom',
   },

@@ -105,6 +105,12 @@ export const selectCalculatedItems = createSelector(
 export const selectRulePacks: Selector<StoreType, RulePack[]> = (state) =>
   state.rulePacks;
 
+// Trip-specific rule selectors
+export const selectDefaultItemRules = createSelector(
+  [selectSelectedTripData],
+  (selectedTrip) => selectedTrip?.defaultItemRules || []
+);
+
 // UI selectors
 export const selectRulePackModalOpen: Selector<StoreType, boolean> = (state) =>
   state.ui.rulePackModal.isOpen;

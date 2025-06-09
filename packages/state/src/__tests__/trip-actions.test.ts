@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import { TripEvent, DefaultItemRule } from '@packing-list/model';
 import { parseISO } from 'date-fns';
-import { selectCurrentTrip, selectCalculatedItems } from '../selectors.js';
+import {
+  selectCurrentTrip,
+  selectCalculatedItems,
+  selectDefaultItemRules,
+} from '../selectors.js';
 import { createTestTripState } from './test-helpers.js';
 import { Mutations, AllActions } from '../actions.js';
 import { StoreType } from '../store.js';
@@ -96,7 +100,7 @@ describe('trip actions', () => {
     };
 
     store.dispatch({ type: 'CREATE_ITEM_RULE', payload: rule });
-    expect(store.getState().defaultItemRules).toContainEqual(rule);
+    expect(selectDefaultItemRules(store.getState())).toContainEqual(rule);
 
     // Add a travel event
     const events: TripEvent[] = [

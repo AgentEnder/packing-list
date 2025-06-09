@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { RulePack } from '@packing-list/model';
-import { useAppDispatch, useAppSelector } from '@packing-list/state';
+import {
+  useAppDispatch,
+  useAppSelector,
+  selectDefaultItemRules,
+} from '@packing-list/state';
 import { Modal } from '@packing-list/shared-components';
 import { showToast } from './Toast';
 import { RulePackEditor } from './RulePackEditor';
@@ -43,7 +47,7 @@ export function RulePackModal() {
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const dispatch = useAppDispatch();
   const rulePacks = useAppSelector((state) => state.rulePacks);
-  const currentRules = useAppSelector((state) => state.defaultItemRules);
+  const currentRules = useAppSelector(selectDefaultItemRules);
   const rulePackModal = useAppSelector((state) => state.ui.rulePackModal);
   const activeTab = rulePackModal.activeTab;
   const selectedPackId = rulePackModal.selectedPackId;

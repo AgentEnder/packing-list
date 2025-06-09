@@ -336,7 +336,7 @@ export const calculatePackingListHandler = (state: StoreType): StoreType => {
   const packingListItems: PackingListItem[] = [];
 
   // Process each default item rule
-  for (const rule of state.defaultItemRules) {
+  for (const rule of selectedTripData.defaultItemRules) {
     const ruleHash = calculateRuleHash(rule);
 
     const override = selectedTripData.ruleOverrides.find(

@@ -1,35 +1,24 @@
-import { useAppDispatch, useAppSelector } from '@packing-list/state';
+import {
+  useAppDispatch,
+  useAppSelector,
+  selectDefaultItemRules,
+} from '@packing-list/state';
 import { RulePack } from '@packing-list/model';
 import { showToast } from './Toast';
-import {
-  Check,
-  Star,
-  Tag,
-  ChevronRight,
-  Sun,
-  Briefcase,
-  Tent,
-  Backpack,
-  Plane,
-  Car,
-  Train,
-  Ship,
-  Map,
-  Compass,
-  User,
-} from 'lucide-react';
+import { Check, Star, Tag, ChevronRight, User } from 'lucide-react';
+import * as Icons from 'lucide-react';
 
 const ICONS = {
-  sun: Sun,
-  briefcase: Briefcase,
-  tent: Tent,
-  backpack: Backpack,
-  plane: Plane,
-  car: Car,
-  train: Train,
-  ship: Ship,
-  map: Map,
-  compass: Compass,
+  sun: Icons.Sun,
+  briefcase: Icons.Briefcase,
+  tent: Icons.Tent,
+  backpack: Icons.Backpack,
+  plane: Icons.Plane,
+  car: Icons.Car,
+  train: Icons.Train,
+  ship: Icons.Ship,
+  map: Icons.Map,
+  compass: Icons.Compass,
 } as const;
 
 interface RulePackSelectorProps {
@@ -43,7 +32,7 @@ export function RulePackSelector({
 }: RulePackSelectorProps) {
   const dispatch = useAppDispatch();
   const rulePacks = useAppSelector((state) => state.rulePacks);
-  const currentRules = useAppSelector((state) => state.defaultItemRules);
+  const currentRules = useAppSelector(selectDefaultItemRules);
 
   // Get the top 2 packs by usage count
   const topPacks = [...rulePacks]

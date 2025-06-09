@@ -15,6 +15,7 @@ import type {
 vi.mock('@packing-list/state', () => ({
   useAppSelector: vi.fn(),
   useAppDispatch: vi.fn(),
+  selectDefaultItemRules: vi.fn(),
 }));
 
 vi.mock('./Toast', () => ({
@@ -113,38 +114,70 @@ describe('RulePackSelector Component', () => {
       (selector: (state: StoreType) => unknown) => {
         // Mock the store state
         const mockState: StoreType = {
+          trips: {
+            summaries: [],
+            selectedTripId: 'test-trip',
+            byId: {
+              'test-trip': {
+                trip: {
+                  id: 'test-trip',
+                  days: [],
+                },
+                people: [],
+                defaultItemRules: [
+                  {
+                    ...mockRules[0],
+                    packIds: ['1'], // Beach Pack ID
+                  },
+                ],
+                ruleOverrides: [],
+                packingListView: {
+                  filters: {
+                    packed: true,
+                    unpacked: true,
+                    excluded: false,
+                  },
+                  viewMode: 'by-day',
+                },
+                calculated: {
+                  defaultItems: [],
+                  packingListItems: [],
+                },
+                isLoading: false,
+              },
+            },
+          },
           rulePacks: mockRulePacks,
-          defaultItemRules: [
-            {
-              ...mockRules[0],
-              packIds: ['1'], // Beach Pack ID
-            },
-          ],
-          people: [],
-          trip: {
-            id: 'test-trip',
-            days: [],
-          },
-          ruleOverrides: [],
-          packingListView: {
-            filters: {
-              packed: true,
-              unpacked: true,
-              excluded: false,
-            },
-            viewMode: 'by-day',
-          },
-          calculated: {
-            defaultItems: [],
-            packingListItems: [],
-          },
           ui: {
             rulePackModal: {
               isOpen: false,
               activeTab: 'browse',
             },
+            loginModal: {
+              isOpen: false,
+            },
+          },
+          auth: {
+            user: null,
+            session: null,
+            loading: false,
+            error: null,
+            lastError: null,
+            isAuthenticating: false,
+            isInitialized: false,
+            isOfflineMode: false,
+            forceOfflineMode: false,
+            connectivityState: { isOnline: true, isConnected: true },
+            offlineAccounts: [],
+            hasOfflinePasscode: false,
           },
         };
+
+        // Handle selectDefaultItemRules selector
+        if (selector === state.selectDefaultItemRules) {
+          return mockState.trips.byId['test-trip'].defaultItemRules;
+        }
+
         return selector(mockState);
       }
     );

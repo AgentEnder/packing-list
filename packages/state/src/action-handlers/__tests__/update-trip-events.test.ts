@@ -110,20 +110,20 @@ describe('updateTripEventsHandler', () => {
                 gender: 'other',
               },
             ],
+            defaultItemRules: [
+              {
+                id: 'rule1',
+                name: 'Test Rule',
+                calculation: {
+                  baseQuantity: 1,
+                  perPerson: true,
+                },
+                conditions: [],
+              },
+            ],
           },
         },
       },
-      defaultItemRules: [
-        {
-          id: 'rule1',
-          name: 'Test Rule',
-          calculation: {
-            baseQuantity: 1,
-            perPerson: true,
-          },
-          conditions: [],
-        },
-      ],
     };
 
     const result = updateTripEventsHandler(stateWithPersonAndRule, {
