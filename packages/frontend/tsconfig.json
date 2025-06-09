@@ -18,16 +18,19 @@
   "exclude": ["dist"],
   "references": [
     {
+      "path": "../auth-state"
+    },
+    {
       "path": "../shared-utils"
     },
     {
       "path": "../shared-components"
     },
     {
-      "path": "../model"
+      "path": "../state"
     },
     {
-      "path": "../state"
+      "path": "../model"
     }
   ]
 }

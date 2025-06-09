@@ -31,8 +31,8 @@ describe('calculatePackingListHandler', () => {
     const state = createTestTripState({ people });
     const tripId = state.trips.selectedTripId!;
 
-    // Update with provided test data
-    state.defaultItemRules = rules;
+    // Update with provided test data - set defaultItemRules in the trip data
+    state.trips.byId[tripId].defaultItemRules = rules;
     state.trips.byId[tripId].trip.days = days;
     state.trips.byId[tripId].people = people;
     state.trips.byId[tripId].calculated.packingListItems = [];

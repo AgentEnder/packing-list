@@ -1,5 +1,9 @@
-import { RulePack } from '@packing-list/model';
-import { useAppDispatch, useAppSelector } from '@packing-list/state';
+import type { RulePack } from '@packing-list/model';
+import {
+  useAppDispatch,
+  useAppSelector,
+  selectDefaultItemRules,
+} from '@packing-list/state';
 import { showToast } from './Toast';
 import { Info, Star, Users, Calendar, Tag } from 'lucide-react';
 import * as Icons from 'lucide-react';
@@ -11,8 +15,8 @@ interface RulePackDetailsProps {
 
 export function RulePackDetails({ pack }: RulePackDetailsProps) {
   const dispatch = useAppDispatch();
-  const currentRules = useAppSelector((state) => state.defaultItemRules);
-  const allRules = useAppSelector((state) => state.defaultItemRules);
+  const currentRules = useAppSelector(selectDefaultItemRules);
+  const allRules = useAppSelector(selectDefaultItemRules);
 
   const isPackActive = currentRules.some((rule) =>
     rule.packIds?.includes(pack.id)

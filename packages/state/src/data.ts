@@ -345,6 +345,7 @@ export const CREATE_DEMO_DATA: () => Partial<StoreType> = () => {
       tripEvents,
     },
     people,
+    defaultItemRules,
     ruleOverrides: [],
     packingListView,
     calculated: {
@@ -376,7 +377,6 @@ export const CREATE_DEMO_DATA: () => Partial<StoreType> = () => {
         [tripId]: tripData,
       },
     },
-    defaultItemRules,
     rulePacks: DEFAULT_RULE_PACKS,
     ui: {
       rulePackModal: {

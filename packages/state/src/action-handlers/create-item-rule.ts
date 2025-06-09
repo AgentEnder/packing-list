@@ -12,10 +12,30 @@ export const createItemRuleHandler = (
   state: StoreType,
   action: CreateItemRuleAction
 ): StoreType => {
-  // First create the rule
+  const selectedTripId = state.trips.selectedTripId;
+
+  // Early return if no trip is selected
+  if (!selectedTripId || !state.trips.byId[selectedTripId]) {
+    return state;
+  }
+
+  const selectedTripData = state.trips.byId[selectedTripId];
+
+  // First create the rule in the current trip
+  const updatedTripData = {
+    ...selectedTripData,
+    defaultItemRules: [...selectedTripData.defaultItemRules, action.payload],
+  };
+
   const stateWithNewRule = {
     ...state,
-    defaultItemRules: [...state.defaultItemRules, action.payload],
+    trips: {
+      ...state.trips,
+      byId: {
+        ...state.trips.byId,
+        [selectedTripId]: updatedTripData,
+      },
+    },
   };
 
   // Then recalculate default items

@@ -9,6 +9,7 @@ import {
   selectGroupedItems,
   selectCurrentTrip,
   selectPeople,
+  selectDefaultItemRules,
   GroupedItem,
 } from '@packing-list/state';
 import {
@@ -32,7 +33,7 @@ export const PackingList: React.FC = () => {
     useAppSelector(selectGroupedItems);
   const trip = useAppSelector(selectCurrentTrip);
   const people = useAppSelector(selectPeople);
-  const defaultItemRules = useAppSelector((state) => state.defaultItemRules);
+  const defaultItemRules = useAppSelector(selectDefaultItemRules);
   const categories = getAllCategories();
 
   const [selectedItem, setSelectedItem] = useState<GroupedItem | null>(null);
