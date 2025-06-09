@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DefaultItemRule } from '@packing-list/model';
-import { useAppSelector } from '@packing-list/state';
+import { useAppSelector, selectDefaultItemRules } from '@packing-list/state';
 import { Tag, Plus, Minus } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -14,9 +14,9 @@ export function RulePackRuleSelector({
   selectedRules,
   onRulesChange,
 }: RulePackRuleSelectorProps) {
-  const allRules = useAppSelector((state) => state.defaultItemRules);
-  const rulePacks = useAppSelector((state) => state.rulePacks);
   const [searchTerm, setSearchTerm] = useState('');
+  const allRules = useAppSelector(selectDefaultItemRules);
+  const rulePacks = useAppSelector((state) => state.rulePacks);
 
   const selectedRuleIds = new Set(selectedRules.map((rule) => rule.id));
 

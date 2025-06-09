@@ -4,7 +4,7 @@ import { Link } from '../../../components/Link';
 import { PageHeader } from '../../../components/PageHeader';
 import { PageContainer } from '../../../components/PageContainer';
 import { TripWizard } from '../../days/TripWizard';
-import type { TripEvent } from '@packing-list/model';
+import type { TripEvent, RulePack } from '@packing-list/model';
 import {
   MapPin,
   Calendar,
@@ -17,6 +17,7 @@ import {
   Check,
 } from 'lucide-react';
 import { navigate } from 'vike/client/router';
+import { uuid } from '../../../utils/uuid';
 
 // Trip templates
 const TRIP_TEMPLATES = [
@@ -86,6 +87,9 @@ export default function NewTripPage() {
   const [tripEvents, setTripEvents] = useState<TripEvent[]>([]);
   const [showWizard, setShowWizard] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [queuedRulePackActions, setQueuedRulePackActions] = useState<
+    Array<{ pack: RulePack; active: boolean }>
+  >([]);
 
   const template = TRIP_TEMPLATES.find((t) => t.id === selectedTemplate);
 
@@ -112,10 +116,59 @@ export default function NewTripPage() {
     }));
   };
 
+  // Helper function to create initial trip events from form data
+  const createInitialTripEvents = (): TripEvent[] => {
+    const events: TripEvent[] = [];
+
+    // Add leave home event if start date is provided
+    if (formData.startDate) {
+      events.push({
+        id: uuid(),
+        type: 'leave_home',
+        date: formData.startDate,
+        notes: '',
+      });
+    }
+
+    // Add destination events if both location and dates are provided
+    if (formData.location && formData.startDate && formData.endDate) {
+      events.push({
+        id: uuid(),
+        type: 'arrive_destination',
+        date: formData.startDate,
+        location: formData.location,
+        notes: '',
+      });
+      events.push({
+        id: uuid(),
+        type: 'leave_destination',
+        date: formData.endDate,
+        location: formData.location,
+        notes: '',
+      });
+    }
+
+    // Add arrive home event if end date is provided
+    if (formData.endDate) {
+      events.push({
+        id: uuid(),
+        type: 'arrive_home',
+        date: formData.endDate,
+        notes: '',
+      });
+    }
+
+    return events;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (canSubmit) {
+      // Create initial events from form data to prepopulate the wizard
+      const initialEvents = createInitialTripEvents();
+      setTripEvents(initialEvents);
+
       // Move to wizard step instead of creating trip immediately
       setStep('wizard');
       setShowWizard(true);
@@ -129,6 +182,7 @@ export default function NewTripPage() {
     try {
       const tripId = `trip-${Date.now()}`;
 
+      // First, create the trip (this automatically selects it)
       dispatch({
         type: 'CREATE_TRIP',
         payload: {
@@ -146,6 +200,18 @@ export default function NewTripPage() {
         });
       }
 
+      // Apply any queued rule pack actions now that the trip exists and is selected
+      queuedRulePackActions.forEach(({ pack, active }) => {
+        dispatch({
+          type: 'TOGGLE_RULE_PACK',
+          pack,
+          active,
+        });
+      });
+
+      // Clear the queued actions
+      setQueuedRulePackActions([]);
+
       // Navigate to the new trip
       await navigate('/');
     } catch (error) {
@@ -154,6 +220,16 @@ export default function NewTripPage() {
       setIsSubmitting(false);
       setShowWizard(false);
     }
+  };
+
+  const handleRulePackToggle = (pack: RulePack, active: boolean) => {
+    // Queue the rule pack action to be applied after trip creation
+    setQueuedRulePackActions((prev) => {
+      // Remove any existing action for this pack
+      const filtered = prev.filter((action) => action.pack.id !== pack.id);
+      // Add the new action
+      return [...filtered, { pack, active }];
+    });
   };
 
   const handleWizardClose = () => {
@@ -395,6 +471,7 @@ export default function NewTripPage() {
         onClose={handleWizardClose}
         onSave={handleWizardSave}
         currentEvents={tripEvents}
+        onRulePackToggle={handleRulePackToggle}
       />
     </PageContainer>
   );

@@ -389,8 +389,8 @@ CREATE POLICY "Users can update own trips" ON public.trips
 
 #### Tasks:
 
-1. **Create migration utility** for existing single-trip data
-2. **Implement initial sync** logic for new users
+1. ~~**Create migration utility** for existing single-trip data~~ -- not needed, no current data saved in db
+2. **Implement initial sync** logic for new usersa
 3. **Add sync status indicators** in UI
 4. **Create conflict resolution UI** for manual conflicts
 5. **Add bulk export/import** for trip data

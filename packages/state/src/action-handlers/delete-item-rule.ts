@@ -13,21 +13,37 @@ export const deleteItemRuleHandler = (
   state: StoreType,
   action: DeleteItemRuleAction
 ): StoreType => {
-  // First delete the rule
-  const stateWithDeletedRule = {
-    ...state,
-    defaultItemRules: state.defaultItemRules.filter(
+  const selectedTripId = state.trips.selectedTripId;
+
+  // Early return if no trip is selected
+  if (!selectedTripId || !state.trips.byId[selectedTripId]) {
+    return state;
+  }
+
+  const selectedTripData = state.trips.byId[selectedTripId];
+
+  // First delete the rule from the current trip
+  const updatedTripData = {
+    ...selectedTripData,
+    defaultItemRules: selectedTripData.defaultItemRules.filter(
       (rule) => rule.id !== action.payload.id
     ),
   };
 
+  const stateWithDeletedRule = {
+    ...state,
+    trips: {
+      ...state.trips,
+      byId: {
+        ...state.trips.byId,
+        [selectedTripId]: updatedTripData,
+      },
+    },
+  };
+
   // Then recalculate default items
-  const stateWithDefaultItems = calculateDefaultItems(stateWithDeletedRule, {
-    type: 'CALCULATE_DEFAULT_ITEMS',
-  });
+  const stateWithDefaultItems = calculateDefaultItems(stateWithDeletedRule);
 
   // Finally recalculate packing list
-  return calculatePackingListHandler(stateWithDefaultItems, {
-    type: 'CALCULATE_PACKING_LIST',
-  });
+  return calculatePackingListHandler(stateWithDefaultItems);
 };

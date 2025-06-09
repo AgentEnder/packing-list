@@ -30,7 +30,6 @@ export type StoreType = {
 
   // Global state (not trip-specific)
   rulePacks: RulePack[];
-  defaultItemRules: DefaultItemRule[]; // These might become trip-specific later
 
   // UI state
   ui: {
@@ -53,6 +52,7 @@ export type TripData = {
   // Trip info
   trip: Trip;
   people: Person[];
+  defaultItemRules: DefaultItemRule[]; // Moved from global to trip-specific
   ruleOverrides: RuleOverride[];
   packingListView: PackingListViewState;
 
@@ -75,6 +75,7 @@ export function createEmptyTripData(tripId: string): TripData {
       days: [],
     },
     people: [],
+    defaultItemRules: [], // Add empty rules array for new trips
     ruleOverrides: [],
     packingListView: {
       viewMode: 'by-day',
@@ -98,7 +99,6 @@ export const initialState: Omit<StoreType, 'auth'> = {
     selectedTripId: null,
     byId: {},
   },
-  defaultItemRules: [],
   rulePacks: DEFAULT_RULE_PACKS,
   ui: {
     rulePackModal: {

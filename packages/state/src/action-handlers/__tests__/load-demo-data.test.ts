@@ -12,9 +12,7 @@ import { TripEvent } from '@packing-list/model';
 describe('loadDemoDataHandler', () => {
   it('should load demo data', () => {
     const initialState = createTestTripState({});
-    const result = loadDemoDataHandler(initialState, {
-      type: 'LOAD_DEMO_DATA',
-    });
+    const result = loadDemoDataHandler(initialState);
     const demoData = CREATE_DEMO_DATA();
 
     // Verify the structure and content using selectors
@@ -26,17 +24,22 @@ describe('loadDemoDataHandler', () => {
     expect(trip).toBeDefined();
     expect(trip?.id).toBe('DEMO_TRIP');
     expect(packingListView).toBeDefined();
-    expect(result.defaultItemRules).toHaveLength(
-      demoData.defaultItemRules?.length || 0
-    );
+
+    // Access defaultItemRules from the correct location in the new store structure
+    const selectedTripId = result.trips.selectedTripId;
+    expect(selectedTripId).toBeDefined();
+    if (selectedTripId) {
+      const tripData = result.trips.byId[selectedTripId];
+      expect(tripData.defaultItemRules).toHaveLength(
+        demoData.trips?.byId?.['DEMO_TRIP']?.defaultItemRules?.length || 0
+      );
+    }
     expect(result.rulePacks).toHaveLength(demoData.rulePacks?.length || 0);
   });
 
   it('should contain all required state properties', () => {
     const initialState = createTestTripState({});
-    const result = loadDemoDataHandler(initialState, {
-      type: 'LOAD_DEMO_DATA',
-    });
+    const result = loadDemoDataHandler(initialState);
 
     // Verify all required properties are present
     const people = selectPeople(result);
@@ -47,15 +50,20 @@ describe('loadDemoDataHandler', () => {
     expect(trip).toBeDefined();
     expect(trip?.days).toBeDefined();
     expect(trip?.tripEvents).toBeDefined();
-    expect(result.defaultItemRules).toBeDefined();
+
+    // Access defaultItemRules from the correct location in the new store structure
+    const selectedTripId = result.trips.selectedTripId;
+    expect(selectedTripId).toBeDefined();
+    if (selectedTripId) {
+      const tripData = result.trips.byId[selectedTripId];
+      expect(tripData.defaultItemRules).toBeDefined();
+    }
     expect(packingListView).toBeDefined();
   });
 
   it('should have valid trip events', () => {
     const initialState = createTestTripState({});
-    const result = loadDemoDataHandler(initialState, {
-      type: 'LOAD_DEMO_DATA',
-    });
+    const result = loadDemoDataHandler(initialState);
     const trip = selectCurrentTrip(result);
 
     // Verify trip events are properly structured
@@ -89,9 +97,7 @@ describe('loadDemoDataHandler', () => {
 
   it('should have valid days calculated', () => {
     const initialState = createTestTripState({});
-    const result = loadDemoDataHandler(initialState, {
-      type: 'LOAD_DEMO_DATA',
-    });
+    const result = loadDemoDataHandler(initialState);
     const trip = selectCurrentTrip(result);
 
     expect(trip?.days.length).toBeGreaterThan(0);
@@ -109,12 +115,16 @@ describe('loadDemoDataHandler', () => {
 
   it('should have valid default item rules', () => {
     const initialState = createTestTripState({});
-    const result = loadDemoDataHandler(initialState, {
-      type: 'LOAD_DEMO_DATA',
-    });
+    const result = loadDemoDataHandler(initialState);
 
-    expect(result.defaultItemRules.length).toBeGreaterThan(0);
-    const firstRule = result.defaultItemRules[0];
+    // Access defaultItemRules from the correct location in the new store structure
+    const selectedTripId = result.trips.selectedTripId;
+    expect(selectedTripId).toBeDefined();
+    if (!selectedTripId) return;
+
+    const tripData = result.trips.byId[selectedTripId];
+    expect(tripData.defaultItemRules.length).toBeGreaterThan(0);
+    const firstRule = tripData.defaultItemRules[0];
 
     // Check rule structure
     expect(firstRule).toHaveProperty('id');
@@ -125,9 +135,7 @@ describe('loadDemoDataHandler', () => {
 
   it('should have valid packing list view state', () => {
     const initialState = createTestTripState({});
-    const result = loadDemoDataHandler(initialState, {
-      type: 'LOAD_DEMO_DATA',
-    });
+    const result = loadDemoDataHandler(initialState);
     const packingListView = selectPackingListView(result);
 
     expect(packingListView).toHaveProperty('viewMode');
@@ -140,9 +148,7 @@ describe('loadDemoDataHandler', () => {
 
   it('should have valid calculated items', () => {
     const initialState = createTestTripState({});
-    const result = loadDemoDataHandler(initialState, {
-      type: 'LOAD_DEMO_DATA',
-    });
+    const result = loadDemoDataHandler(initialState);
 
     // Access calculated items from the selected trip
     const selectedTripId = result.trips.selectedTripId;

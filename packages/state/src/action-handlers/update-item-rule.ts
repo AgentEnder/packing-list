@@ -12,12 +12,32 @@ export const updateItemRuleHandler = (
   state: StoreType,
   action: UpdateItemRuleAction
 ): StoreType => {
-  // First update the rule
-  const stateWithUpdatedRule = {
-    ...state,
-    defaultItemRules: state.defaultItemRules.map((rule) =>
+  const selectedTripId = state.trips.selectedTripId;
+
+  // Early return if no trip is selected
+  if (!selectedTripId || !state.trips.byId[selectedTripId]) {
+    return state;
+  }
+
+  const selectedTripData = state.trips.byId[selectedTripId];
+
+  // First update the rule in the current trip
+  const updatedTripData = {
+    ...selectedTripData,
+    defaultItemRules: selectedTripData.defaultItemRules.map((rule) =>
       rule.id === action.payload.id ? action.payload : rule
     ),
+  };
+
+  const stateWithUpdatedRule = {
+    ...state,
+    trips: {
+      ...state.trips,
+      byId: {
+        ...state.trips.byId,
+        [selectedTripId]: updatedTripData,
+      },
+    },
   };
 
   // Then recalculate default items

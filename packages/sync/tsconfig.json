@@ -4,6 +4,15 @@
   "include": [],
   "references": [
     {
+      "path": "../auth-state"
+    },
+    {
+      "path": "../offline-storage"
+    },
+    {
+      "path": "../model"
+    },
+    {
       "path": "./tsconfig.lib.json"
     },
     {
