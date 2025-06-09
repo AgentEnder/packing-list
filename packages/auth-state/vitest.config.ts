@@ -13,6 +13,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    coverage: {
+      include: ['src/**/*.ts', 'src/**/*.tsx'],
+    },
   },
   resolve: {
     // Handle TypeScript paths and module resolution

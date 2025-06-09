@@ -5,6 +5,9 @@ export default defineConfig({
     name: '@packing-list/auth-tests',
     include: ['src/**/*.test.ts'],
     environment: 'jsdom',
+    coverage: {
+      include: ['src/**/*.ts', 'src/**/*.tsx'],
+    },
   },
   resolve: {
     // Handle TypeScript paths and module resolution
