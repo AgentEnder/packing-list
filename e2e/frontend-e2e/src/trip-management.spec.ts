@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 import { setupTestSession } from './utils';
 import { TripManager } from './page-objects/trip-manager';
 
@@ -10,13 +10,11 @@ test.describe('Trip Management', () => {
     tripManager = new TripManager(page);
   });
 
-  test('should show no trip selected state when no trips exist', async ({
-    page,
-  }) => {
+  test('should show no trip selected state when no trips exist', async () => {
     await tripManager.expectNoTripSelected();
   });
 
-  test('should create a new trip with wizard', async ({ page }) => {
+  test('should create a new trip with wizard', async () => {
     await tripManager.createFirstTrip({
       template: 'business',
       title: 'Business Trip NYC',
@@ -28,7 +26,7 @@ test.describe('Trip Management', () => {
     await tripManager.expectTripSelected('Business Trip NYC');
   });
 
-  test('should create a new trip without dates', async ({ page }) => {
+  test('should create a new trip without dates', async () => {
     await tripManager.createFirstTrip({
       template: 'business',
       title: 'Business Trip Without Dates',
@@ -38,7 +36,7 @@ test.describe('Trip Management', () => {
     await tripManager.expectTripSelected('Business Trip Without Dates');
   });
 
-  test('should manage multiple trips', async ({ page }) => {
+  test('should manage multiple trips', async () => {
     // Create first trip
     await tripManager.createFirstTrip({
       template: 'business',
@@ -57,7 +55,7 @@ test.describe('Trip Management', () => {
     await tripManager.expectTripSelected('Vacation Trip');
   });
 
-  test('should switch between trips', async ({ page }) => {
+  test('should switch between trips', async () => {
     // Create first trip
     await tripManager.createFirstTrip({
       template: 'business',
@@ -77,7 +75,7 @@ test.describe('Trip Management', () => {
     await tripManager.expectTripSelected('Trip A');
   });
 
-  test('should delete a trip', async ({ page }) => {
+  test('should delete a trip', async () => {
     // Create a trip first
     await tripManager.createFirstTrip({
       template: 'business',
@@ -92,7 +90,7 @@ test.describe('Trip Management', () => {
     await tripManager.expectEmptyTripsState();
   });
 
-  test('should duplicate a trip', async ({ page }) => {
+  test('should duplicate a trip', async () => {
     // Create a trip first
     await tripManager.createFirstTrip({
       template: 'business',

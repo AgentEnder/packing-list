@@ -14,7 +14,6 @@ import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
 import { NoTripSelected } from '../../components/NoTripSelected';
 import { RulePackSelector } from '../../components/RulePackSelector';
-import { RulePackModal } from '../../components/RulePackModal';
 
 export default function DefaultsPage() {
   const selectedTripId = useAppSelector(selectSelectedTripId);

@@ -162,7 +162,7 @@ test.describe('Authentication Flows', () => {
         });
         await signOut(page);
         await page.waitForTimeout(1500);
-      } catch (error) {
+      } catch {
         console.log('No existing session to clear');
       }
 
