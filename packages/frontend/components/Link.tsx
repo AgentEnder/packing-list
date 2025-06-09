@@ -1,21 +1,19 @@
 import type { ReactNode } from 'react';
 import { usePageContext } from 'vike-react/usePageContext';
 
-export function Link({
-  href,
-  children,
-  className,
-  onClick,
-  dataTestId,
-}: {
-  href: string;
-  children: ReactNode;
-  className?: string;
-  onClick?: () => void;
-  dataTestId?: string;
-}) {
+export function Link(
+  props: {
+    href: string;
+    children: ReactNode;
+    className?: string;
+    onClick?: () => void;
+    dataTestId?: string;
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>
+) {
   const pageContext = usePageContext();
   const { urlPathname } = pageContext;
+  const { href, children, className, onClick, dataTestId, ...anchorTagProps } =
+    props;
 
   const hrefWithBaseUrl =
     import.meta.env.PUBLIC_ENV__BASE_URL === '/' ||
@@ -37,6 +35,7 @@ export function Link({
         }
       }}
       data-testid={dataTestId}
+      {...anchorTagProps}
     >
       {children}
     </a>
