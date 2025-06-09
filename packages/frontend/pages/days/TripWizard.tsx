@@ -1,24 +1,9 @@
 import { useState, ChangeEvent, useEffect } from 'react';
-import { TripEvent, RulePack } from '@packing-list/model';
+import { TripEvent } from '@packing-list/model';
 import { Timeline, Modal } from '@packing-list/shared-components';
 import { uuid } from '../../utils/uuid';
 import { RulePackSelector } from '../../components/RulePackSelector';
-import { useAppSelector } from '@packing-list/state';
-import { Check, Star, Tag, User } from 'lucide-react';
-import * as Icons from 'lucide-react';
-
-const ICONS = {
-  sun: Icons.Sun,
-  briefcase: Icons.Briefcase,
-  tent: Icons.Tent,
-  backpack: Icons.Backpack,
-  plane: Icons.Plane,
-  car: Icons.Car,
-  train: Icons.Train,
-  ship: Icons.Ship,
-  map: Icons.Map,
-  compass: Icons.Compass,
-} as const;
+import { useAppDispatch } from '@packing-list/state';
 
 interface Destination {
   id: string;
@@ -34,7 +19,7 @@ interface TripWizardProps {
   onClose: () => void;
   onSave: (events: TripEvent[]) => void;
   currentEvents?: TripEvent[];
-  onRulePackToggle?: (pack: RulePack, active: boolean) => void;
+  fullPage?: boolean;
 }
 
 const steps = [
@@ -85,8 +70,9 @@ export function TripWizard({
   onClose,
   onSave,
   currentEvents = [],
-  onRulePackToggle,
+  fullPage = false,
 }: TripWizardProps) {
+  const dispatch = useAppDispatch();
   const [currentStep, setCurrentStep] = useState(1);
   const [tripData, setTripData] = useState({
     leaveHomeDate: '',
@@ -249,19 +235,13 @@ export function TripWizard({
   const handleSave = () => {
     const events = generateTripEvents();
     onSave(events);
-    onClose();
+    if (!fullPage) onClose();
   };
 
   const handleRulesApplied = () => {
-    // Don't save immediately if we have a rule pack toggle handler
-    // This allows the parent to queue rule pack changes
-    if (!onRulePackToggle) {
-      // Original behavior for backward compatibility
-      const events = generateTripEvents();
-      onSave(events);
-      onClose();
-    }
-    // If we have onRulePackToggle, the parent will handle saving
+    const events = generateTripEvents();
+    onSave(events);
+    if (!fullPage) onClose();
   };
 
   const handleClose = () => {
@@ -588,12 +568,7 @@ export function TripWizard({
               that might be helpful. You can always modify these later from the
               Defaults page.
             </p>
-            {/* Custom RulePackSelector that uses onRulePackToggle if available */}
-            {onRulePackToggle ? (
-              <CustomRulePackSelector onRulePackToggle={onRulePackToggle} />
-            ) : (
-              <RulePackSelector onRulesApplied={handleRulesApplied} />
-            )}
+            <RulePackSelector onRulesApplied={handleRulesApplied} />
             {renderStepNavigation(3, null, true, true)}
           </div>
         );
@@ -602,14 +577,16 @@ export function TripWizard({
     }
   };
 
-  return (
-    <Modal
-      isOpen={open}
-      onClose={handleClose}
-      title={currentEvents.length > 0 ? 'Edit Trip' : 'Configure Trip'}
-      size="2xl"
-      modalBoxClassName="w-11/12 max-w-2xl"
-    >
+  // Effect: Whenever user reaches step 4, update trip events in store so rule packs apply immediately
+  useEffect(() => {
+    if (currentStep === 4) {
+      const events = generateTripEvents();
+      dispatch({ type: 'UPDATE_TRIP_EVENTS', payload: events });
+    }
+  }, [currentStep]);
+
+  const inner = (
+    <>
       {/* Steps indicator */}
       <ul className="steps steps-horizontal w-full mb-6">
         {steps.map((step) => (
@@ -629,106 +606,22 @@ export function TripWizard({
       </ul>
 
       {renderStep()}
-    </Modal>
+    </>
   );
-}
 
-// Custom RulePackSelector for use in trip wizard
-function CustomRulePackSelector({
-  onRulePackToggle,
-}: {
-  onRulePackToggle: (pack: RulePack, active: boolean) => void;
-}) {
-  const rulePacks = useAppSelector((state) => state.rulePacks);
-  const [selectedPacks, setSelectedPacks] = useState<Set<string>>(new Set());
-
-  // Get the top 2 packs by usage count
-  const topPacks = [...rulePacks]
-    .sort((a, b) => b.stats.usageCount - a.stats.usageCount)
-    .slice(0, 2);
-
-  const handleTogglePack = (pack: RulePack) => {
-    const isActive = selectedPacks.has(pack.id);
-    const newActive = !isActive;
-
-    // Update local state
-    setSelectedPacks((prev) => {
-      const newSet = new Set(prev);
-      if (newActive) {
-        newSet.add(pack.id);
-      } else {
-        newSet.delete(pack.id);
-      }
-      return newSet;
-    });
-
-    // Notify parent
-    onRulePackToggle(pack, newActive);
-  };
-
-  const getPackIcon = (pack: RulePack) => {
-    if (!pack.icon) return null;
-    const IconComponent = ICONS[pack.icon as keyof typeof ICONS];
-    return IconComponent ? <IconComponent className="w-5 h-5" /> : null;
-  };
+  if (fullPage) {
+    return <div className="px-4">{inner}</div>;
+  }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {topPacks.map((pack) => {
-        const active = selectedPacks.has(pack.id);
-        const icon = getPackIcon(pack);
-
-        return (
-          <div
-            key={pack.id}
-            className={`card bg-base-100 shadow-lg border-2 transition-all cursor-pointer hover:shadow-xl ${
-              active
-                ? 'border-primary bg-primary/5'
-                : 'border-base-300 hover:border-primary/50'
-            }`}
-            onClick={() => handleTogglePack(pack)}
-          >
-            <div className="card-body p-4">
-              <div className="flex items-start justify-between">
-                <h3 className="card-title flex items-center gap-2 text-base">
-                  {icon}
-                  {pack.name}
-                  {active && <Check className="w-4 h-4 text-primary" />}
-                </h3>
-                <div className="flex items-center gap-1 text-sm text-base-content/70">
-                  <Star className="w-4 h-4" />
-                  <span>{pack.stats.rating.toFixed(1)}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 mt-2 text-sm text-base-content/70">
-                <div className="flex items-center gap-1">
-                  <Tag className="w-4 h-4" />
-                  <span>{pack.rules.length} rules</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <User className="w-4 h-4" />
-                  <span>{pack.author.name}</span>
-                </div>
-              </div>
-
-              <div className="card-actions justify-end mt-auto">
-                <button
-                  className={`btn btn-sm ${
-                    active ? 'btn-outline btn-error' : 'btn-primary'
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleTogglePack(pack);
-                  }}
-                >
-                  {active ? 'Remove' : 'Add Rules'}
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
+    <Modal
+      isOpen={open}
+      onClose={handleClose}
+      title={currentEvents.length > 0 ? 'Edit Trip' : 'Configure Trip'}
+      size="2xl"
+      modalBoxClassName="w-11/12 max-w-2xl"
+    >
+      {inner}
+    </Modal>
   );
 }

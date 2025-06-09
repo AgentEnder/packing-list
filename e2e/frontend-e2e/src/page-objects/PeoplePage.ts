@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { Page, expect } from '@playwright/test';
 
 export class PeoplePage {
   constructor(protected page: Page) {}
@@ -23,6 +23,13 @@ export class PeoplePage {
       await this.page.goto('/people');
       await this.page.waitForLoadState('networkidle');
     }
+  }
+
+  async verifyPeoplePage() {
+    await expect(this.page).toHaveURL('/people');
+    await expect(
+      this.page.getByRole('heading', { name: 'People on this Trip' })
+    ).toBeVisible();
   }
 
   async addPerson(

@@ -25,6 +25,7 @@ import { Link } from '../../../components/Link';
 import { PrintButton } from './PrintButton';
 import { getAllCategories } from '@packing-list/model';
 import { format } from 'date-fns';
+import { PageHeader } from '../../../components/PageHeader';
 
 export const PackingList: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -217,10 +218,7 @@ export const PackingList: React.FC = () => {
   return (
     <div className="container mx-auto p-4">
       <div className="flex flex-col gap-3 mb-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-xl sm:text-2xl font-bold">Packing List</h1>
-          <PrintButton />
-        </div>
+        <PageHeader title="Packing List" actions={<PrintButton />} />
 
         {/* View Mode and Filters */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">

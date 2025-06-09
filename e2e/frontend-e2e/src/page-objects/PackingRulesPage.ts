@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { Page, expect } from '@playwright/test';
 import { RuleFormModal } from './RuleFormModal.js';
 import { RulePackModal } from './RulePackModal.js';
 
@@ -40,6 +40,14 @@ export class PackingRulesPage {
     await this.dismissAnyOpenModals();
 
     await defaultItemsLink.click();
+  }
+
+  async verifyPackingRulesPage() {
+    await expect(this.page).toHaveURL('/defaults');
+    await expect(
+      this.page.getByRole('heading', { name: 'Default Packing Rules' })
+    ).toBeVisible();
+    await expect(this.page.getByText('Available Rule Packs')).toBeVisible();
   }
 
   async dismissAnyOpenModals() {

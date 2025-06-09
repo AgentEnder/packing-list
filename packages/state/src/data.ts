@@ -387,6 +387,10 @@ export const CREATE_DEMO_DATA: () => Partial<StoreType> = () => {
       loginModal: {
         isOpen: false,
       },
+      flow: {
+        current: null,
+        steps: [],
+      },
     },
     auth: {
       user: null,

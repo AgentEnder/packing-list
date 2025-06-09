@@ -2,14 +2,17 @@ import {
   createSlice,
   createAsyncThunk,
   PayloadAction,
-  Slice,
   ThunkDispatch,
+  ActionCreator,
+  Reducer,
   UnknownAction,
 } from '@reduxjs/toolkit';
 import { useDispatch } from 'react-redux';
 import { authService, AuthUser } from '@packing-list/auth';
 import { LocalAuthService, LocalAuthUser } from '@packing-list/auth';
 import { ConnectivityState, getConnectivityService } from '@packing-list/auth';
+
+import 'immer';
 
 // Create service instances
 const localAuthService = new LocalAuthService();
@@ -599,7 +602,7 @@ export const deleteAccount = createAsyncThunk(
 );
 
 // Create the auth slice
-export const authSlice: Slice<AuthState> = createSlice({
+export const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
@@ -814,10 +817,17 @@ export const {
   resetAuthState,
 } = authSlice.actions;
 
-// Create a typed dispatch for auth actions
-export type AuthDispatch = ThunkDispatch<AuthState, unknown, UnknownAction>;
+export type AuthActions = typeof authSlice.actions extends ActionCreator<
+  infer T
+>
+  ? T
+  : UnknownAction;
+
+export type AuthDispatch = ThunkDispatch<AuthState, unknown, AuthActions>;
 
 // Custom typed dispatch hook for auth actions
 export const useAuthDispatch = () => useDispatch<AuthDispatch>();
 
-export default authSlice.reducer;
+export default authSlice.reducer as Reducer<AuthState, AuthActions>;
+
+export const authInitialState: AuthState = initialState;

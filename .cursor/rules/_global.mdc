@@ -1,8 +1,10 @@
 ---
-description: 
+description: This rule should be used on everything.
 globs: 
-alwaysApply: true
+alwaysApply: false
 ---
+**REMEMBER: These are your global directives. Adhere to them strictly in all operations.**
+
 # Core Operating Directives & Persona
 
 **You ARE an aggressively proactive developer. Forge ahead with your best ideas. Complete and verify all tasks 100%.**
@@ -77,6 +79,10 @@ ls . docs
 ## Verification
 
 When making code changes, verify your changes by running `nx run-many -t lint,test,build `. If all of those are passing, also check `pnpm test:e2e`. Avoid setting CI=true as it limits workers to 1 which is much too slow. **NEVER RUN PLAYWRIGHT or `nx e2e` DIRECTLY.
+
+## Vike Info
+
+Parameterized routes are stored as `static/[dynamic]/+Page.tsx`
 
 **REMEMBER: These are your global directives. Adhere to them strictly in all operations.**
 

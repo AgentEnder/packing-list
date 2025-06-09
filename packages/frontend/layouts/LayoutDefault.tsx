@@ -6,7 +6,7 @@ import { Link } from '../components/Link';
 import { DemoBanner } from '../components/DemoBanner';
 import { ToastContainer } from '../components/Toast';
 import { TripSelector } from '../components/TripSelector';
-import { useAppDispatch, useAppSelector } from '@packing-list/state';
+import { actions, useAppDispatch, useAppSelector } from '@packing-list/state';
 import {
   useAuth,
   useLoginModal,
@@ -37,6 +37,12 @@ export default function LayoutDefault({
     useAuth();
   const dispatch = useAppDispatch();
   const selectedTripId = useAppSelector((state) => state.trips.selectedTripId);
+  const flowStepHref = useAppSelector((state) =>
+    state.ui.flow.current !== null
+      ? state.ui.flow.steps[state.ui.flow.current]?.path
+      : null
+  );
+
   const { openLoginModal, closeLoginModal } = useLoginModal();
   const demoDataLoadedRef = useRef(false);
 
@@ -55,6 +61,15 @@ export default function LayoutDefault({
       }
     }
   }, [dispatch, selectedTripId]);
+
+  const path = typeof window !== 'undefined' ? window.location.pathname : null;
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (flowStepHref && path !== flowStepHref) {
+        dispatch(actions.resetFlow());
+      }
+    }
+  }, [path]);
 
   const handleLinkClick = () => {
     setIsDrawerOpen(false);
@@ -137,11 +152,7 @@ export default function LayoutDefault({
 
       {/* Sidebar */}
       <div className="drawer-side">
-        <label
-          htmlFor="drawer"
-          className="drawer-overlay"
-          onClick={() => setIsDrawerOpen(false)}
-        ></label>
+        <label htmlFor="drawer" className="drawer-overlay"></label>
         <div className="menu p-4 w-80 min-h-full bg-base-200 text-base-content">
           <div className="hidden lg:flex mb-8 justify-between items-center">
             <Link
