@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { useAppDispatch } from '@packing-list/state';
+import { actions, useAppDispatch } from '@packing-list/state';
 import { Link } from '../../../components/Link';
 import { PageHeader } from '../../../components/PageHeader';
 import { PageContainer } from '../../../components/PageContainer';
-import { TripWizard } from '../../days/TripWizard';
-import type { TripEvent, RulePack } from '@packing-list/model';
+import type { TripEvent } from '@packing-list/model';
 import {
   MapPin,
   Calendar,
@@ -73,9 +72,7 @@ const TRIP_TEMPLATES = [
 
 export default function NewTripPage() {
   const dispatch = useAppDispatch();
-  const [step, setStep] = useState<'template' | 'details' | 'wizard'>(
-    'template'
-  );
+  const [step, setStep] = useState<'template' | 'details'>('template');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -84,12 +81,7 @@ export default function NewTripPage() {
     endDate: '',
     location: '',
   });
-  const [tripEvents, setTripEvents] = useState<TripEvent[]>([]);
-  const [showWizard, setShowWizard] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [queuedRulePackActions, setQueuedRulePackActions] = useState<
-    Array<{ pack: RulePack; active: boolean }>
-  >([]);
 
   const template = TRIP_TEMPLATES.find((t) => t.id === selectedTemplate);
 
@@ -165,24 +157,9 @@ export default function NewTripPage() {
     e.preventDefault();
 
     if (canSubmit) {
-      // Create initial events from form data to prepopulate the wizard
-      const initialEvents = createInitialTripEvents();
-      setTripEvents(initialEvents);
-
-      // Move to wizard step instead of creating trip immediately
-      setStep('wizard');
-      setShowWizard(true);
-    }
-  };
-
-  const handleWizardSave = async (events: TripEvent[]) => {
-    setIsSubmitting(true);
-    setTripEvents(events);
-
-    try {
       const tripId = `trip-${Date.now()}`;
 
-      // First, create the trip (this automatically selects it)
+      // 1. Create the trip immediately so it becomes selected
       dispatch({
         type: 'CREATE_TRIP',
         payload: {
@@ -192,49 +169,32 @@ export default function NewTripPage() {
         },
       });
 
-      // Update trip events for the new trip
-      if (events.length > 0) {
+      // 2. Prepopulate with initial events (leave/arrive home etc.)
+      const initialEvents = createInitialTripEvents();
+      if (initialEvents.length > 0) {
         dispatch({
           type: 'UPDATE_TRIP_EVENTS',
-          payload: events,
+          payload: initialEvents,
         });
       }
 
-      // Apply any queued rule pack actions now that the trip exists and is selected
-      queuedRulePackActions.forEach(({ pack, active }) => {
-        dispatch({
-          type: 'TOGGLE_RULE_PACK',
-          pack,
-          active,
-        });
-      });
+      // 3. Initialize the flow
+      dispatch(
+        actions.initFlow({
+          steps: [
+            { path: `/trips/${tripId}`, label: 'Trip' },
+            { path: `/trips/${tripId}/wizard`, label: 'Configure Trip' },
+            { path: '/people', label: 'People' },
+            { path: '/defaults', label: 'Rules' },
+            { path: '/packing-list', label: 'Packing List' },
+          ],
+          current: 1,
+        })
+      );
 
-      // Clear the queued actions
-      setQueuedRulePackActions([]);
-
-      // Navigate to the new trip
-      await navigate('/');
-    } catch (error) {
-      console.error('Failed to create trip:', error);
-    } finally {
-      setIsSubmitting(false);
-      setShowWizard(false);
+      // Navigate to full-page wizard
+      await navigate(`/trips/${tripId}/wizard`);
     }
-  };
-
-  const handleRulePackToggle = (pack: RulePack, active: boolean) => {
-    // Queue the rule pack action to be applied after trip creation
-    setQueuedRulePackActions((prev) => {
-      // Remove any existing action for this pack
-      const filtered = prev.filter((action) => action.pack.id !== pack.id);
-      // Add the new action
-      return [...filtered, { pack, active }];
-    });
-  };
-
-  const handleWizardClose = () => {
-    setShowWizard(false);
-    // Stay on details step so user can modify basic info if needed
   };
 
   const handleSkipDates = async () => {
@@ -416,6 +376,7 @@ export default function NewTripPage() {
               <input
                 type="date"
                 name="endDate"
+                min={formData.startDate || undefined}
                 value={formData.endDate}
                 onChange={handleInputChange}
                 className="input input-bordered w-full"
@@ -464,15 +425,6 @@ export default function NewTripPage() {
           </div>
         </form>
       </div>
-
-      {/* Trip Wizard Modal */}
-      <TripWizard
-        open={showWizard}
-        onClose={handleWizardClose}
-        onSave={handleWizardSave}
-        currentEvents={tripEvents}
-        onRulePackToggle={handleRulePackToggle}
-      />
     </PageContainer>
   );
 }

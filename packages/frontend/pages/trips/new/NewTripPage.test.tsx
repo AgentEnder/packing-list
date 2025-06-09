@@ -73,6 +73,10 @@ const createTestState = (): StoreType => ({
     loginModal: {
       isOpen: false,
     },
+    flow: {
+      steps: [],
+      current: null,
+    },
   },
   auth: {
     user: null,
@@ -167,17 +171,17 @@ describe('NewTripPage', () => {
     expect(currentEvents).toHaveLength(4);
 
     // Check event types and dates
-    const eventTypes = currentEvents!.map((e: { type: string }) => e.type);
+    const eventTypes = currentEvents?.map((e: { type: string }) => e.type);
     expect(eventTypes).toContain('leave_home');
     expect(eventTypes).toContain('arrive_destination');
     expect(eventTypes).toContain('leave_destination');
     expect(eventTypes).toContain('arrive_home');
 
     // Check that destination events have the correct location
-    const arriveDestinationEvent = currentEvents!.find(
+    const arriveDestinationEvent = currentEvents?.find(
       (e: { type: string }) => e.type === 'arrive_destination'
     );
-    const leaveDestinationEvent = currentEvents!.find(
+    const leaveDestinationEvent = currentEvents?.find(
       (e: { type: string }) => e.type === 'leave_destination'
     );
 
@@ -191,10 +195,10 @@ describe('NewTripPage', () => {
     );
 
     // Check dates are correct
-    const leaveHomeEvent = currentEvents!.find(
+    const leaveHomeEvent = currentEvents?.find(
       (e: { type: string }) => e.type === 'leave_home'
     );
-    const arriveHomeEvent = currentEvents!.find(
+    const arriveHomeEvent = currentEvents?.find(
       (e: { type: string }) => e.type === 'arrive_home'
     );
 
@@ -243,8 +247,8 @@ describe('NewTripPage', () => {
 
     // Should only have leave_home event since no end date or location provided
     expect(currentEvents).toHaveLength(1);
-    expect(currentEvents![0].type).toBe('leave_home');
-    expect(currentEvents![0].date).toBe('2024-03-15');
+    expect(currentEvents?.[0].type).toBe('leave_home');
+    expect(currentEvents?.[0].date).toBe('2024-03-15');
   });
 
   it('should handle empty form data gracefully', async () => {
@@ -279,44 +283,5 @@ describe('NewTripPage', () => {
 
     // Should have no events since no dates or location provided
     expect(currentEvents).toHaveLength(0);
-  });
-
-  it('should queue rule pack actions during wizard and apply them after trip creation', async () => {
-    const TestWrapperWithStore = ({
-      children,
-    }: {
-      children: React.ReactNode;
-    }) => {
-      const store = createTestStore();
-      return <Provider store={store}>{children}</Provider>;
-    };
-
-    render(
-      <TestWrapperWithStore>
-        <NewTripPage />
-      </TestWrapperWithStore>
-    );
-
-    // Select a template and fill in basic info
-    fireEvent.click(screen.getByTestId('template-business'));
-    fireEvent.change(screen.getByTestId('trip-title-input'), {
-      target: { value: 'Business Trip' },
-    });
-
-    // Submit to open wizard
-    fireEvent.click(screen.getByTestId('create-trip-submit'));
-
-    await waitFor(() => {
-      expect(mockTripWizard).toHaveBeenCalled();
-    });
-
-    // Verify onRulePackToggle prop was passed
-    const lastCall =
-      mockTripWizard.mock.calls[mockTripWizard.mock.calls.length - 1];
-    expect(lastCall[0].onRulePackToggle).toBeDefined();
-    expect(typeof lastCall[0].onRulePackToggle).toBe('function');
-
-    // Test that rule pack toggle gets queued (this tests the callback exists)
-    expect(mockOnRulePackToggle).toBeDefined();
   });
 });

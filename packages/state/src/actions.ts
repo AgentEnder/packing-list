@@ -103,6 +103,17 @@ import {
   updateTripSummaryHandler,
   UpdateTripSummaryAction,
 } from './action-handlers/trip-management.js';
+import {
+  InitFlowAction,
+  AdvanceFlowAction,
+  ResetFlowAction,
+  initFlow,
+  advanceFlow,
+  resetFlow,
+  initFlowHandler,
+  advanceFlowHandler,
+  resetFlowHandler,
+} from './action-handlers/flow.js';
 
 export type ActionHandler<T extends AllActions> = (
   state: StoreType,
@@ -140,7 +151,10 @@ export type AllActions =
   | CreateTripAction
   | SelectTripAction
   | DeleteTripAction
-  | UpdateTripSummaryAction;
+  | UpdateTripSummaryAction
+  | InitFlowAction
+  | AdvanceFlowAction
+  | ResetFlowAction;
 
 export const Mutations: {
   [K in StoreActions]: ActionHandler<Extract<AllActions, { type: K }>>;
@@ -174,4 +188,13 @@ export const Mutations: {
   SELECT_TRIP: selectTripHandler,
   DELETE_TRIP: deleteTripHandler,
   UPDATE_TRIP_SUMMARY: updateTripSummaryHandler,
+  INIT_FLOW: initFlowHandler,
+  ADVANCE_FLOW: advanceFlowHandler,
+  RESET_FLOW: resetFlowHandler,
+};
+
+export const actions = {
+  advanceFlow,
+  resetFlow,
+  initFlow,
 };

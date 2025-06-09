@@ -4,7 +4,7 @@ import {
   useSelector,
   useStore as useReduxStore,
 } from 'react-redux';
-import type { createStore } from './store';
+import type { createStore } from './store.js';
 
 type AppStore = ReturnType<typeof createStore>;
 type AppDispatch = AppStore['dispatch'];
@@ -14,6 +14,7 @@ type RootState = ReturnType<AppStore['getState']>;
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
 export const useAppSelector = useSelector.withTypes<RootState>();
 export const useAppStore = useReduxStore.withTypes<AppStore>();
+
 export const useStore = () => {
   const store = useAppStore();
   const dispatch = useAppDispatch();

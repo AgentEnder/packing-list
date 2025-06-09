@@ -1,11 +1,10 @@
+import { configureStore, Reducer } from '@reduxjs/toolkit';
 import {
-  configureStore,
-  Reducer,
-  UnknownAction,
-  Store,
-} from '@reduxjs/toolkit';
-import { authReducer, type AuthState } from '@packing-list/auth-state';
-import { Mutations, type StoreActions } from './actions.js';
+  authReducer,
+  type AuthState,
+  type AuthActions,
+} from '@packing-list/auth-state';
+import { AllActions, Mutations, type StoreActions } from './actions.js';
 import {
   Item,
   DefaultItemRule,
@@ -40,6 +39,10 @@ export type StoreType = {
     };
     loginModal: {
       isOpen: boolean;
+    };
+    flow: {
+      steps: { path: string; label: string }[];
+      current: number | null;
     };
   };
 
@@ -109,13 +112,20 @@ export const initialState: Omit<StoreType, 'auth'> = {
     loginModal: {
       isOpen: false,
     },
+    flow: {
+      steps: [],
+      current: null,
+    },
   },
 };
 
-function createAppReducer(): Reducer<Omit<StoreType, 'auth'>> {
+function createAppReducer(): Reducer<
+  Omit<StoreType, 'auth'>,
+  AllActions | AuthActions
+> {
   return (
     state: Omit<StoreType, 'auth'> = initialState,
-    action: UnknownAction
+    action: AllActions | AuthActions
   ): Omit<StoreType, 'auth'> => {
     if (
       'type' in action &&
@@ -152,8 +162,8 @@ function createAppReducer(): Reducer<Omit<StoreType, 'auth'>> {
         const result = mutation(fullState, action as any);
 
         // Remove auth from result and return
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { auth, ...appResult } = result;
-        void auth; // Explicitly void unused variable
         return appResult;
       }
     }
@@ -177,22 +187,22 @@ type PageContext = {
   };
 };
 
-export function createStore(pageContext: PageContext): Store<StoreType> {
+export function createStore(pageContext?: PageContext, state?: StoreType) {
   const appReducer = createAppReducer();
 
   const rootReducer = (
     state: StoreType | undefined,
-    action: UnknownAction
+    action: AllActions | AuthActions
   ): StoreType => {
     const { auth, ...appState } = state || { auth: undefined, ...initialState };
 
     return {
       ...appReducer(appState, action),
-      auth: authReducer(auth, action),
+      auth: authReducer(auth, action as AuthActions),
     };
   };
 
-  const preloadedState = pageContext.redux?.ssrState;
+  const preloadedState = state ?? pageContext?.redux?.ssrState;
 
   return configureStore({
     reducer: rootReducer,

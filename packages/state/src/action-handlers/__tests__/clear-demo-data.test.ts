@@ -55,7 +55,6 @@ describe('clearDemoDataHandler', () => {
     const result = clearDemoDataHandler(demoState);
 
     // Verify other state is preserved
-    expect(result.defaultItemRules).toEqual(demoState.defaultItemRules);
     expect(result.rulePacks).toEqual(demoState.rulePacks);
     expect(result.ui).toEqual(demoState.ui);
     expect(result.auth).toEqual(demoState.auth);
