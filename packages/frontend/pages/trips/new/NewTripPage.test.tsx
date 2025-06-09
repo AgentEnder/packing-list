@@ -10,6 +10,10 @@ vi.mock('vike/client/router', () => ({
   navigate: vi.fn(),
 }));
 
+const { navigate: mockNavigate } = vi.mocked(
+  await import('vike/client/router')
+);
+
 // Mock the page context from vike-react
 vi.mock('vike-react/usePageContext', () => ({
   usePageContext: () => ({
@@ -77,6 +81,9 @@ const createTestState = (): StoreType => ({
       steps: [],
       current: null,
     },
+    tripWizard: {
+      currentStep: 1,
+    },
   },
   auth: {
     user: null,
@@ -124,13 +131,16 @@ describe('NewTripPage', () => {
   beforeEach(() => {
     mockTripWizard.mockClear();
     mockOnRulePackToggle.mockClear();
+    mockNavigate.mockClear();
   });
 
-  it('should create initial trip events from form data for TripWizard', async () => {
+  it('should create trip and navigate to wizard page with initial events', async () => {
+    const store = createTestStore();
+
     render(
-      <TestWrapper>
+      <Provider store={store}>
         <NewTripPage />
-      </TestWrapper>
+      </Provider>
     );
 
     // Select a template
@@ -150,118 +160,139 @@ describe('NewTripPage', () => {
       target: { value: '2024-03-18' },
     });
 
-    // Submit the form to open the wizard
+    // Submit the form
     fireEvent.click(screen.getByTestId('create-trip-submit'));
 
-    // Wait for the wizard to be called
+    // Wait for actions to be processed
     await waitFor(() => {
-      expect(mockTripWizard).toHaveBeenCalled();
+      const actions = (store as any).getDispatchedActions();
+      expect(actions.length).toBeGreaterThan(0);
     });
 
-    // Verify that the wizard was called with the correct initial events
-    const lastCall =
-      mockTripWizard.mock.calls[mockTripWizard.mock.calls.length - 1];
-    expect(lastCall).toBeDefined();
-    expect(lastCall[0]).toBeDefined();
+    // Check that the correct actions were dispatched
+    const actions = (store as any).getDispatchedActions();
 
-    const currentEvents = lastCall[0].currentEvents;
-    expect(currentEvents).toBeDefined();
+    // Should have CREATE_TRIP action
+    const createTripAction = actions.find(
+      (action: any) => action.type === 'CREATE_TRIP'
+    );
+    expect(createTripAction).toBeDefined();
+    expect(createTripAction.payload.title).toBe('Business Trip to NYC');
 
-    // Should have 4 events: leave_home, arrive_destination, leave_destination, arrive_home
-    expect(currentEvents).toHaveLength(4);
+    // Should have UPDATE_TRIP_EVENTS action with correct events
+    const updateEventsAction = actions.find(
+      (action: any) => action.type === 'UPDATE_TRIP_EVENTS'
+    );
+    expect(updateEventsAction).toBeDefined();
 
-    // Check event types and dates
-    const eventTypes = currentEvents?.map((e: { type: string }) => e.type);
+    const events = updateEventsAction.payload;
+    expect(events).toHaveLength(4);
+
+    // Check event types
+    const eventTypes = events.map((e: any) => e.type);
     expect(eventTypes).toContain('leave_home');
     expect(eventTypes).toContain('arrive_destination');
     expect(eventTypes).toContain('leave_destination');
     expect(eventTypes).toContain('arrive_home');
 
     // Check that destination events have the correct location
-    const arriveDestinationEvent = currentEvents?.find(
-      (e: { type: string }) => e.type === 'arrive_destination'
+    const arriveDestinationEvent = events.find(
+      (e: any) => e.type === 'arrive_destination'
     );
-    const leaveDestinationEvent = currentEvents?.find(
-      (e: { type: string }) => e.type === 'leave_destination'
-    );
-
-    expect(arriveDestinationEvent).toBeDefined();
-    expect(leaveDestinationEvent).toBeDefined();
-    expect((arriveDestinationEvent as { location: string }).location).toBe(
-      'New York City'
-    );
-    expect((leaveDestinationEvent as { location: string }).location).toBe(
-      'New York City'
+    const leaveDestinationEvent = events.find(
+      (e: any) => e.type === 'leave_destination'
     );
 
-    // Check dates are correct
-    const leaveHomeEvent = currentEvents?.find(
-      (e: { type: string }) => e.type === 'leave_home'
-    );
-    const arriveHomeEvent = currentEvents?.find(
-      (e: { type: string }) => e.type === 'arrive_home'
-    );
+    expect(arriveDestinationEvent.location).toBe('New York City');
+    expect(leaveDestinationEvent.location).toBe('New York City');
 
-    expect(leaveHomeEvent).toBeDefined();
-    expect(arriveHomeEvent).toBeDefined();
-    expect((leaveHomeEvent as { date: string }).date).toBe('2024-03-15');
-    expect((arriveDestinationEvent as { date: string }).date).toBe(
-      '2024-03-15'
+    // Should have INIT_FLOW action
+    const initFlowAction = actions.find(
+      (action: any) => action.type === 'INIT_FLOW'
     );
-    expect((leaveDestinationEvent as { date: string }).date).toBe('2024-03-18');
-    expect((arriveHomeEvent as { date: string }).date).toBe('2024-03-18');
+    expect(initFlowAction).toBeDefined();
+    expect(initFlowAction.payload.steps).toHaveLength(5);
+    expect(initFlowAction.payload.current).toBe(1);
+
+    // Should have RESET_WIZARD action
+    const resetWizardAction = actions.find(
+      (action: any) => action.type === 'RESET_WIZARD'
+    );
+    expect(resetWizardAction).toBeDefined();
+
+    // Should navigate to wizard page
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.stringMatching(/\/trips\/trip-\d+\/wizard/)
+      );
+    });
   });
 
   it('should create partial events when only some data is provided', async () => {
+    const store = createTestStore();
+
     render(
-      <TestWrapper>
+      <Provider store={store}>
         <NewTripPage />
-      </TestWrapper>
+      </Provider>
     );
 
     // Select a template
     fireEvent.click(screen.getByTestId('template-vacation'));
 
-    // Fill in only title and start date (no location or end date)
+    // Fill in partial form data
     fireEvent.change(screen.getByTestId('trip-title-input'), {
       target: { value: 'My Trip' },
     });
     fireEvent.change(screen.getByTestId('trip-start-date-input'), {
       target: { value: '2024-03-15' },
     });
+    // Note: Not filling in end date or location
 
     // Submit the form
     fireEvent.click(screen.getByTestId('create-trip-submit'));
 
+    // Wait for actions to be processed
     await waitFor(() => {
-      expect(mockTripWizard).toHaveBeenCalled();
+      const actions = (store as any).getDispatchedActions();
+      expect(actions.length).toBeGreaterThan(0);
     });
 
-    const lastCall =
-      mockTripWizard.mock.calls[mockTripWizard.mock.calls.length - 1];
-    expect(lastCall).toBeDefined();
-    expect(lastCall[0]).toBeDefined();
+    const actions = (store as any).getDispatchedActions();
 
-    const currentEvents = lastCall[0].currentEvents;
-    expect(currentEvents).toBeDefined();
+    // Should have UPDATE_TRIP_EVENTS action
+    const updateEventsAction = actions.find(
+      (action: any) => action.type === 'UPDATE_TRIP_EVENTS'
+    );
+    expect(updateEventsAction).toBeDefined();
 
-    // Should only have leave_home event since no end date or location provided
-    expect(currentEvents).toHaveLength(1);
-    expect(currentEvents?.[0].type).toBe('leave_home');
-    expect(currentEvents?.[0].date).toBe('2024-03-15');
+    // Should only have leave_home event (since only start date provided)
+    const events = updateEventsAction.payload;
+    expect(events).toHaveLength(1);
+    expect(events[0].type).toBe('leave_home');
+    expect(events[0].date).toBe('2024-03-15');
+
+    // Should navigate to wizard page
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.stringMatching(/\/trips\/trip-\d+\/wizard/)
+      );
+    });
   });
 
   it('should handle empty form data gracefully', async () => {
+    const store = createTestStore();
+
     render(
-      <TestWrapper>
+      <Provider store={store}>
         <NewTripPage />
-      </TestWrapper>
+      </Provider>
     );
 
     // Select a template
     fireEvent.click(screen.getByTestId('template-custom'));
 
-    // Only fill in the required title
+    // Fill in only the required title
     fireEvent.change(screen.getByTestId('trip-title-input'), {
       target: { value: 'Minimal Trip' },
     });
@@ -269,19 +300,32 @@ describe('NewTripPage', () => {
     // Submit the form
     fireEvent.click(screen.getByTestId('create-trip-submit'));
 
+    // Wait for actions to be processed
     await waitFor(() => {
-      expect(mockTripWizard).toHaveBeenCalled();
+      const actions = (store as any).getDispatchedActions();
+      expect(actions.length).toBeGreaterThan(0);
     });
 
-    const lastCall =
-      mockTripWizard.mock.calls[mockTripWizard.mock.calls.length - 1];
-    expect(lastCall).toBeDefined();
-    expect(lastCall[0]).toBeDefined();
+    const actions = (store as any).getDispatchedActions();
 
-    const currentEvents = lastCall[0].currentEvents;
-    expect(currentEvents).toBeDefined();
+    // Should have CREATE_TRIP action
+    const createTripAction = actions.find(
+      (action: any) => action.type === 'CREATE_TRIP'
+    );
+    expect(createTripAction).toBeDefined();
 
-    // Should have no events since no dates or location provided
-    expect(currentEvents).toHaveLength(0);
+    // Should have UPDATE_TRIP_EVENTS action but with empty events
+    const updateEventsAction = actions.find(
+      (action: any) => action.type === 'UPDATE_TRIP_EVENTS'
+    );
+    expect(updateEventsAction).toBeDefined();
+    expect(updateEventsAction.payload).toHaveLength(0);
+
+    // Should navigate to wizard page
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.stringMatching(/\/trips\/trip-\d+\/wizard/)
+      );
+    });
   });
 });

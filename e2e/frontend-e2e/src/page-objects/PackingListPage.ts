@@ -47,7 +47,7 @@ export class PackingListPage {
   async verifyPackingListPage() {
     await expect(this.page).toHaveURL('/packing-list');
     await expect(
-      this.page.getByRole('heading', { name: 'Packing List' })
+      this.page.getByRole('heading', { name: 'Packing List', level: 1 })
     ).toBeVisible();
   }
 
