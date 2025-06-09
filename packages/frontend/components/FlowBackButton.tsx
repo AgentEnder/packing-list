@@ -15,7 +15,10 @@ export function FlowBackButton() {
   console.log(prevStep.path);
   const handleClick = () => {
     // Calculate the target step before dispatching
-    const targetStepIndex = flow.current! - 1;
+    if (!flow.current) {
+      return;
+    }
+    const targetStepIndex = flow.current - 1;
     const targetStep = flow.steps[targetStepIndex];
 
     // Update flow state first

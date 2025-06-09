@@ -14,6 +14,13 @@ export default mergeConfig(
       coverage: {
         provider: 'v8',
         reporter: ['text', 'json', 'html'],
+        include: [
+          'components/**/*.{ts,tsx}',
+          'pages/**/*.{ts,tsx}',
+          'utils/**/*.{ts,tsx}',
+          'layouts/**/*.{ts,tsx}',
+          'lib/**/*.{ts,tsx}',
+        ],
         exclude: [
           'node_modules/**',
           'dist/**',

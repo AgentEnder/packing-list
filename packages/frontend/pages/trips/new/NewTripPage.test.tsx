@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import type { AnyAction } from '@reduxjs/toolkit';
 import NewTripPage from './+Page';
-import { StoreType } from '@packing-list/state';
 
 // Mock navigate from vike
 vi.mock('vike/client/router', () => ({
@@ -60,8 +60,48 @@ const mockTripWizard = vi.mocked(
   (await import('../../days/TripWizard')).TripWizard
 );
 
+interface TestState {
+  trips: {
+    summaries: [];
+    selectedTripId: null;
+    byId: Record<string, never>;
+  };
+  rulePacks: [];
+  ui: {
+    rulePackModal: {
+      isOpen: boolean;
+      activeTab: string;
+      selectedPackId: undefined;
+    };
+    loginModal: {
+      isOpen: boolean;
+    };
+    flow: {
+      steps: [];
+      current: null;
+    };
+    tripWizard: {
+      currentStep: number;
+    };
+  };
+  auth: {
+    user: null;
+    session: null;
+    loading: boolean;
+    error: null;
+    lastError: null;
+    isAuthenticating: boolean;
+    isInitialized: boolean;
+    isOfflineMode: boolean;
+    forceOfflineMode: boolean;
+    connectivityState: { isOnline: boolean; isConnected: boolean };
+    offlineAccounts: [];
+    hasOfflinePasscode: boolean;
+  };
+}
+
 // Create a minimal test state
-const createTestState = (): StoreType => ({
+const createTestState = (): TestState => ({
   trips: {
     summaries: [],
     selectedTripId: null,
@@ -104,7 +144,7 @@ const createTestState = (): StoreType => ({
 // Create a test store that captures dispatched actions
 const createTestStore = () => {
   const initialState = createTestState();
-  const dispatchedActions: unknown[] = [];
+  const dispatchedActions: AnyAction[] = [];
 
   const store = configureStore({
     reducer: (state = initialState, action) => {
@@ -116,15 +156,10 @@ const createTestStore = () => {
 
   // Add method to get dispatched actions
   (
-    store as unknown as { getDispatchedActions: () => unknown[] }
+    store as unknown as { getDispatchedActions: () => AnyAction[] }
   ).getDispatchedActions = () => dispatchedActions;
 
   return store;
-};
-
-const TestWrapper = ({ children }: { children: React.ReactNode }) => {
-  const store = createTestStore();
-  return <Provider store={store}>{children}</Provider>;
 };
 
 describe('NewTripPage', () => {
@@ -165,31 +200,35 @@ describe('NewTripPage', () => {
 
     // Wait for actions to be processed
     await waitFor(() => {
-      const actions = (store as any).getDispatchedActions();
+      const actions = (
+        store as unknown as { getDispatchedActions: () => AnyAction[] }
+      ).getDispatchedActions();
       expect(actions.length).toBeGreaterThan(0);
     });
 
     // Check that the correct actions were dispatched
-    const actions = (store as any).getDispatchedActions();
+    const actions = (
+      store as unknown as { getDispatchedActions: () => AnyAction[] }
+    ).getDispatchedActions();
 
     // Should have CREATE_TRIP action
     const createTripAction = actions.find(
-      (action: any) => action.type === 'CREATE_TRIP'
+      (action: AnyAction) => action.type === 'CREATE_TRIP'
     );
     expect(createTripAction).toBeDefined();
-    expect(createTripAction.payload.title).toBe('Business Trip to NYC');
+    expect(createTripAction?.payload.title).toBe('Business Trip to NYC');
 
     // Should have UPDATE_TRIP_EVENTS action with correct events
     const updateEventsAction = actions.find(
-      (action: any) => action.type === 'UPDATE_TRIP_EVENTS'
+      (action: AnyAction) => action.type === 'UPDATE_TRIP_EVENTS'
     );
     expect(updateEventsAction).toBeDefined();
 
-    const events = updateEventsAction.payload;
+    const events = updateEventsAction?.payload;
     expect(events).toHaveLength(4);
 
     // Check event types
-    const eventTypes = events.map((e: any) => e.type);
+    const eventTypes = events.map((e: { type: string }) => e.type);
     expect(eventTypes).toContain('leave_home');
     expect(eventTypes).toContain('arrive_destination');
     expect(eventTypes).toContain('leave_destination');
@@ -197,10 +236,10 @@ describe('NewTripPage', () => {
 
     // Check that destination events have the correct location
     const arriveDestinationEvent = events.find(
-      (e: any) => e.type === 'arrive_destination'
+      (e: { type: string }) => e.type === 'arrive_destination'
     );
     const leaveDestinationEvent = events.find(
-      (e: any) => e.type === 'leave_destination'
+      (e: { type: string }) => e.type === 'leave_destination'
     );
 
     expect(arriveDestinationEvent.location).toBe('New York City');
@@ -208,15 +247,15 @@ describe('NewTripPage', () => {
 
     // Should have INIT_FLOW action
     const initFlowAction = actions.find(
-      (action: any) => action.type === 'INIT_FLOW'
+      (action: AnyAction) => action.type === 'INIT_FLOW'
     );
     expect(initFlowAction).toBeDefined();
-    expect(initFlowAction.payload.steps).toHaveLength(5);
-    expect(initFlowAction.payload.current).toBe(1);
+    expect(initFlowAction?.payload.steps).toHaveLength(5);
+    expect(initFlowAction?.payload.current).toBe(1);
 
     // Should have RESET_WIZARD action
     const resetWizardAction = actions.find(
-      (action: any) => action.type === 'RESET_WIZARD'
+      (action: AnyAction) => action.type === 'RESET_WIZARD'
     );
     expect(resetWizardAction).toBeDefined();
 
@@ -254,20 +293,24 @@ describe('NewTripPage', () => {
 
     // Wait for actions to be processed
     await waitFor(() => {
-      const actions = (store as any).getDispatchedActions();
+      const actions = (
+        store as unknown as { getDispatchedActions: () => AnyAction[] }
+      ).getDispatchedActions();
       expect(actions.length).toBeGreaterThan(0);
     });
 
-    const actions = (store as any).getDispatchedActions();
+    const actions = (
+      store as unknown as { getDispatchedActions: () => AnyAction[] }
+    ).getDispatchedActions();
 
     // Should have UPDATE_TRIP_EVENTS action
     const updateEventsAction = actions.find(
-      (action: any) => action.type === 'UPDATE_TRIP_EVENTS'
+      (action: AnyAction) => action.type === 'UPDATE_TRIP_EVENTS'
     );
     expect(updateEventsAction).toBeDefined();
 
     // Should only have leave_home event (since only start date provided)
-    const events = updateEventsAction.payload;
+    const events = updateEventsAction?.payload;
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe('leave_home');
     expect(events[0].date).toBe('2024-03-15');
@@ -302,24 +345,28 @@ describe('NewTripPage', () => {
 
     // Wait for actions to be processed
     await waitFor(() => {
-      const actions = (store as any).getDispatchedActions();
+      const actions = (
+        store as unknown as { getDispatchedActions: () => AnyAction[] }
+      ).getDispatchedActions();
       expect(actions.length).toBeGreaterThan(0);
     });
 
-    const actions = (store as any).getDispatchedActions();
+    const actions = (
+      store as unknown as { getDispatchedActions: () => AnyAction[] }
+    ).getDispatchedActions();
 
     // Should have CREATE_TRIP action
     const createTripAction = actions.find(
-      (action: any) => action.type === 'CREATE_TRIP'
+      (action: AnyAction) => action.type === 'CREATE_TRIP'
     );
     expect(createTripAction).toBeDefined();
 
     // Should have UPDATE_TRIP_EVENTS action but with empty events
     const updateEventsAction = actions.find(
-      (action: any) => action.type === 'UPDATE_TRIP_EVENTS'
+      (action: AnyAction) => action.type === 'UPDATE_TRIP_EVENTS'
     );
     expect(updateEventsAction).toBeDefined();
-    expect(updateEventsAction.payload).toHaveLength(0);
+    expect(updateEventsAction?.payload).toHaveLength(0);
 
     // Should navigate to wizard page
     await waitFor(() => {
