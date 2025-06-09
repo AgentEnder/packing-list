@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { Page, expect } from '@playwright/test';
 import { PackItemsModal } from './PackItemsModal';
 
 export type ViewMode = 'by-day' | 'by-person';
@@ -42,6 +42,13 @@ export class PackingListPage {
       await this.page.goto('/packing-list');
       await this.page.waitForLoadState('networkidle');
     }
+  }
+
+  async verifyPackingListPage() {
+    await expect(this.page).toHaveURL('/packing-list');
+    await expect(
+      this.page.getByRole('heading', { name: 'Packing List' })
+    ).toBeVisible();
   }
 
   // View Mode Controls

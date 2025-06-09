@@ -25,7 +25,6 @@ export default function PackingListPage() {
 
   return (
     <PageContainer>
-      <PageHeader title="Packing List" />
       <PackingList />
     </PageContainer>
   );

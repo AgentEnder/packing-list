@@ -2,16 +2,21 @@ import {
   selectPeople,
   useAppSelector,
   selectSelectedTripId,
+  useAppDispatch,
+  actions,
 } from '@packing-list/state';
 import { PersonList } from './components/PersonList';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
 import { NoTripSelected } from '../../components/NoTripSelected';
+import { navigate } from 'vike/client/router';
 
 export default function PeoplePage() {
   const selectedTripId = useAppSelector(selectSelectedTripId);
   const people = useAppSelector(selectPeople);
+  const dispatch = useAppDispatch();
+  const flow = useAppSelector((s) => s.ui.flow);
 
   // If no trip is selected, show the no trip selected state
   if (!selectedTripId) {
@@ -27,6 +32,14 @@ export default function PeoplePage() {
       </PageContainer>
     );
   }
+
+  const handleContinue = () => {
+    if (flow.current !== null) {
+      dispatch(actions.advanceFlow());
+      const next = flow.steps[flow.current + 1];
+      if (next) navigate(next.path);
+    }
+  };
 
   return (
     <PageContainer>
@@ -64,6 +77,16 @@ export default function PeoplePage() {
         </div>
       </HelpBlurb>
       <PersonList people={people} />
+      {flow.current !== null && flow.current < flow.steps.length - 1 && (
+        <div className="mt-6 text-right">
+          <button
+            className="btn btn-primary fixed bottom-6 right-6"
+            onClick={handleContinue}
+          >
+            Continue
+          </button>
+        </div>
+      )}
     </PageContainer>
   );
 }
