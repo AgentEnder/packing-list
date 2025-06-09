@@ -3,18 +3,37 @@ import {
   selectPeople,
   selectCurrentTrip,
   selectCalculatedItems,
+  selectSelectedTripId,
+  selectAccurateTripSummaries,
 } from '@packing-list/state';
 import { Link } from '../../components/Link';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
-import { DemoDataModal } from '../../components/DemoDataModal';
+import { NoTripSelected } from '../../components/NoTripSelected';
 
 export default function Page() {
+  const selectedTripId = useAppSelector(selectSelectedTripId);
+  const tripSummaries = useAppSelector(selectAccurateTripSummaries);
   const people = useAppSelector(selectPeople);
   const trip = useAppSelector(selectCurrentTrip);
   const calculatedItems = useAppSelector(selectCalculatedItems);
   const defaultItems = calculatedItems?.defaultItems || [];
+
+  // If no trip is selected or no trips exist, show the no trip selected state
+  if (!selectedTripId || tripSummaries.length === 0) {
+    return (
+      <PageContainer>
+        <PageHeader title="Smart Packing List" />
+        <NoTripSelected
+          title="Welcome to Smart Packing List!"
+          message="Get started by selecting an existing trip, creating a new one, or trying our demo to see how smart packing recommendations work."
+          actionText="View My Trips"
+          actionHref="/trips"
+        />
+      </PageContainer>
+    );
+  }
 
   const hasTrip = trip?.days.length > 0;
   const hasPeople = people.length > 0;
@@ -22,7 +41,6 @@ export default function Page() {
 
   return (
     <PageContainer>
-      <DemoDataModal />
       <PageHeader title="Smart Packing List" />
 
       <HelpBlurb storageKey="overview" title="How It Works">

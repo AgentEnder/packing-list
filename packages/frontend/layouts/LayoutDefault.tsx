@@ -235,10 +235,10 @@ export default function LayoutDefault({
           </ul>
         </div>
       </div>
-      <RulePackModal />
 
-      {/* Login Modal */}
+      {/* Redux Based Modals */}
       <LoginModal />
+      <RulePackModal />
     </div>
   );
 }

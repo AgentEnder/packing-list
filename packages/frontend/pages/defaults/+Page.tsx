@@ -3,6 +3,7 @@ import {
   useAppSelector,
   selectPeople,
   selectTripDays,
+  selectSelectedTripId,
 } from '@packing-list/state';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
@@ -11,10 +12,12 @@ import { RuleList } from './components/RuleList';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
+import { NoTripSelected } from '../../components/NoTripSelected';
 import { RulePackSelector } from '../../components/RulePackSelector';
 import { RulePackModal } from '../../components/RulePackModal';
 
 export default function DefaultsPage() {
+  const selectedTripId = useAppSelector(selectSelectedTripId);
   const defaultItemRules = useAppSelector(
     (state: StoreType) => state.defaultItemRules
   );
@@ -22,6 +25,21 @@ export default function DefaultsPage() {
   const days = useAppSelector(selectTripDays);
 
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
+
+  // If no trip is selected, show the no trip selected state
+  if (!selectedTripId) {
+    return (
+      <PageContainer>
+        <PageHeader title="Packing Rules" />
+        <NoTripSelected
+          title="No Trip Selected"
+          message="You need to select a trip before you can create packing rules. Rules help calculate the perfect quantity of items based on your trip duration and travelers."
+          actionText="View My Trips"
+          actionHref="/trips"
+        />
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>
@@ -98,8 +116,6 @@ export default function DefaultsPage() {
         isOpen={isRuleModalOpen}
         onClose={() => setIsRuleModalOpen(false)}
       />
-
-      <RulePackModal />
     </PageContainer>
   );
 }

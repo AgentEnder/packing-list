@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, useState } from 'react';
-import { Person } from '@packing-list/model';
+import { LegacyPerson as Person } from '@packing-list/model';
 import { useAppDispatch } from '@packing-list/state';
 import { uuid } from '../../../utils/uuid';
 

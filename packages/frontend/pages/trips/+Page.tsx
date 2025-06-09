@@ -99,7 +99,11 @@ export default function TripsPage() {
           <p className="text-base-content/70 mb-6">
             Create your first trip to start planning your packing list
           </p>
-          <Link href="/trips/new" className="btn btn-primary gap-2">
+          <Link
+            href="/trips/new"
+            className="btn btn-primary gap-2"
+            data-testid="create-first-trip-link"
+          >
             <Plus className="w-4 h-4" />
             Create Your First Trip
           </Link>

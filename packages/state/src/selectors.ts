@@ -5,6 +5,7 @@ import type {
   Day,
   LegacyPerson as Person,
   TripSummary,
+  RulePack,
 } from '@packing-list/model';
 
 // Multi-trip selectors
@@ -101,6 +102,9 @@ export const selectCalculatedItems = createSelector(
     }
 );
 
+export const selectRulePacks: Selector<StoreType, RulePack[]> = (state) =>
+  state.rulePacks;
+
 // UI selectors
-export const selectTripSelectorOpen: Selector<StoreType, boolean> = (state) =>
-  state.ui.tripSelector.isOpen;
+export const selectRulePackModalOpen: Selector<StoreType, boolean> = (state) =>
+  state.ui.rulePackModal.isOpen;

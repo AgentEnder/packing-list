@@ -1,7 +1,7 @@
-import vikeReact from "vike-react/config";
-import type { Config } from "vike/types";
-import Layout from "../layouts/LayoutDefault.js";
-import vikeReactRedux from "vike-react-redux/config";
+import vikeReact from 'vike-react/config';
+import type { Config } from 'vike/types';
+import Layout from '../layouts/LayoutDefault.js';
+import vikeReactRedux from 'vike-react-redux/config';
 // Default config (can be overridden by pages)
 // https://vike.dev/config
 
@@ -10,9 +10,11 @@ export default {
   Layout,
 
   // https://vike.dev/head-tags
-  title: "My Vike App",
-  description: "Demo showcasing Vike",
-  prerender: true,
+  title: 'My Vike App',
+  description: 'Demo showcasing Vike',
+  prerender: {
+    partial: true,
+  },
 
   extends: [vikeReact, vikeReactRedux],
 } satisfies Config;

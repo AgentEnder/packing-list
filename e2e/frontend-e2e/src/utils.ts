@@ -3,10 +3,6 @@ import { SettingsPage } from './page-objects/SettingsPage.js';
 
 async function dismissAnyOpenModals(page: Page) {
   try {
-    // Wait a bit for any modals to fully render
-    await page.waitForTimeout(500);
-
-    // First, dismiss the demo banner if it's visible
     const demoBanner = page.locator(
       '.fixed.bottom-0.left-0.right-0.bg-primary.z-\\[9999\\]'
     );
@@ -32,7 +28,6 @@ async function dismissAnyOpenModals(page: Page) {
         const closeButton = rulePackModal.locator(selector).first();
         if (await closeButton.isVisible()) {
           await closeButton.click();
-          await page.waitForTimeout(500);
           if (!(await rulePackModal.isVisible())) {
             closed = true;
             break;
@@ -43,7 +38,6 @@ async function dismissAnyOpenModals(page: Page) {
       // If specific buttons didn't work, try pressing Escape
       if (!closed) {
         await page.keyboard.press('Escape');
-        await page.waitForTimeout(500);
 
         if (!(await rulePackModal.isVisible())) {
           closed = true;
@@ -53,7 +47,6 @@ async function dismissAnyOpenModals(page: Page) {
       // If still not closed, try clicking outside the modal
       if (!closed) {
         await page.click('body', { position: { x: 10, y: 10 } });
-        await page.waitForTimeout(500);
       }
     }
 
@@ -76,7 +69,6 @@ async function dismissAnyOpenModals(page: Page) {
         const closeButton = modal.locator(selector).first();
         if (await closeButton.isVisible()) {
           await closeButton.click();
-          await page.waitForTimeout(500);
           // Check if modal is now closed
           if (!(await modal.isVisible())) {
             closed = true;
@@ -88,13 +80,11 @@ async function dismissAnyOpenModals(page: Page) {
       // If no close button worked, try pressing Escape
       if (!closed) {
         await page.keyboard.press('Escape');
-        await page.waitForTimeout(500);
       }
 
       // If still not closed, try clicking outside the modal
       if (await modal.isVisible()) {
         await page.click('body', { position: { x: 10, y: 10 } });
-        await page.waitForTimeout(500);
       }
 
       // Wait for modal to close (with timeout)
@@ -110,29 +100,108 @@ async function dismissAnyOpenModals(page: Page) {
   }
 }
 
+export type SetupMode = 'fresh' | 'demo' | 'auto-demo';
+
 export async function setupTestSession(
   page: Page,
   context: BrowserContext,
-  useDemo = false
+  mode: SetupMode = 'fresh' // Changed default to 'fresh' since most tests should test actual flows
 ) {
-  // Dismiss the automatic demo loading first
+  // Prevent any automatic demo data loading
   await page.addInitScript(`
-    // Prevent demo modal by setting session storage
+    // Prevent automatic demo loading by setting session storage to fresh
     sessionStorage.setItem('session-demo-choice', 'fresh');
   `);
 
   // Navigate to home page first
   await page.goto('/');
 
-  // Dismiss any modals or banners that appeared
-  await dismissAnyOpenModals(page);
+  // Clear all storage after page loads to ensure clean state
+  await page.evaluate(async () => {
+    // Clear localStorage
+    localStorage.clear();
 
-  if (useDemo) {
+    // Clear sessionStorage
+    sessionStorage.clear();
+
+    // Clear IndexedDB databases
+    try {
+      // Get all databases and delete them
+      if ('indexedDB' in window) {
+        // Clear the main app database
+        const deleteDbNames = [
+          'PackingListOfflineDB',
+          'packing_list_offline_auth',
+          'PackingListReduxPersist', // In case there's redux persist
+        ];
+
+        for (const dbName of deleteDbNames) {
+          try {
+            const deleteReq = indexedDB.deleteDatabase(dbName);
+            await new Promise<void>((resolve, reject) => {
+              deleteReq.onsuccess = () => resolve();
+              deleteReq.onerror = () => resolve(); // Don't fail if DB doesn't exist
+              deleteReq.onblocked = () => {
+                console.warn(`Delete of ${dbName} was blocked`);
+                resolve(); // Don't fail, just continue
+              };
+            });
+          } catch (e) {
+            console.warn(`Failed to delete database ${dbName}:`, e);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to clear IndexedDB:', e);
+    }
+  });
+
+  // // Refresh the page to ensure the app starts with clean state
+  // await page.reload();
+
+  if (mode === 'demo') {
+    // For demo mode, use the settings page to load demo data (settings works without trip selection)
     const settingsPage = new SettingsPage(page);
     await settingsPage.goto();
     await settingsPage.loadDemoData();
+
+    // Wait for demo data to load by checking for demo banner
+    await page.waitForSelector("text=You're currently using demo data", {
+      timeout: 10000,
+    });
+  } else if (mode === 'auto-demo') {
+    // For auto-demo mode, use the new NoTripSelected component's demo button
+    // This tests the actual user flow for discovering and loading demo data
+
+    // Wait for the NoTripSelected component to appear
+    await page.waitForSelector('text=Welcome to Smart Packing List!', {
+      timeout: 5000,
+    });
+
+    // Click the demo button
+    const demoButton = page.getByRole('button', { name: 'Try Demo Trip' });
+    if (await demoButton.isVisible()) {
+      await demoButton.click();
+      // Wait for demo data to load
+      await page.waitForSelector("text=You're currently using demo data", {
+        timeout: 10000,
+      });
+    }
   }
+  // For 'fresh' mode, we don't load any demo data - just stay in fresh state
+
+  // Dismiss any modals or banners that appeared
+  await dismissAnyOpenModals(page);
 
   // Wait for page to be ready
   await page.waitForLoadState('networkidle');
+}
+
+// Backward compatibility function
+export async function setupTestSessionOld(
+  page: Page,
+  context: BrowserContext,
+  useDemo = false
+) {
+  return setupTestSession(page, context, useDemo ? 'demo' : 'fresh');
 }

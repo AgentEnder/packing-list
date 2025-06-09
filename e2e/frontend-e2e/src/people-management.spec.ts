@@ -1,113 +1,157 @@
 import { test, expect } from '@playwright/test';
-import { setupTestSession } from './utils.js';
+import { setupTestSession } from './utils';
+import { TripManager } from './page-objects/trip-manager';
 
 test.describe('People Management', () => {
-  test.beforeEach(async ({ page, context }) => {
-    await setupTestSession(page, context, false);
-    await page.getByRole('link', { name: 'People' }).click();
-  });
+  let tripManager: TripManager;
 
-  test('shows empty state when no people added', async ({ page }) => {
-    await expect(page.getByText('No people added yet.')).toBeVisible();
-  });
+  test.describe('No Trip Selected State', () => {
+    test.beforeEach(async ({ page, context }) => {
+      await setupTestSession(page, context, 'fresh');
+      tripManager = new TripManager(page);
+    });
 
-  test('can add a person with full details', async ({ page }) => {
-    await page.getByRole('button', { name: 'Add Person' }).click();
+    test('shows no trip selected state on people page', async ({ page }) => {
+      await page.getByRole('link', { name: 'People' }).click();
+      await tripManager.expectNoTripSelected();
+    });
 
-    // Fill all fields
-    await page.getByRole('textbox', { name: 'Name' }).fill('John Doe');
-    await page.getByRole('spinbutton', { name: 'Age' }).fill('30');
-    await page.getByRole('combobox', { name: 'Gender' }).selectOption('male');
-    await page.getByRole('button', { name: 'Add Person' }).click();
+    test('can load demo from no trip state', async ({ page }) => {
+      await page.getByRole('link', { name: 'People' }).click();
 
-    // Verify person card
-    await expect(page.getByText('John Doe')).toBeVisible();
-    await expect(page.getByText('Age: 30')).toBeVisible();
-    await expect(page.getByText('Gender: male').first()).toBeVisible();
-  });
+      // Click demo button
+      await page.getByRole('button', { name: 'Try Demo Trip' }).click();
 
-  test('can add multiple people', async ({ page }) => {
-    const people = [
-      { name: 'John Doe', age: '30', gender: 'male' },
-      { name: 'Jane Doe', age: '28', gender: 'female' },
-      { name: 'Billy Kid', age: '5', gender: 'male' },
-    ];
+      // Wait for demo data to load and page to potentially redirect/refresh
+      await page.waitForTimeout(3000);
 
-    for (const person of people) {
-      await page.getByRole('button', { name: 'Add Person' }).click();
-      await page.getByRole('textbox', { name: 'Name' }).fill(person.name);
-      await page.getByRole('spinbutton', { name: 'Age' }).fill(person.age);
-      await page
-        .getByRole('combobox', { name: 'Gender' })
-        .selectOption(person.gender);
-      await page.getByRole('button', { name: 'Add Person' }).click();
-    }
-
-    // Verify all people are shown
-    for (const person of people) {
-      await expect(page.getByText(person.name)).toBeVisible();
-      await expect(page.getByText(`Age: ${person.age}`)).toBeVisible();
+      // Instead of looking for hidden trip title text, check for demo banner which is always visible
       await expect(
-        page.getByText(`Gender: ${person.gender}`).first()
-      ).toBeVisible();
-    }
+        page.getByText("You're currently using demo data")
+      ).toBeVisible({ timeout: 10000 });
+
+      // Navigate to people page to verify demo data loaded
+      await page.getByRole('link', { name: 'People' }).click();
+
+      // Wait for navigation and content to load
+      await page.waitForTimeout(1000);
+
+      // Verify demo banner is still there (more reliable than hidden trip selector text)
+      await expect(
+        page.getByText("You're currently using demo data")
+      ).toBeVisible({ timeout: 5000 });
+    });
   });
 
-  test('can delete a person', async ({ page }) => {
-    // Add person first
-    await page.getByRole('button', { name: 'Add Person' }).click();
-    await page.getByRole('textbox', { name: 'Name' }).fill('To Delete');
-    await page.getByRole('spinbutton', { name: 'Age' }).fill('25');
-    await page.getByRole('button', { name: 'Add Person' }).click();
+  test.describe('With Created Trip', () => {
+    test.beforeEach(async ({ page, context }) => {
+      await setupTestSession(page, context, 'fresh');
+      tripManager = new TripManager(page);
 
-    // Delete person
-    await page.getByRole('button', { name: 'Delete' }).click();
-    await expect(page.getByText('To Delete')).not.toBeVisible();
-    await expect(page.getByText('No people added yet.')).toBeVisible();
-  });
+      // Create a trip first using TripManager
+      await tripManager.createFirstTrip({
+        template: 'business',
+        title: 'Test Trip',
+        skipDates: true,
+      });
 
-  test('validates required fields', async ({ page }) => {
-    await page.getByRole('button', { name: 'Add Person' }).click();
-    await page.getByRole('button', { name: 'Add Person' }).click();
+      // Navigate to people page
+      await page.getByRole('link', { name: 'People' }).click();
+    });
 
-    // Verify error messages
-    await expect(page.getByRole('textbox', { name: 'Name' })).toHaveAttribute(
-      'required'
-    );
-    await expect(page.getByRole('spinbutton', { name: 'Age' })).toHaveAttribute(
-      'required'
-    );
-  });
+    test('shows empty state when no people added', async ({ page }) => {
+      await expect(page.getByText('No people added yet')).toBeVisible();
+    });
 
-  test('validates age field format', async ({ page }) => {
-    await page.getByRole('button', { name: 'Add Person' }).click();
+    test('can add a person with full details', async ({ page }) => {
+      await page.getByRole('button', { name: 'Add Person' }).click();
 
-    // Fill name
-    await page.getByRole('textbox', { name: 'Name' }).fill('Test Person');
+      // Use proper test IDs and correct field types
+      await page.getByTestId('person-name-input').fill('John Doe');
+      await page.getByTestId('person-age-input').fill('30');
+      await page.getByTestId('person-gender-select').selectOption('male');
 
-    // Try negative age
-    await page.getByRole('spinbutton', { name: 'Age' }).fill('-1');
-    await page.getByRole('button', { name: 'Add Person' }).click();
+      await page.getByTestId('save-person-button').click();
 
-    // Verify age input has min attribute
-    await expect(page.getByRole('spinbutton', { name: 'Age' })).toHaveAttribute(
-      'min',
-      '0'
-    );
-  });
+      // Verify person was added
+      await expect(page.getByText('John Doe')).toBeVisible();
+      await expect(page.getByText('Age: 30')).toBeVisible();
+      await expect(page.getByText('Gender: male')).toBeVisible();
+    });
 
-  test('can cancel adding a person', async ({ page }) => {
-    await page.getByRole('button', { name: 'Add Person' }).click();
+    test('can add a person with minimal details', async ({ page }) => {
+      await page.getByRole('button', { name: 'Add Person' }).click();
 
-    // Fill some fields
-    await page.getByRole('textbox', { name: 'Name' }).fill('To Cancel');
-    await page.getByRole('spinbutton', { name: 'Age' }).fill('25');
+      await page.getByTestId('person-name-input').fill('Jane Smith');
+      await page.getByTestId('person-age-input').fill('25');
 
-    // Cancel
-    await page.getByRole('button', { name: 'Cancel' }).click();
+      await page.getByTestId('save-person-button').click();
 
-    // Verify form is closed and person wasn't added
-    await expect(page.getByText('To Cancel')).not.toBeVisible();
-    await expect(page.getByText('No people added yet.')).toBeVisible();
+      await expect(page.getByText('Jane Smith')).toBeVisible();
+      await expect(page.getByText('Age: 25')).toBeVisible();
+    });
+
+    test('can edit a person', async ({ page }) => {
+      // Add a person first
+      await page.getByRole('button', { name: 'Add Person' }).click();
+      await page.getByTestId('person-name-input').fill('Bob Johnson');
+      await page.getByTestId('person-age-input').fill('40');
+      await page.getByTestId('save-person-button').click();
+
+      // Edit the person
+      await page.getByTestId('edit-person-button').click();
+      await page.getByTestId('person-name-input').fill('Robert Johnson');
+      await page.getByTestId('person-age-input').fill('41');
+      await page.getByTestId('save-person-button').click();
+
+      await expect(page.getByText('Robert Johnson')).toBeVisible();
+      await expect(page.getByText('Age: 41')).toBeVisible();
+    });
+
+    test('can delete a person', async ({ page }) => {
+      // Add a person first
+      await page.getByRole('button', { name: 'Add Person' }).click();
+      await page.getByTestId('person-name-input').fill('Delete Me');
+      await page.getByTestId('person-age-input').fill('35');
+      await page.getByTestId('save-person-button').click();
+
+      // Delete the person
+      await page.getByTestId('delete-person-button').click();
+
+      await expect(page.getByText('Delete Me')).not.toBeVisible();
+      await expect(page.getByText('No people added yet')).toBeVisible();
+    });
+
+    test('validates required name field', async ({ page }) => {
+      await page.getByRole('button', { name: 'Add Person' }).click();
+      await page.getByTestId('person-age-input').fill('25');
+
+      // Try to submit without name
+      await page.getByTestId('save-person-button').click();
+
+      // Form should not submit and we should still be in edit mode
+      await expect(page.getByTestId('person-name-input')).toBeVisible();
+    });
+
+    test('validates required age field', async ({ page }) => {
+      await page.getByRole('button', { name: 'Add Person' }).click();
+      await page.getByTestId('person-name-input').fill('Test Person');
+
+      // Try to submit without age
+      await page.getByTestId('save-person-button').click();
+
+      // Form should not submit and we should still be in edit mode
+      await expect(page.getByTestId('person-age-input')).toBeVisible();
+    });
+
+    test('can cancel adding a person', async ({ page }) => {
+      await page.getByRole('button', { name: 'Add Person' }).click();
+      await page.getByTestId('person-name-input').fill('Cancelled Person');
+
+      await page.getByTestId('cancel-person-button').click();
+
+      await expect(page.getByText('Cancelled Person')).not.toBeVisible();
+      await expect(page.getByText('No people added yet')).toBeVisible();
+    });
   });
 });

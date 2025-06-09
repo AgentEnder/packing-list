@@ -1,5 +1,9 @@
 import { useState, ChangeEvent, FormEvent } from 'react';
-import { useAppDispatch, useAppSelector } from '@packing-list/state';
+import {
+  useAppDispatch,
+  useAppSelector,
+  selectSelectedTripId,
+} from '@packing-list/state';
 import { uuid } from '../../utils/uuid';
 import { createSelector } from '@reduxjs/toolkit';
 import { TripEvent } from '@packing-list/model';
@@ -9,6 +13,7 @@ import { TripDays } from './TripDays';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
+import { NoTripSelected } from '../../components/NoTripSelected';
 import { selectCurrentTrip } from '@packing-list/state';
 
 // Event types
@@ -28,8 +33,9 @@ const selectTripEvents = createSelector(
 );
 
 export default function DaysPage() {
-  const tripEvents: TripEvent[] = useAppSelector(selectTripEvents);
+  const selectedTripId = useAppSelector(selectSelectedTripId);
   const dispatch = useAppDispatch();
+  const tripEvents = useAppSelector(selectTripEvents);
   const [modalOpen, setModalOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -40,6 +46,21 @@ export default function DaysPage() {
     location: '',
     notes: '',
   });
+
+  // If no trip is selected, show the no trip selected state
+  if (!selectedTripId) {
+    return (
+      <PageContainer>
+        <PageHeader title="Trip Days & Itinerary" />
+        <NoTripSelected
+          title="No Trip Selected"
+          message="You need to select a trip before you can plan your itinerary. Each trip has its own timeline and destinations that help calculate the perfect packing list."
+          actionText="View My Trips"
+          actionHref="/trips"
+        />
+      </PageContainer>
+    );
+  }
 
   const openAddModal = () => {
     setForm({ id: '', type: 'leave_home', date: '', location: '', notes: '' });
