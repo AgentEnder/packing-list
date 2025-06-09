@@ -391,6 +391,9 @@ export const CREATE_DEMO_DATA: () => Partial<StoreType> = () => {
         current: null,
         steps: [],
       },
+      tripWizard: {
+        currentStep: 0,
+      },
     },
     auth: {
       user: null,

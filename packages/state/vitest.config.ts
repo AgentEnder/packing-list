@@ -5,6 +5,9 @@ export default defineConfig({
     name: '@packing-list/state-tests',
     include: ['src/**/*.test.ts'],
     environment: 'node',
+    coverage: {
+      include: ['src/**/*.ts', 'src/**/*.tsx'],
+    },
   },
   resolve: {
     // Handle TypeScript paths and module resolution
