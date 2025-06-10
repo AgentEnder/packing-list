@@ -137,4 +137,23 @@ describe('Timeline', () => {
     expect(eventBox).not.toHaveClass('cursor-pointer');
     expect(eventBox).not.toHaveClass('hover:bg-base-200');
   });
+
+  it('should format dates consistently across timezones', () => {
+    const event: TripEvent = {
+      id: '1',
+      type: 'arrive_destination',
+      date: '2024-06-10',
+      location: 'Paris',
+    };
+
+    const spy = vi
+      .spyOn(Date.prototype, 'getTimezoneOffset')
+      .mockReturnValue(-240);
+
+    render(<Timeline events={[event]} />);
+
+    expect(screen.getByText('Jun 10, 2024')).toBeInTheDocument();
+
+    spy.mockRestore();
+  });
 });
