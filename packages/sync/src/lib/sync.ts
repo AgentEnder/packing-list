@@ -8,6 +8,9 @@ import type {
   RuleOverride,
   DefaultItemRule,
   RulePack,
+  RulePackAuthor,
+  RulePackMetadata,
+  RulePackStats,
 } from '@packing-list/model';
 import {
   getDatabase,
@@ -18,7 +21,8 @@ import {
   DefaultItemRulesStorage,
   RulePacksStorage,
 } from '@packing-list/offline-storage';
-import { supabase, isSupabaseAvailable } from '@packing-list/auth';
+import { supabase, isSupabaseAvailable } from '@packing-list/supabase';
+import type { Json } from '@packing-list/supabase';
 
 // Type definitions for special sync data formats
 interface PackingStatusData {
@@ -67,6 +71,135 @@ function isLocalUser(userId: string): boolean {
     userId === 'local-shared-user' ||
     userId === 'local-user' ||
     userId.startsWith('local-')
+  );
+}
+
+// Type guard functions and safe converters
+function toJson(data: unknown): Json {
+  if (data === null || data === undefined) {
+    return null;
+  }
+
+  // For complex objects, we need to ensure they're serializable as Json
+  if (typeof data === 'object') {
+    try {
+      // Test if it can be serialized and parsed
+      const serialized = JSON.stringify(data);
+      return JSON.parse(serialized) as Json;
+    } catch {
+      // If serialization fails, return null
+      return null;
+    }
+  }
+
+  // Primitive types that are valid Json
+  if (
+    typeof data === 'string' ||
+    typeof data === 'number' ||
+    typeof data === 'boolean'
+  ) {
+    return data as Json;
+  }
+
+  return null;
+}
+
+function fromJson<T>(json: Json): T {
+  // Simple cast since we trust the database to have valid data
+  // In a production system, you might want to add runtime validation here
+  return json as unknown as T;
+}
+
+function isValidTripId(tripId: string | undefined): tripId is string {
+  return typeof tripId === 'string' && tripId.length > 0;
+}
+
+function isPackingStatusData(data: unknown): data is PackingStatusData {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    '_packingStatusOnly' in data &&
+    data._packingStatusOnly === true
+  );
+}
+
+function isBulkPackingData(data: unknown): data is BulkPackingData {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'bulkPackingUpdate' in data &&
+    data.bulkPackingUpdate === true
+  );
+}
+
+function isPersonData(data: unknown): data is Person {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'name' in data &&
+    typeof data.name === 'string' &&
+    'age' in data &&
+    'gender' in data
+  );
+}
+
+function isTripItemData(data: unknown): data is TripItem {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'name' in data &&
+    typeof data.name === 'string' &&
+    'category' in data &&
+    'quantity' in data &&
+    'packed' in data &&
+    typeof data.packed === 'boolean'
+  );
+}
+
+function isRulePackData(data: unknown): data is RulePack {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'id' in data &&
+    'name' in data &&
+    typeof data.name === 'string' &&
+    'rules' in data &&
+    'primaryCategoryId' in data &&
+    'author' in data
+  );
+}
+
+function isTripData(data: unknown): data is Trip {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'title' in data &&
+    typeof data.title === 'string' &&
+    'days' in data &&
+    'tripEvents' in data
+  );
+}
+
+function isRuleOverrideData(data: unknown): data is RuleOverride {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'ruleId' in data &&
+    typeof data.ruleId === 'string' &&
+    ('tripId' in data || 'entityId' in data) // RuleOverrides are trip-specific
+  );
+}
+
+function isDefaultItemRuleData(data: unknown): data is DefaultItemRule {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'id' in data &&
+    'name' in data &&
+    typeof data.name === 'string' &&
+    'calculation' in data &&
+    'conditions' in data &&
+    'categoryId' in data
   );
 }
 
@@ -404,7 +537,12 @@ export class SyncService {
 
   private async pushTripChange(change: Change): Promise<void> {
     const table = 'trips';
-    const data = change.data as Trip;
+
+    if (!isTripData(change.data)) {
+      throw new Error(`Invalid trip data for change ${change.id}`);
+    }
+
+    const data = change.data;
 
     switch (change.operation) {
       case 'create': {
@@ -413,9 +551,9 @@ export class SyncService {
           user_id: change.userId,
           title: data.title || 'Untitled Trip',
           description: data.description,
-          days: data.days || [],
-          trip_events: data.tripEvents || [],
-          settings: data.settings || {},
+          days: toJson(data.days) || null,
+          trip_events: toJson(data.tripEvents) || null,
+          settings: toJson(data.settings) || null,
           version: change.version,
         });
         if (createError) throw createError;
@@ -428,9 +566,9 @@ export class SyncService {
           .update({
             title: data.title,
             description: data.description,
-            days: data.days,
-            trip_events: data.tripEvents,
-            settings: data.settings,
+            days: toJson(data.days),
+            trip_events: toJson(data.tripEvents),
+            settings: toJson(data.settings),
             version: change.version,
             updated_at: new Date().toISOString(),
           })
@@ -454,17 +592,25 @@ export class SyncService {
 
   private async pushPersonChange(change: Change): Promise<void> {
     const table = 'trip_people';
-    const data = change.data as Person;
+
+    if (!isPersonData(change.data)) {
+      throw new Error(`Invalid person data for change ${change.id}`);
+    }
+
+    if (!isValidTripId(change.tripId)) {
+      throw new Error(`Invalid trip ID for person change ${change.id}`);
+    }
+
+    const data = change.data;
 
     switch (change.operation) {
       case 'create': {
         const { error: createError } = await supabase.from(table).insert({
-          id: data.id,
           trip_id: change.tripId,
           name: data.name,
           age: data.age,
           gender: data.gender,
-          settings: data.settings || {},
+          settings: toJson(data.settings),
           version: change.version,
         });
         if (createError) throw createError;
@@ -478,7 +624,7 @@ export class SyncService {
             name: data.name,
             age: data.age,
             gender: data.gender,
-            settings: data.settings,
+            settings: toJson(data.settings),
             version: change.version,
             updated_at: new Date().toISOString(),
           })
@@ -500,24 +646,32 @@ export class SyncService {
 
   private async pushItemChange(change: Change): Promise<void> {
     const table = 'trip_items';
-    const data = change.data as TripItem;
 
     // Handle bulk packing updates
-    if ((data as unknown as BulkPackingData).bulkPackingUpdate) {
+    if (isBulkPackingData(change.data)) {
       await this.pushBulkPackingUpdate(change);
       return;
     }
 
     // Handle individual packing status changes
-    if ((data as unknown as PackingStatusData)._packingStatusOnly) {
+    if (isPackingStatusData(change.data)) {
       await this.pushPackingStatusUpdate(change);
       return;
     }
 
+    if (!isTripItemData(change.data)) {
+      throw new Error(`Invalid trip item data for change ${change.id}`);
+    }
+
+    if (!isValidTripId(change.tripId)) {
+      throw new Error(`Invalid trip ID for item change ${change.id}`);
+    }
+
+    const data = change.data;
+
     switch (change.operation) {
       case 'create': {
         const { error: createError } = await supabase.from(table).insert({
-          id: data.id,
           trip_id: change.tripId,
           name: data.name,
           category: data.category,
@@ -563,7 +717,11 @@ export class SyncService {
   }
 
   private async pushPackingStatusUpdate(change: Change): Promise<void> {
-    const data = change.data as PackingStatusData;
+    if (!isPackingStatusData(change.data)) {
+      throw new Error(`Invalid packing status data for change ${change.id}`);
+    }
+
+    const data = change.data;
     const { error } = await supabase
       .from('trip_items')
       .update({
@@ -576,7 +734,11 @@ export class SyncService {
   }
 
   private async pushBulkPackingUpdate(change: Change): Promise<void> {
-    const data = change.data as BulkPackingData;
+    if (!isBulkPackingData(change.data)) {
+      throw new Error(`Invalid bulk packing data for change ${change.id}`);
+    }
+
+    const data = change.data;
     const updates = data.changes;
 
     // Process bulk updates in batches for better performance
@@ -607,14 +769,19 @@ export class SyncService {
 
   private async pushRuleOverrideChange(change: Change): Promise<void> {
     const table = 'trip_rule_overrides';
-    const data = change.data as RuleOverride;
+
+    if (!isRuleOverrideData(change.data)) {
+      throw new Error(`Invalid rule override data for change ${change.id}`);
+    }
+
+    const data = change.data;
 
     switch (change.operation) {
       case 'create': {
         const { error: createError } = await supabase.from(table).insert({
           trip_id: change.tripId || data.tripId,
           rule_id: data.ruleId,
-          override_data: data,
+          override_data: toJson(data),
           version: change.version,
         });
         if (createError) throw createError;
@@ -625,7 +792,7 @@ export class SyncService {
         const { error: updateError } = await supabase
           .from(table)
           .update({
-            override_data: data,
+            override_data: toJson(data),
             version: change.version,
             updated_at: new Date().toISOString(),
           })
@@ -649,7 +816,12 @@ export class SyncService {
 
   private async pushDefaultItemRuleChange(change: Change): Promise<void> {
     const table = 'default_item_rules';
-    const data = change.data as DefaultItemRule;
+
+    if (!isDefaultItemRuleData(change.data)) {
+      throw new Error(`Invalid default item rule data for change ${change.id}`);
+    }
+
+    const data = change.data;
 
     switch (change.operation) {
       case 'create': {
@@ -657,12 +829,12 @@ export class SyncService {
           user_id: change.userId,
           rule_id: data.id,
           name: data.name,
-          calculation: data.calculation,
-          conditions: data.conditions || [],
+          calculation: toJson(data.calculation),
+          conditions: toJson(data.conditions) || null,
           notes: data.notes,
           category_id: data.categoryId,
           subcategory_id: data.subcategoryId,
-          pack_ids: data.packIds || [],
+          pack_ids: toJson(data.packIds) || null,
           version: change.version,
         });
         if (createError) throw createError;
@@ -674,12 +846,12 @@ export class SyncService {
           .from(table)
           .update({
             name: data.name,
-            calculation: data.calculation,
-            conditions: data.conditions || [],
+            calculation: toJson(data.calculation),
+            conditions: toJson(data.conditions) || null,
             notes: data.notes,
             category_id: data.categoryId,
             subcategory_id: data.subcategoryId,
-            pack_ids: data.packIds || [],
+            pack_ids: toJson(data.packIds) || null,
             version: change.version,
             updated_at: new Date().toISOString(),
           })
@@ -703,7 +875,12 @@ export class SyncService {
 
   private async pushRulePackChange(change: Change): Promise<void> {
     const table = 'rule_packs';
-    const data = change.data as RulePack;
+
+    if (!isRulePackData(change.data)) {
+      throw new Error(`Invalid rule pack data for change ${change.id}`);
+    }
+
+    const data = change.data;
 
     switch (change.operation) {
       case 'create': {
@@ -712,9 +889,9 @@ export class SyncService {
           pack_id: data.id,
           name: data.name,
           description: data.description,
-          author: data.author,
-          metadata: data.metadata,
-          stats: data.stats,
+          author: toJson(data.author),
+          metadata: toJson(data.metadata),
+          stats: toJson(data.stats),
           primary_category_id: data.primaryCategoryId,
           icon: data.icon,
           color: data.color,
@@ -730,9 +907,9 @@ export class SyncService {
           .update({
             name: data.name,
             description: data.description,
-            author: data.author,
-            metadata: data.metadata,
-            stats: data.stats,
+            author: toJson(data.author),
+            metadata: toJson(data.metadata),
+            stats: toJson(data.stats),
             primary_category_id: data.primaryCategoryId,
             icon: data.icon,
             color: data.color,
@@ -847,9 +1024,10 @@ export class SyncService {
           compositeKey,
           ruleOverride,
           async (serverOverride) => {
-            await RuleOverrideStorage.saveRuleOverride(
-              (serverOverride as { override_data: RuleOverride }).override_data
+            const overrideData = fromJson<RuleOverride>(
+              (serverOverride as { override_data: Json }).override_data
             );
+            await RuleOverrideStorage.saveRuleOverride(overrideData);
           }
         );
       }
@@ -871,13 +1049,16 @@ export class SyncService {
         const rule: DefaultItemRule = {
           id: ruleRow.rule_id as string,
           name: ruleRow.name as string,
-          calculation:
-            ruleRow.calculation as unknown as DefaultItemRule['calculation'],
-          conditions: ruleRow.conditions as DefaultItemRule['conditions'],
+          calculation: fromJson<DefaultItemRule['calculation']>(
+            ruleRow.calculation
+          ),
+          conditions: fromJson<DefaultItemRule['conditions']>(
+            ruleRow.conditions
+          ),
           notes: ruleRow.notes as string,
           categoryId: ruleRow.category_id as string,
           subcategoryId: ruleRow.subcategory_id as string,
-          packIds: ruleRow.pack_ids as string[],
+          packIds: fromJson<string[]>(ruleRow.pack_ids),
         };
 
         await this.applyServerChange(
@@ -907,9 +1088,9 @@ export class SyncService {
           id: packRow.pack_id as string,
           name: packRow.name as string,
           description: packRow.description as string,
-          author: packRow.author as RulePack['author'],
-          metadata: packRow.metadata as RulePack['metadata'],
-          stats: packRow.stats as RulePack['stats'],
+          author: fromJson<RulePackAuthor>(packRow.author),
+          metadata: fromJson<RulePackMetadata>(packRow.metadata),
+          stats: fromJson<RulePackStats>(packRow.stats),
           rules: [], // Rules will be loaded separately
           primaryCategoryId: packRow.primary_category_id as string,
           icon: packRow.icon as string,

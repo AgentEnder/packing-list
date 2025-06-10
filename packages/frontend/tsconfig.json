@@ -21,6 +21,9 @@
       "path": "../auth-state"
     },
     {
+      "path": "../sync"
+    },
+    {
       "path": "../shared-utils"
     },
     {

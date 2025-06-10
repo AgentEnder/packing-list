@@ -1,5 +1,8 @@
 export * from './lib/Timeline.js';
 
+// Banner system
+export { Banner, BannerProvider } from './Banner.js';
+
 // Dialog and Modal components
 export { Modal, ConfirmDialog } from './Dialog.js';
 export type { ModalProps, ConfirmDialogProps } from './Dialog.js';
@@ -25,6 +28,8 @@ export { ConflictList } from './ConflictList.js';
 export type { ConflictListProps } from './ConflictList.js';
 
 export { ConflictDiffView } from './ConflictDiffView.js';
+
+export { ConflictBanner } from './ConflictBanner.js';
 
 export { SyncStatusIndicator, SyncStatusBadge } from './SyncStatusIndicator.js';
 export type {

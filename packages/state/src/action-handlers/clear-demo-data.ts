@@ -1,4 +1,4 @@
-import { StoreType } from '../store.js';
+import { initialState, StoreType } from '../store.js';
 
 export type ClearDemoDataAction = {
   type: 'CLEAR_DEMO_DATA';
@@ -20,6 +20,9 @@ export const clearDemoDataHandler = (state: StoreType): StoreType => {
       summaries: filteredSummaries,
       selectedTripId: null, // Always select the new trip
       byId: filteredTripsById,
+    },
+    sync: {
+      ...initialState.sync,
     },
   };
 };

@@ -28,10 +28,15 @@ function mapItem(item: TripItem): PackingListItem {
   };
 }
 
+/**
+ * Load offline state from local storage
+ */
 export async function loadOfflineState(
   userId: string
-): Promise<Omit<StoreType, 'auth' | 'rulePacks' | 'ui'>> {
-  const base: Omit<StoreType, 'auth' | 'rulePacks' | 'ui'> = {
+): Promise<Omit<StoreType, 'auth' | 'rulePacks' | 'ui' | 'sync'>> {
+  console.log('🔄 [HYDRATION] Loading offline state for user:', userId);
+
+  const base: Omit<StoreType, 'auth' | 'rulePacks' | 'ui' | 'sync'> = {
     trips: { summaries: [], selectedTripId: null, byId: {} },
   };
 
@@ -40,6 +45,10 @@ export async function loadOfflineState(
   if (summaries.length > 0) {
     base.trips.selectedTripId = summaries[0].tripId;
   }
+
+  console.log(
+    `🔄 [HYDRATION] Found ${summaries.length} trip summaries for user`
+  );
 
   for (const summary of summaries) {
     const trip = await TripStorage.getTrip(summary.tripId);
@@ -57,5 +66,10 @@ export async function loadOfflineState(
     base.trips.byId[trip.id] = data;
   }
 
+  console.log(
+    `✅ [HYDRATION] Loaded ${
+      Object.keys(base.trips.byId).length
+    } trips into state`
+  );
   return base;
 }

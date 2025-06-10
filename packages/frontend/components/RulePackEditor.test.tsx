@@ -404,7 +404,9 @@ describe('RulePackEditor Component', () => {
     expect(mockDispatch).toHaveBeenCalledWith({
       type: 'CREATE_RULE_PACK',
       payload: expect.objectContaining({
-        id: `pack-${mockTime}`,
+        id: expect.stringMatching(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+        ), // UUID v4 format
         name: 'Test Pack',
         description: 'Test description',
         rules: [{ id: 'new-rule', name: 'New Rule' }],

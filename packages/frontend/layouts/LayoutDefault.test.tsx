@@ -17,6 +17,12 @@ vi.mock('@packing-list/shared-components', () => ({
   UserProfile: () => <div data-testid="user-profile">User Profile</div>,
   LoginModal: () => <div data-testid="login-modal">Login Modal</div>,
   SyncStatusBadge: () => <div data-testid="sync-status-badge">Sync Status</div>,
+  ConflictBanner: () => (
+    <div data-testid="conflict-banner">Conflict Banner</div>
+  ),
+  BannerProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="banner-provider">{children}</div>
+  ),
 }));
 
 vi.mock('../components/Link', () => ({
@@ -70,6 +76,10 @@ vi.mock('../components/SyncStatus', () => ({
   SyncStatus: () => <div data-testid="sync-status">Sync Status</div>,
 }));
 
+vi.mock('../hooks/useConflictBanner', () => ({
+  useConflictBanner: vi.fn(),
+}));
+
 // Mock CSS imports
 vi.mock('./tailwind.css', () => ({}));
 vi.mock('./style.css', () => ({}));
@@ -89,6 +99,7 @@ vi.mock('lucide-react', () => ({
 
 import { useAppDispatch, useAppSelector } from '@packing-list/state';
 import { useAuth, useLoginModal } from '@packing-list/shared-components';
+import { useConflictBanner } from '../hooks/useConflictBanner';
 import type { Mock } from 'vitest';
 
 describe('LayoutDefault Component', () => {
@@ -102,6 +113,12 @@ describe('LayoutDefault Component', () => {
     (useLoginModal as Mock).mockReturnValue({
       openLoginModal: mockOpenLoginModal,
       closeLoginModal: mockCloseLoginModal,
+    });
+    (useConflictBanner as Mock).mockReturnValue({
+      conflicts: [],
+      shouldShowBanner: false,
+      handleViewConflicts: vi.fn(),
+      handleDismiss: vi.fn(),
     });
 
     // Mock window.location
@@ -332,7 +349,7 @@ describe('LayoutDefault Component', () => {
     expect(screen.getByTestId('users-icon')).toBeInTheDocument();
   });
 
-  it('loads demo data when session choice is demo', async () => {
+  it('renders without automatically loading demo data based on session choice', async () => {
     (useAuth as Mock).mockReturnValue({
       user: null,
       shouldShowSignInOptions: true,
@@ -354,70 +371,9 @@ describe('LayoutDefault Component', () => {
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 
-    expect(mockDispatch).toHaveBeenCalledWith({ type: 'LOAD_DEMO_DATA' });
-  });
-
-  it('does not load demo data when already on demo trip', () => {
-    (useAuth as Mock).mockReturnValue({
-      user: null,
-      shouldShowSignInOptions: true,
-      loading: false,
-      isRemotelyAuthenticated: false,
-    });
-    (useAppSelector as unknown as Mock).mockImplementation((selector) => {
-      if (typeof selector === 'function') {
-        return selector({
-          trips: { selectedTripId: 'DEMO_TRIP' },
-          ui: { flow: { current: null, steps: [] } },
-        });
-      }
-      return null;
-    });
-
-    // Mock sessionStorage to return 'demo'
-    (window.sessionStorage.getItem as Mock).mockReturnValue('demo');
-
-    render(<LayoutDefault>Test content</LayoutDefault>);
-
+    // Demo data loading is now user-triggered, not automatic based on session storage
     expect(mockDispatch).not.toHaveBeenCalledWith({ type: 'LOAD_DEMO_DATA' });
-  });
-
-  it('closes drawer when navigation link is clicked', () => {
-    (useAuth as Mock).mockReturnValue({
-      user: null,
-      shouldShowSignInOptions: true,
-      loading: false,
-      isRemotelyAuthenticated: false,
-    });
-    (useAppSelector as unknown as Mock).mockImplementation((selector) => {
-      if (typeof selector === 'function') {
-        return selector({
-          trips: { selectedTripId: null },
-          ui: { flow: { current: null, steps: [] } },
-        });
-      }
-      return null;
-    });
-
-    render(<LayoutDefault>Test content</LayoutDefault>);
-
-    // Open drawer first
-    const drawerToggle = screen.getByRole('checkbox');
-    fireEvent.click(drawerToggle);
-    expect(drawerToggle).toBeChecked();
-
-    // Click navigation link - get the sidebar one
-    const homeLinks = screen.getAllByTestId('link-/');
-    const sidebarHomeLink = homeLinks.find((link) =>
-      link.textContent?.includes('Overview')
-    );
-    if (!sidebarHomeLink) {
-      throw new Error('Sidebar home link not found');
-    }
-    fireEvent.click(sidebarHomeLink);
-
-    // Drawer should close (this would happen via the onClick handler)
-    expect(drawerToggle).not.toBeChecked();
+    expect(screen.getByText('Test content')).toBeInTheDocument();
   });
 
   it('renders responsive layout with desktop sidebar', () => {
@@ -517,5 +473,43 @@ describe('LayoutDefault Component', () => {
     expect(screen.getByTestId('demo-banner')).toBeInTheDocument();
     expect(screen.getByTestId('toast-container')).toBeInTheDocument();
     expect(screen.getByRole('main')).toBeInTheDocument();
+  });
+
+  it('closes drawer when navigation link is clicked', () => {
+    (useAuth as Mock).mockReturnValue({
+      user: null,
+      shouldShowSignInOptions: true,
+      loading: false,
+      isRemotelyAuthenticated: false,
+    });
+    (useAppSelector as unknown as Mock).mockImplementation((selector) => {
+      if (typeof selector === 'function') {
+        return selector({
+          trips: { selectedTripId: null },
+          ui: { flow: { current: null, steps: [] } },
+        });
+      }
+      return null;
+    });
+
+    render(<LayoutDefault>Test content</LayoutDefault>);
+
+    // Open drawer first
+    const drawerToggle = screen.getByRole('checkbox');
+    fireEvent.click(drawerToggle);
+    expect(drawerToggle).toBeChecked();
+
+    // Click navigation link - get the sidebar one
+    const homeLinks = screen.getAllByTestId('link-/');
+    const sidebarHomeLink = homeLinks.find((link) =>
+      link.textContent?.includes('Overview')
+    );
+    if (!sidebarHomeLink) {
+      throw new Error('Sidebar home link not found');
+    }
+    fireEvent.click(sidebarHomeLink);
+
+    // Drawer should close (this would happen via the onClick handler)
+    expect(drawerToggle).not.toBeChecked();
   });
 });

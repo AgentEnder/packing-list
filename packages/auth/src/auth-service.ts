@@ -1,4 +1,4 @@
-import { getSupabaseClient, isSupabaseAvailable } from './supabase-client.js';
+import { getSupabaseClient, isSupabaseAvailable } from '@packing-list/supabase';
 import { LocalAuthService, type LocalAuthUser } from './local-auth-service.js';
 
 export interface AuthUser {

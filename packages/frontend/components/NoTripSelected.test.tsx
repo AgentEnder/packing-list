@@ -63,6 +63,17 @@ describe('NoTripSelected Component', () => {
             flow: { steps: [], current: null },
             tripWizard: { currentStep: 1 },
           },
+          sync: {
+            syncState: {
+              isSyncing: false,
+              conflicts: [],
+              isOnline: true,
+              lastSyncTimestamp: null,
+              pendingChanges: [],
+            },
+            isInitialized: true,
+            lastError: null,
+          },
           auth: {
             user: null,
             session: null,

@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import {
-  SyncStatusBadge,
-  ConflictResolutionModal,
+  SyncStatusIndicator,
   ConflictList,
+  ConflictResolutionModal,
 } from '@packing-list/shared-components';
-import { useSync } from './SyncProvider.js';
+import { useSyncContext } from './SyncProvider.js';
 import type { SyncConflict } from '@packing-list/model';
+import { useAppDispatch } from '@packing-list/state';
 
 export const SyncStatus: React.FC = () => {
-  const { syncState, forceSync, conflictResolution } = useSync();
+  const { syncState } = useSyncContext();
+  const dispatch = useAppDispatch();
   const [showConflicts, setShowConflicts] = useState(false);
   const [selectedConflict, setSelectedConflict] = useState<SyncConflict | null>(
     null
@@ -17,8 +19,6 @@ export const SyncStatus: React.FC = () => {
   const handleStatusClick = () => {
     if (syncState.conflicts.length > 0) {
       setShowConflicts(true);
-    } else if (syncState.pendingChanges.length > 0) {
-      forceSync();
     }
   };
 
@@ -30,28 +30,41 @@ export const SyncStatus: React.FC = () => {
     strategy: 'local' | 'server' | 'manual',
     data?: unknown
   ) => {
-    if (selectedConflict) {
-      await conflictResolution.resolveConflict(
-        selectedConflict.id,
-        strategy,
-        data
-      );
-      setSelectedConflict(null);
+    console.log(
+      'Resolving conflict:',
+      selectedConflict?.id,
+      'with strategy:',
+      strategy
+    );
+    if (data) {
+      console.log('Manual data:', data);
     }
+
+    // Remove the conflict from Redux state
+    if (selectedConflict) {
+      dispatch({ type: 'REMOVE_SYNC_CONFLICT', payload: selectedConflict.id });
+    }
+
+    setSelectedConflict(null);
   };
 
   const handleResolveAll = async (strategy: 'local' | 'server') => {
-    await conflictResolution.resolveAllConflicts(strategy);
+    console.log('Resolving all conflicts with strategy:', strategy);
+    dispatch({ type: 'CLEAR_SYNC_CONFLICTS' });
+    setShowConflicts(false);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedConflict(null);
+  };
+
+  const handleCloseConflicts = () => {
     setShowConflicts(false);
   };
 
   return (
     <>
-      <SyncStatusBadge
-        syncState={syncState}
-        onClick={handleStatusClick}
-        showText={false}
-      />
+      <SyncStatusIndicator syncState={syncState} onClick={handleStatusClick} />
 
       {/* Conflicts List Modal */}
       {showConflicts && (
@@ -61,7 +74,7 @@ export const SyncStatus: React.FC = () => {
               <h3 className="font-bold text-lg">Sync Conflicts</h3>
               <button
                 className="btn btn-sm btn-circle btn-ghost"
-                onClick={() => setShowConflicts(false)}
+                onClick={handleCloseConflicts}
               >
                 ✕
               </button>
@@ -73,21 +86,18 @@ export const SyncStatus: React.FC = () => {
               onResolveAll={handleResolveAll}
             />
           </div>
-          <div
-            className="modal-backdrop"
-            onClick={() => setShowConflicts(false)}
-          />
+          <div className="modal-backdrop" onClick={handleCloseConflicts} />
         </div>
       )}
 
       {/* Individual Conflict Resolution Modal */}
       {selectedConflict && (
         <ConflictResolutionModal
-          isOpen={!!selectedConflict}
-          onClose={() => setSelectedConflict(null)}
+          isOpen={true}
+          onClose={handleCloseModal}
           conflict={selectedConflict}
           onResolve={handleConflictResolution}
-          onCancel={() => setSelectedConflict(null)}
+          onCancel={handleCloseModal}
         />
       )}
     </>

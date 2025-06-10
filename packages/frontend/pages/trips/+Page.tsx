@@ -9,6 +9,7 @@ import { Link } from '../../components/Link';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
 import { Modal } from '@packing-list/shared-components';
+import { uuid } from '@packing-list/shared-utils';
 import {
   Plus,
   MapPin,
@@ -57,7 +58,7 @@ export default function TripsPage() {
   const handleDuplicateTrip = (tripId: string) => {
     const originalTrip = tripSummaries.find((t) => t.tripId === tripId);
     if (originalTrip) {
-      const newTripId = `trip-${Date.now()}`;
+      const newTripId = uuid();
       dispatch({
         type: 'CREATE_TRIP',
         payload: {

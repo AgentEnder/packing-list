@@ -16,6 +16,7 @@ import {
   PackingListItem,
   RulePack,
   TripSummary,
+  SyncState,
 } from '@packing-list/model';
 import { DEFAULT_RULE_PACKS } from './default-rule-packs.js';
 
@@ -30,6 +31,13 @@ export type StoreType = {
 
   // Global state (not trip-specific)
   rulePacks: RulePack[];
+
+  // Sync state
+  sync: {
+    syncState: SyncState;
+    isInitialized: boolean;
+    lastError: string | null;
+  };
 
   // UI state
   ui: {
@@ -107,6 +115,17 @@ export const initialState: StoreType = {
     byId: {},
   },
   rulePacks: DEFAULT_RULE_PACKS,
+  sync: {
+    syncState: {
+      lastSyncTimestamp: null,
+      pendingChanges: [],
+      isOnline: true,
+      isSyncing: false,
+      conflicts: [],
+    },
+    isInitialized: false,
+    lastError: null,
+  },
   ui: {
     rulePackModal: {
       isOpen: false,

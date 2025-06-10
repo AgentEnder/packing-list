@@ -1,24 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from './database-types.js';
 
-let _supabase: ReturnType<typeof createClient> | null = null;
-
-// Extend the Window interface to include our custom properties
-declare global {
-  interface Window {
-    PUBLIC_ENV__SUPABASE_URL?: string;
-    PUBLIC_ENV__SUPABASE_ANON_KEY?: string;
-  }
-}
+let _supabase: ReturnType<typeof createClient<Database>> | null = null;
 
 function getSupabaseConfig() {
   const supabaseUrl =
-    (typeof window !== 'undefined' && window.PUBLIC_ENV__SUPABASE_URL) ||
     (typeof process !== 'undefined' && process.env.PUBLIC_ENV__SUPABASE_URL) ||
     (typeof import.meta !== 'undefined' &&
       import.meta.env?.PUBLIC_ENV__SUPABASE_URL);
 
   const supabaseAnonKey =
-    (typeof window !== 'undefined' && window.PUBLIC_ENV__SUPABASE_ANON_KEY) ||
     (typeof process !== 'undefined' &&
       process.env.PUBLIC_ENV__SUPABASE_ANON_KEY) ||
     (typeof import.meta !== 'undefined' &&
@@ -40,7 +31,7 @@ export function getSupabaseClient() {
     );
   }
 
-  _supabase = createClient(supabaseUrl, supabaseAnonKey);
+  _supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
   return _supabase;
 }
 
@@ -50,8 +41,13 @@ export function isSupabaseAvailable(): boolean {
 }
 
 // Legacy export for backward compatibility - only works if env vars are available
-export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
-  get(target, prop) {
-    return getSupabaseClient()[prop as keyof ReturnType<typeof createClient>];
-  },
-});
+export const supabase = new Proxy(
+  {} as ReturnType<typeof createClient<Database>>,
+  {
+    get(target, prop) {
+      return getSupabaseClient()[
+        prop as keyof ReturnType<typeof createClient<Database>>
+      ];
+    },
+  }
+);

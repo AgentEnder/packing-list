@@ -4,7 +4,6 @@ export {
   type AuthUser,
   type AuthState,
 } from './auth-service.js';
-export { supabase, isSupabaseAvailable } from './supabase-client.js';
 
 // Local auth exports
 export {

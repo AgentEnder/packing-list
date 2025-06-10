@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { authService } from './auth-service.js';
-import { getSupabaseClient } from './supabase-client.js';
+import { getSupabaseClient } from '@packing-list/supabase';
+import { AuthService } from './auth-service.js';
 
 // Mock dependencies
-vi.mock('./supabase-client.js', () => ({
+vi.mock('@packing-list/supabase', () => ({
   getSupabaseClient: vi.fn(),
   isSupabaseAvailable: vi.fn(() => true), // Always return true in tests
 }));

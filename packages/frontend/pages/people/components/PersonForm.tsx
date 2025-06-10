@@ -1,7 +1,7 @@
-import { ChangeEvent, FormEvent, useState } from 'react';
-import { LegacyPerson as Person } from '@packing-list/model';
+import React, { ChangeEvent, FormEvent, useState } from 'react';
+import type { LegacyPerson } from '@packing-list/model';
 import { useAppDispatch } from '@packing-list/state';
-import { uuid } from '../../../utils/uuid';
+import { uuid } from '@packing-list/shared-utils';
 
 const genders = ['male', 'female', 'other'];
 
@@ -12,7 +12,7 @@ const DEFAULT_FORM = {
 };
 
 export type PersonFormProps = {
-  person?: Person;
+  person?: LegacyPerson;
   onCancel: () => void;
 };
 

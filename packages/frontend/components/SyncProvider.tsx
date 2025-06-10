@@ -1,129 +1,72 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
+import { useAppSelector, useAppDispatch } from '@packing-list/state';
 import type { SyncState } from '@packing-list/model';
-import {
-  initializeSyncService,
-  useConflictResolution,
-} from '@packing-list/sync';
-import type { SyncService } from '@packing-list/sync';
-import { useAuth } from '@packing-list/shared-components';
 
-interface SyncContextType {
+interface SyncContextValue {
   syncState: SyncState;
-  syncService: SyncService | null;
   isInitialized: boolean;
+  lastError: string | null;
   forceSync: () => Promise<void>;
-  conflictResolution: ReturnType<typeof useConflictResolution>;
 }
 
-const SyncContext = createContext<SyncContextType | null>(null);
+const SyncContext = createContext<SyncContextValue | null>(null);
+
+export const useSyncContext = (): SyncContextValue => {
+  const context = useContext(SyncContext);
+  if (!context) {
+    throw new Error('useSyncContext must be used within SyncProvider');
+  }
+  return context;
+};
 
 interface SyncProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
-  const [syncState, setSyncState] = useState<SyncState>({
-    lastSyncTimestamp: 0,
-    pendingChanges: [],
-    isOnline: navigator?.onLine || true,
-    isSyncing: false,
-    conflicts: [],
-  });
-  const [syncService, setSyncService] = useState<SyncService | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const dispatch = useAppDispatch();
 
-  const { user, isRemotelyAuthenticated } = useAuth();
-  const conflictResolution = useConflictResolution();
+  // Get sync state from Redux
+  const syncState = useAppSelector((state) => state.sync.syncState);
+  const isInitialized = useAppSelector((state) => state.sync.isInitialized);
+  const lastError = useAppSelector((state) => state.sync.lastError);
 
-  // Initialize sync service when user is authenticated
+  // Initialize sync service when authenticated
   useEffect(() => {
-    const initSync = async () => {
-      if (user && isRemotelyAuthenticated && !isInitialized) {
-        try {
-          console.log(
-            '[SyncProvider] Initializing sync service for user:',
-            user.id
-          );
+    console.log('🚀 [SYNC PROVIDER] Initializing with Redux-only mode');
 
-          const service = await initializeSyncService({
-            autoSyncInterval: 30000, // 30 seconds
-          });
+    // Mark as initialized since we're using Redux state
+    dispatch({ type: 'SET_SYNC_INITIALIZED', payload: true });
+  }, [dispatch]);
 
-          setSyncService(service);
-          setIsInitialized(true);
+  const forceSync = async (): Promise<void> => {
+    try {
+      console.log('🔄 [SYNC PROVIDER] Simulating force sync...');
+      dispatch({ type: 'SET_SYNC_SYNCING_STATUS', payload: true });
 
-          // Subscribe to sync state changes
-          const unsubscribe = service.subscribe((state: SyncState) => {
-            setSyncState(state);
-          });
+      // Simulate sync delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-          // Get initial state
-          const initialState = await service.getSyncState();
-          setSyncState(initialState);
-
-          console.log('[SyncProvider] Sync service initialized successfully');
-
-          return unsubscribe;
-        } catch (error) {
-          console.error(
-            '[SyncProvider] Failed to initialize sync service:',
-            error
-          );
-        }
-      }
-    };
-
-    let unsubscribe: (() => void) | undefined;
-
-    initSync().then((unsub) => {
-      unsubscribe = unsub;
-    });
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-      if (syncService) {
-        syncService.stop();
-        setSyncService(null);
-        setIsInitialized(false);
-      }
-    };
-  }, [user, isRemotelyAuthenticated, isInitialized, syncService]);
-
-  const forceSync = async () => {
-    if (syncService) {
-      try {
-        await syncService.forceSync();
-      } catch (error) {
-        console.error('[SyncProvider] Force sync failed:', error);
-      }
+      dispatch({ type: 'UPDATE_LAST_SYNC_TIMESTAMP', payload: Date.now() });
+      dispatch({ type: 'SET_SYNC_SYNCING_STATUS', payload: false });
+    } catch (error) {
+      console.error('❌ [SYNC PROVIDER] Force sync error:', error);
+      dispatch({
+        type: 'SET_SYNC_ERROR',
+        payload: error instanceof Error ? error.message : 'Sync failed',
+      });
+      dispatch({ type: 'SET_SYNC_SYNCING_STATUS', payload: false });
     }
   };
 
-  const contextValue: SyncContextType = {
+  const contextValue: SyncContextValue = {
     syncState,
-    syncService,
     isInitialized,
+    lastError,
     forceSync,
-    conflictResolution,
   };
 
   return (
     <SyncContext.Provider value={contextValue}>{children}</SyncContext.Provider>
   );
-};
-
-export const useSync = (): SyncContextType => {
-  const context = useContext(SyncContext);
-  if (!context) {
-    throw new Error('useSync must be used within a SyncProvider');
-  }
-  return context;
 };

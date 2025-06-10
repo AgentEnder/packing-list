@@ -1,5 +1,5 @@
 import type { StoreType, TripData } from '../store.js';
-import { createEmptyTripData } from '../store.js';
+import { createEmptyTripData, initialState } from '../store.js';
 import type { TripSummary, Trip } from '@packing-list/model';
 import { TripStorage } from '@packing-list/offline-storage';
 import { getChangeTracker } from '@packing-list/sync';
@@ -65,8 +65,6 @@ export function createTripHandler(
     },
   };
 
-  console.log(state.auth);
-
   // Build trip model for persistence
   const userId = state.auth.user?.id || 'local-user';
   const tripModel: Trip = {
@@ -100,6 +98,10 @@ export function createTripHandler(
         [tripId]: newTripData,
       },
     },
+    sync:
+      state.trips.selectedTripId === 'DEMO_TRIP'
+        ? initialState.sync
+        : state.sync,
   };
 }
 
