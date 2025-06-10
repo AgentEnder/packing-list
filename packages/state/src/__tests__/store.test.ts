@@ -11,14 +11,7 @@ describe('store', () => {
     const state = store.getState();
 
     // Extract just the app state (without auth) for comparison
-    const { auth, ...appState } = state;
-    expect(appState).toEqual(initialState);
-
-    // Verify auth state exists and has expected structure
-    expect(auth).toBeDefined();
-    expect(auth).toHaveProperty('user');
-    expect(auth).toHaveProperty('loading');
-    expect(auth).toHaveProperty('isOfflineMode');
+    expect(state).toEqual(initialState);
   });
 
   it('should use SSR state when provided', () => {

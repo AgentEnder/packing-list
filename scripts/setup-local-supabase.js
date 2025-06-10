@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
 const { existsSync, writeFileSync, readFileSync } = require('fs');
+const { join } = require('path');
 const { execa } = require('execa');
+
+process.env.SUPABASE_WORKDIR = join(__dirname, '../packages/supabase');
 
 const quiet =
   process.argv.includes('--quiet') || process.env.NX_TASK_TARGET_PROJECT;
@@ -126,18 +129,6 @@ async function getSupabaseAnonKey() {
   return null;
 }
 
-async function ensureSupabaseDbIsMigrated() {
-  try {
-    await runCommand('pnpm', ['supabase', 'migration', 'up', '--local'], {
-      preferLocal: true,
-    });
-    colorLog('green', '✅ Supabase database migrated');
-  } catch (error) {
-    colorLog('red', '❌ Failed to migrate Supabase database');
-    console.error(error);
-  }
-}
-
 // Helper function to run commands with proper error handling
 async function runCommand(command, args, options = {}) {
   const execOptions = {
@@ -183,7 +174,6 @@ async function main() {
   const isSupabaseRunning = await checkIfSupabaseIsRunning();
   if (isSupabaseRunning) {
     colorLog('green', '✅ Supabase is already running');
-    await ensureSupabaseDbIsMigrated();
     return;
   }
 
@@ -236,22 +226,22 @@ async function main() {
     process.exit(1);
   }
 
-  // Check if Supabase config exists
-  if (!existsSync('packages/supabase/config.toml')) {
-    colorLog('yellow', '⚠️  Supabase not initialized, running init...');
-    try {
-      await runCommand('pnpm', ['supabase', 'init'], {
-        cwd: 'packages/supabase',
-        preferLocal: true,
-      });
-    } catch (_e) {
-      void _e; // Explicitly acknowledge unused variable
-      colorLog('red', '❌ Failed to initialize Supabase');
-      process.exit(1);
-    }
-  } else {
-    colorLog('green', '✅ Supabase already initialized');
-  }
+  // // Check if Supabase config exists
+  // if (!existsSync('packages/supabase/config.toml')) {
+  //   colorLog('yellow', '⚠️  Supabase not initialized, running init...');
+  //   try {
+  //     await runCommand('pnpm', ['supabase', 'init'], {
+  //       cwd: 'packages/supabase',
+  //       preferLocal: true,
+  //     });
+  //   } catch (_e) {
+  //     void _e; // Explicitly acknowledge unused variable
+  //     colorLog('red', '❌ Failed to initialize Supabase');
+  //     process.exit(1);
+  //   }
+  // } else {
+  //   colorLog('green', '✅ Supabase already initialized');
+  // }
 
   // Start Supabase services
   log('🔄 Starting Supabase services...', true);

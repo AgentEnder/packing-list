@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { SettingsPage } from './page-objects/SettingsPage';
 
 // Only run in Chromium for now
 test.describe('Initial App Experience', () => {
@@ -74,7 +75,7 @@ test.describe('Initial App Experience', () => {
 
     if (!welcomeVisible && !noTripVisible) {
       // Navigate to home page to get the welcome state
-      await page.goto('/');
+      await page.getByRole('link', { name: 'Overview' }).click();
       await page.waitForTimeout(1000);
       await expect(welcomeText).toBeVisible({ timeout: 5000 });
     } else {
@@ -104,20 +105,17 @@ test.describe('Initial App Experience', () => {
   });
 
   test('help messages can be managed', async ({ page }) => {
-    // Load demo data to get a populated UI
-    await page.getByRole('button', { name: 'Try Demo Trip' }).click();
-    await expect(
-      page.getByText("You're currently using demo data")
-    ).toBeVisible();
-
-    // Navigate to settings
-    await page.getByRole('link', { name: 'Settings' }).click();
+    // Demo messages don't show up if there is no trip data, we'll check with
+    // the demo trip data.
+    const settingsPage = new SettingsPage(page);
+    await settingsPage.goto();
+    await settingsPage.loadDemoData();
 
     // Hide all help messages
     await page.getByRole('button', { name: 'Hide All Help' }).click();
 
     // Verify help messages are hidden
-    await page.goto('/');
+    await page.getByRole('link', { name: 'Overview' }).click();
     await expect(page.getByText('How It Works')).not.toBeVisible();
 
     // Reset help messages
@@ -125,7 +123,7 @@ test.describe('Initial App Experience', () => {
     await page.getByRole('button', { name: 'Reset Help Messages' }).click();
 
     // Verify help messages are visible again
-    await page.goto('/');
+    await page.getByRole('link', { name: 'Overview' }).click();
     await expect(page.getByText('How It Works')).toBeVisible();
   });
 
