@@ -20,6 +20,9 @@
         "outputs": [
           "{projectRoot}/dist"
         ],
+        "dependsOn": [
+          "^gen-types"
+        ],
         "cache": true
       },
       "deploy": {

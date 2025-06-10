@@ -1109,6 +1109,7 @@ export class SyncService {
     }
   }
 
+  // @ts-expect-error - TODO: figure out where this was meant to be used
   private async handleConflict(localChange: Change): Promise<void> {
     const db = await getDatabase();
 
