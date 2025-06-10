@@ -30,20 +30,9 @@ function mapItem(item: TripItem): PackingListItem {
 
 export async function loadOfflineState(
   userId: string
-): Promise<Omit<StoreType, 'auth'>> {
-  const base: Omit<StoreType, 'auth'> = {
+): Promise<Omit<StoreType, 'auth' | 'rulePacks' | 'ui'>> {
+  const base: Omit<StoreType, 'auth' | 'rulePacks' | 'ui'> = {
     trips: { summaries: [], selectedTripId: null, byId: {} },
-    rulePacks: [],
-    ui: {
-      rulePackModal: {
-        isOpen: false,
-        activeTab: 'browse',
-        selectedPackId: undefined,
-      },
-      loginModal: { isOpen: false },
-      flow: { steps: [], current: null },
-      tripWizard: { currentStep: 1 },
-    },
   };
 
   const summaries = await TripStorage.getUserTripSummaries(userId);
@@ -58,6 +47,9 @@ export async function loadOfflineState(
     const people = await PersonStorage.getTripPeople(trip.id);
     const items = await ItemStorage.getTripItems(trip.id);
     const data: TripData = createEmptyTripData(trip.id);
+
+    // Preserve the complete trip data by assigning the full Trip object
+    // The LegacyTrip type in state will accept the full Trip object and use the fields it needs
     data.trip = trip;
     data.people = people;
     data.calculated.packingListItems = items.map(mapItem);

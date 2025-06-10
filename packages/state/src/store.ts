@@ -123,8 +123,8 @@ export const initialState: StoreType = {
     tripWizard: {
       currentStep: 1,
     },
-    auth: authInitialState,
   },
+  auth: authInitialState,
 };
 
 function createAppReducer(

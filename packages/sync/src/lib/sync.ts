@@ -35,6 +35,15 @@ const addWindowEventListener = (event: string, handler: () => void): void => {
   }
 };
 
+// Helper function to check if a user is local and should not sync to remote
+function isLocalUser(userId: string): boolean {
+  return (
+    userId === 'local-shared-user' ||
+    userId === 'local-user' ||
+    userId.startsWith('local-')
+  );
+}
+
 export class SyncService {
   private isOnline = getNavigatorOnline();
   private isSyncing = false;
@@ -71,18 +80,22 @@ export class SyncService {
    */
   async getSyncState(): Promise<SyncState> {
     const db = await getDatabase();
-    const [pendingChanges, conflicts, lastSyncTimestamp] = await Promise.all([
+    const [pendingChanges, lastSyncTimestamp] = await Promise.all([
       this.getPendingChanges(),
-      this.getConflicts(),
       db.get('syncMetadata', 'lastSyncTimestamp') || 0,
     ]);
 
+    // Only count syncable changes in the state
+    const syncableChanges = pendingChanges.filter(
+      (change) => !isLocalUser(change.userId)
+    );
+
     return {
       lastSyncTimestamp,
-      pendingChanges,
+      pendingChanges: syncableChanges, // Only include syncable changes
       isOnline: this.isOnline,
       isSyncing: this.isSyncing,
-      conflicts,
+      conflicts: [], // TODO: Implement conflict tracking
     };
   }
 
@@ -129,6 +142,14 @@ export class SyncService {
   async trackChange(
     change: Omit<Change, 'id' | 'timestamp' | 'synced'>
   ): Promise<void> {
+    // Skip tracking for local users - they don't sync to remote
+    if (isLocalUser(change.userId)) {
+      console.log(
+        `[SyncService] Skipping sync tracking for local user: ${change.operation} ${change.entityType}:${change.entityId}`
+      );
+      return;
+    }
+
     const db = await getDatabase();
     const fullChange: Change = {
       ...change,
@@ -227,14 +248,32 @@ export class SyncService {
     try {
       console.log('[SyncService] Starting sync...');
 
+      // Step 0: Clean up old local-only changes first
+      await this.cleanupLocalOnlyChanges();
+
       // Step 1: Get pending changes
       const pendingChanges = await this.getPendingChanges();
+
+      // Filter out any local user changes that shouldn't be synced
+      const syncableChanges = pendingChanges.filter(
+        (change) => !isLocalUser(change.userId)
+      );
+
+      if (syncableChanges.length === 0) {
+        console.log(
+          '[SyncService] No syncable changes found (all changes are from local users)'
+        );
+        return;
+      }
+
       console.log(
-        `[SyncService] Found ${pendingChanges.length} pending changes`
+        `[SyncService] Found ${syncableChanges.length} syncable changes (${
+          pendingChanges.length
+        } total, ${pendingChanges.length - syncableChanges.length} local-only)`
       );
 
       // Step 2: Push local changes (placeholder)
-      for (const change of pendingChanges) {
+      for (const change of syncableChanges) {
         try {
           await this.pushChangeToServer(change);
           await this.markChangeAsSynced(change.id);
@@ -273,6 +312,7 @@ export class SyncService {
     return allChanges.filter((change) => !change.synced);
   }
 
+  // @ts-expect-error - TODO: Implement conflict tracking
   private async getConflicts(): Promise<SyncConflict[]> {
     const db = await getDatabase();
     return await db.getAll('syncConflicts');
@@ -402,6 +442,37 @@ export class SyncService {
       }
     });
   }
+
+  /**
+   * Clean up local-only changes that don't need to be synced
+   */
+  private async cleanupLocalOnlyChanges(): Promise<void> {
+    const db = await getDatabase();
+    const tx = db.transaction(['syncChanges'], 'readwrite');
+    const store = tx.objectStore('syncChanges');
+
+    // Get all changes
+    const allChanges = await store.getAll();
+
+    // Find local-only changes that are older than 1 hour (to avoid deleting very recent changes)
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    const localChangesToDelete = allChanges.filter(
+      (change) => isLocalUser(change.userId) && change.timestamp < oneHourAgo
+    );
+
+    // Delete old local-only changes
+    for (const change of localChangesToDelete) {
+      await store.delete(change.id);
+    }
+
+    await tx.done;
+
+    if (localChangesToDelete.length > 0) {
+      console.log(
+        `[SyncService] Cleaned up ${localChangesToDelete.length} old local-only changes`
+      );
+    }
+  }
 }
 
 // Global sync service instance
@@ -429,7 +500,7 @@ export async function initializeSyncService(
 }
 
 function generateChangeId(): string {
-  return 'change_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+  return `change_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
 function generateConflictId(): string {
