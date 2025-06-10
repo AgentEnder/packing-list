@@ -6,6 +6,7 @@ import {
   selectDefaultItemRules,
 } from '@packing-list/state';
 import { Modal } from '@packing-list/shared-components';
+import { formatDate } from '@packing-list/shared-utils';
 import { showToast } from './Toast';
 import { RulePackEditor } from './RulePackEditor';
 import { RulePackDetails } from './RulePackDetails';
@@ -362,11 +363,7 @@ export function RulePackModal() {
                       </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        <span>
-                          {new Date(
-                            pack.metadata.modified
-                          ).toLocaleDateString()}
-                        </span>
+                        <span>{formatDate(pack.metadata.modified)}</span>
                       </div>
                     </div>
 

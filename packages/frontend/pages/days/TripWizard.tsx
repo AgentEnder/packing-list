@@ -1,6 +1,7 @@
 import { useState, ChangeEvent, useEffect } from 'react';
 import { TripEvent } from '@packing-list/model';
 import { Timeline, Modal } from '@packing-list/shared-components';
+import { formatDate } from '@packing-list/shared-utils';
 import { uuid } from '../../utils/uuid';
 import { RulePackSelector } from '../../components/RulePackSelector';
 import { useAppDispatch, useAppSelector } from '@packing-list/state';
@@ -413,8 +414,7 @@ export function TripWizard({
                     <div>
                       <span className="font-medium">{dest.location}</span>
                       <span className="text-sm text-gray-500 ml-2">
-                        {new Date(dest.arriveDate).toLocaleDateString()} -{' '}
-                        {new Date(dest.leaveDate).toLocaleDateString()}
+                        {formatDate(dest.arriveDate)} - {formatDate(dest.leaveDate)}
                       </span>
                       {(dest.arriveNotes || dest.leaveNotes) && (
                         <div className="mt-2 text-sm">

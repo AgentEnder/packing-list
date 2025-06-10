@@ -7,11 +7,19 @@
     "tsBuildInfoFile": "dist/tsconfig.lib.tsbuildinfo",
     "emitDeclarationOnly": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node"],
-    "lib": ["es2020", "dom"],
+    "types": [
+      "node"
+    ],
+    "lib": [
+      "es2020",
+      "dom"
+    ],
     "jsx": "react-jsx"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
   "references": [
     {
       "path": "../state/tsconfig.lib.json"
@@ -24,6 +32,9 @@
     },
     {
       "path": "../model/tsconfig.lib.json"
+    },
+    {
+      "path": "../shared-utils/tsconfig.lib.json"
     }
   ],
   "exclude": [
