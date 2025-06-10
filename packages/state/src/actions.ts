@@ -94,6 +94,10 @@ import {
   CloseLoginModalAction,
 } from './action-handlers/login-modal.js';
 import {
+  hydrateOfflineHandler,
+  HydrateOfflineAction,
+} from './action-handlers/hydrate-offline.js';
+import {
   createTripHandler,
   CreateTripAction,
   selectTripHandler,
@@ -162,7 +166,8 @@ export type AllActions =
   | AdvanceFlowAction
   | ResetFlowAction
   | SetWizardStepAction
-  | ResetWizardAction;
+  | ResetWizardAction
+  | HydrateOfflineAction;
 
 export const Mutations: {
   [K in StoreActions]: ActionHandler<Extract<AllActions, { type: K }>>;
@@ -201,6 +206,7 @@ export const Mutations: {
   RESET_FLOW: resetFlowHandler,
   SET_WIZARD_STEP: setWizardStepHandler,
   RESET_WIZARD: resetWizardHandler,
+  HYDRATE_OFFLINE: hydrateOfflineHandler,
 };
 
 export const actions = {

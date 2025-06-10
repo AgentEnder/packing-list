@@ -1,6 +1,8 @@
 import type { StoreType, TripData } from '../store.js';
 import { createEmptyTripData } from '../store.js';
-import type { TripSummary } from '@packing-list/model';
+import type { TripSummary, Trip } from '@packing-list/model';
+import { TripStorage } from '@packing-list/offline-storage';
+import { getChangeTracker } from '@packing-list/sync';
 
 // Action types
 export interface CreateTripAction {
@@ -63,6 +65,28 @@ export function createTripHandler(
     },
   };
 
+  // Build trip model for persistence
+  const userId = state.auth.user?.id || 'local-user';
+  const tripModel: Trip = {
+    id: tripId,
+    userId,
+    title,
+    description: description || '',
+    days: [],
+    tripEvents: [],
+    createdAt: newTripSummary.createdAt,
+    updatedAt: newTripSummary.updatedAt,
+    settings: { defaultTimeZone: 'UTC', packingViewMode: 'by-day' },
+    version: 1,
+    isDeleted: false,
+  };
+
+  // Persist trip and track change asynchronously
+  TripStorage.saveTrip(tripModel).catch(console.error);
+  getChangeTracker()
+    .trackTripChange('create', tripModel, userId)
+    .catch(console.error);
+
   return {
     ...state,
     trips: {
@@ -98,6 +122,9 @@ export const deleteTripHandler = (
 ): StoreType => {
   const { tripId } = action.payload;
 
+  const userId = state.auth.user?.id || 'local-user';
+  const existingTrip = state.trips.byId[tripId]?.trip;
+
   // Remove from summaries
   const updatedSummaries = state.trips.summaries.filter(
     (summary) => summary.tripId !== tripId
@@ -114,6 +141,18 @@ export const deleteTripHandler = (
     // If there are other trips, select the first one, otherwise null
     newSelectedTripId =
       updatedSummaries.length > 0 ? updatedSummaries[0].tripId : null;
+  }
+
+  // Persist deletion and track change asynchronously
+  if (existingTrip) {
+    TripStorage.deleteTrip(tripId).catch(console.error);
+    getChangeTracker()
+      .trackTripChange('delete', {
+        ...(existingTrip as Trip),
+        isDeleted: true,
+        updatedAt: new Date().toISOString(),
+      }, userId)
+      .catch(console.error);
   }
 
   return {
@@ -143,6 +182,22 @@ export const updateTripSummaryHandler = (
         }
       : summary
   );
+
+  // Persist update and track change asynchronously
+  const userId = state.auth.user?.id || 'local-user';
+  const tripData = state.trips.byId[tripId];
+  if (tripData) {
+    const updatedTrip: Trip = {
+      ...(tripData.trip as Trip),
+      title,
+      description: description || '',
+      updatedAt: new Date().toISOString(),
+    };
+    TripStorage.saveTrip(updatedTrip).catch(console.error);
+    getChangeTracker()
+      .trackTripChange('update', updatedTrip, userId)
+      .catch(console.error);
+  }
 
   return {
     ...state,

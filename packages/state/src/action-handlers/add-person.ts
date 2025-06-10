@@ -1,4 +1,6 @@
-import { LegacyPerson as Person } from '@packing-list/model';
+import { LegacyPerson as Person, type Person as PersonModel } from '@packing-list/model';
+import { PersonStorage } from '@packing-list/offline-storage';
+import { getChangeTracker } from '@packing-list/sync';
 import { StoreType } from '../store.js';
 import { calculateDefaultItems } from './calculate-default-items.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
@@ -39,6 +41,25 @@ export const addPersonHandler = (
       },
     },
   };
+
+  // Persist and track change asynchronously
+  const userId = state.auth.user?.id || 'local-user';
+  const now = new Date().toISOString();
+  const personModel: PersonModel = {
+    id: action.payload.id,
+    tripId: selectedTripId,
+    name: action.payload.name,
+    age: action.payload.age,
+    gender: action.payload.gender as any,
+    createdAt: now,
+    updatedAt: now,
+    version: 1,
+    isDeleted: false,
+  };
+  PersonStorage.savePerson(personModel).catch(console.error);
+  getChangeTracker()
+    .trackPersonChange('create', personModel, userId, selectedTripId)
+    .catch(console.error);
 
   // Then recalculate default items
   const stateWithDefaultItems = calculateDefaultItems(stateWithNewPerson);

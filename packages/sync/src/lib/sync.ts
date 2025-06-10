@@ -1,5 +1,6 @@
 import type { Change, SyncConflict, SyncState } from '@packing-list/model';
-import { getDatabase } from '@packing-list/offline-storage';
+import { getDatabase, TripStorage, PersonStorage, ItemStorage } from '@packing-list/offline-storage';
+import { supabase, isSupabaseAvailable } from '@packing-list/auth';
 
 export interface SyncOptions {
   supabaseUrl?: string;
@@ -299,11 +300,52 @@ export class SyncService {
   }
 
   private async pullChangesFromServer(): Promise<void> {
-    // TODO: Implement actual Supabase API calls
-    console.log('[SyncService] MOCK: Pulling changes from server');
+    if (!isSupabaseAvailable()) {
+      console.warn('[SyncService] Supabase not configured');
+      return;
+    }
 
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    const db = await getDatabase();
+    const lastSync = (await db.get('syncMetadata', 'lastSyncTimestamp')) || 0;
+    const since = new Date(lastSync).toISOString();
+
+    console.log(`[SyncService] Pulling changes since ${since}`);
+
+    const { data: trips, error: tripError } = await supabase
+      .from('trips')
+      .select('*')
+      .gte('updated_at', since);
+    if (tripError) {
+      console.error('[SyncService] Failed to fetch trips', tripError);
+    } else if (trips) {
+      for (const trip of trips) {
+        await TripStorage.saveTrip(trip as any);
+      }
+    }
+
+    const { data: people, error: peopleError } = await supabase
+      .from('trip_people')
+      .select('*')
+      .gte('updated_at', since);
+    if (peopleError) {
+      console.error('[SyncService] Failed to fetch people', peopleError);
+    } else if (people) {
+      for (const person of people) {
+        await PersonStorage.savePerson(person as any);
+      }
+    }
+
+    const { data: items, error: itemError } = await supabase
+      .from('trip_items')
+      .select('*')
+      .gte('updated_at', since);
+    if (itemError) {
+      console.error('[SyncService] Failed to fetch items', itemError);
+    } else if (items) {
+      for (const item of items) {
+        await ItemStorage.saveItem(item as any);
+      }
+    }
   }
 
   private async handleConflict(localChange: Change): Promise<void> {
