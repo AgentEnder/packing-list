@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
-  SyncStatusIndicator,
-  ConflictResolutionModal,
   ConflictList,
+  ConflictResolutionModal,
+  SyncStatusIndicator,
 } from '@packing-list/shared-components';
-import type { SyncState, SyncConflict } from '@packing-list/model';
-import { useSync } from '../../components/SyncProvider.js';
+import type { SyncConflict } from '@packing-list/model';
+import { useSyncContext } from '../../components/SyncProvider.js';
+import { useAppDispatch } from '@packing-list/state';
 
 // Mock conflict data for testing
 const mockConflicts: SyncConflict[] = [
@@ -88,30 +89,11 @@ const mockConflicts: SyncConflict[] = [
 ];
 
 export default function SyncDemoPage() {
-  const { syncState, forceSync, isInitialized } = useSync();
-  const [showDemo, setShowDemo] = useState(false);
+  const { syncState, forceSync, isInitialized } = useSyncContext();
+  const dispatch = useAppDispatch();
   const [selectedConflict, setSelectedConflict] = useState<SyncConflict | null>(
     null
   );
-  const [mockSyncState, setMockSyncState] = useState<SyncState>({
-    lastSyncTimestamp: Date.now() - 30000,
-    pendingChanges: [
-      {
-        id: 'change-1',
-        entityType: 'trip',
-        entityId: 'trip-123',
-        operation: 'update',
-        data: { title: 'Updated Trip' },
-        userId: 'user-123',
-        timestamp: Date.now() - 10000,
-        synced: false,
-        version: 1,
-      },
-    ],
-    isOnline: true,
-    isSyncing: false,
-    conflicts: mockConflicts,
-  });
 
   const handleResolveConflict = (conflict: SyncConflict) => {
     setSelectedConflict(conflict);
@@ -131,35 +113,31 @@ export default function SyncDemoPage() {
       console.log('Manual data:', data);
     }
 
-    // Remove the conflict from mock state
-    setMockSyncState((prev) => ({
-      ...prev,
-      conflicts: prev.conflicts.filter((c) => c.id !== selectedConflict?.id),
-    }));
+    // Remove the conflict from Redux state
+    if (selectedConflict) {
+      dispatch({ type: 'REMOVE_SYNC_CONFLICT', payload: selectedConflict.id });
+    }
 
     setSelectedConflict(null);
   };
 
   const handleResolveAll = async (strategy: 'local' | 'server') => {
     console.log('Resolving all conflicts with strategy:', strategy);
-    setMockSyncState((prev) => ({
-      ...prev,
-      conflicts: [],
-    }));
+    dispatch({ type: 'CLEAR_SYNC_CONFLICTS' });
   };
 
   const toggleSyncing = () => {
-    setMockSyncState((prev) => ({
-      ...prev,
-      isSyncing: !prev.isSyncing,
-    }));
+    dispatch({
+      type: 'SET_SYNC_SYNCING_STATUS',
+      payload: !syncState.isSyncing,
+    });
   };
 
   const toggleOnline = () => {
-    setMockSyncState((prev) => ({
-      ...prev,
-      isOnline: !prev.isOnline,
-    }));
+    dispatch({
+      type: 'SET_SYNC_ONLINE_STATUS',
+      payload: !syncState.isOnline,
+    });
   };
 
   const addMockConflict = () => {
@@ -181,28 +159,17 @@ export default function SyncDemoPage() {
       timestamp: Date.now(),
     };
 
-    setMockSyncState((prev) => ({
-      ...prev,
-      conflicts: [...prev.conflicts, newConflict],
-    }));
+    dispatch({ type: 'ADD_SYNC_CONFLICT', payload: newConflict });
   };
 
-  const displayState = showDemo ? mockSyncState : syncState;
+  const displayState = syncState;
 
   return (
     <div className="container mx-auto p-6 space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Sync System Demo</h1>
         <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={showDemo}
-              onChange={(e) => setShowDemo(e.target.checked)}
-              className="checkbox"
-            />
-            <span>Use Mock Data</span>
-          </label>
+          <span className="badge badge-info">Using Redux State</span>
           {isInitialized && (
             <span className="badge badge-success">Sync Initialized</span>
           )}
@@ -235,35 +202,44 @@ export default function SyncDemoPage() {
       </div>
 
       {/* Sync Controls */}
-      {showDemo && (
-        <div className="card bg-base-100 shadow-lg">
-          <div className="card-body">
-            <h2 className="card-title">Demo Controls</h2>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={toggleSyncing} className="btn btn-sm">
-                {mockSyncState.isSyncing ? 'Stop Syncing' : 'Start Syncing'}
-              </button>
-              <button onClick={toggleOnline} className="btn btn-sm">
-                Go {mockSyncState.isOnline ? 'Offline' : 'Online'}
-              </button>
-              <button onClick={addMockConflict} className="btn btn-sm">
-                Add Conflict
-              </button>
-              <button
-                onClick={() =>
-                  setMockSyncState((prev) => ({ ...prev, conflicts: [] }))
-                }
-                className="btn btn-sm"
-              >
-                Clear Conflicts
-              </button>
-            </div>
+      <div className="card bg-base-100 shadow-lg">
+        <div className="card-body">
+          <h2 className="card-title">Demo Controls</h2>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={toggleSyncing} className="btn btn-sm">
+              {syncState.isSyncing ? 'Stop Syncing' : 'Start Syncing'}
+            </button>
+            <button onClick={toggleOnline} className="btn btn-sm">
+              Go {syncState.isOnline ? 'Offline' : 'Online'}
+            </button>
+            <button onClick={addMockConflict} className="btn btn-sm">
+              Add Conflict
+            </button>
+            <button
+              className="btn btn-warning"
+              onClick={() =>
+                dispatch({
+                  type: 'SET_SYNC_CONFLICTS',
+                  payload: mockConflicts,
+                })
+              }
+              disabled={syncState.conflicts.length > 0}
+            >
+              Simulate Multiple Conflicts
+            </button>
+            <button
+              className="btn btn-success"
+              onClick={() => dispatch({ type: 'CLEAR_SYNC_CONFLICTS' })}
+              disabled={syncState.conflicts.length === 0}
+            >
+              Clear All Conflicts
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Real Sync Actions */}
-      {!showDemo && isInitialized && (
+      {isInitialized && (
         <div className="card bg-base-100 shadow-lg">
           <div className="card-body">
             <h2 className="card-title">Sync Actions</h2>

@@ -12,6 +12,7 @@ import {
   calculateRuleHash,
   calculateItemQuantity,
   compare,
+  uuid,
 } from '@packing-list/shared-utils';
 
 export type CalculatePackingListAction = {
@@ -172,7 +173,7 @@ function createItemInstances(
         : undefined);
 
     return {
-      id: `${rule.id}-${suffix}-${Date.now()}`,
+      id: uuid(),
       name,
       itemName: rule.name,
       ruleId: rule.id,
@@ -483,7 +484,12 @@ export const calculatePackingListHandler = (state: StoreType): StoreType => {
     };
     ItemStorage.saveItem(tripItem).catch(console.error);
     getChangeTracker()
-      .trackItemChange(isNew ? 'create' : 'update', tripItem, userId, selectedTripId)
+      .trackItemChange(
+        isNew ? 'create' : 'update',
+        tripItem,
+        userId,
+        selectedTripId
+      )
       .catch(console.error);
   }
 

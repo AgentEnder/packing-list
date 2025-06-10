@@ -15,6 +15,7 @@ import {
   Compass,
 } from 'lucide-react';
 import { RulePackRuleSelector } from './RulePackRuleSelector';
+import { uuid } from '@packing-list/shared-utils';
 
 interface RulePackEditorProps {
   pack?: RulePack; // If provided, we're editing an existing pack
@@ -100,8 +101,8 @@ export function RulePackEditor({
   const dispatch = useAppDispatch();
   const [name, setName] = useState(pack?.name ?? '');
   const [description, setDescription] = useState(pack?.description ?? '');
-  const [category, setCategory] = useState<typeof CATEGORIES[number]>(
-    (pack?.metadata?.category as typeof CATEGORIES[number]) ?? 'other'
+  const [category, setCategory] = useState<(typeof CATEGORIES)[number]>(
+    (pack?.metadata?.category as (typeof CATEGORIES)[number]) ?? 'other'
   );
   const [tags, setTags] = useState<string[]>(pack?.metadata?.tags ?? []);
   const [tagInput, setTagInput] = useState('');
@@ -109,8 +110,8 @@ export function RulePackEditor({
     pack?.color ?? AVAILABLE_COLORS[0]
   );
   const [selectedIcon, setSelectedIcon] = useState<
-    typeof AVAILABLE_ICONS[number]
-  >((pack?.icon as typeof AVAILABLE_ICONS[number]) ?? 'sun');
+    (typeof AVAILABLE_ICONS)[number]
+  >((pack?.icon as (typeof AVAILABLE_ICONS)[number]) ?? 'sun');
   const [visibility, setVisibility] = useState(
     pack?.metadata?.visibility ?? 'private'
   );
@@ -141,7 +142,7 @@ export function RulePackEditor({
     }
 
     const newPack: RulePack = {
-      id: pack?.id ?? `pack-${Date.now()}`,
+      id: pack?.id ?? uuid(),
       name: name.trim(),
       description: description.trim(),
       author: pack?.author ?? DEFAULT_AUTHOR,
@@ -210,7 +211,7 @@ export function RulePackEditor({
           className="select select-bordered w-full"
           value={category}
           onChange={(e) =>
-            setCategory(e.target.value as typeof CATEGORIES[number])
+            setCategory(e.target.value as (typeof CATEGORIES)[number])
           }
           data-testid="rule-pack-category-select"
         >

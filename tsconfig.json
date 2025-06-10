@@ -29,6 +29,9 @@
     },
     {
       "path": "./packages/sync"
+    },
+    {
+      "path": "./packages/supabase"
     }
   ]
 }

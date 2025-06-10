@@ -4,7 +4,7 @@ import {
   useAppSelector,
   selectSelectedTripId,
 } from '@packing-list/state';
-import { uuid } from '../../utils/uuid';
+import { uuid } from '@packing-list/shared-utils';
 import { createSelector } from '@reduxjs/toolkit';
 import { TripEvent } from '@packing-list/model';
 import { Modal } from '@packing-list/shared-components';

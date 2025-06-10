@@ -28,7 +28,7 @@ export type SyncConflict = {
 };
 
 export type SyncState = {
-  lastSyncTimestamp: number;
+  lastSyncTimestamp: number | null;
   pendingChanges: Change[];
   isOnline: boolean;
   isSyncing: boolean;

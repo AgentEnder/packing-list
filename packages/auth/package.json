@@ -3,5 +3,9 @@
   "version": "0.0.0",
   "type": "module",
   "main": "./src/index.ts",
-  "scripts": {}
+  "scripts": {},
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "@packing-list/supabase": "workspace:*"
+  }
 }

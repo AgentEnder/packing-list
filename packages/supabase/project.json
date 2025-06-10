@@ -7,8 +7,18 @@
     "clean": {
       "command": "node scripts/cleanup-supabase.js",
       "options": {
-        "cwd": "packages/supabase"
+        "cwd": "{projectRoot}"
       }
+    },
+    "gen-types": {
+      "command": "supabase gen types typescript --local > ./src/database-types.ts",
+      "options": {
+        "cwd": "{projectRoot}"
+      },
+      "dependsOn": ["start"],
+      "cache": true,
+      "inputs": ["{projectRoot}/supabase/**/*"],
+      "outputs": ["{projectRoot}/src/database-types.ts"]
     }
   }
 }

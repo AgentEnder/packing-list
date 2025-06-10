@@ -124,6 +124,21 @@ import {
   setWizardStepHandler,
   resetWizardHandler,
 } from './action-handlers/flow.js';
+import {
+  SyncActions,
+  setSyncState,
+  setSyncInitialized,
+  addSyncConflict,
+  removeSyncConflict,
+  clearSyncConflicts,
+  setSyncConflicts,
+  setSyncOnlineStatus,
+  setSyncSyncingStatus,
+  updateLastSyncTimestamp,
+  setSyncPendingChanges,
+  setSyncError,
+  resetSyncState,
+} from './lib/sync/sync-mutations.js';
 
 export type ActionHandler<T extends AllActions> = (
   state: StoreType,
@@ -167,7 +182,8 @@ export type AllActions =
   | ResetFlowAction
   | SetWizardStepAction
   | ResetWizardAction
-  | HydrateOfflineAction;
+  | HydrateOfflineAction
+  | SyncActions;
 
 export const Mutations: {
   [K in StoreActions]: ActionHandler<Extract<AllActions, { type: K }>>;
@@ -207,6 +223,18 @@ export const Mutations: {
   SET_WIZARD_STEP: setWizardStepHandler,
   RESET_WIZARD: resetWizardHandler,
   HYDRATE_OFFLINE: hydrateOfflineHandler,
+  SET_SYNC_STATE: setSyncState,
+  SET_SYNC_INITIALIZED: setSyncInitialized,
+  ADD_SYNC_CONFLICT: addSyncConflict,
+  REMOVE_SYNC_CONFLICT: removeSyncConflict,
+  CLEAR_SYNC_CONFLICTS: clearSyncConflicts,
+  SET_SYNC_CONFLICTS: setSyncConflicts,
+  SET_SYNC_ONLINE_STATUS: setSyncOnlineStatus,
+  SET_SYNC_SYNCING_STATUS: setSyncSyncingStatus,
+  UPDATE_LAST_SYNC_TIMESTAMP: updateLastSyncTimestamp,
+  SET_SYNC_PENDING_CHANGES: setSyncPendingChanges,
+  SET_SYNC_ERROR: setSyncError,
+  RESET_SYNC_STATE: resetSyncState,
 };
 
 export const actions = {

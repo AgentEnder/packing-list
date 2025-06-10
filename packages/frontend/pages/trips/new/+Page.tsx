@@ -16,7 +16,7 @@ import {
   Check,
 } from 'lucide-react';
 import { navigate } from 'vike/client/router';
-import { uuid } from '../../../utils/uuid';
+import { uuid } from '@packing-list/shared-utils';
 
 // Trip templates
 const TRIP_TEMPLATES = [
@@ -157,7 +157,7 @@ export default function NewTripPage() {
     e.preventDefault();
 
     if (canSubmit) {
-      const tripId = `trip-${Date.now()}`;
+      const tripId = uuid();
 
       // 1. Create the trip immediately so it becomes selected
       dispatch({
@@ -202,7 +202,7 @@ export default function NewTripPage() {
     setIsSubmitting(true);
 
     try {
-      const tripId = `trip-${Date.now()}`;
+      const tripId = uuid();
 
       dispatch({
         type: 'CREATE_TRIP',

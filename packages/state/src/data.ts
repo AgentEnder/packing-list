@@ -3,6 +3,7 @@ import {
   PackingListViewState,
   LegacyPerson as Person,
   TripEvent,
+  SyncConflict,
 } from '@packing-list/model';
 import { StoreType } from './store.js';
 import { enumerateTripDays } from './action-handlers/calculate-days.js';
@@ -337,6 +338,48 @@ const packingListView: PackingListViewState = {
 export const CREATE_DEMO_DATA: () => Partial<StoreType> = () => {
   const tripId = 'DEMO_TRIP';
 
+  // Create mock conflicts for demo
+  const mockConflicts: SyncConflict[] = [
+    {
+      id: 'conflict-1',
+      entityType: 'person',
+      entityId: 'person-1',
+      localVersion: {
+        name: 'Sarah Johnson (Local)',
+        age: 42,
+        gender: 'female',
+        timestamp: Date.now() - 1000,
+      },
+      serverVersion: {
+        name: 'Sarah J. Johnson',
+        age: 42,
+        gender: 'female',
+        timestamp: Date.now(),
+      },
+      conflictType: 'update_conflict',
+      timestamp: Date.now(),
+    },
+    {
+      id: 'conflict-2',
+      entityType: 'item',
+      entityId: 'item-123',
+      localVersion: {
+        name: 'Beach Towel',
+        category: 'beach',
+        isPacked: true,
+        timestamp: Date.now() - 2000,
+      },
+      serverVersion: {
+        name: 'Large Beach Towel',
+        category: 'beach',
+        isPacked: false,
+        timestamp: Date.now() - 500,
+      },
+      conflictType: 'update_conflict',
+      timestamp: Date.now() - 500,
+    },
+  ];
+
   // Create the trip data structure
   const tripData = {
     trip: {
@@ -378,6 +421,17 @@ export const CREATE_DEMO_DATA: () => Partial<StoreType> = () => {
       },
     },
     rulePacks: DEFAULT_RULE_PACKS,
+    sync: {
+      syncState: {
+        lastSyncTimestamp: Date.now() - 300000, // 5 minutes ago
+        pendingChanges: [],
+        isOnline: true,
+        isSyncing: false,
+        conflicts: mockConflicts,
+      },
+      isInitialized: true,
+      lastError: null,
+    },
     ui: {
       rulePackModal: {
         isOpen: false,

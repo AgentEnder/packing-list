@@ -2,7 +2,7 @@ import { useState, ChangeEvent, useEffect } from 'react';
 import { TripEvent } from '@packing-list/model';
 import { Timeline, Modal } from '@packing-list/shared-components';
 import { formatDate } from '@packing-list/shared-utils';
-import { uuid } from '../../utils/uuid';
+import { uuid } from '@packing-list/shared-utils';
 import { RulePackSelector } from '../../components/RulePackSelector';
 import { useAppDispatch, useAppSelector } from '@packing-list/state';
 
