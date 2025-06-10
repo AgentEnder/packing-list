@@ -4,6 +4,8 @@ const { execa } = require('execa');
 
 const quiet = process.argv.includes('--quiet');
 
+process.env.SUPABASE_WORKDIR = join(__dirname, '../');
+
 // Colors for console output
 const colors = {
   reset: '\x1b[0m',

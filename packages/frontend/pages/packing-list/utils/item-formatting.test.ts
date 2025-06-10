@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { format } from 'date-fns';
 import {
   formatDayInfo,
   splitInstancesByExtraStatus,
@@ -27,13 +28,15 @@ describe('item-formatting utilities', () => {
     });
 
     it('formats single day with location', () => {
+      const expectedDate = format(new Date('2024-01-15'), 'MMM d');
       const result = formatDayInfo({ dayIndex: 0 }, mockDays);
-      expect(result).toBe('Day 1 - Jan 14 (Paris)');
+      expect(result).toBe(`Day 1 - ${expectedDate} (Paris)`);
     });
 
     it('formats single day without location', () => {
+      const expectedDate = format(new Date('2024-01-17'), 'MMM d');
       const result = formatDayInfo({ dayIndex: 2 }, mockDays);
-      expect(result).toBe('Day 3 - Jan 16');
+      expect(result).toBe(`Day 3 - ${expectedDate}`);
     });
 
     it('formats day range when dayStart and dayEnd are different', () => {
@@ -45,26 +48,30 @@ describe('item-formatting utilities', () => {
     });
 
     it('formats single day when dayStart equals dayEnd', () => {
+      const expectedDate = format(new Date('2024-01-15'), 'MMM d');
       const result = formatDayInfo(
         { dayIndex: 0, dayStart: 0, dayEnd: 0 },
         mockDays
       );
-      expect(result).toBe('Day 1 - Jan 14 (Paris)');
+      expect(result).toBe(`Day 1 - ${expectedDate} (Paris)`);
     });
 
     it('handles timestamp dates', () => {
+      const expectedDate = format(new Date(1705363200000), 'MMM d');
       const result = formatDayInfo({ dayIndex: 3 }, mockDays);
-      expect(result).toBe('Day 4 - Jan 15');
+      expect(result).toBe(`Day 4 - ${expectedDate}`);
     });
 
     it('handles dayStart without dayEnd', () => {
+      const expectedDate = format(new Date('2024-01-15'), 'MMM d');
       const result = formatDayInfo({ dayIndex: 0, dayStart: 0 }, mockDays);
-      expect(result).toBe('Day 1 - Jan 14 (Paris)');
+      expect(result).toBe(`Day 1 - ${expectedDate} (Paris)`);
     });
 
     it('handles dayEnd without dayStart', () => {
+      const expectedDate = format(new Date('2024-01-15'), 'MMM d');
       const result = formatDayInfo({ dayIndex: 0, dayEnd: 0 }, mockDays);
-      expect(result).toBe('Day 1 - Jan 14 (Paris)');
+      expect(result).toBe(`Day 1 - ${expectedDate} (Paris)`);
     });
   });
 

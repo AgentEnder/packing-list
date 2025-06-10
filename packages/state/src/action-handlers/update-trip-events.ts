@@ -1,8 +1,10 @@
-import { TripEvent } from '@packing-list/model';
-import { StoreType } from '../store.js';
+import { TripEvent, Trip } from '@packing-list/model';
+import { StoreType, TripData } from '../store.js';
 import { enumerateTripDays } from './calculate-days.js';
 import { calculateDefaultItems } from './calculate-default-items.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
+import { TripStorage } from '@packing-list/offline-storage';
+import { getChangeTracker } from '@packing-list/sync';
 
 export type UpdateTripEventsAction = {
   type: 'UPDATE_TRIP_EVENTS';
@@ -26,7 +28,7 @@ export const updateTripEventsHandler = (
   const selectedTripData = state.trips.byId[selectedTripId];
 
   // First update trip events and days in the selected trip
-  const updatedTripData = {
+  const updatedTripData: TripData = {
     ...selectedTripData,
     trip: {
       ...selectedTripData.trip,
@@ -45,6 +47,17 @@ export const updateTripEventsHandler = (
       },
     },
   };
+
+  // Persist the updated trip to storage and track change asynchronously
+  const userId = state.auth.user?.id || 'local-user';
+  const updatedTrip: Trip = {
+    ...(updatedTripData.trip as Trip),
+    updatedAt: new Date().toISOString(),
+  };
+  TripStorage.saveTrip(updatedTrip).catch(console.error);
+  getChangeTracker()
+    .trackTripChange('update', updatedTrip, userId)
+    .catch(console.error);
 
   // Then recalculate default items
   const stateWithDefaultItems = calculateDefaultItems(stateWithUpdatedTrip);

@@ -7,8 +7,24 @@ import type {
 } from '@packing-list/model';
 import { getSyncService } from './sync.js';
 
+// Helper function to check if a user is local and should not sync to remote
+function isLocalUser(userId: string): boolean {
+  return (
+    userId === 'local-shared-user' ||
+    userId === 'local-user' ||
+    userId.startsWith('local-')
+  );
+}
+
 export class ChangeTracker {
   private syncService = getSyncService();
+
+  /**
+   * Check if a user ID represents a local user (non-syncing)
+   */
+  static isLocalUser(userId: string): boolean {
+    return isLocalUser(userId);
+  }
 
   /**
    * Track a trip change

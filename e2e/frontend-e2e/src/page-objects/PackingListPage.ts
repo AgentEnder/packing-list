@@ -37,10 +37,8 @@ export class PackingListPage {
 
       await packingListLink.click({ timeout: 2000 });
       await this.page.waitForLoadState('networkidle');
-    } catch {
-      // If link click fails (responsive layout, element not visible, etc.), use direct navigation
-      await this.page.goto('/packing-list');
-      await this.page.waitForLoadState('networkidle');
+    } finally {
+      // ?
     }
   }
 
@@ -59,7 +57,6 @@ export class PackingListPage {
         : this.page.getByTestId('view-mode-by-person');
 
     await button.click();
-    await this.page.waitForTimeout(500); // Wait for view to update
   }
 
   async getViewMode(): Promise<ViewMode> {
@@ -77,7 +74,6 @@ export class PackingListPage {
         : this.page.getByTestId('filter-unpacked');
 
     await button.click();
-    await this.page.waitForTimeout(500); // Wait for filter to apply
   }
 
   async isFilterActive(filter: FilterType): Promise<boolean> {
@@ -371,7 +367,6 @@ export class PackingItem {
     if (await this.hasNotes()) {
       // Hover over the info icon to reveal the tooltip
       await this.element.getByTestId('info-icon').hover();
-      await this.page.waitForTimeout(500); // Wait for tooltip to appear
 
       // Try to find the tooltip content within this specific element
       const tooltip = this.element.locator('.tooltip');

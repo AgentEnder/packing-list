@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
 const { existsSync, writeFileSync, readFileSync } = require('fs');
+const { join } = require('path');
 const { execa } = require('execa');
+
+process.env.SUPABASE_WORKDIR = join(__dirname, '../packages/supabase');
 
 const quiet =
   process.argv.includes('--quiet') || process.env.NX_TASK_TARGET_PROJECT;
@@ -223,22 +226,22 @@ async function main() {
     process.exit(1);
   }
 
-  // Check if Supabase config exists
-  if (!existsSync('packages/supabase/config.toml')) {
-    colorLog('yellow', '⚠️  Supabase not initialized, running init...');
-    try {
-      await runCommand('pnpm', ['supabase', 'init'], {
-        cwd: 'packages/supabase',
-        preferLocal: true,
-      });
-    } catch (_e) {
-      void _e; // Explicitly acknowledge unused variable
-      colorLog('red', '❌ Failed to initialize Supabase');
-      process.exit(1);
-    }
-  } else {
-    colorLog('green', '✅ Supabase already initialized');
-  }
+  // // Check if Supabase config exists
+  // if (!existsSync('packages/supabase/config.toml')) {
+  //   colorLog('yellow', '⚠️  Supabase not initialized, running init...');
+  //   try {
+  //     await runCommand('pnpm', ['supabase', 'init'], {
+  //       cwd: 'packages/supabase',
+  //       preferLocal: true,
+  //     });
+  //   } catch (_e) {
+  //     void _e; // Explicitly acknowledge unused variable
+  //     colorLog('red', '❌ Failed to initialize Supabase');
+  //     process.exit(1);
+  //   }
+  // } else {
+  //   colorLog('green', '✅ Supabase already initialized');
+  // }
 
   // Start Supabase services
   log('🔄 Starting Supabase services...', true);
@@ -276,6 +279,8 @@ async function main() {
   } catch {
     colorLog('yellow', '⚠️  Could not display status');
   }
+
+  await ensureSupabaseDbIsMigrated();
 
   // Display seed data info
   log('');

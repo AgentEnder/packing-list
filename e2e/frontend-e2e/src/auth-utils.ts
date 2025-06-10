@@ -152,9 +152,6 @@ export async function signOut(page: Page): Promise<void> {
     const signOutButton = getSignOutButton(page);
     await signOutButton.click({ timeout: 5000 });
 
-    // Wait for sign out to complete
-    await page.waitForTimeout(1000);
-
     console.log('Successfully signed out');
   } catch (error) {
     console.log('Sign out attempt failed, but continuing:', error);
@@ -198,7 +195,6 @@ export async function getAuthState(page: Page): Promise<{
     let userEmail: string | null = null;
     try {
       await userProfile.click();
-      await page.waitForTimeout(300);
 
       const userEmailElement = page
         .locator('[data-testid="user-email"]:visible')
@@ -207,7 +203,6 @@ export async function getAuthState(page: Page): Promise<{
 
       // Close dropdown
       await page.click('body');
-      await page.waitForTimeout(200);
     } catch {
       // Could not get email, but user profile exists
     }
@@ -261,8 +256,6 @@ export async function waitForAuthReady(
     if (hasSignInButton || hasUserProfile) {
       return true;
     }
-
-    await page.waitForTimeout(200);
   }
 
   return false;
@@ -297,8 +290,6 @@ export async function clearAllAuthState(page: Page): Promise<void> {
       console.warn('Storage clear error:', e);
     }
   });
-
-  await page.waitForTimeout(1000);
 }
 
 /**

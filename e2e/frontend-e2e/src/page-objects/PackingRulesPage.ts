@@ -175,9 +175,6 @@ export class PackingRulesPage {
     await this.page
       .getByRole('heading', { name })
       .waitFor({ state: 'visible', timeout: 10000 });
-
-    // Give a moment for any state updates to complete
-    await this.page.waitForTimeout(1000);
   }
 
   async editRule(
@@ -250,12 +247,6 @@ export class PackingRulesPage {
       await this.page
         .getByRole('heading', { name: updates.name })
         .waitFor({ state: 'visible', timeout: 10000 });
-
-      // Give a moment for any state updates to complete
-      await this.page.waitForTimeout(1000);
-    } else {
-      // Even if name didn't change, wait for the modal to close
-      await this.page.waitForTimeout(1000);
     }
   }
 
@@ -273,9 +264,6 @@ export class PackingRulesPage {
     await this.page
       .locator(`[data-testid="rule-card"]:has-text("${ruleName}")`)
       .waitFor({ state: 'hidden', timeout: 10000 });
-
-    // Give a moment for any state updates to complete
-    await this.page.waitForTimeout(1000);
   }
 
   async getRuleCount() {

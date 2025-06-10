@@ -21,6 +21,7 @@ import {
   MoreVertical,
   Edit,
 } from 'lucide-react';
+import { format } from 'date-fns';
 
 export default function TripsPage() {
   const dispatch = useAppDispatch();
@@ -28,6 +29,7 @@ export default function TripsPage() {
   const selectedTripId = useAppSelector((state) => state.trips.selectedTripId);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tripToDelete, setTripToDelete] = useState<string | null>(null);
+  const tripDataById = useAppSelector((state) => state.trips.byId);
 
   const handleSelectTrip = (tripId: string) => {
     dispatch({
@@ -66,7 +68,6 @@ export default function TripsPage() {
       });
     }
   };
-
 
   const tripToDeleteData = tripSummaries.find((t) => t.tripId === tripToDelete);
 
@@ -196,6 +197,28 @@ export default function TripsPage() {
                     </div>
                   </div>
                 </div>
+
+                {tripDataById[trip.tripId].trip.days?.length && (
+                  <div className="flex gap-2 w-fit">
+                    <div>
+                      {format(
+                        new Date(tripDataById[trip.tripId].trip.days[0].date),
+                        'MMM d'
+                      )}
+                    </div>
+                    <div>-</div>
+                    <div>
+                      {format(
+                        new Date(
+                          tripDataById[trip.tripId].trip.days[
+                            tripDataById[trip.tripId].trip.days.length - 1
+                          ].date
+                        ),
+                        'MMM d'
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="text-xs text-base-content/60 mt-2">
                   Created {formatDate(trip.createdAt)}

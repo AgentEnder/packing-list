@@ -20,6 +20,7 @@
     "tslib": "^2.3.0",
     "@packing-list/model": "workspace:*",
     "@packing-list/offline-storage": "workspace:*",
-    "@packing-list/auth-state": "workspace:*"
+    "@packing-list/auth-state": "workspace:*",
+    "@packing-list/auth": "workspace:*"
   }
 }

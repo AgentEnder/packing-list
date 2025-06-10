@@ -362,7 +362,7 @@ export const PackingList: React.FC = () => {
               </li>
               <li>
                 <Link
-                  href="/rules"
+                  href="/defaults"
                   className="link link-primary"
                   data-testid="setup-add-rules-link"
                 >

@@ -1,5 +1,18 @@
-import type { Change, SyncConflict, SyncState } from '@packing-list/model';
-import { getDatabase } from '@packing-list/offline-storage';
+import type {
+  Change,
+  SyncConflict,
+  SyncState,
+  Trip,
+  Person,
+  TripItem,
+} from '@packing-list/model';
+import {
+  getDatabase,
+  TripStorage,
+  PersonStorage,
+  ItemStorage,
+} from '@packing-list/offline-storage';
+import { supabase, isSupabaseAvailable } from '@packing-list/auth';
 
 export interface SyncOptions {
   supabaseUrl?: string;
@@ -21,6 +34,15 @@ const addWindowEventListener = (event: string, handler: () => void): void => {
     window.addEventListener(event, handler);
   }
 };
+
+// Helper function to check if a user is local and should not sync to remote
+function isLocalUser(userId: string): boolean {
+  return (
+    userId === 'local-shared-user' ||
+    userId === 'local-user' ||
+    userId.startsWith('local-')
+  );
+}
 
 export class SyncService {
   private isOnline = getNavigatorOnline();
@@ -58,18 +80,22 @@ export class SyncService {
    */
   async getSyncState(): Promise<SyncState> {
     const db = await getDatabase();
-    const [pendingChanges, conflicts, lastSyncTimestamp] = await Promise.all([
+    const [pendingChanges, lastSyncTimestamp] = await Promise.all([
       this.getPendingChanges(),
-      this.getConflicts(),
       db.get('syncMetadata', 'lastSyncTimestamp') || 0,
     ]);
 
+    // Only count syncable changes in the state
+    const syncableChanges = pendingChanges.filter(
+      (change) => !isLocalUser(change.userId)
+    );
+
     return {
       lastSyncTimestamp,
-      pendingChanges,
+      pendingChanges: syncableChanges, // Only include syncable changes
       isOnline: this.isOnline,
       isSyncing: this.isSyncing,
-      conflicts,
+      conflicts: [], // TODO: Implement conflict tracking
     };
   }
 
@@ -116,6 +142,14 @@ export class SyncService {
   async trackChange(
     change: Omit<Change, 'id' | 'timestamp' | 'synced'>
   ): Promise<void> {
+    // Skip tracking for local users - they don't sync to remote
+    if (isLocalUser(change.userId)) {
+      console.log(
+        `[SyncService] Skipping sync tracking for local user: ${change.operation} ${change.entityType}:${change.entityId}`
+      );
+      return;
+    }
+
     const db = await getDatabase();
     const fullChange: Change = {
       ...change,
@@ -214,14 +248,32 @@ export class SyncService {
     try {
       console.log('[SyncService] Starting sync...');
 
+      // Step 0: Clean up old local-only changes first
+      await this.cleanupLocalOnlyChanges();
+
       // Step 1: Get pending changes
       const pendingChanges = await this.getPendingChanges();
+
+      // Filter out any local user changes that shouldn't be synced
+      const syncableChanges = pendingChanges.filter(
+        (change) => !isLocalUser(change.userId)
+      );
+
+      if (syncableChanges.length === 0) {
+        console.log(
+          '[SyncService] No syncable changes found (all changes are from local users)'
+        );
+        return;
+      }
+
       console.log(
-        `[SyncService] Found ${pendingChanges.length} pending changes`
+        `[SyncService] Found ${syncableChanges.length} syncable changes (${
+          pendingChanges.length
+        } total, ${pendingChanges.length - syncableChanges.length} local-only)`
       );
 
       // Step 2: Push local changes (placeholder)
-      for (const change of pendingChanges) {
+      for (const change of syncableChanges) {
         try {
           await this.pushChangeToServer(change);
           await this.markChangeAsSynced(change.id);
@@ -251,14 +303,16 @@ export class SyncService {
 
   private async getPendingChanges(): Promise<Change[]> {
     const db = await getDatabase();
-    const index = db
+    const store = db
       .transaction(['syncChanges'], 'readonly')
-      .objectStore('syncChanges')
-      .index('synced');
+      .objectStore('syncChanges');
 
-    return await index.getAll(IDBKeyRange.only(false)); // synced = false
+    // Get all changes and filter for unsynced ones
+    const allChanges = await store.getAll();
+    return allChanges.filter((change) => !change.synced);
   }
 
+  // @ts-expect-error - TODO: Implement conflict tracking
   private async getConflicts(): Promise<SyncConflict[]> {
     const db = await getDatabase();
     return await db.getAll('syncConflicts');
@@ -299,11 +353,52 @@ export class SyncService {
   }
 
   private async pullChangesFromServer(): Promise<void> {
-    // TODO: Implement actual Supabase API calls
-    console.log('[SyncService] MOCK: Pulling changes from server');
+    if (!isSupabaseAvailable()) {
+      console.warn('[SyncService] Supabase not configured');
+      return;
+    }
 
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    const db = await getDatabase();
+    const lastSync = (await db.get('syncMetadata', 'lastSyncTimestamp')) || 0;
+    const since = new Date(lastSync).toISOString();
+
+    console.log(`[SyncService] Pulling changes since ${since}`);
+
+    const { data: trips, error: tripError } = await supabase
+      .from('trips')
+      .select('*')
+      .gte('updated_at', since);
+    if (tripError) {
+      console.error('[SyncService] Failed to fetch trips', tripError);
+    } else if (trips) {
+      for (const trip of trips) {
+        await TripStorage.saveTrip(trip as Trip);
+      }
+    }
+
+    const { data: people, error: peopleError } = await supabase
+      .from('trip_people')
+      .select('*')
+      .gte('updated_at', since);
+    if (peopleError) {
+      console.error('[SyncService] Failed to fetch people', peopleError);
+    } else if (people) {
+      for (const person of people) {
+        await PersonStorage.savePerson(person as Person);
+      }
+    }
+
+    const { data: items, error: itemError } = await supabase
+      .from('trip_items')
+      .select('*')
+      .gte('updated_at', since);
+    if (itemError) {
+      console.error('[SyncService] Failed to fetch items', itemError);
+    } else if (items) {
+      for (const item of items) {
+        await ItemStorage.saveItem(item as TripItem);
+      }
+    }
   }
 
   private async handleConflict(localChange: Change): Promise<void> {
@@ -347,6 +442,37 @@ export class SyncService {
       }
     });
   }
+
+  /**
+   * Clean up local-only changes that don't need to be synced
+   */
+  private async cleanupLocalOnlyChanges(): Promise<void> {
+    const db = await getDatabase();
+    const tx = db.transaction(['syncChanges'], 'readwrite');
+    const store = tx.objectStore('syncChanges');
+
+    // Get all changes
+    const allChanges = await store.getAll();
+
+    // Find local-only changes that are older than 1 hour (to avoid deleting very recent changes)
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    const localChangesToDelete = allChanges.filter(
+      (change) => isLocalUser(change.userId) && change.timestamp < oneHourAgo
+    );
+
+    // Delete old local-only changes
+    for (const change of localChangesToDelete) {
+      await store.delete(change.id);
+    }
+
+    await tx.done;
+
+    if (localChangesToDelete.length > 0) {
+      console.log(
+        `[SyncService] Cleaned up ${localChangesToDelete.length} old local-only changes`
+      );
+    }
+  }
 }
 
 // Global sync service instance
@@ -374,7 +500,7 @@ export async function initializeSyncService(
 }
 
 function generateChangeId(): string {
-  return 'change_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+  return `change_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
 function generateConflictId(): string {

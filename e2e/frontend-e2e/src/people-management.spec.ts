@@ -22,9 +22,6 @@ test.describe('People Management', () => {
       // Click demo button
       await page.getByRole('button', { name: 'Try Demo Trip' }).click();
 
-      // Wait for demo data to load and page to potentially redirect/refresh
-      await page.waitForTimeout(3000);
-
       // Instead of looking for hidden trip title text, check for demo banner which is always visible
       await expect(
         page.getByText("You're currently using demo data")
@@ -32,9 +29,6 @@ test.describe('People Management', () => {
 
       // Navigate to people page to verify demo data loaded
       await page.getByRole('link', { name: 'People' }).click();
-
-      // Wait for navigation and content to load
-      await page.waitForTimeout(1000);
 
       // Verify demo banner is still there (more reliable than hidden trip selector text)
       await expect(

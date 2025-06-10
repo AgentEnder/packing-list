@@ -123,9 +123,6 @@ test.describe('Authentication Flows', () => {
       try {
         await signInWithEmail(page, invalidUser);
 
-        // Give it a moment to process
-        await page.waitForTimeout(2000);
-
         // Should not be authenticated
         const authState = await getAuthState(page);
         expect(authState.isAuthenticated).toBe(false);
@@ -161,14 +158,12 @@ test.describe('Authentication Flows', () => {
           sessionStorage.clear();
         });
         await signOut(page);
-        await page.waitForTimeout(1500);
       } catch {
         console.log('No existing session to clear');
       }
 
       // Reload page to ensure clean state
       await page.reload({ waitUntil: 'networkidle' });
-      await page.waitForTimeout(1000);
 
       // Sign in first
       await signInWithEmail(page, E2E_TEST_USERS.regular);
@@ -186,7 +181,6 @@ test.describe('Authentication Flows', () => {
       await signOut(page);
 
       // Give it time to process and wait for auth state to clear
-      await page.waitForTimeout(3000);
 
       // Get final auth state - simplified approach
       authState = await getAuthState(page);
@@ -203,7 +197,6 @@ test.describe('Authentication Flows', () => {
           sessionStorage.clear();
         });
         await page.reload({ waitUntil: 'networkidle' });
-        await page.waitForTimeout(1500);
         authState = await getAuthState(page);
       }
 
@@ -303,7 +296,6 @@ test.describe('Authentication Flows', () => {
         }
       });
       await page.reload({ waitUntil: 'networkidle' });
-      await page.waitForTimeout(1500);
 
       // Start unauthenticated
       let authState = await getAuthState(page);
@@ -325,7 +317,6 @@ test.describe('Authentication Flows', () => {
         localStorage.clear();
         sessionStorage.clear();
       });
-      await page.waitForTimeout(2000);
 
       // Should be unauthenticated again - use more flexible check
       authState = await getAuthState(page);
@@ -336,7 +327,6 @@ test.describe('Authentication Flows', () => {
           'Auth state still shows authenticated, forcing page reload...'
         );
         await page.reload({ waitUntil: 'networkidle' });
-        await page.waitForTimeout(1500);
         authState = await getAuthState(page);
       }
 
@@ -706,7 +696,6 @@ test.describe('Authentication Flows', () => {
       console.log('Submitted empty form');
 
       // Give time for validation to show
-      await page.waitForTimeout(1000);
 
       // Look for form validation or error messages
       const formError = page.locator('[data-testid="form-error"]');
@@ -729,9 +718,6 @@ test.describe('Authentication Flows', () => {
       await passwordInput.fill('somepassword');
       await submitButton.click();
       console.log('Submitted with invalid email format');
-
-      // Give time for validation
-      await page.waitForTimeout(1000);
 
       // Check for validation again
       const hasFormErrorAfterInvalid = await formError

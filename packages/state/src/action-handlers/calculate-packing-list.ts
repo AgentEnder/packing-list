@@ -4,6 +4,9 @@ import {
   Day,
   LegacyPerson,
 } from '@packing-list/model';
+import type { TripItem } from '@packing-list/model';
+import { ItemStorage } from '@packing-list/offline-storage';
+import { getChangeTracker } from '@packing-list/sync';
 import { StoreType } from '../store.js';
 import {
   calculateRuleHash,
@@ -453,6 +456,61 @@ export const calculatePackingListHandler = (state: StoreType): StoreType => {
       packingListItems: updatedItems,
     },
   };
+
+  // Persist items and track changes
+  const userId = state.auth.user?.id || 'local-user';
+  const previousIds = new Set(existingItems.map((i) => i.id));
+  const updatedIds = new Set(updatedItems.map((i) => i.id));
+  const now = new Date().toISOString();
+
+  // Items to create or update
+  for (const item of updatedItems) {
+    const isNew = !previousIds.has(item.id);
+    const tripItem: TripItem = {
+      id: item.id,
+      tripId: selectedTripId,
+      name: item.name,
+      category: item.categoryId,
+      quantity: item.quantity,
+      packed: item.isPacked,
+      notes: item.notes,
+      personId: item.personId,
+      dayIndex: item.dayIndex,
+      createdAt: now,
+      updatedAt: now,
+      version: 1,
+      isDeleted: false,
+    };
+    ItemStorage.saveItem(tripItem).catch(console.error);
+    getChangeTracker()
+      .trackItemChange(isNew ? 'create' : 'update', tripItem, userId, selectedTripId)
+      .catch(console.error);
+  }
+
+  // Items that were removed
+  for (const prevItem of existingItems) {
+    if (!updatedIds.has(prevItem.id)) {
+      const tripItem: TripItem = {
+        id: prevItem.id,
+        tripId: selectedTripId,
+        name: prevItem.name,
+        category: prevItem.categoryId,
+        quantity: prevItem.quantity,
+        packed: prevItem.isPacked,
+        notes: prevItem.notes,
+        personId: prevItem.personId,
+        dayIndex: prevItem.dayIndex,
+        createdAt: now,
+        updatedAt: now,
+        version: 1,
+        isDeleted: true,
+      };
+      ItemStorage.deleteItem(prevItem.id).catch(console.error);
+      getChangeTracker()
+        .trackItemChange('delete', tripItem, userId, selectedTripId)
+        .catch(console.error);
+    }
+  }
 
   return {
     ...state,

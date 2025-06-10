@@ -6,7 +6,12 @@ import { Link } from '../components/Link';
 import { DemoBanner } from '../components/DemoBanner';
 import { ToastContainer } from '../components/Toast';
 import { TripSelector } from '../components/TripSelector';
-import { actions, useAppDispatch, useAppSelector } from '@packing-list/state';
+import {
+  actions,
+  useAppDispatch,
+  useAppSelector,
+  loadOfflineState,
+} from '@packing-list/state';
 import {
   useAuth,
   useLoginModal,
@@ -33,8 +38,13 @@ export default function LayoutDefault({
   children: React.ReactNode;
 }) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const { user, shouldShowSignInOptions, loading, isRemotelyAuthenticated } =
-    useAuth();
+  const {
+    user,
+    shouldShowSignInOptions,
+    loading,
+    isRemotelyAuthenticated,
+    isInitialized,
+  } = useAuth();
   const dispatch = useAppDispatch();
   const selectedTripId = useAppSelector((state) => state.trips.selectedTripId);
   const flowStepHref = useAppSelector((state) =>
@@ -45,6 +55,7 @@ export default function LayoutDefault({
 
   const { openLoginModal, closeLoginModal } = useLoginModal();
   const demoDataLoadedRef = useRef(false);
+  const dataHydratedRef = useRef(false);
 
   useEffect(() => {
     // Check if user has made a choice this session
@@ -61,6 +72,32 @@ export default function LayoutDefault({
       }
     }
   }, [dispatch, selectedTripId]);
+
+  // Hydrate offline data when user is available and auth is initialized
+  useEffect(() => {
+    const hydrateData = async () => {
+      if (
+        typeof window !== 'undefined' &&
+        user &&
+        isInitialized &&
+        !dataHydratedRef.current &&
+        !loading
+      ) {
+        try {
+          console.log('🔄 [LAYOUT] Hydrating offline data for user:', user.id);
+          const offlineState = await loadOfflineState(user.id);
+          dispatch({ type: 'HYDRATE_OFFLINE', payload: offlineState });
+          dataHydratedRef.current = true;
+          console.log('✅ [LAYOUT] Offline data hydrated successfully');
+        } catch (error) {
+          console.warn('⚠️ [LAYOUT] Failed to hydrate offline data:', error);
+          // Don't block the app if offline hydration fails
+        }
+      }
+    };
+
+    hydrateData();
+  }, [user, isInitialized, loading, dispatch]);
 
   const path = typeof window !== 'undefined' ? window.location.pathname : null;
   useEffect(() => {
