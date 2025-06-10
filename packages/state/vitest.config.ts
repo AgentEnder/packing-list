@@ -5,6 +5,7 @@ export default defineConfig({
     name: '@packing-list/state-tests',
     include: ['src/**/*.test.ts'],
     environment: 'node',
+    setupFiles: ['src/test-setup.ts'],
     coverage: {
       include: ['src/**/*.ts', 'src/**/*.tsx'],
     },

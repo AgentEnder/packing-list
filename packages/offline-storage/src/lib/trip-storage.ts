@@ -38,8 +38,11 @@ export class TripStorage {
     const index = db
       .transaction(['trips'], 'readonly')
       .objectStore('trips')
-      .index('activeTrips');
-    const trips = await index.getAll([userId, false]); // userId, isDeleted = false
+      .index('userId');
+    const allUserTrips = await index.getAll(userId);
+
+    // Filter out deleted trips
+    const trips = allUserTrips.filter((trip) => !trip.isDeleted);
 
     console.log(
       `[TripStorage] Retrieved ${trips.length} trips for user: ${userId}`

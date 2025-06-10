@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import { format } from 'date-fns';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { Mock } from 'vitest';
 import { RulePackDetails } from './RulePackDetails';
@@ -120,9 +121,8 @@ describe('RulePackDetails Component', () => {
   it('displays pack metadata correctly', () => {
     render(<RulePackDetails pack={mockRulePack} />);
 
-    expect(screen.getByTestId('pack-created-date')).toHaveTextContent(
-      '12/31/2022'
-    );
+    const expected = format(new Date('2023-01-01T00:00:00Z'), 'MMM d, yyyy');
+    expect(screen.getByTestId('pack-created-date')).toHaveTextContent(expected);
     expect(screen.getByTestId('pack-category')).toHaveTextContent('Travel');
   });
 

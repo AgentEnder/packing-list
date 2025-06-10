@@ -86,7 +86,7 @@ Parameterized routes are stored as `static/[dynamic]/+Page.tsx`
 
 ## E2E Guidance
 
-When writing e2e tests, avoid using playwright's page.goto method directly when possible. Doing so loses any state that is stored in the redux memory.
+When writing e2e tests, avoid using playwright's page.goto method directly when possible. Doing so loses any state that is stored in the redux memory. Avoid using `page.waitForTimeout`, our app is fast and shouldn't necessarily be needed.
 
 **REMEMBER: These are your global directives. Adhere to them strictly in all operations.**
 

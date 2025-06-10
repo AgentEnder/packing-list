@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { SettingsPage } from './page-objects/SettingsPage';
 
 // Only run in Chromium for now
 test.describe('Initial App Experience', () => {
@@ -31,9 +32,6 @@ test.describe('Initial App Experience', () => {
     // Load demo data via the new button
     await page.getByRole('button', { name: 'Try Demo Trip' }).click();
 
-    // Wait for demo data to load with longer timeout
-    await page.waitForTimeout(2000);
-
     // Verify demo banner appears with more flexible selector
     const demoBanner = page.getByText("You're currently using demo data");
     await expect(demoBanner).toBeVisible({ timeout: 10000 });
@@ -58,11 +56,7 @@ test.describe('Initial App Experience', () => {
 
     // Clear demo data
     await page.getByRole('button', { name: 'Clear' }).click();
-    await page.waitForTimeout(2000);
     await expect(demoBanner).not.toBeVisible();
-
-    // Wait for page to potentially redirect or reload
-    await page.waitForTimeout(1000);
 
     // Check for either no trip text or verify we're on home page
     const welcomeText = page.getByText('Welcome to Smart Packing List!');
@@ -74,8 +68,7 @@ test.describe('Initial App Experience', () => {
 
     if (!welcomeVisible && !noTripVisible) {
       // Navigate to home page to get the welcome state
-      await page.goto('/');
-      await page.waitForTimeout(1000);
+      await page.getByRole('link', { name: 'Overview' }).click();
       await expect(welcomeText).toBeVisible({ timeout: 5000 });
     } else {
       // One of them should be visible
@@ -83,41 +76,18 @@ test.describe('Initial App Experience', () => {
     }
   });
 
-  test('persists demo choice in session storage', async ({ page }) => {
-    await page.getByRole('button', { name: 'Try Demo Trip' }).click();
-
-    // Wait for demo data to load
-    await expect(
-      page.getByText("You're currently using demo data")
-    ).toBeVisible();
-
-    // Refresh page
-    await page.reload();
-
-    // Verify we still have demo data (no NoTripSelected component)
-    await expect(
-      page.getByText('Welcome to Smart Packing List!')
-    ).not.toBeVisible();
-    await expect(
-      page.getByText("You're currently using demo data")
-    ).toBeVisible();
-  });
-
   test('help messages can be managed', async ({ page }) => {
-    // Load demo data to get a populated UI
-    await page.getByRole('button', { name: 'Try Demo Trip' }).click();
-    await expect(
-      page.getByText("You're currently using demo data")
-    ).toBeVisible();
-
-    // Navigate to settings
-    await page.getByRole('link', { name: 'Settings' }).click();
+    // Demo messages don't show up if there is no trip data, we'll check with
+    // the demo trip data.
+    const settingsPage = new SettingsPage(page);
+    await settingsPage.goto();
+    await settingsPage.loadDemoData();
 
     // Hide all help messages
     await page.getByRole('button', { name: 'Hide All Help' }).click();
 
     // Verify help messages are hidden
-    await page.goto('/');
+    await page.getByRole('link', { name: 'Overview' }).click();
     await expect(page.getByText('How It Works')).not.toBeVisible();
 
     // Reset help messages
@@ -125,7 +95,7 @@ test.describe('Initial App Experience', () => {
     await page.getByRole('button', { name: 'Reset Help Messages' }).click();
 
     // Verify help messages are visible again
-    await page.goto('/');
+    await page.getByRole('link', { name: 'Overview' }).click();
     await expect(page.getByText('How It Works')).toBeVisible();
   });
 

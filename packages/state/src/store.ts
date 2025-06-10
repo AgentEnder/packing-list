@@ -3,6 +3,7 @@ import {
   authReducer,
   type AuthState,
   type AuthActions,
+  authInitialState,
 } from '@packing-list/auth-state';
 import { AllActions, Mutations, type StoreActions } from './actions.js';
 import {
@@ -99,7 +100,7 @@ export function createEmptyTripData(tripId: string): TripData {
   };
 }
 
-export const initialState: Omit<StoreType, 'auth'> = {
+export const initialState: StoreType = {
   trips: {
     summaries: [],
     selectedTripId: null,
@@ -123,16 +124,16 @@ export const initialState: Omit<StoreType, 'auth'> = {
       currentStep: 1,
     },
   },
+  auth: authInitialState,
 };
 
-function createAppReducer(): Reducer<
-  Omit<StoreType, 'auth'>,
-  AllActions | AuthActions
-> {
+function createAppReducer(
+  initialState: StoreType
+): Reducer<StoreType, AllActions | AuthActions> {
   return (
-    state: Omit<StoreType, 'auth'> = initialState,
+    state: StoreType | undefined,
     action: AllActions | AuthActions
-  ): Omit<StoreType, 'auth'> => {
+  ): StoreType => {
     if (
       'type' in action &&
       typeof action.type === 'string' &&
@@ -141,36 +142,13 @@ function createAppReducer(): Reducer<
       const actionType = action.type as StoreActions;
       const mutation = Mutations[actionType];
       if (mutation) {
-        // Reconstruct full state for mutation handler with proper default auth state
-        const defaultAuthState: AuthState = {
-          user: null,
-          session: null,
-          loading: false,
-          error: null,
-          lastError: null,
-          isAuthenticating: false,
-          isInitialized: false,
-          isOfflineMode: false,
-          forceOfflineMode: false,
-          connectivityState: { isOnline: true, isConnected: true },
-          offlineAccounts: [],
-          hasOfflinePasscode: false,
-        };
-
-        const fullState: StoreType = {
-          ...state,
-          auth: defaultAuthState,
-        };
-
         // Type assertion is necessary due to TypeScript's limitation with mapped union types
         // Runtime safety is guaranteed by the check that action.type exists in Mutations
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const result = mutation(fullState, action as any);
+        const result = mutation(state ?? initialState, action as any);
 
         // Remove auth from result and return
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { auth, ...appResult } = result;
-        return appResult;
+        return result;
       }
     }
 
@@ -182,7 +160,7 @@ function createAppReducer(): Reducer<
         console.warn(`Unknown action: ${action.type}`);
       }
     }
-    return state;
+    return state ?? initialState;
   };
 }
 
@@ -193,22 +171,22 @@ type PageContext = {
   };
 };
 
-export function createStore(pageContext?: PageContext, state?: StoreType) {
-  const appReducer = createAppReducer();
+export function createStore(pageContext?: PageContext, _state?: StoreType) {
+  const preloadedState = _state ?? pageContext?.redux?.ssrState;
+
+  const appReducer = createAppReducer(
+    preloadedState ?? { ...initialState, auth: initialState.auth }
+  );
 
   const rootReducer = (
     state: StoreType | undefined,
     action: AllActions | AuthActions
   ): StoreType => {
-    const { auth, ...appState } = state || { auth: undefined, ...initialState };
-
     return {
-      ...appReducer(appState, action),
-      auth: authReducer(auth, action as AuthActions),
+      ...appReducer(state, action),
+      auth: authReducer(state?.auth, action as AuthActions),
     };
   };
-
-  const preloadedState = state ?? pageContext?.redux?.ssrState;
 
   return configureStore({
     reducer: rootReducer,

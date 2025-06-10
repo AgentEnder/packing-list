@@ -4,6 +4,9 @@
   "include": [],
   "references": [
     {
+      "path": "../auth"
+    },
+    {
       "path": "../auth-state"
     },
     {
