@@ -24,7 +24,9 @@ const eventTypeIcons: Record<string, React.ReactElement> = {
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
-  date.setTime(date.getTime() + date.getTimezoneOffset() * 60000);
+  // Adjust for timezone so that a date-only string displays the intended day
+  // regardless of the user's local timezone
+  date.setTime(date.getTime() - date.getTimezoneOffset() * 60000);
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
