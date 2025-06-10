@@ -1,6 +1,12 @@
 export type Change = {
   id: string;
-  entityType: 'trip' | 'person' | 'item' | 'rule_override';
+  entityType:
+    | 'trip'
+    | 'person'
+    | 'item'
+    | 'rule_override'
+    | 'default_item_rule'
+    | 'rule_pack';
   entityId: string;
   operation: 'create' | 'update' | 'delete';
   data: unknown;

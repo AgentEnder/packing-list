@@ -6,6 +6,9 @@ import type {
   UserPreferences,
   Change,
   SyncConflict,
+  RuleOverride,
+  DefaultItemRule,
+  RulePack,
 } from '@packing-list/model';
 
 export interface OfflineDB {
@@ -16,6 +19,11 @@ export interface OfflineDB {
   trips: Trip;
   tripPeople: Person;
   tripItems: TripItem;
+  tripRuleOverrides: RuleOverride;
+
+  // User rules data
+  defaultItemRules: DefaultItemRule;
+  rulePacks: RulePack;
 
   // Sync tracking
   syncChanges: Change;
@@ -29,7 +37,7 @@ export interface OfflineDB {
 }
 
 const DB_NAME = 'PackingListOfflineDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbInstance: IDBPDatabase<OfflineDB> | null = null;
 
@@ -82,6 +90,40 @@ export async function initializeDatabase(): Promise<IDBPDatabase<OfflineDB>> {
         tripItemsStore.createIndex('personId', 'personId');
         tripItemsStore.createIndex('dayIndex', ['tripId', 'dayIndex']);
         tripItemsStore.createIndex('activeByTrip', ['tripId', 'isDeleted']);
+      }
+
+      // Trip rule overrides store
+      if (!db.objectStoreNames.contains('tripRuleOverrides')) {
+        const tripRuleOverridesStore = db.createObjectStore(
+          'tripRuleOverrides',
+          {
+            keyPath: ['tripId', 'ruleId', 'personId', 'dayIndex'],
+          }
+        );
+        tripRuleOverridesStore.createIndex('tripId', 'tripId');
+        tripRuleOverridesStore.createIndex('ruleId', 'ruleId');
+      }
+
+      // Default item rules store (user-specific rules)
+      if (!db.objectStoreNames.contains('defaultItemRules')) {
+        const defaultItemRulesStore = db.createObjectStore('defaultItemRules', {
+          keyPath: 'id',
+        });
+        defaultItemRulesStore.createIndex('packIds', 'packIds', {
+          multiEntry: true,
+        });
+        defaultItemRulesStore.createIndex('categoryId', 'categoryId');
+      }
+
+      // Rule packs store (user-specific rule collections)
+      if (!db.objectStoreNames.contains('rulePacks')) {
+        const rulePacksStore = db.createObjectStore('rulePacks', {
+          keyPath: 'id',
+        });
+        rulePacksStore.createIndex('metadata.category', 'metadata.category');
+        rulePacksStore.createIndex('metadata.tags', 'metadata.tags', {
+          multiEntry: true,
+        });
       }
 
       // Sync changes store (for pending changes)

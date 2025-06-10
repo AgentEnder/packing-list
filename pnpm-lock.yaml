@@ -254,6 +254,9 @@ importers:
       '@packing-list/state':
         specifier: workspace:*
         version: link:../state
+      '@packing-list/sync':
+        specifier: workspace:*
+        version: link:../sync
 
   packages/model: {}
 

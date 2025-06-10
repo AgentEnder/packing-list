@@ -16,6 +16,7 @@ vi.mock('@packing-list/shared-components', () => ({
   useLoginModal: vi.fn(),
   UserProfile: () => <div data-testid="user-profile">User Profile</div>,
   LoginModal: () => <div data-testid="login-modal">Login Modal</div>,
+  SyncStatusBadge: () => <div data-testid="sync-status-badge">Sync Status</div>,
 }));
 
 vi.mock('../components/Link', () => ({
@@ -59,6 +60,16 @@ vi.mock('../components/RulePackModal', () => ({
   RulePackModal: () => <div data-testid="rule-pack-modal">Rule Pack Modal</div>,
 }));
 
+vi.mock('../components/SyncProvider', () => ({
+  SyncProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="sync-provider">{children}</div>
+  ),
+}));
+
+vi.mock('../components/SyncStatus', () => ({
+  SyncStatus: () => <div data-testid="sync-status">Sync Status</div>,
+}));
+
 // Mock CSS imports
 vi.mock('./tailwind.css', () => ({}));
 vi.mock('./style.css', () => ({}));
@@ -73,6 +84,7 @@ vi.mock('lucide-react', () => ({
   CheckSquare: () => <div data-testid="check-icon">CheckSquare</div>,
   Settings: () => <div data-testid="settings-icon">Settings</div>,
   LogIn: () => <div data-testid="login-icon">LogIn</div>,
+  Zap: () => <div data-testid="zap-icon">Zap</div>,
 }));
 
 import { useAppDispatch, useAppSelector } from '@packing-list/state';

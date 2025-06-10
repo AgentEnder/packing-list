@@ -1,6 +1,6 @@
 export * from './lib/Timeline.js';
 
-// Modal component
+// Dialog and Modal components
 export { Modal, ConfirmDialog } from './Dialog.js';
 export type { ModalProps, ConfirmDialogProps } from './Dialog.js';
 
@@ -16,3 +16,18 @@ export { EmailPasswordForm } from './auth/EmailPasswordForm.js';
 export { UserManagement } from './auth/UserManagement.js';
 export { LoginModal } from './auth/LoginModal.js';
 export { OfflinePasscodeForm } from './auth/OfflinePasscodeForm.js';
+
+// Conflict resolution components
+export { ConflictResolutionModal } from './ConflictResolutionModal.js';
+export type { ConflictResolutionModalProps } from './ConflictResolutionModal.js';
+
+export { ConflictList } from './ConflictList.js';
+export type { ConflictListProps } from './ConflictList.js';
+
+export { ConflictDiffView } from './ConflictDiffView.js';
+
+export { SyncStatusIndicator, SyncStatusBadge } from './SyncStatusIndicator.js';
+export type {
+  SyncStatusIndicatorProps,
+  SyncStatusBadgeProps,
+} from './SyncStatusIndicator.js';
