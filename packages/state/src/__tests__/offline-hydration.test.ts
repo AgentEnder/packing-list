@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { loadOfflineState } from '../offline-hydration.js';
-import { TripStorage, PersonStorage, ItemStorage } from '@packing-list/offline-storage';
+import {
+  TripStorage,
+  PersonStorage,
+  ItemStorage,
+} from '@packing-list/offline-storage';
+import type { Trip, Person, TripItem } from '@packing-list/model';
 
 vi.mock('@packing-list/offline-storage', () => ({
   TripStorage: {
@@ -32,9 +37,36 @@ describe('loadOfflineState', () => {
       packedItems: 0,
       totalPeople: 0,
     };
-    const trip = { id: 't1', days: [], lastSyncedAt: '2024-01-01' } as any;
-    const people = [{ id: 'p1', name: 'Alice', tripId: 't1' }] as any;
-    const items = [
+    const trip: Trip = {
+      id: 't1',
+      userId: 'user-1',
+      title: 'Trip One',
+      description: '',
+      days: [],
+      lastSyncedAt: '2024-01-01',
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+      version: 1,
+      isDeleted: false,
+      settings: {
+        defaultTimeZone: 'UTC',
+        packingViewMode: 'by-day',
+      },
+    };
+    const people: Person[] = [
+      {
+        id: 'p1',
+        name: 'Alice',
+        tripId: 't1',
+        age: 25,
+        gender: 'female' as const,
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+        version: 1,
+        isDeleted: false,
+      },
+    ];
+    const items: TripItem[] = [
       {
         id: 'i1',
         name: 'Phone',
@@ -45,8 +77,12 @@ describe('loadOfflineState', () => {
         notes: '',
         quantity: 1,
         category: 'misc',
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+        version: 1,
+        isDeleted: false,
       },
-    ] as any;
+    ];
 
     tripStorage.getUserTripSummaries.mockResolvedValue([summary]);
     tripStorage.getTrip.mockResolvedValue(trip);

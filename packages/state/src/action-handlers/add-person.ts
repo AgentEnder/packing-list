@@ -1,4 +1,7 @@
-import { LegacyPerson as Person, type Person as PersonModel } from '@packing-list/model';
+import {
+  LegacyPerson as Person,
+  type Person as PersonModel,
+} from '@packing-list/model';
 import { PersonStorage } from '@packing-list/offline-storage';
 import { getChangeTracker } from '@packing-list/sync';
 import { StoreType } from '../store.js';
@@ -50,7 +53,7 @@ export const addPersonHandler = (
     tripId: selectedTripId,
     name: action.payload.name,
     age: action.payload.age,
-    gender: action.payload.gender as any,
+    gender: action.payload.gender as PersonModel['gender'],
     createdAt: now,
     updatedAt: now,
     version: 1,

@@ -54,7 +54,12 @@ export const updatePersonHandler = (
     tripId: selectedTripId,
     name: action.payload.name,
     age: action.payload.age,
-    gender: action.payload.gender as any,
+    gender: action.payload.gender as
+      | 'male'
+      | 'female'
+      | 'other'
+      | 'prefer-not-to-say'
+      | undefined,
     createdAt: now,
     updatedAt: now,
     version: 1,

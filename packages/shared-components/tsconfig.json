@@ -13,6 +13,9 @@
   "include": ["src/**/*"],
   "references": [
     {
+      "path": "../shared-utils"
+    },
+    {
       "path": "../state"
     },
     {

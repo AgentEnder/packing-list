@@ -3,11 +3,7 @@ import {
   PersonStorage,
   ItemStorage,
 } from '@packing-list/offline-storage';
-import type {
-  TripItem,
-  PackingListItem,
-  TripSummary,
-} from '@packing-list/model';
+import type { TripItem, PackingListItem } from '@packing-list/model';
 import { createEmptyTripData, type StoreType, type TripData } from './store.js';
 
 function mapItem(item: TripItem): PackingListItem {
@@ -39,7 +35,11 @@ export async function loadOfflineState(
     trips: { summaries: [], selectedTripId: null, byId: {} },
     rulePacks: [],
     ui: {
-      rulePackModal: { isOpen: false, activeTab: 'browse', selectedPackId: undefined },
+      rulePackModal: {
+        isOpen: false,
+        activeTab: 'browse',
+        selectedPackId: undefined,
+      },
       loginModal: { isOpen: false },
       flow: { steps: [], current: null },
       tripWizard: { currentStep: 1 },

@@ -65,6 +65,8 @@ export function createTripHandler(
     },
   };
 
+  console.log(state.auth);
+
   // Build trip model for persistence
   const userId = state.auth.user?.id || 'local-user';
   const tripModel: Trip = {
@@ -147,11 +149,15 @@ export const deleteTripHandler = (
   if (existingTrip) {
     TripStorage.deleteTrip(tripId).catch(console.error);
     getChangeTracker()
-      .trackTripChange('delete', {
-        ...(existingTrip as Trip),
-        isDeleted: true,
-        updatedAt: new Date().toISOString(),
-      }, userId)
+      .trackTripChange(
+        'delete',
+        {
+          ...(existingTrip as Trip),
+          isDeleted: true,
+          updatedAt: new Date().toISOString(),
+        },
+        userId
+      )
       .catch(console.error);
   }
 

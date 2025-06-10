@@ -126,6 +126,18 @@ async function getSupabaseAnonKey() {
   return null;
 }
 
+async function ensureSupabaseDbIsMigrated() {
+  try {
+    await runCommand('pnpm', ['supabase', 'migration', 'up', '--local'], {
+      preferLocal: true,
+    });
+    colorLog('green', '✅ Supabase database migrated');
+  } catch (error) {
+    colorLog('red', '❌ Failed to migrate Supabase database');
+    console.error(error);
+  }
+}
+
 // Helper function to run commands with proper error handling
 async function runCommand(command, args, options = {}) {
   const execOptions = {
@@ -171,6 +183,7 @@ async function main() {
   const isSupabaseRunning = await checkIfSupabaseIsRunning();
   if (isSupabaseRunning) {
     colorLog('green', '✅ Supabase is already running');
+    await ensureSupabaseDbIsMigrated();
     return;
   }
 
@@ -276,6 +289,8 @@ async function main() {
   } catch {
     colorLog('yellow', '⚠️  Could not display status');
   }
+
+  await ensureSupabaseDbIsMigrated();
 
   // Display seed data info
   log('');

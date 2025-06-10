@@ -9,6 +9,18 @@ import { SyncService, getSyncService, initializeSyncService } from './sync.js';
   upperBound: vi.fn(),
 };
 
+// Mock the auth module
+vi.mock('@packing-list/auth', () => ({
+  supabase: {
+    from: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        gte: vi.fn().mockResolvedValue({ data: [], error: null }),
+      }),
+    }),
+  },
+  isSupabaseAvailable: vi.fn().mockReturnValue(false),
+}));
+
 // Mock the offline-storage module
 vi.mock('@packing-list/offline-storage', () => ({
   getDatabase: vi.fn().mockResolvedValue({
@@ -26,6 +38,7 @@ vi.mock('@packing-list/offline-storage', () => ({
         }),
         get: vi.fn().mockResolvedValue(null),
         put: vi.fn().mockResolvedValue(undefined),
+        getAll: vi.fn().mockResolvedValue([]),
       }),
       done: Promise.resolve(),
     }),
@@ -34,6 +47,12 @@ vi.mock('@packing-list/offline-storage', () => ({
     saveTrip: vi.fn(),
     getTrip: vi.fn(),
     getUserTrips: vi.fn(),
+  },
+  PersonStorage: {
+    savePerson: vi.fn(),
+  },
+  ItemStorage: {
+    saveItem: vi.fn(),
   },
 }));
 

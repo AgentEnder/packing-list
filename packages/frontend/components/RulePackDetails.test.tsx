@@ -121,7 +121,7 @@ describe('RulePackDetails Component', () => {
     render(<RulePackDetails pack={mockRulePack} />);
 
     expect(screen.getByTestId('pack-created-date')).toHaveTextContent(
-      '12/31/2022'
+      'Dec 31, 2022'
     );
     expect(screen.getByTestId('pack-category')).toHaveTextContent('Travel');
   });

@@ -1,4 +1,8 @@
-export { default as authReducer, authSlice } from './auth-slice.js';
+export {
+  default as authReducer,
+  authSlice,
+  authInitialState,
+} from './auth-slice.js';
 export * from './auth-slice.js';
 export * from './selectors.js';
 export * from './hooks.js';

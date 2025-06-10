@@ -12,6 +12,12 @@
   "include": ["src/**/*.ts"],
   "references": [
     {
+      "path": "../sync/tsconfig.lib.json"
+    },
+    {
+      "path": "../offline-storage/tsconfig.lib.json"
+    },
+    {
       "path": "../auth-state"
     },
     {

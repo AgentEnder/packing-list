@@ -1,5 +1,17 @@
-import type { Change, SyncConflict, SyncState } from '@packing-list/model';
-import { getDatabase, TripStorage, PersonStorage, ItemStorage } from '@packing-list/offline-storage';
+import type {
+  Change,
+  SyncConflict,
+  SyncState,
+  Trip,
+  Person,
+  TripItem,
+} from '@packing-list/model';
+import {
+  getDatabase,
+  TripStorage,
+  PersonStorage,
+  ItemStorage,
+} from '@packing-list/offline-storage';
 import { supabase, isSupabaseAvailable } from '@packing-list/auth';
 
 export interface SyncOptions {
@@ -252,12 +264,13 @@ export class SyncService {
 
   private async getPendingChanges(): Promise<Change[]> {
     const db = await getDatabase();
-    const index = db
+    const store = db
       .transaction(['syncChanges'], 'readonly')
-      .objectStore('syncChanges')
-      .index('synced');
+      .objectStore('syncChanges');
 
-    return await index.getAll(IDBKeyRange.only(false)); // synced = false
+    // Get all changes and filter for unsynced ones
+    const allChanges = await store.getAll();
+    return allChanges.filter((change) => !change.synced);
   }
 
   private async getConflicts(): Promise<SyncConflict[]> {
@@ -319,7 +332,7 @@ export class SyncService {
       console.error('[SyncService] Failed to fetch trips', tripError);
     } else if (trips) {
       for (const trip of trips) {
-        await TripStorage.saveTrip(trip as any);
+        await TripStorage.saveTrip(trip as Trip);
       }
     }
 
@@ -331,7 +344,7 @@ export class SyncService {
       console.error('[SyncService] Failed to fetch people', peopleError);
     } else if (people) {
       for (const person of people) {
-        await PersonStorage.savePerson(person as any);
+        await PersonStorage.savePerson(person as Person);
       }
     }
 
@@ -343,7 +356,7 @@ export class SyncService {
       console.error('[SyncService] Failed to fetch items', itemError);
     } else if (items) {
       for (const item of items) {
-        await ItemStorage.saveItem(item as any);
+        await ItemStorage.saveItem(item as TripItem);
       }
     }
   }

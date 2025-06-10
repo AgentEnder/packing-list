@@ -48,14 +48,21 @@ export const removePersonHandler = (
   // Persist deletion and track change asynchronously
   const userId = state.auth.user?.id || 'local-user';
   const now = new Date().toISOString();
-  const removed = selectedTripData.people.find((p) => p.id === action.payload.id);
+  const removed = selectedTripData.people.find(
+    (p) => p.id === action.payload.id
+  );
   if (removed) {
     const personModel: PersonModel = {
       id: removed.id,
       tripId: selectedTripId,
       name: removed.name,
       age: removed.age,
-      gender: removed.gender as any,
+      gender: removed.gender as
+        | 'male'
+        | 'female'
+        | 'other'
+        | 'prefer-not-to-say'
+        | undefined,
       createdAt: now,
       updatedAt: now,
       version: 1,
