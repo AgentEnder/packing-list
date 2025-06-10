@@ -4,6 +4,7 @@ import {
   useAppDispatch,
   selectAccurateTripSummaries,
 } from '@packing-list/state';
+import { formatDate } from '@packing-list/shared-utils';
 import { Link } from '../../components/Link';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
@@ -66,13 +67,6 @@ export default function TripsPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
 
   const tripToDeleteData = tripSummaries.find((t) => t.tripId === tripToDelete);
 

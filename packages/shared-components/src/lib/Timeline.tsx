@@ -1,6 +1,7 @@
 import React from 'react';
 import { TripEvent } from '@packing-list/model';
 import { Home, MapPin, Luggage, CheckCircle } from 'lucide-react';
+import { formatDate } from '@packing-list/shared-utils';
 
 interface TimelineProps {
   events: TripEvent[];
@@ -22,15 +23,6 @@ const eventTypeIcons: Record<string, React.ReactElement> = {
   arrive_home: <CheckCircle className="w-4 h-4" />,
 };
 
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  date.setTime(date.getTime() + date.getTimezoneOffset() * 60000);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
 
 export function Timeline({
   events,
