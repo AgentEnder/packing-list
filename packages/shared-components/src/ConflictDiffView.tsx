@@ -1,0 +1,285 @@
+import React from 'react';
+import { ChevronDown, ChevronRight, Plus, Minus, Edit3 } from 'lucide-react';
+
+interface DiffEntry {
+  key: string;
+  localValue: unknown;
+  serverValue: unknown;
+  type: 'changed' | 'added' | 'removed' | 'same';
+}
+
+interface ConflictDiffViewProps {
+  localData: Record<string, unknown>;
+  serverData: Record<string, unknown>;
+  expanded?: boolean;
+}
+
+export const ConflictDiffView: React.FC<ConflictDiffViewProps> = ({
+  localData,
+  serverData,
+  expanded = true,
+}) => {
+  const [isExpanded, setIsExpanded] = React.useState(expanded);
+
+  // Create diff entries
+  const allKeys = new Set([
+    ...Object.keys(localData),
+    ...Object.keys(serverData),
+  ]);
+
+  const diffEntries: DiffEntry[] = Array.from(allKeys).map((key) => {
+    const localValue = localData[key];
+    const serverValue = serverData[key];
+
+    if (!(key in localData)) {
+      return { key, localValue: undefined, serverValue, type: 'added' };
+    }
+    if (!(key in serverData)) {
+      return { key, localValue, serverValue: undefined, type: 'removed' };
+    }
+    if (JSON.stringify(localValue) !== JSON.stringify(serverValue)) {
+      return { key, localValue, serverValue, type: 'changed' };
+    }
+    return { key, localValue, serverValue, type: 'same' };
+  });
+
+  const isTimestampField = (key: string): boolean => {
+    const timestampFields = [
+      'timestamp',
+      'createdAt',
+      'updatedAt',
+      'lastModified',
+      'created_at',
+      'updated_at',
+      'last_modified',
+    ];
+    return timestampFields.some((field) =>
+      key.toLowerCase().includes(field.toLowerCase())
+    );
+  };
+
+  const isTimestampValue = (value: unknown): boolean => {
+    if (typeof value === 'number') {
+      // Check if it's a reasonable timestamp (after year 2000, before year 2100)
+      return value > 946684800000 && value < 4102444800000;
+    }
+    if (typeof value === 'string') {
+      // Try to parse as date
+      const date = new Date(value);
+      return !isNaN(date.getTime()) && date.getFullYear() > 2000;
+    }
+    return false;
+  };
+
+  const formatTimestamp = (value: unknown): string => {
+    let date: Date;
+
+    if (typeof value === 'number') {
+      date = new Date(value);
+    } else if (typeof value === 'string') {
+      date = new Date(value);
+    } else {
+      return String(value);
+    }
+
+    if (isNaN(date.getTime())) {
+      return String(value);
+    }
+
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    // Show relative time for recent timestamps
+    let relativeTime = '';
+    if (diffMinutes < 1) {
+      relativeTime = 'just now';
+    } else if (diffMinutes < 60) {
+      relativeTime = `${diffMinutes}m ago`;
+    } else if (diffHours < 24) {
+      relativeTime = `${diffHours}h ago`;
+    } else if (diffDays < 7) {
+      relativeTime = `${diffDays}d ago`;
+    }
+
+    // Format as readable date and time
+    const formatted = date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZoneName: 'short',
+    });
+
+    const raw = typeof value === 'number' ? value.toString() : String(value);
+    const display = relativeTime ? `${formatted} (${relativeTime})` : formatted;
+
+    return `${display}\n\nRaw: ${raw}`;
+  };
+
+  const formatValue = (value: unknown, key?: string): string => {
+    if (value === undefined) return '(not set)';
+    if (value === null) return 'null';
+
+    // Handle timestamps specially
+    if (key && (isTimestampField(key) || isTimestampValue(value))) {
+      return formatTimestamp(value);
+    }
+
+    if (typeof value === 'boolean') return value.toString();
+    if (typeof value === 'string') return `"${value}"`;
+    if (typeof value === 'number') return value.toString();
+    if (typeof value === 'object') {
+      return JSON.stringify(value, null, 2);
+    }
+    return String(value);
+  };
+
+  const getIcon = (type: DiffEntry['type']) => {
+    switch (type) {
+      case 'added':
+        return <Plus className="h-4 w-4 text-green-600" />;
+      case 'removed':
+        return <Minus className="h-4 w-4 text-red-600" />;
+      case 'changed':
+        return <Edit3 className="h-4 w-4 text-yellow-600" />;
+      default:
+        return null;
+    }
+  };
+
+  const getFieldClass = (type: DiffEntry['type']) => {
+    switch (type) {
+      case 'added':
+        return 'bg-green-50 border-green-200';
+      case 'removed':
+        return 'bg-red-50 border-red-200';
+      case 'changed':
+        return 'bg-yellow-50 border-yellow-200';
+      default:
+        return 'bg-gray-50 border-gray-200';
+    }
+  };
+
+  const getValueClass = (type: DiffEntry['type'], isLocal: boolean) => {
+    switch (type) {
+      case 'added':
+        return isLocal ? 'text-gray-400' : 'text-green-700 font-medium';
+      case 'removed':
+        return isLocal ? 'text-red-700 font-medium' : 'text-gray-400';
+      case 'changed':
+        return isLocal ? 'text-yellow-700' : 'text-yellow-800 font-medium';
+      default:
+        return 'text-gray-700';
+    }
+  };
+
+  const changedFields = diffEntries.filter((entry) => entry.type !== 'same');
+  const unchangedFields = diffEntries.filter((entry) => entry.type === 'same');
+
+  return (
+    <div className="space-y-3">
+      {/* Summary */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-gray-600">
+          {changedFields.length} field{changedFields.length !== 1 ? 's' : ''}{' '}
+          changed
+          {unchangedFields.length > 0 && (
+            <span>, {unchangedFields.length} unchanged</span>
+          )}
+        </div>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800"
+        >
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+          <span>{isExpanded ? 'Collapse' : 'Expand'} details</span>
+        </button>
+      </div>
+
+      {isExpanded && (
+        <div className="space-y-2">
+          {/* Changed fields first */}
+          {changedFields.map((entry) => (
+            <div
+              key={entry.key}
+              className={`p-3 rounded-lg border ${getFieldClass(entry.type)}`}
+            >
+              <div className="flex items-center space-x-2 mb-2">
+                {getIcon(entry.type)}
+                <span className="font-medium text-gray-900">{entry.key}</span>
+                <span className="text-xs text-gray-500 uppercase">
+                  {entry.type}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs font-medium text-gray-600 mb-1">
+                    Local Version
+                  </div>
+                  <div
+                    className={`text-sm p-2 bg-white rounded border font-mono whitespace-pre-line ${getValueClass(
+                      entry.type,
+                      true
+                    )}`}
+                  >
+                    {formatValue(entry.localValue, entry.key)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-gray-600 mb-1">
+                    Server Version
+                  </div>
+                  <div
+                    className={`text-sm p-2 bg-white rounded border font-mono whitespace-pre-line ${getValueClass(
+                      entry.type,
+                      false
+                    )}`}
+                  >
+                    {formatValue(entry.serverValue, entry.key)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Unchanged fields (collapsed by default) */}
+          {unchangedFields.length > 0 && (
+            <details className="group">
+              <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800">
+                <span className="inline-flex items-center space-x-1">
+                  <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                  <span>Show {unchangedFields.length} unchanged fields</span>
+                </span>
+              </summary>
+              <div className="mt-2 space-y-2">
+                {unchangedFields.map((entry) => (
+                  <div
+                    key={entry.key}
+                    className="p-2 rounded border border-gray-200 bg-gray-50"
+                  >
+                    <div className="text-sm font-medium text-gray-700 mb-1">
+                      {entry.key}
+                    </div>
+                    <div className="text-sm text-gray-600 font-mono whitespace-pre-line">
+                      {formatValue(entry.localValue, entry.key)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};

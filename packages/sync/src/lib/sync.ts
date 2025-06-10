@@ -5,14 +5,40 @@ import type {
   Trip,
   Person,
   TripItem,
+  RuleOverride,
+  DefaultItemRule,
+  RulePack,
 } from '@packing-list/model';
 import {
   getDatabase,
   TripStorage,
   PersonStorage,
   ItemStorage,
+  RuleOverrideStorage,
+  DefaultItemRulesStorage,
+  RulePacksStorage,
 } from '@packing-list/offline-storage';
 import { supabase, isSupabaseAvailable } from '@packing-list/auth';
+
+// Type definitions for special sync data formats
+interface PackingStatusData {
+  id: string;
+  packed: boolean;
+  updatedAt?: string;
+  _packingStatusOnly: true;
+  _previousStatus?: boolean;
+  _bulkOperation?: boolean;
+}
+
+interface BulkPackingData {
+  bulkPackingUpdate: true;
+  changes: Array<{
+    itemId: string;
+    packed: boolean;
+    previousStatus?: boolean;
+  }>;
+  updatedAt?: string;
+}
 
 export interface SyncOptions {
   supabaseUrl?: string;
@@ -80,9 +106,10 @@ export class SyncService {
    */
   async getSyncState(): Promise<SyncState> {
     const db = await getDatabase();
-    const [pendingChanges, lastSyncTimestamp] = await Promise.all([
+    const [pendingChanges, lastSyncTimestamp, conflicts] = await Promise.all([
       this.getPendingChanges(),
       db.get('syncMetadata', 'lastSyncTimestamp') || 0,
+      this.getConflicts(),
     ]);
 
     // Only count syncable changes in the state
@@ -95,7 +122,7 @@ export class SyncService {
       pendingChanges: syncableChanges, // Only include syncable changes
       isOnline: this.isOnline,
       isSyncing: this.isSyncing,
-      conflicts: [], // TODO: Implement conflict tracking
+      conflicts,
     };
   }
 
@@ -312,7 +339,6 @@ export class SyncService {
     return allChanges.filter((change) => !change.synced);
   }
 
-  // @ts-expect-error - TODO: Implement conflict tracking
   private async getConflicts(): Promise<SyncConflict[]> {
     const db = await getDatabase();
     return await db.getAll('syncConflicts');
@@ -336,19 +362,398 @@ export class SyncService {
   }
 
   private async pushChangeToServer(change: Change): Promise<void> {
-    // TODO: Implement actual Supabase API calls
+    if (!isSupabaseAvailable()) {
+      console.warn('[SyncService] Supabase not configured');
+      throw new Error('Supabase not available');
+    }
+
     console.log(
-      `[SyncService] MOCK: Pushing change to server: ${change.operation} ${change.entityType}:${change.entityId}`
+      `[SyncService] Pushing change to server: ${change.operation} ${change.entityType}:${change.entityId}`
     );
 
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    try {
+      switch (change.entityType) {
+        case 'trip':
+          await this.pushTripChange(change);
+          break;
+        case 'person':
+          await this.pushPersonChange(change);
+          break;
+        case 'item':
+          await this.pushItemChange(change);
+          break;
+        case 'rule_override':
+          await this.pushRuleOverrideChange(change);
+          break;
+        case 'default_item_rule':
+          await this.pushDefaultItemRuleChange(change);
+          break;
+        case 'rule_pack':
+          await this.pushRulePackChange(change);
+          break;
+        default:
+          console.warn(
+            `[SyncService] Unknown entity type: ${change.entityType}`
+          );
+      }
+    } catch (error) {
+      console.error(`[SyncService] Failed to push change ${change.id}:`, error);
+      throw error;
+    }
+  }
 
-    // Simulate occasional conflicts
-    if (Math.random() < 0.1) {
-      // 10% chance of conflict
-      await this.handleConflict(change);
-      throw new Error('Sync conflict detected');
+  private async pushTripChange(change: Change): Promise<void> {
+    const table = 'trips';
+    const data = change.data as Trip;
+
+    switch (change.operation) {
+      case 'create': {
+        const { error: createError } = await supabase.from(table).insert({
+          id: data.id,
+          user_id: change.userId,
+          title: data.title || 'Untitled Trip',
+          description: data.description,
+          days: data.days || [],
+          trip_events: data.tripEvents || [],
+          settings: data.settings || {},
+          version: change.version,
+        });
+        if (createError) throw createError;
+        break;
+      }
+
+      case 'update': {
+        const { error: updateError } = await supabase
+          .from(table)
+          .update({
+            title: data.title,
+            description: data.description,
+            days: data.days,
+            trip_events: data.tripEvents,
+            settings: data.settings,
+            version: change.version,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', change.entityId)
+          .eq('user_id', change.userId);
+        if (updateError) throw updateError;
+        break;
+      }
+
+      case 'delete': {
+        const { error: deleteError } = await supabase
+          .from(table)
+          .update({ is_deleted: true, updated_at: new Date().toISOString() })
+          .eq('id', change.entityId)
+          .eq('user_id', change.userId);
+        if (deleteError) throw deleteError;
+        break;
+      }
+    }
+  }
+
+  private async pushPersonChange(change: Change): Promise<void> {
+    const table = 'trip_people';
+    const data = change.data as Person;
+
+    switch (change.operation) {
+      case 'create': {
+        const { error: createError } = await supabase.from(table).insert({
+          id: data.id,
+          trip_id: change.tripId,
+          name: data.name,
+          age: data.age,
+          gender: data.gender,
+          settings: data.settings || {},
+          version: change.version,
+        });
+        if (createError) throw createError;
+        break;
+      }
+
+      case 'update': {
+        const { error: updateError } = await supabase
+          .from(table)
+          .update({
+            name: data.name,
+            age: data.age,
+            gender: data.gender,
+            settings: data.settings,
+            version: change.version,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', change.entityId);
+        if (updateError) throw updateError;
+        break;
+      }
+
+      case 'delete': {
+        const { error: deleteError } = await supabase
+          .from(table)
+          .update({ is_deleted: true, updated_at: new Date().toISOString() })
+          .eq('id', change.entityId);
+        if (deleteError) throw deleteError;
+        break;
+      }
+    }
+  }
+
+  private async pushItemChange(change: Change): Promise<void> {
+    const table = 'trip_items';
+    const data = change.data as TripItem;
+
+    // Handle bulk packing updates
+    if ((data as unknown as BulkPackingData).bulkPackingUpdate) {
+      await this.pushBulkPackingUpdate(change);
+      return;
+    }
+
+    // Handle individual packing status changes
+    if ((data as unknown as PackingStatusData)._packingStatusOnly) {
+      await this.pushPackingStatusUpdate(change);
+      return;
+    }
+
+    switch (change.operation) {
+      case 'create': {
+        const { error: createError } = await supabase.from(table).insert({
+          id: data.id,
+          trip_id: change.tripId,
+          name: data.name,
+          category: data.category,
+          quantity: data.quantity || 1,
+          packed: data.packed || false,
+          notes: data.notes,
+          person_id: data.personId,
+          day_index: data.dayIndex,
+          version: change.version,
+        });
+        if (createError) throw createError;
+        break;
+      }
+
+      case 'update': {
+        const { error: updateError } = await supabase
+          .from(table)
+          .update({
+            name: data.name,
+            category: data.category,
+            quantity: data.quantity,
+            packed: data.packed,
+            notes: data.notes,
+            person_id: data.personId,
+            day_index: data.dayIndex,
+            version: change.version,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', change.entityId);
+        if (updateError) throw updateError;
+        break;
+      }
+
+      case 'delete': {
+        const { error: deleteError } = await supabase
+          .from(table)
+          .update({ is_deleted: true, updated_at: new Date().toISOString() })
+          .eq('id', change.entityId);
+        if (deleteError) throw deleteError;
+        break;
+      }
+    }
+  }
+
+  private async pushPackingStatusUpdate(change: Change): Promise<void> {
+    const data = change.data as PackingStatusData;
+    const { error } = await supabase
+      .from('trip_items')
+      .update({
+        packed: data.packed,
+        updated_at: data.updatedAt || new Date().toISOString(),
+      })
+      .eq('id', change.entityId);
+
+    if (error) throw error;
+  }
+
+  private async pushBulkPackingUpdate(change: Change): Promise<void> {
+    const data = change.data as BulkPackingData;
+    const updates = data.changes;
+
+    // Process bulk updates in batches for better performance
+    const batchSize = 50;
+    for (let i = 0; i < updates.length; i += batchSize) {
+      const batch = updates.slice(i, i + batchSize);
+
+      // Use upsert with conflict resolution for each item
+      for (const update of batch) {
+        const { error } = await supabase
+          .from('trip_items')
+          .update({
+            packed: update.packed,
+            updated_at: data.updatedAt || new Date().toISOString(),
+          })
+          .eq('id', update.itemId);
+
+        if (error) {
+          console.error(
+            `[SyncService] Failed to update item ${update.itemId}:`,
+            error
+          );
+          // Continue with other items rather than failing the whole batch
+        }
+      }
+    }
+  }
+
+  private async pushRuleOverrideChange(change: Change): Promise<void> {
+    const table = 'trip_rule_overrides';
+    const data = change.data as RuleOverride;
+
+    switch (change.operation) {
+      case 'create': {
+        const { error: createError } = await supabase.from(table).insert({
+          trip_id: change.tripId || data.tripId,
+          rule_id: data.ruleId,
+          override_data: data,
+          version: change.version,
+        });
+        if (createError) throw createError;
+        break;
+      }
+
+      case 'update': {
+        const { error: updateError } = await supabase
+          .from(table)
+          .update({
+            override_data: data,
+            version: change.version,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('trip_id', change.tripId || data.tripId)
+          .eq('rule_id', data.ruleId);
+        if (updateError) throw updateError;
+        break;
+      }
+
+      case 'delete': {
+        const { error: deleteError } = await supabase
+          .from(table)
+          .update({ is_deleted: true, updated_at: new Date().toISOString() })
+          .eq('trip_id', change.tripId || data.tripId)
+          .eq('rule_id', data.ruleId);
+        if (deleteError) throw deleteError;
+        break;
+      }
+    }
+  }
+
+  private async pushDefaultItemRuleChange(change: Change): Promise<void> {
+    const table = 'default_item_rules';
+    const data = change.data as DefaultItemRule;
+
+    switch (change.operation) {
+      case 'create': {
+        const { error: createError } = await supabase.from(table).insert({
+          user_id: change.userId,
+          rule_id: data.id,
+          name: data.name,
+          calculation: data.calculation,
+          conditions: data.conditions || [],
+          notes: data.notes,
+          category_id: data.categoryId,
+          subcategory_id: data.subcategoryId,
+          pack_ids: data.packIds || [],
+          version: change.version,
+        });
+        if (createError) throw createError;
+        break;
+      }
+
+      case 'update': {
+        const { error: updateError } = await supabase
+          .from(table)
+          .update({
+            name: data.name,
+            calculation: data.calculation,
+            conditions: data.conditions || [],
+            notes: data.notes,
+            category_id: data.categoryId,
+            subcategory_id: data.subcategoryId,
+            pack_ids: data.packIds || [],
+            version: change.version,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', change.userId)
+          .eq('rule_id', data.id);
+        if (updateError) throw updateError;
+        break;
+      }
+
+      case 'delete': {
+        const { error: deleteError } = await supabase
+          .from(table)
+          .update({ is_deleted: true, updated_at: new Date().toISOString() })
+          .eq('user_id', change.userId)
+          .eq('rule_id', data.id);
+        if (deleteError) throw deleteError;
+        break;
+      }
+    }
+  }
+
+  private async pushRulePackChange(change: Change): Promise<void> {
+    const table = 'rule_packs';
+    const data = change.data as RulePack;
+
+    switch (change.operation) {
+      case 'create': {
+        const { error: createError } = await supabase.from(table).insert({
+          user_id: change.userId,
+          pack_id: data.id,
+          name: data.name,
+          description: data.description,
+          author: data.author,
+          metadata: data.metadata,
+          stats: data.stats,
+          primary_category_id: data.primaryCategoryId,
+          icon: data.icon,
+          color: data.color,
+          version: change.version,
+        });
+        if (createError) throw createError;
+        break;
+      }
+
+      case 'update': {
+        const { error: updateError } = await supabase
+          .from(table)
+          .update({
+            name: data.name,
+            description: data.description,
+            author: data.author,
+            metadata: data.metadata,
+            stats: data.stats,
+            primary_category_id: data.primaryCategoryId,
+            icon: data.icon,
+            color: data.color,
+            version: change.version,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', change.userId)
+          .eq('pack_id', data.id);
+        if (updateError) throw updateError;
+        break;
+      }
+
+      case 'delete': {
+        const { error: deleteError } = await supabase
+          .from(table)
+          .update({ is_deleted: true, updated_at: new Date().toISOString() })
+          .eq('user_id', change.userId)
+          .eq('pack_id', data.id);
+        if (deleteError) throw deleteError;
+        break;
+      }
     }
   }
 
@@ -364,6 +769,7 @@ export class SyncService {
 
     console.log(`[SyncService] Pulling changes since ${since}`);
 
+    // Pull trips
     const { data: trips, error: tripError } = await supabase
       .from('trips')
       .select('*')
@@ -371,11 +777,19 @@ export class SyncService {
     if (tripError) {
       console.error('[SyncService] Failed to fetch trips', tripError);
     } else if (trips) {
-      for (const trip of trips) {
-        await TripStorage.saveTrip(trip as Trip);
+      for (const tripRow of trips) {
+        await this.applyServerChange(
+          'trip',
+          tripRow.id as string,
+          tripRow,
+          async (serverTrip) => {
+            await TripStorage.saveTrip(serverTrip as Trip);
+          }
+        );
       }
     }
 
+    // Pull people
     const { data: people, error: peopleError } = await supabase
       .from('trip_people')
       .select('*')
@@ -383,11 +797,19 @@ export class SyncService {
     if (peopleError) {
       console.error('[SyncService] Failed to fetch people', peopleError);
     } else if (people) {
-      for (const person of people) {
-        await PersonStorage.savePerson(person as Person);
+      for (const personRow of people) {
+        await this.applyServerChange(
+          'person',
+          personRow.id as string,
+          personRow,
+          async (serverPerson) => {
+            await PersonStorage.savePerson(serverPerson as Person);
+          }
+        );
       }
     }
 
+    // Pull items
     const { data: items, error: itemError } = await supabase
       .from('trip_items')
       .select('*')
@@ -395,8 +817,113 @@ export class SyncService {
     if (itemError) {
       console.error('[SyncService] Failed to fetch items', itemError);
     } else if (items) {
-      for (const item of items) {
-        await ItemStorage.saveItem(item as TripItem);
+      for (const itemRow of items) {
+        await this.applyServerChange(
+          'item',
+          itemRow.id as string,
+          itemRow,
+          async (serverItem) => {
+            await ItemStorage.saveItem(serverItem as TripItem);
+          }
+        );
+      }
+    }
+
+    // Pull rule overrides
+    const { data: ruleOverrides, error: ruleOverrideError } = await supabase
+      .from('trip_rule_overrides')
+      .select('*')
+      .gte('updated_at', since);
+    if (ruleOverrideError) {
+      console.error(
+        '[SyncService] Failed to fetch rule overrides',
+        ruleOverrideError
+      );
+    } else if (ruleOverrides) {
+      for (const ruleOverride of ruleOverrides) {
+        const compositeKey = `${ruleOverride.trip_id}_${ruleOverride.rule_id}`;
+        await this.applyServerChange(
+          'rule_override',
+          compositeKey,
+          ruleOverride,
+          async (serverOverride) => {
+            await RuleOverrideStorage.saveRuleOverride(
+              (serverOverride as { override_data: RuleOverride }).override_data
+            );
+          }
+        );
+      }
+    }
+
+    // Pull default item rules
+    const { data: defaultRules, error: defaultRulesError } = await supabase
+      .from('default_item_rules')
+      .select('*')
+      .gte('updated_at', since);
+    if (defaultRulesError) {
+      console.error(
+        '[SyncService] Failed to fetch default item rules',
+        defaultRulesError
+      );
+    } else if (defaultRules) {
+      for (const ruleRow of defaultRules) {
+        // Map database row to DefaultItemRule type
+        const rule: DefaultItemRule = {
+          id: ruleRow.rule_id as string,
+          name: ruleRow.name as string,
+          calculation:
+            ruleRow.calculation as unknown as DefaultItemRule['calculation'],
+          conditions: ruleRow.conditions as DefaultItemRule['conditions'],
+          notes: ruleRow.notes as string,
+          categoryId: ruleRow.category_id as string,
+          subcategoryId: ruleRow.subcategory_id as string,
+          packIds: ruleRow.pack_ids as string[],
+        };
+
+        await this.applyServerChange(
+          'default_item_rule',
+          rule.id,
+          rule,
+          async (serverRule) => {
+            await DefaultItemRulesStorage.saveDefaultItemRule(
+              serverRule as DefaultItemRule
+            );
+          }
+        );
+      }
+    }
+
+    // Pull rule packs
+    const { data: rulePacks, error: rulePacksError } = await supabase
+      .from('rule_packs')
+      .select('*')
+      .gte('updated_at', since);
+    if (rulePacksError) {
+      console.error('[SyncService] Failed to fetch rule packs', rulePacksError);
+    } else if (rulePacks) {
+      for (const packRow of rulePacks) {
+        // Map database row to RulePack type
+        const pack: RulePack = {
+          id: packRow.pack_id as string,
+          name: packRow.name as string,
+          description: packRow.description as string,
+          author: packRow.author as RulePack['author'],
+          metadata: packRow.metadata as RulePack['metadata'],
+          stats: packRow.stats as RulePack['stats'],
+          rules: [], // Rules will be loaded separately
+          primaryCategoryId: packRow.primary_category_id as string,
+          icon: packRow.icon as string,
+          color: packRow.color as string,
+        };
+
+        await this.applyServerChange(
+          'rule_pack',
+          pack.id,
+          pack,
+          async (serverPack) => {
+            await RulePacksStorage.saveRulePack(serverPack as RulePack);
+          }
+        );
       }
     }
   }
@@ -426,10 +953,39 @@ export class SyncService {
   }
 
   private async applyConflictResolution(conflict: SyncConflict): Promise<void> {
-    // TODO: Apply the resolved data to the appropriate entity
     console.log(
-      `[SyncService] MOCK: Applying conflict resolution for ${conflict.entityType}:${conflict.entityId}`
+      `[SyncService] Applying conflict resolution for ${conflict.entityType}:${conflict.entityId}`
     );
+
+    // Apply the resolved data to the appropriate entity based on type
+    switch (conflict.entityType) {
+      case 'trip':
+        await TripStorage.saveTrip(conflict.serverVersion as Trip);
+        break;
+      case 'person':
+        await PersonStorage.savePerson(conflict.serverVersion as Person);
+        break;
+      case 'item':
+        await ItemStorage.saveItem(conflict.serverVersion as TripItem);
+        break;
+      case 'rule_override':
+        await RuleOverrideStorage.saveRuleOverride(
+          conflict.serverVersion as RuleOverride
+        );
+        break;
+      case 'default_item_rule':
+        await DefaultItemRulesStorage.saveDefaultItemRule(
+          conflict.serverVersion as DefaultItemRule
+        );
+        break;
+      case 'rule_pack':
+        await RulePacksStorage.saveRulePack(conflict.serverVersion as RulePack);
+        break;
+      default:
+        console.warn(
+          `[SyncService] Unknown entity type for conflict resolution: ${conflict.entityType}`
+        );
+    }
   }
 
   private async notifySubscribers(): Promise<void> {
@@ -470,6 +1026,46 @@ export class SyncService {
     if (localChangesToDelete.length > 0) {
       console.log(
         `[SyncService] Cleaned up ${localChangesToDelete.length} old local-only changes`
+      );
+    }
+  }
+
+  private async applyServerChange(
+    entityType: string,
+    entityId: string,
+    serverData: unknown,
+    applyCallback: (serverData: unknown) => Promise<void>
+  ): Promise<void> {
+    const db = await getDatabase();
+
+    // Check for pending local changes for this entity
+    const pendingChanges = await this.getPendingChanges();
+    const localChange = pendingChanges.find(
+      (change) =>
+        change.entityType === entityType && change.entityId === entityId
+    );
+
+    if (localChange && !localChange.synced) {
+      // We have a local change that conflicts with the server change
+      const conflict: SyncConflict = {
+        id: generateConflictId(),
+        entityType,
+        entityId,
+        localVersion: localChange.data,
+        serverVersion: serverData,
+        conflictType: 'update_conflict',
+        timestamp: Date.now(),
+      };
+
+      await db.put('syncConflicts', conflict);
+      console.log(
+        `[SyncService] Detected conflict for ${entityType}:${entityId}, stored as ${conflict.id}`
+      );
+    } else {
+      // No conflict, apply the server change directly
+      await applyCallback(serverData);
+      console.log(
+        `[SyncService] Applied server change for ${entityType}:${entityId}`
       );
     }
   }

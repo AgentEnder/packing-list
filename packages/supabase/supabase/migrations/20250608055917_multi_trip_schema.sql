@@ -186,6 +186,10 @@ CREATE TRIGGER update_trip_rule_overrides_updated_at
   BEFORE UPDATE ON public.trip_rule_overrides 
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+CREATE TRIGGER update_sync_changes_updated_at 
+  BEFORE UPDATE ON public.sync_changes 
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
 -- ============================================================================
 -- Row Level Security (RLS) Policies
 -- ============================================================================
