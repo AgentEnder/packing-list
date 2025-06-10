@@ -53,23 +53,14 @@ test.describe('Trips Listing Page', () => {
         skipDates: true,
       });
 
-      // Wait for trip to be created and state to settle
-      await tripsPage.page.waitForTimeout(500);
-
       await tripManager.createAdditionalTrip({
         template: 'vacation',
         title: 'Summer Vacation',
         skipDates: true,
       });
 
-      // Wait for second trip to be created and state to settle
-      await tripsPage.page.waitForTimeout(500);
-
       // Navigate to trips page after successful creation
       await tripsPage.goto();
-
-      // Give time for trips to render
-      await tripsPage.page.waitForTimeout(1000);
     });
 
     test('displays trips grid with multiple trips', async () => {
@@ -282,8 +273,6 @@ test.describe('Trips Listing Page', () => {
 
       await tripsPage.duplicateTrip(tripId);
 
-      // Wait for the new trip to appear
-      await tripsPage.page.waitForTimeout(1000);
       const newCount = await tripsPage.getTripCardCount();
       expect(newCount).toBe(initialCount + 1);
 

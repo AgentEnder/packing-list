@@ -50,8 +50,6 @@ export class CreateRuleForm {
     const isPerDayChecked = await perDayCheckbox.isChecked();
     if (!isPerDayChecked) {
       await perDayCheckbox.click();
-      // Wait for the every N days checkbox to appear
-      await this.page.waitForTimeout(500);
     }
 
     const checkbox = this.page.getByTestId(
@@ -128,9 +126,6 @@ export class CreateRuleForm {
     }
 
     await addButton.click();
-
-    // Wait a moment for form to appear
-    await this.page.waitForTimeout(1000);
 
     // Check which condition form is actually visible (workaround for edit mode bug)
     const expectedTypeSelect = this.page.getByTestId(

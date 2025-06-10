@@ -94,39 +94,7 @@ test.describe('Packing List View', () => {
     test('should display packing content with demo data', async () => {
       await packingListPage.goto();
 
-      // Wait for demo data to load properly
-      await packingListPage.page.waitForTimeout(3000);
-
-      // Check if content is present (might take time to calculate)
-      let hasContent = await packingListPage.hasContent();
-
-      if (!hasContent) {
-        // Wait longer and check again - demo data calculation can take time
-        await packingListPage.page.waitForTimeout(5000);
-        hasContent = await packingListPage.hasContent();
-
-        if (!hasContent) {
-          // Check if there's an empty state message or setup guidance instead
-          const emptyStateVisible = await packingListPage.isEmptyStateVisible();
-          if (emptyStateVisible) {
-            // This is actually expected if demo data doesn't have people, rules, or days configured
-            console.log(
-              'Demo data shows empty state - this may be expected if demo trip has no setup'
-            );
-            return; // Skip the rest of the test as this might be valid
-          }
-
-          // Check for alternative content indicators
-          const hasHeading = await packingListPage.page
-            .getByRole('heading', { name: 'Packing List' })
-            .isVisible();
-          expect(hasHeading).toBe(true); // At least the page loaded correctly
-
-          console.log('No packing groups found but page loaded correctly');
-          return; // Exit gracefully
-        }
-      }
-
+      const hasContent = await packingListPage.hasContent();
       expect(hasContent).toBe(true);
       expect(await packingListPage.getGroupCount()).toBeGreaterThan(0);
       expect(await packingListPage.getItemCount()).toBeGreaterThan(0);
@@ -135,20 +103,12 @@ test.describe('Packing List View', () => {
     test('should open pack dialog when pack button is clicked', async () => {
       await packingListPage.goto();
 
-      // Wait for demo data to load properly
-      await packingListPage.page.waitForTimeout(2000);
-
-      // Wait for content to be available
       const hasContent = await packingListPage.hasContent();
-      if (!hasContent) {
-        await packingListPage.page.waitForTimeout(3000);
-      }
+      expect(hasContent).toBe(true);
 
       const items = await packingListPage.getAllItems();
       if (items.length === 0) {
-        // If no items found, skip this test as demo data may not be loaded properly
-        console.log('No packing items found, skipping pack dialog test');
-        return;
+        throw new Error('No packing items found');
       }
 
       expect(items.length).toBeGreaterThan(0);
@@ -162,9 +122,6 @@ test.describe('Packing List View', () => {
       await expect(packButton).toBeVisible({ timeout: 5000 });
 
       await firstItem.clickPackButton();
-
-      // Wait for modal to appear
-      await packingListPage.page.waitForTimeout(1000);
 
       const isModalVisible = await packingListPage.packItemsModal.isVisible();
       expect(isModalVisible).toBe(true);

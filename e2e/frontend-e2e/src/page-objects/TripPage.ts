@@ -70,9 +70,6 @@ export class TripPage {
     // Step 3: Save trip
     await this.page.getByRole('button', { name: 'Save Trip' }).click();
 
-    // Wait a bit for the trip to be saved
-    await this.page.waitForTimeout(1000);
-
     console.log('Trip configuration completed');
   }
 
