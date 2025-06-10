@@ -6,6 +6,7 @@ import {
 } from '@packing-list/state';
 import { showToast } from './Toast';
 import { Info, Star, Users, Calendar, Tag } from 'lucide-react';
+import { formatDate } from '@packing-list/shared-utils';
 import * as Icons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -129,7 +130,7 @@ export function RulePackDetails({ pack }: RulePackDetailsProps) {
                 <span className="font-medium">Created</span>
               </div>
               <p data-testid="pack-created-date">
-                {new Date(pack.metadata.created).toLocaleDateString()}
+                {formatDate(pack.metadata.created)}
               </p>
             </div>
             <div>

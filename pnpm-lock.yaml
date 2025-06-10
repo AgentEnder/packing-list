@@ -274,6 +274,9 @@ importers:
       '@packing-list/model':
         specifier: workspace:*
         version: link:../model
+      '@packing-list/shared-utils':
+        specifier: workspace:*
+        version: link:../shared-utils
       '@packing-list/state':
         specifier: workspace:*
         version: link:../state

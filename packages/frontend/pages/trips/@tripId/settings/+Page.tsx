@@ -6,6 +6,7 @@ import { PageHeader } from '../../../../components/PageHeader';
 import { PageContainer } from '../../../../components/PageContainer';
 import { ConfirmDialog } from '@packing-list/shared-components';
 import { navigate } from 'vike/client/router';
+import { formatDate } from '@packing-list/shared-utils';
 import {
   ArrowLeft,
   Save,
@@ -348,11 +349,11 @@ export default function TripSettingsPage() {
 
             <div className="flex flex-col gap-2">
               <p className="text-sm text-base-content/70">
-                Created: {new Date(trip.createdAt).toLocaleDateString()}
+                Created: {formatDate(trip.createdAt)}
               </p>
               {trip.updatedAt !== trip.createdAt && (
                 <p className="text-sm text-base-content/70">
-                  Updated: {new Date(trip.updatedAt).toLocaleDateString()}
+                  Updated: {formatDate(trip.updatedAt)}
                 </p>
               )}
             </div>

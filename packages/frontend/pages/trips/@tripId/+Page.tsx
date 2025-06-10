@@ -4,6 +4,7 @@ import { usePageContext } from 'vike-react/usePageContext';
 import { Link } from '../../../components/Link';
 import { PageHeader } from '../../../components/PageHeader';
 import { PageContainer } from '../../../components/PageContainer';
+import { formatDate } from '@packing-list/shared-utils';
 import { navigate } from 'vike/client/router';
 import {
   ArrowLeft,
@@ -49,13 +50,6 @@ export default function TripDetailsPage() {
     navigate('/');
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
 
   const getPackingProgress = () => {
     if (!trip || trip.totalItems === 0) {
