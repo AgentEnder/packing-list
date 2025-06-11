@@ -54,8 +54,8 @@ export class ConnectivityService {
   private handleOnlineStatusChange = () => {
     this.updateOnlineStatus(navigator.onLine);
     // When status changes, immediately check auth service connectivity
-    // but respect the minimum check interval
-    this.checkConnectivityWithThrottling();
+    // bypass throttling for online/offline events since these are critical state changes
+    this.checkConnectivity();
   };
 
   private updateOnlineStatus(isOnline: boolean) {
@@ -90,10 +90,40 @@ export class ConnectivityService {
       return;
     }
 
-    // Ultra-conservative approach: Only report disconnected if navigator.onLine is explicitly false
-    // This avoids false negatives from fetch failures in development environments
-    const isConnected = navigator.onLine;
-    this.updateConnectedStatus(isConnected);
+    // If navigator says we're offline, we're definitely offline
+    if (!navigator.onLine) {
+      this.updateConnectedStatus(false);
+      return;
+    }
+
+    // If navigator says we're online, do a quick connectivity test
+    try {
+      // Try to fetch a small, fast endpoint to verify real connectivity
+      // Use a timeout to avoid hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+
+      const response = await fetch('/version?format=json', {
+        method: 'HEAD', // Just check if we can reach the server
+        signal: controller.signal,
+        cache: 'no-cache',
+      });
+
+      clearTimeout(timeoutId);
+
+      // If we get any response (even an error), we have connectivity
+      this.updateConnectedStatus(true);
+    } catch (error) {
+      console.log(
+        '🔍 [CONNECTIVITY] Connectivity test failed:',
+        error instanceof Error ? error.message : String(error)
+      );
+
+      // Conservative fallback: If the test fails but navigator.onLine is true,
+      // assume we're connected (might be a CORS issue, dev environment, etc.)
+      // This prevents false negatives in development
+      this.updateConnectedStatus(navigator.onLine);
+    }
   }
 
   private startPeriodicCheck() {

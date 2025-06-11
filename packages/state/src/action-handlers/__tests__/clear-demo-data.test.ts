@@ -80,4 +80,21 @@ describe('clearDemoDataHandler', () => {
     expect(demoTrip).toBeUndefined();
     expect(result.trips.byId['DEMO_TRIP']).toBeUndefined();
   });
+
+  it('should clear demo conflicts from sync state', () => {
+    const demoState = CREATE_DEMO_DATA() as StoreType;
+
+    // Verify demo state has conflicts
+    expect(demoState.sync.syncState.conflicts).toHaveLength(2);
+    expect(demoState.sync.syncState.conflicts[0].id).toBe('conflict-1');
+    expect(demoState.sync.syncState.conflicts[1].id).toBe('conflict-2');
+
+    // Clear demo data
+    const result = clearDemoDataHandler(demoState);
+
+    // Verify conflicts are cleared
+    expect(result.sync.syncState.conflicts).toHaveLength(0);
+    expect(result.sync.isInitialized).toBe(false); // Should reset sync state
+    expect(result.sync.lastError).toBeNull();
+  });
 });

@@ -37,8 +37,17 @@ interface OfflineAccount {
 
 export default function SettingsPage() {
   const dispatch = useAppDispatch();
-  const { user, isAuthenticated, offlineAccounts, isOfflineMode, isOnline } =
-    useAuth();
+  const {
+    user,
+    isAuthenticated,
+    offlineAccounts,
+    isOfflineMode,
+    isOnline,
+    forceOfflineMode,
+    isConnected,
+    authStatus,
+    connectivityStatus,
+  } = useAuth();
   const [activeTab, setActiveTab] = useState<
     'settings' | 'account' | 'debug' | 'sync'
   >('settings');
@@ -304,6 +313,79 @@ export default function SettingsPage() {
                   }`}
                 >
                   {isOnline ? 'Online' : 'Offline'}
+                </div>
+              </div>
+
+              {/* Detailed Auth State Debug */}
+              <div className="mt-4 p-4 bg-base-200 rounded-lg">
+                <h3 className="font-medium mb-2">Auth State Debug</h3>
+                <div className="text-sm space-y-1">
+                  <div>
+                    <strong>isOnline:</strong> {String(isOnline)}
+                  </div>
+                  <div>
+                    <strong>isOfflineMode:</strong> {String(isOfflineMode)}
+                  </div>
+                  <div>
+                    <strong>forceOfflineMode:</strong>{' '}
+                    {String(forceOfflineMode)}
+                  </div>
+                  <div>
+                    <strong>isConnected:</strong> {String(isConnected)}
+                  </div>
+                  <div>
+                    <strong>Navigator Online:</strong>{' '}
+                    {String(
+                      typeof navigator !== 'undefined'
+                        ? navigator.onLine
+                        : 'N/A'
+                    )}
+                  </div>
+                  <div>
+                    <strong>User Type:</strong> {user?.type || 'None'}
+                  </div>
+                  <div>
+                    <strong>User Email:</strong> {user?.email || 'None'}
+                  </div>
+                  <div>
+                    <strong>Is Shared:</strong> {String(user?.isShared)}
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    className="btn btn-sm btn-outline"
+                    onClick={() => {
+                      console.log('🔍 Full Auth State:', {
+                        isOnline,
+                        isOfflineMode,
+                        forceOfflineMode,
+                        isConnected,
+                        navigatorOnline: navigator.onLine,
+                        user,
+                        authStatus,
+                        connectivityStatus,
+                      });
+                    }}
+                  >
+                    Log Full State to Console
+                  </button>
+
+                  {forceOfflineMode && (
+                    <button
+                      className="btn btn-sm btn-warning"
+                      onClick={() => {
+                        console.log('🔧 Clearing force offline mode...');
+                        dispatch({
+                          type: 'auth/setForceOfflineMode',
+                          payload: false,
+                        });
+                        dispatch({ type: 'auth/switchToOnlineMode' });
+                        showToast('Force offline mode disabled');
+                      }}
+                    >
+                      Clear Force Offline
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

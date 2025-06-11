@@ -19,7 +19,7 @@ export function UserProfile() {
       <div
         tabIndex={0}
         role="button"
-        className="btn btn-ghost p-1 rounded-full hover:bg-base-200 transition-colors duration-200 flex items-center justify-center min-w-0"
+        className="btn btn-circle btn-ghost p-1 rounded-full hover:bg-base-200 transition-colors duration-200 flex items-center justify-center min-w-0"
         data-testid="user-profile-avatar"
       >
         <Avatar

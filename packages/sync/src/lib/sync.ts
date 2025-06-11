@@ -52,6 +52,10 @@ export interface SyncOptions {
   supabaseUrl?: string;
   supabaseAnonKey?: string;
   autoSyncInterval?: number; // milliseconds
+  demoMode?: boolean; // Disable active syncing, only show demo conflicts
+  dispatch?: any; // Redux dispatch function for integration
+  reloadFromIndexedDB?: any; // Thunk dispatcher for IndexedDB reload
+  userId?: string; // Current user ID for data filtering
 }
 
 // Environment detection with proper type guards
@@ -219,15 +223,20 @@ export class SyncService {
   constructor(options: SyncOptions = {}) {
     this.options = {
       autoSyncInterval: 30000, // 30 seconds default
+      demoMode: false,
       ...options,
     };
 
     // Initialize connectivity service
     this.connectivityService = getConnectivityService();
 
-    if (isBrowser) {
+    if (isBrowser && !this.options.demoMode) {
       this.setupConnectivityListener();
     }
+
+    console.log(
+      `🔧 [SYNC SERVICE] Initialized with demo mode: ${this.options.demoMode}`
+    );
   }
 
   /**
@@ -272,7 +281,18 @@ export class SyncService {
    * Start the sync service with automatic syncing
    */
   async start(): Promise<void> {
-    console.log('[SyncService] Starting sync service...');
+    console.log(
+      `[SyncService] Starting sync service... (demo mode: ${this.options.demoMode})`
+    );
+
+    if (this.options.demoMode) {
+      console.log(
+        '[SyncService] Demo mode enabled - initializing with demo conflicts only'
+      );
+      await this.initializeDemoConflicts();
+      this.notifySubscribers();
+      return;
+    }
 
     if (this.getIsOnline()) {
       await this.performSync();
@@ -297,6 +317,15 @@ export class SyncService {
    * Manually trigger a sync
    */
   async forceSync(): Promise<void> {
+    if (this.options.demoMode) {
+      console.log(
+        '[SyncService] 🎭 Demo mode - sync disabled, regenerating demo conflicts'
+      );
+      await this.initializeDemoConflicts();
+      this.notifySubscribers();
+      return;
+    }
+
     if (!this.getIsOnline()) {
       console.warn('[SyncService] Cannot sync while offline');
       return;
@@ -311,6 +340,13 @@ export class SyncService {
   async trackChange(
     change: Omit<Change, 'id' | 'timestamp' | 'synced'>
   ): Promise<void> {
+    if (this.options.demoMode) {
+      console.log(
+        `[SyncService] 🎭 Demo mode - skipping change tracking: ${change.operation} ${change.entityType}:${change.entityId}`
+      );
+      return;
+    }
+
     // Skip tracking for local users - they don't sync to remote
     if (isLocalUser(change.userId)) {
       console.log(
@@ -404,6 +440,11 @@ export class SyncService {
   }
 
   private startAutoSync(): void {
+    if (this.options.demoMode) {
+      console.log('[SyncService] 🎭 Demo mode - auto-sync disabled');
+      return;
+    }
+
     if (this.syncTimer) {
       clearInterval(this.syncTimer);
     }
@@ -511,6 +552,95 @@ export class SyncService {
   private async updateSyncTimestamp(): Promise<void> {
     const db = await getDatabase();
     await db.put('syncMetadata', Date.now(), 'lastSyncTimestamp');
+  }
+
+  /**
+   * Initialize demo conflicts when in demo mode
+   */
+  private async initializeDemoConflicts(): Promise<void> {
+    console.log('[SyncService] 🎭 Initializing demo conflicts...');
+
+    const db = await getDatabase();
+
+    // Clear any existing conflicts first
+    await db.clear('syncConflicts');
+
+    // Create demo conflicts similar to those in demo data
+    const demoConflicts: SyncConflict[] = [
+      {
+        id: 'demo-conflict-1',
+        entityType: 'item',
+        entityId: 'demo-item-beach-towel',
+        localVersion: {
+          name: 'Beach Towel',
+          category: 'beach',
+          isPacked: true,
+          quantity: 1,
+          timestamp: Date.now() - 3600000, // 1 hour ago
+        },
+        serverVersion: {
+          name: 'Large Beach Towel',
+          category: 'beach',
+          isPacked: false,
+          quantity: 2,
+          timestamp: Date.now() - 1800000, // 30 minutes ago
+        },
+        conflictType: 'update_conflict',
+        timestamp: Date.now() - 1800000,
+      },
+      {
+        id: 'demo-conflict-2',
+        entityType: 'person',
+        entityId: 'demo-person-sarah',
+        localVersion: {
+          name: 'Sarah Johnson',
+          age: 42,
+          gender: 'female',
+          preferences: { temperature: 'warm' },
+          timestamp: Date.now() - 2400000, // 40 minutes ago
+        },
+        serverVersion: {
+          name: 'Sarah J. Johnson',
+          age: 42,
+          gender: 'female',
+          preferences: { temperature: 'hot', style: 'casual' },
+          timestamp: Date.now() - 900000, // 15 minutes ago
+        },
+        conflictType: 'update_conflict',
+        timestamp: Date.now() - 900000,
+      },
+      {
+        id: 'demo-conflict-3',
+        entityType: 'rule_pack',
+        entityId: 'demo-rule-pack-summer',
+        localVersion: {
+          name: 'Summer Essentials',
+          version: '1.2.0',
+          description: 'Essential items for summer trips',
+          author: 'Local User',
+          timestamp: Date.now() - 7200000, // 2 hours ago
+        },
+        serverVersion: {
+          name: 'Summer Essentials Pro',
+          version: '2.0.0',
+          description:
+            'Enhanced essential items for summer trips with new gear recommendations',
+          author: 'Community',
+          timestamp: Date.now() - 1200000, // 20 minutes ago
+        },
+        conflictType: 'update_conflict',
+        timestamp: Date.now() - 1200000,
+      },
+    ];
+
+    // Store demo conflicts in IndexedDB
+    for (const conflict of demoConflicts) {
+      await db.put('syncConflicts', conflict);
+    }
+
+    console.log(
+      `[SyncService] 🎭 Initialized ${demoConflicts.length} demo conflicts`
+    );
   }
 
   private async pushChangeToServer(change: Change): Promise<void> {
@@ -1274,6 +1404,16 @@ export class SyncService {
 
 // Global sync service instance
 let syncServiceInstance: SyncService | null = null;
+
+/**
+ * Reset the global sync service instance
+ */
+export function resetSyncService(): void {
+  if (syncServiceInstance) {
+    syncServiceInstance.stop();
+    syncServiceInstance = null;
+  }
+}
 
 /**
  * Get the global sync service instance

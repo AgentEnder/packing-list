@@ -15,7 +15,15 @@ const SyncContext = createContext<SyncContextValue | null>(null);
 export const useSyncContext = (): SyncContextValue => {
   const context = useContext(SyncContext);
   if (!context) {
-    throw new Error('useSyncContext must be used within SyncProvider');
+    console.error(
+      '🚨 [SYNC CONTEXT] Context is null - possible timing issue or missing SyncProvider'
+    );
+    console.error(
+      '🚨 [SYNC CONTEXT] Check if component is wrapped in SyncProvider'
+    );
+    throw new Error(
+      'useSyncContext must be used within SyncProvider. Ensure the component is wrapped in <SyncProvider>.'
+    );
   }
   return context;
 };
@@ -27,11 +35,22 @@ interface SyncProviderProps {
 export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
   const dispatch = useAppDispatch();
 
-  // Get sync state from Redux
-  const syncState = useAppSelector((state) => state.sync.syncState);
-  const isInitialized = useAppSelector((state) => state.sync.isInitialized);
-  const lastError = useAppSelector((state) => state.sync.lastError);
-  const user = useAppSelector((state) => state.auth.user);
+  // Get sync state from Redux with fallback defaults
+  const syncState = useAppSelector((state) => state.sync?.syncState) || {
+    lastSyncTimestamp: null,
+    pendingChanges: [],
+    isOnline: true,
+    isSyncing: false,
+    conflicts: [],
+  };
+  const isInitialized =
+    useAppSelector((state) => state.sync?.isInitialized) || false;
+  const lastError = useAppSelector((state) => state.sync?.lastError) || null;
+  const user = useAppSelector((state) => state.auth?.user);
+
+  // Detect demo mode - when selected trip is the demo trip
+  const selectedTripId = useAppSelector((state) => state.trips?.selectedTripId);
+  const isDemoMode = selectedTripId === 'DEMO_TRIP';
 
   // Initialize sync service when authenticated
   useEffect(() => {
@@ -44,6 +63,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
           '🚀 [SYNC PROVIDER] Initializing real sync service with Redux dispatch...'
         );
         console.log('👤 [SYNC PROVIDER] Current user:', user);
+        console.log('🎭 [SYNC PROVIDER] Demo mode:', isDemoMode);
 
         // Reset the singleton and sync state when user changes
         const { getSyncService, resetSyncService } = await import(
@@ -73,6 +93,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
           dispatch: dispatch, // Provide Redux dispatch to sync service
           reloadFromIndexedDB: handleReloadFromIndexedDB, // Thunk dispatcher for IndexedDB reload
           userId: user?.id, // Pass current user ID for data filtering
+          demoMode: isDemoMode, // Enable demo mode when using demo trip
         });
 
         // Subscribe to sync state changes and update Redux
@@ -124,7 +145,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
         syncService.stop();
       }
     };
-  }, [dispatch, user]); // Remove isInitialized from dependencies
+  }, [dispatch, user, selectedTripId]); // React to demo mode changes via selectedTripId
 
   const forceSync = async (): Promise<void> => {
     try {
@@ -135,6 +156,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
       const { getSyncService } = await import('@packing-list/sync');
       const syncService = getSyncService({
         dispatch: dispatch, // Ensure dispatch is available for force sync too
+        demoMode: isDemoMode, // Pass demo mode for consistency
       });
       await syncService.forceSync();
 
@@ -154,40 +176,17 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
   };
 
   const contextValue: SyncContextValue = {
-    syncState,
-    isInitialized,
-    lastError,
+    syncState: syncState || {
+      lastSyncTimestamp: null,
+      pendingChanges: [],
+      isOnline: true,
+      isSyncing: false,
+      conflicts: [],
+    },
+    isInitialized: isInitialized || false,
+    lastError: lastError || null,
     forceSync,
   };
-
-  // Expose sync context to window for e2e testing
-  React.useEffect(() => {
-    if (
-      typeof window !== 'undefined' &&
-      (process.env.NODE_ENV === 'development' ||
-        process.env.NODE_ENV === 'test')
-    ) {
-      console.log(
-        '🔧 [SYNC PROVIDER] Exposing sync context to window for e2e testing'
-      );
-      console.log('🔧 [SYNC PROVIDER] Context value:', {
-        hasForceSync: typeof forceSync === 'function',
-        isInitialized,
-        syncStateKeys: Object.keys(syncState || {}),
-      });
-
-      (window as any).__SYNC_CONTEXT__ = {
-        syncState,
-        isInitialized,
-        lastError,
-        forceSync,
-      };
-
-      console.log(
-        '✅ [SYNC PROVIDER] Sync context exposed to window.__SYNC_CONTEXT__'
-      );
-    }
-  }, [syncState, isInitialized, lastError, forceSync]);
 
   return (
     <SyncContext.Provider value={contextValue}>{children}</SyncContext.Provider>
