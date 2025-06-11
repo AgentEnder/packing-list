@@ -85,7 +85,6 @@ export function Avatar({
 
   const initials = getInitials(alt);
   const avatarUrl = src ? getAvatarUrl(src) : null;
-  const sizeClass = `w-${Math.ceil(size / 4)} h-${Math.ceil(size / 4)}`;
   const roundedClass = rounded ? 'rounded-full' : 'rounded';
 
   // Calculate indicator size based on avatar size
@@ -98,7 +97,7 @@ export function Avatar({
         <img
           src={avatarUrl}
           alt={alt}
-          className={`${sizeClass} ${roundedClass} object-cover ${className}`}
+          className={`${roundedClass} object-cover ${className}`}
           style={{ width: size, height: size }}
           onError={handleImageError}
         />

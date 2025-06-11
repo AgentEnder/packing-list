@@ -14,21 +14,21 @@ export const E2E_TEST_USERS = {
     email: 'e2e-test@example.com',
     password: 'testpassword123',
     name: 'E2E Test User',
-    id: 'e2e-user-001',
+    id: '11111111-1111-1111-1111-111111111111',
     provider: 'email' as const,
   },
   admin: {
     email: 'e2e-admin@example.com',
     password: 'adminpassword123',
     name: 'E2E Admin User',
-    id: 'e2e-user-002',
+    id: '22222222-2222-2222-2222-222222222222',
     provider: 'email' as const,
   },
   google: {
     email: 'e2e-google@example.com',
     password: '', // Google users don't have passwords
     name: 'E2E Google User',
-    id: 'e2e-google-user',
+    id: '33333333-3333-3333-3333-333333333333',
     provider: 'google' as const,
   },
 } as const;

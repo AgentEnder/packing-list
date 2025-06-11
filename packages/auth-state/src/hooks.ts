@@ -17,6 +17,7 @@ import {
   deleteAccount,
   useAuthDispatch,
   type AuthState,
+  switchToOnlineMode,
 } from './auth-slice.js';
 import {
   selectUser,
@@ -44,9 +45,11 @@ import {
   authService,
   LocalAuthService,
   LocalAuthState,
+} from '@packing-list/auth';
+import {
   ConnectivityState,
   getConnectivityService,
-} from '@packing-list/auth';
+} from '@packing-list/connectivity';
 
 // Create service instances
 const localAuthService = new LocalAuthService();
@@ -177,6 +180,10 @@ export function useAuth() {
                     name: localAuthState.user.name,
                     avatar_url: localAuthState.user.avatar_url,
                     created_at: localAuthState.user.created_at,
+                    type: 'local' as const,
+                    isShared:
+                      localAuthState.user.id === 'local-shared-user' ||
+                      localAuthState.user.email === 'shared@local.device',
                   }
                 : null,
               session: localAuthState.session,
@@ -191,7 +198,23 @@ export function useAuth() {
     // Subscribe to connectivity changes
     const unsubscribeConnectivity = connectivityService.subscribe(
       (connectivityState: ConnectivityState) => {
+        // We need to get the current state from the hook, not from a global store
+        const wasOfflineMode = isOfflineMode;
+
+        // Update connectivity state first
         dispatch(updateConnectivityState(connectivityState));
+
+        // Check if we're transitioning from offline to online
+        const shouldUseOfflineMode =
+          forceOfflineMode ||
+          !connectivityState.isConnected ||
+          !connectivityState.isOnline;
+
+        // If we were offline and now we should be online, trigger the switch
+        if (wasOfflineMode && !shouldUseOfflineMode) {
+          console.log('🌐 [AUTH HOOKS] Triggering switch to online mode...');
+          dispatch(switchToOnlineMode(undefined));
+        }
       }
     );
 
@@ -236,7 +259,7 @@ export function useAuth() {
   };
 
   const clearErrorAction = () => {
-    dispatch(clearError(null));
+    dispatch(clearError());
   };
 
   return {
@@ -284,7 +307,7 @@ export function useAuth() {
     checkConnectivity: () => dispatch(checkConnectivity(undefined)),
     setForceOfflineMode: (force: boolean) =>
       dispatch(setForceOfflineModeAction(force)),
-    clearError: () => dispatch(clearError(null)),
+    clearError: () => dispatch(clearError()),
 
     // Deprecated - keeping for backward compatibility but prefer the direct thunks above
     signInWithGooglePopupAuth,

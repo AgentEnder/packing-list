@@ -16,14 +16,49 @@ function isLocalUser(userId: string): boolean {
   );
 }
 
+// Global flag to disable change tracking during sync operations
+let isInSyncMode = false;
+
+export function enableSyncMode(): void {
+  isInSyncMode = true;
+  console.log(
+    '🔒 [CHANGE_TRACKER] Sync mode enabled - change tracking disabled'
+  );
+}
+
+export function disableSyncMode(): void {
+  isInSyncMode = false;
+  console.log(
+    '🔓 [CHANGE_TRACKER] Sync mode disabled - change tracking enabled'
+  );
+}
+
+export function isChangeTrackingDisabled(): boolean {
+  return isInSyncMode;
+}
+
 export class ChangeTracker {
   private syncService = getSyncService();
 
   /**
-   * Check if a user ID represents a local user (non-syncing)
+   * Check if change tracking should be skipped
    */
-  static isLocalUser(userId: string): boolean {
-    return isLocalUser(userId);
+  private shouldSkipTracking(userId: string): boolean {
+    if (isInSyncMode) {
+      console.log(
+        '⏭️ [CHANGE_TRACKER] Skipping change tracking - sync mode active'
+      );
+      return true;
+    }
+
+    if (isLocalUser(userId)) {
+      console.log(
+        `⏭️ [CHANGE_TRACKER] Skipping change tracking for local user: ${userId}`
+      );
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -34,6 +69,10 @@ export class ChangeTracker {
     trip: Trip,
     userId: string
   ): Promise<void> {
+    if (this.shouldSkipTracking(userId)) {
+      return;
+    }
+
     const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
       entityType: 'trip',
       entityId: trip.id,
@@ -56,6 +95,10 @@ export class ChangeTracker {
     userId: string,
     tripId: string
   ): Promise<void> {
+    if (this.shouldSkipTracking(userId)) {
+      return;
+    }
+
     const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
       entityType: 'person',
       entityId: person.id,
@@ -78,6 +121,10 @@ export class ChangeTracker {
     userId: string,
     tripId: string
   ): Promise<void> {
+    if (this.shouldSkipTracking(userId)) {
+      return;
+    }
+
     const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
       entityType: 'item',
       entityId: item.id,
@@ -106,6 +153,10 @@ export class ChangeTracker {
       bulkOperation?: boolean;
     }
   ): Promise<void> {
+    if (this.shouldSkipTracking(userId)) {
+      return;
+    }
+
     const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
       entityType: 'item',
       entityId: itemId,
@@ -140,6 +191,10 @@ export class ChangeTracker {
     userId: string,
     tripId: string
   ): Promise<void> {
+    if (this.shouldSkipTracking(userId)) {
+      return;
+    }
+
     // Create a single batch change for all packing updates
     const batchChange: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
       entityType: 'item',
@@ -171,6 +226,10 @@ export class ChangeTracker {
     userId: string,
     tripId: string
   ): Promise<void> {
+    if (this.shouldSkipTracking(userId)) {
+      return;
+    }
+
     // Generate a composite ID for rule overrides since they don't have a single ID field
     const entityId = `${ruleOverride.ruleId}_${ruleOverride.tripId}_${
       ruleOverride.personId || 'all'

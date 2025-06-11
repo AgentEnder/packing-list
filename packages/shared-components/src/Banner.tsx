@@ -151,7 +151,7 @@ export const Banner: React.FC<BannerProps> = ({
   return (
     <div
       ref={bannerRef}
-      className={`fixed left-0 right-0 z-[9999] ${className}`}
+      className={`fixed left-0 right-0 z-[100] ${className}`}
       style={style}
     >
       <div

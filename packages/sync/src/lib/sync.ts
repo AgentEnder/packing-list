@@ -23,6 +23,10 @@ import {
 } from '@packing-list/offline-storage';
 import { supabase, isSupabaseAvailable } from '@packing-list/supabase';
 import type { Json } from '@packing-list/supabase';
+import {
+  ConnectivityService,
+  getConnectivityService,
+} from '@packing-list/connectivity';
 
 // Type definitions for special sync data formats
 interface PackingStatusData {
@@ -204,11 +208,13 @@ function isDefaultItemRuleData(data: unknown): data is DefaultItemRule {
 }
 
 export class SyncService {
-  private isOnline = getNavigatorOnline();
+  private connectivityService: ConnectivityService;
   private isSyncing = false;
   private syncTimer: NodeJS.Timeout | null = null;
   private options: SyncOptions;
   private subscribers: ((state: SyncState) => void)[] = [];
+  private notifyDebounceTimer: NodeJS.Timeout | null = null;
+  private readonly NOTIFY_DEBOUNCE_MS = 100; // Debounce notifications to prevent rapid updates
 
   constructor(options: SyncOptions = {}) {
     this.options = {
@@ -216,8 +222,11 @@ export class SyncService {
       ...options,
     };
 
+    // Initialize connectivity service
+    this.connectivityService = getConnectivityService();
+
     if (isBrowser) {
-      this.setupOnlineListener();
+      this.setupConnectivityListener();
     }
   }
 
@@ -253,7 +262,7 @@ export class SyncService {
     return {
       lastSyncTimestamp,
       pendingChanges: syncableChanges, // Only include syncable changes
-      isOnline: this.isOnline,
+      isOnline: this.getIsOnline(),
       isSyncing: this.isSyncing,
       conflicts,
     };
@@ -265,7 +274,7 @@ export class SyncService {
   async start(): Promise<void> {
     console.log('[SyncService] Starting sync service...');
 
-    if (this.isOnline) {
+    if (this.getIsOnline()) {
       await this.performSync();
     }
 
@@ -288,7 +297,7 @@ export class SyncService {
    * Manually trigger a sync
    */
   async forceSync(): Promise<void> {
-    if (!this.isOnline) {
+    if (!this.getIsOnline()) {
       console.warn('[SyncService] Cannot sync while offline');
       return;
     }
@@ -326,7 +335,7 @@ export class SyncService {
     this.notifySubscribers();
 
     // Try to sync immediately if online
-    if (this.isOnline && !this.isSyncing) {
+    if (this.getIsOnline() && !this.isSyncing) {
       this.performSync().catch(console.error);
     }
   }
@@ -358,7 +367,7 @@ export class SyncService {
     this.notifySubscribers();
   }
 
-  private setupOnlineListener(): void {
+  private setupConnectivityListener(): void {
     if (!isBrowser) {
       console.warn(
         '[SyncService] Online/offline detection not available in this environment'
@@ -366,22 +375,32 @@ export class SyncService {
       return;
     }
 
-    addWindowEventListener('online', () => {
-      console.log('[SyncService] Went online');
-      this.isOnline = true;
+    // Subscribe to connectivity changes
+    this.connectivityService.subscribe((connectivityState) => {
+      const wasOffline = !this.getIsOnline();
+      console.log(
+        `[SyncService] Connectivity changed: online=${connectivityState.isOnline}, connected=${connectivityState.isConnected}`
+      );
+
       this.notifySubscribers();
 
-      // Trigger sync when coming back online
-      if (!this.isSyncing) {
+      // Trigger sync when coming back online, but only if we were actually offline
+      if (connectivityState.isOnline && wasOffline && !this.isSyncing) {
+        console.log('[SyncService] 🌐 Went online - triggering sync');
         this.performSync().catch(console.error);
+      } else if (!connectivityState.isOnline) {
+        console.log('[SyncService] 📡 Went offline');
       }
     });
 
-    addWindowEventListener('offline', () => {
-      console.log('[SyncService] Went offline');
-      this.isOnline = false;
-      this.notifySubscribers();
-    });
+    // Start auto-sync if currently online
+    if (this.getIsOnline() && !this.isSyncing) {
+      this.startAutoSync();
+    }
+  }
+
+  private getIsOnline(): boolean {
+    return this.connectivityService.getState().isOnline;
   }
 
   private startAutoSync(): void {
@@ -390,7 +409,7 @@ export class SyncService {
     }
 
     this.syncTimer = setInterval(() => {
-      if (this.isOnline && !this.isSyncing) {
+      if (this.getIsOnline() && !this.isSyncing) {
         this.performSync().catch(console.error);
       }
     }, this.options.autoSyncInterval);

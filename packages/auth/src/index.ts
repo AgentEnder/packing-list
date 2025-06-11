@@ -12,9 +12,9 @@ export {
   type LocalAuthState,
 } from './local-auth-service.js';
 
-// Connectivity exports
+// Re-export connectivity for backward compatibility
 export {
   ConnectivityService,
   type ConnectivityState,
   getConnectivityService,
-} from './connectivity.js';
+} from '@packing-list/connectivity';

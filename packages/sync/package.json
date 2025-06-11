@@ -22,6 +22,12 @@
     "@packing-list/offline-storage": "workspace:*",
     "@packing-list/auth-state": "workspace:*",
     "@packing-list/auth": "workspace:*",
-    "@packing-list/supabase": "workspace:*"
+    "@packing-list/supabase": "workspace:*",
+    "@packing-list/connectivity": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^18.16.9",
+    "typescript": "^5.1.3",
+    "vitest": "^3.0.0"
   }
 }

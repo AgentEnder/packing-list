@@ -33,7 +33,6 @@ import {
   CheckSquare,
   Settings,
   LogIn,
-  Zap,
 } from 'lucide-react';
 import { RulePackModal } from '../components/RulePackModal';
 
@@ -245,7 +244,8 @@ export default function LayoutDefault({
           {/* Sidebar */}
           <div className="drawer-side">
             <label htmlFor="drawer" className="drawer-overlay"></label>
-            <div className="menu p-4 w-80 min-h-full bg-base-200 text-base-content">
+            <div className="menu p-4 w-80 min-h-full bg-base-200 text-base-content flex flex-col">
+              {/* Top Header - Only Title and User Profile */}
               <div className="hidden lg:flex mb-8 justify-between items-center">
                 <Link
                   href="./"
@@ -254,8 +254,7 @@ export default function LayoutDefault({
                 >
                   Packing List
                 </Link>
-                <div className="flex items-center gap-2">
-                  <SyncStatus />
+                <div className="flex items-center">
                   {user && !shouldShowSignInOptions ? (
                     <UserProfile />
                   ) : (
@@ -276,7 +275,8 @@ export default function LayoutDefault({
                 <TripSelector />
               </div>
 
-              <ul className="menu menu-lg gap-2">
+              {/* Navigation Menu - Flex grow to fill space */}
+              <ul className="menu menu-lg gap-2 flex-1">
                 <li>
                   <Link
                     href="/"
@@ -338,17 +338,12 @@ export default function LayoutDefault({
                     Settings
                   </Link>
                 </li>
-                <li>
-                  <Link
-                    href="/sync-demo"
-                    className="flex items-center gap-2"
-                    onClick={handleLinkClick}
-                  >
-                    <Zap className="w-5 h-5" />
-                    Sync Demo
-                  </Link>
-                </li>
               </ul>
+
+              {/* Sync Status at Bottom */}
+              <div className="mt-4 p-2 bg-base-300 rounded-lg">
+                <SyncStatus />
+              </div>
             </div>
           </div>
 

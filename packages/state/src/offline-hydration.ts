@@ -51,11 +51,29 @@ export async function loadOfflineState(
   );
 
   for (const summary of summaries) {
+    console.log(`📁 [HYDRATION] Loading trip data for: ${summary.tripId}`);
     const trip = await TripStorage.getTrip(summary.tripId);
-    if (!trip) continue;
+    if (!trip) {
+      console.warn(
+        `⚠️ [HYDRATION] Trip not found in storage: ${summary.tripId}`
+      );
+      continue;
+    }
+
+    console.log(
+      `📋 [HYDRATION] Trip loaded from IndexedDB: ${trip.title} (${trip.id})`
+    );
+
     const people = await PersonStorage.getTripPeople(trip.id);
     const items = await ItemStorage.getTripItems(trip.id);
     const data: TripData = createEmptyTripData(trip.id);
+
+    console.log(
+      `👥 [HYDRATION] Loaded ${people.length} people for trip ${trip.id}`
+    );
+    console.log(
+      `📦 [HYDRATION] Loaded ${items.length} items for trip ${trip.id}`
+    );
 
     // Preserve the complete trip data by assigning the full Trip object
     // The LegacyTrip type in state will accept the full Trip object and use the fields it needs
@@ -64,12 +82,14 @@ export async function loadOfflineState(
     data.calculated.packingListItems = items.map(mapItem);
     data.lastSynced = trip.lastSyncedAt;
     base.trips.byId[trip.id] = data;
+
+    console.log(`✅ [HYDRATION] Trip ${trip.id} ready for Redux state`);
   }
 
   console.log(
-    `✅ [HYDRATION] Loaded ${
+    `🎯 [HYDRATION] Successfully loaded ${
       Object.keys(base.trips.byId).length
-    } trips into state`
+    } trips into state - ready to update Redux`
   );
   return base;
 }

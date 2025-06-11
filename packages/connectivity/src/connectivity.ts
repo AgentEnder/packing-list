@@ -5,14 +5,14 @@ export interface ConnectivityState {
 
 const connectivityServices: Map<string, ConnectivityService> = new Map();
 
-export function getConnectivityService(authServiceUrl?: string) {
-  const id = authServiceUrl || 'default';
+export function getConnectivityService(serviceUrl?: string) {
+  const id = serviceUrl || 'default';
   const inMap = connectivityServices.get(id);
   if (inMap) {
     return inMap;
   }
 
-  const service = new ConnectivityService(authServiceUrl);
+  const service = new ConnectivityService(serviceUrl);
   connectivityServices.set(id, service);
   return service;
 }
@@ -28,12 +28,12 @@ export class ConnectivityService {
   private minCheckInterval = 60000; // Minimum 60 seconds between checks
   private periodicCheckInterval = 300000; // Check every 5 minutes instead of 30 seconds
 
-  constructor(authServiceUrl?: string) {
+  constructor(serviceUrl?: string) {
     console.log(
       '🚀 [CONNECTIVITY SERVICE] Initializing connectivity service -',
-      authServiceUrl
+      serviceUrl
     );
-    // authServiceUrl parameter kept for API compatibility but not stored since it's not used
+    // serviceUrl parameter kept for API compatibility but not stored since it's not used
     this.initializeConnectivity();
   }
 

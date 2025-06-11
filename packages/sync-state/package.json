@@ -1,0 +1,20 @@
+{
+  "name": "@packing-list/sync-state",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Redux sync state management for packing list app",
+  "private": true,
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "development": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@packing-list/model": "workspace:*",
+    "@packing-list/offline-storage": "workspace:*",
+    "tslib": "^2.3.0"
+  }
+}

@@ -353,6 +353,7 @@ export const ConflictResolutionModal: React.FC<
       onClose={onCancel}
       title={getModalTitle()}
       size="xl"
+      modalBoxClassName="m-h-xl"
     >
       <div className="space-y-6">
         {/* Progress Indicator */}

@@ -6,6 +6,7 @@
   "scripts": {},
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
-    "@packing-list/supabase": "workspace:*"
+    "@packing-list/supabase": "workspace:*",
+    "@packing-list/connectivity": "workspace:*"
   }
 }

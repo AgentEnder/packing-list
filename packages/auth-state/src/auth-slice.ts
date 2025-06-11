@@ -10,7 +10,10 @@ import {
 import { useDispatch } from 'react-redux';
 import { authService, AuthUser } from '@packing-list/auth';
 import { LocalAuthService, LocalAuthUser } from '@packing-list/auth';
-import { ConnectivityState, getConnectivityService } from '@packing-list/auth';
+import {
+  ConnectivityState,
+  getConnectivityService,
+} from '@packing-list/connectivity';
 
 import 'immer';
 
@@ -274,6 +277,68 @@ export const checkConnectivity = createAsyncThunk(
   'auth/checkConnectivity',
   async () => {
     return await connectivityService.checkNow();
+  }
+);
+
+export const switchToOnlineMode = createAsyncThunk(
+  'auth/switchToOnlineMode',
+  async (_, { getState }) => {
+    console.log('🌐 [AUTH SLICE] Switching back to online mode...');
+
+    // Get current state
+    const currentState = getState() as { auth: AuthState };
+
+    // Don't switch if force offline mode is enabled
+    if (currentState.auth.forceOfflineMode) {
+      console.log(
+        '🌐 [AUTH SLICE] Force offline mode enabled, not switching to online'
+      );
+      return {
+        ...currentState.auth,
+        isOfflineMode: true,
+      };
+    }
+
+    try {
+      // Get current remote auth state
+      const remoteState = authService.getState();
+      console.log('🌐 [AUTH SLICE] Remote auth state:', {
+        hasUser: !!remoteState.user,
+        email: remoteState.user?.email,
+        isRemoteAuthenticated: remoteState.isRemoteAuthenticated,
+      });
+
+      // Get offline accounts for reference
+      const offlineAccounts = await localAuthService.getLocalUsers();
+
+      // Check if current user has an offline passcode
+      let hasOfflinePasscode = false;
+      if (remoteState.user) {
+        hasOfflinePasscode = await localAuthService.hasPasscode(
+          remoteState.user.id
+        );
+      }
+
+      return {
+        user: remoteState.user,
+        session: remoteState.session,
+        loading: remoteState.loading,
+        error: remoteState.error,
+        isOfflineMode: false,
+        connectivityState: currentState.auth.connectivityState,
+        offlineAccounts,
+        hasOfflinePasscode,
+      };
+    } catch (error) {
+      console.error('🌐 [AUTH SLICE] Error switching to online mode:', error);
+
+      // If we can't switch to online mode, stay in offline mode
+      return {
+        ...currentState.auth,
+        isOfflineMode: true,
+        error: 'Failed to switch to online mode',
+      };
+    }
   }
 );
 
@@ -615,6 +680,7 @@ export const authSlice = createSlice({
       state,
       action: PayloadAction<ConnectivityState>
     ) => {
+      const previousConnectivityState = state.connectivityState;
       state.connectivityState = action.payload;
 
       // Automatically determine if we should switch modes
@@ -623,8 +689,21 @@ export const authSlice = createSlice({
         !action.payload.isConnected ||
         !action.payload.isOnline;
 
+      const wasOfflineMode = state.isOfflineMode;
+
       if (shouldUseOfflineMode !== state.isOfflineMode) {
         state.isOfflineMode = shouldUseOfflineMode;
+
+        // Log the mode transition
+        if (wasOfflineMode && !shouldUseOfflineMode) {
+          console.log(
+            '🌐 [AUTH SLICE] Connectivity restored: offline → online mode transition'
+          );
+        } else if (!wasOfflineMode && shouldUseOfflineMode) {
+          console.log(
+            '📡 [AUTH SLICE] Connectivity lost: online → offline mode transition'
+          );
+        }
       }
     },
 
@@ -803,6 +882,16 @@ export const authSlice = createSlice({
         state.error = null;
       })
       .addCase(deleteAccount.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.lastError = action.payload as string;
+      })
+
+      // Switch to online mode
+      .addCase(switchToOnlineMode.fulfilled, (state, action) => {
+        Object.assign(state, action.payload);
+        state.error = null;
+      })
+      .addCase(switchToOnlineMode.rejected, (state, action) => {
         state.error = action.payload as string;
         state.lastError = action.payload as string;
       });
