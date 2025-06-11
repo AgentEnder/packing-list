@@ -1,4 +1,5 @@
 // Service Worker Registration and Version Management
+import serviceWorkerUrl from '../src/service-worker.ts?worker&url';
 
 export interface VersionInfo {
   version: string;
@@ -29,12 +30,17 @@ class ServiceWorkerManager {
         } mode`
       );
 
-      // Register service worker
-      this.registration = await navigator.serviceWorker.register('/sw.js', {
-        scope: '/',
-      });
+      // Register service worker using Vite's ?worker&url import
+      this.registration = await navigator.serviceWorker.register(
+        serviceWorkerUrl,
+        {
+          scope: '/',
+        }
+      );
 
-      console.log('✅ Service Worker: Registered successfully');
+      console.log(
+        '✅ Service Worker: Registered successfully via ?worker&url import'
+      );
 
       // Set up update checking
       this.setupUpdateChecking();
@@ -75,11 +81,11 @@ class ServiceWorkerManager {
       // In development, provide helpful debugging info
       if (this.isDevelopment) {
         console.log('🔍 Debug info:');
-        console.log('- Make sure the dev server is running');
         console.log(
-          '- Check that /sw.js is accessible at http://localhost:5173/sw.js'
+          '- Make sure the TypeScript service worker compiles correctly'
         );
-        console.log('- Service worker should be served by Vite middleware');
+        console.log('- Check browser console for any compilation errors');
+        console.log('- Service worker is now loaded via Vite ?worker import');
       }
     }
   }

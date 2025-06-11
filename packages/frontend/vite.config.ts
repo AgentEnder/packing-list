@@ -3,8 +3,6 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import vike from 'vike/plugin';
 import { createHash } from 'crypto';
-import { copyFileSync, readFileSync } from 'fs';
-import { join } from 'path';
 
 // Generate build hash
 const buildHash = createHash('sha256')
@@ -12,28 +10,11 @@ const buildHash = createHash('sha256')
   .digest('hex')
   .substring(0, 8);
 
-// Plugin to handle service worker and API endpoints for both dev and build
-function serviceWorkerAndApiPlugin() {
+// Plugin to handle API endpoints for both dev and build
+function apiPlugin() {
   return {
-    name: 'service-worker-and-api',
+    name: 'api-endpoints',
     configureServer(server: any) {
-      // Serve service worker during development
-      server.middlewares.use('/sw.js', (req: any, res: any, next: any) => {
-        try {
-          const swPath = join(__dirname, 'assets', 'sw.js');
-          const content = readFileSync(swPath, 'utf-8');
-          res.setHeader('Content-Type', 'application/javascript');
-          res.setHeader('Service-Worker-Allowed', '/');
-          res.end(content);
-          console.log(
-            '🔧 Dev server: Serving service worker from assets/sw.js'
-          );
-        } catch (error) {
-          console.warn('⚠️ Dev server: Could not serve service worker:', error);
-          next();
-        }
-      });
-
       // Handle version API endpoint
       server.middlewares.use(
         '/api/version',
@@ -57,17 +38,6 @@ function serviceWorkerAndApiPlugin() {
         }
       );
     },
-    writeBundle() {
-      // Copy service worker during build
-      try {
-        const srcPath = join(__dirname, 'assets', 'sw.js');
-        const destPath = join(__dirname, 'dist', 'client', 'sw.js');
-        copyFileSync(srcPath, destPath);
-        console.log('✅ Build: Service worker copied to dist/client/sw.js');
-      } catch (error) {
-        console.warn('⚠️ Build: Could not copy service worker:', error);
-      }
-    },
   };
 }
 
@@ -79,7 +49,7 @@ export default defineConfig({
     }),
     !process.env.VITEST && vike(),
     tailwindcss(),
-    serviceWorkerAndApiPlugin(),
+    apiPlugin(),
   ],
   build: {
     target: 'es2022',

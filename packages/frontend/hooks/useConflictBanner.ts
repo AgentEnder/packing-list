@@ -2,17 +2,39 @@ import React, { useState, useCallback } from 'react';
 import { useSyncContext } from '../components/SyncProvider.js';
 
 export const useConflictBanner = () => {
-  const { syncState } = useSyncContext();
+  // Use try-catch to handle potential context errors during initialization
+  let syncState, hasSyncContext;
+
+  try {
+    const context = useSyncContext();
+    syncState = context.syncState;
+    hasSyncContext = true;
+  } catch (error) {
+    console.warn(
+      '⚠️ [CONFLICT BANNER] Sync context not available yet:',
+      error instanceof Error ? error.message : String(error)
+    );
+    syncState = {
+      lastSyncTimestamp: null,
+      pendingChanges: [],
+      isOnline: true,
+      isSyncing: false,
+      conflicts: [],
+    };
+    hasSyncContext = false;
+  }
+
   const [isDismissed, setIsDismissed] = useState(false);
 
   const conflicts = syncState.conflicts || [];
 
   // Auto-show banner when new conflicts appear
-  const shouldShowBanner = conflicts.length > 0 && !isDismissed;
+  const shouldShowBanner =
+    conflicts.length > 0 && !isDismissed && hasSyncContext;
 
   const handleViewConflicts = useCallback(() => {
-    // Navigate to sync demo page where conflicts can be resolved
-    window.location.href = '/sync-demo';
+    // Navigate to settings page with sync dashboard tab
+    window.location.href = '/settings#sync-dashboard';
   }, []);
 
   const handleDismiss = useCallback(() => {

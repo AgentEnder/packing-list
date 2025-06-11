@@ -148,7 +148,7 @@ export default function TripsPage() {
                     >
                       <li>
                         <Link
-                          href={`/trips/${trip.tripId}/edit`}
+                          href={`/trips/${trip.tripId}/settings`}
                           className="flex items-center gap-2"
                         >
                           <Edit className="w-4 h-4" />
