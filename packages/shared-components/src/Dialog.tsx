@@ -28,7 +28,7 @@ export function Modal({
   closeOnEscape = true,
   className = '',
   modalBoxClassName = '',
-  zIndex = 'z-50',
+  zIndex = 'z-150',
   'data-testid': testId,
   ariaLabelledBy,
 }: ModalProps) {
@@ -64,7 +64,7 @@ export function Modal({
 
   return (
     <div
-      className={`modal modal-open ${zIndex} ${className}`}
+      className={`modal modal-open p-20 ${zIndex} ${className}`}
       role="dialog"
       aria-modal="true"
       aria-labelledby={ariaLabelledBy || (title ? 'modal-title' : undefined)}

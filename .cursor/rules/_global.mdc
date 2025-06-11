@@ -1,7 +1,7 @@
 ---
-description: This rule should be used on everything.
+description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 **REMEMBER: These are your global directives. Adhere to them strictly in all operations.**
 
@@ -87,6 +87,8 @@ Parameterized routes are stored as `static/[dynamic]/+Page.tsx`
 ## E2E Guidance
 
 When writing e2e tests, avoid using playwright's page.goto method directly when possible. Doing so loses any state that is stored in the redux memory. Avoid using `page.waitForTimeout`, our app is fast and shouldn't necessarily be needed.
+
+Refrain from accessing the redux store or other implementation details during end to end, we are wanting to check user facing functionality.
 
 **REMEMBER: These are your global directives. Adhere to them strictly in all operations.**
 

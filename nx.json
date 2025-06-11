@@ -118,5 +118,10 @@
       }
     }
   },
-  "nxCloudId": "684107bdefa0532521431c03"
+  "nxCloudId": "684107bdefa0532521431c03",
+  "release": {
+    "version": {
+      "preVersionCommand": "pnpm dlx nx run-many -t build"
+    }
+  }
 }

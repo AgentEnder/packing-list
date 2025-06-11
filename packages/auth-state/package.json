@@ -6,6 +6,7 @@
   "scripts": {},
   "dependencies": {
     "@packing-list/auth": "workspace:*",
+    "@packing-list/connectivity": "workspace:*",
     "@reduxjs/toolkit": "^2.5.0",
     "react": "^18.2.0",
     "react-dom": "^18.0.0",
@@ -14,10 +15,14 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^14.0.0",
+    "@testing-library/react-hooks": "^8.0.1",
     "@types/node": "^18.16.9",
     "@types/react": "^18.2.33",
     "@vitejs/plugin-react": "^4.5.0",
     "typescript": "5.7.3",
     "vitest": "^3.0.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
   }
 }

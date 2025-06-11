@@ -83,16 +83,16 @@ test.describe('Initial App Experience', () => {
     await settingsPage.goto();
     await settingsPage.loadDemoData();
 
-    // Hide all help messages
-    await page.getByRole('button', { name: 'Hide All Help' }).click();
+    // Hide all help messages using the page object method
+    await settingsPage.hideAllHelp();
 
     // Verify help messages are hidden
     await page.getByRole('link', { name: 'Overview' }).click();
     await expect(page.getByText('How It Works')).not.toBeVisible();
 
-    // Reset help messages
+    // Reset help messages using the page object method
     await page.getByRole('link', { name: 'Settings' }).click();
-    await page.getByRole('button', { name: 'Reset Help Messages' }).click();
+    await settingsPage.resetHelpMessages();
 
     // Verify help messages are visible again
     await page.getByRole('link', { name: 'Overview' }).click();

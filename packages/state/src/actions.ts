@@ -1,4 +1,5 @@
 import { StoreType } from './store.js';
+import type { SyncActions } from '@packing-list/sync-state';
 import {
   addPersonHandler,
   AddPersonAction,
@@ -125,20 +126,31 @@ import {
   resetWizardHandler,
 } from './action-handlers/flow.js';
 import {
-  SyncActions,
-  setSyncState,
-  setSyncInitialized,
-  addSyncConflict,
-  removeSyncConflict,
-  clearSyncConflicts,
-  setSyncConflicts,
-  setSyncOnlineStatus,
-  setSyncSyncingStatus,
-  updateLastSyncTimestamp,
-  setSyncPendingChanges,
-  setSyncError,
-  resetSyncState,
-} from './lib/sync/sync-mutations.js';
+  setSyncStateHandler,
+  setSyncInitializedHandler,
+  addSyncConflictHandler,
+  removeSyncConflictHandler,
+  clearSyncConflictsHandler,
+  setSyncConflictsHandler,
+  setSyncOnlineStatusHandler,
+  setSyncSyncingStatusHandler,
+  updateLastSyncTimestampHandler,
+  setSyncPendingChangesHandler,
+  setSyncErrorHandler,
+  resetSyncStateHandler,
+  mergeSyncedTripHandler,
+  mergeSyncedPersonHandler,
+  mergeSyncedItemHandler,
+} from './lib/sync/sync-handlers.js';
+import {
+  SyncIntegrationActions,
+  upsertSyncedTrip,
+  upsertSyncedPerson,
+  upsertSyncedItem,
+} from './lib/sync/sync-integration.js';
+import type { Trip } from '@packing-list/model';
+import { TripStorage } from '@packing-list/offline-storage';
+import { enableSyncMode, disableSyncMode } from '@packing-list/sync';
 
 export type ActionHandler<T extends AllActions> = (
   state: StoreType,
@@ -183,7 +195,27 @@ export type AllActions =
   | SetWizardStepAction
   | ResetWizardAction
   | HydrateOfflineAction
-  | SyncActions;
+  | SyncActions
+  | SyncIntegrationActions
+  | {
+      type: 'RELOAD_FROM_INDEXEDDB';
+      payload: { syncedCount: number; isInitialSync: boolean };
+    }
+  | {
+      type: 'SYNC_UPDATE_TRIP_SUMMARIES';
+      payload: {
+        summaries: Array<{
+          tripId: string;
+          title: string;
+          description: string;
+          createdAt: string;
+          updatedAt: string;
+          totalItems: number;
+          packedItems: number;
+          totalPeople: number;
+        }>;
+      };
+    };
 
 export const Mutations: {
   [K in StoreActions]: ActionHandler<Extract<AllActions, { type: K }>>;
@@ -223,18 +255,141 @@ export const Mutations: {
   SET_WIZARD_STEP: setWizardStepHandler,
   RESET_WIZARD: resetWizardHandler,
   HYDRATE_OFFLINE: hydrateOfflineHandler,
-  SET_SYNC_STATE: setSyncState,
-  SET_SYNC_INITIALIZED: setSyncInitialized,
-  ADD_SYNC_CONFLICT: addSyncConflict,
-  REMOVE_SYNC_CONFLICT: removeSyncConflict,
-  CLEAR_SYNC_CONFLICTS: clearSyncConflicts,
-  SET_SYNC_CONFLICTS: setSyncConflicts,
-  SET_SYNC_ONLINE_STATUS: setSyncOnlineStatus,
-  SET_SYNC_SYNCING_STATUS: setSyncSyncingStatus,
-  UPDATE_LAST_SYNC_TIMESTAMP: updateLastSyncTimestamp,
-  SET_SYNC_PENDING_CHANGES: setSyncPendingChanges,
-  SET_SYNC_ERROR: setSyncError,
-  RESET_SYNC_STATE: resetSyncState,
+  SET_SYNC_STATE: setSyncStateHandler,
+  SET_SYNC_INITIALIZED: setSyncInitializedHandler,
+  ADD_SYNC_CONFLICT: addSyncConflictHandler,
+  REMOVE_SYNC_CONFLICT: removeSyncConflictHandler,
+  CLEAR_SYNC_CONFLICTS: clearSyncConflictsHandler,
+  SET_SYNC_CONFLICTS: setSyncConflictsHandler,
+  SET_SYNC_ONLINE_STATUS: setSyncOnlineStatusHandler,
+  SET_SYNC_SYNCING_STATUS: setSyncSyncingStatusHandler,
+  UPDATE_LAST_SYNC_TIMESTAMP: updateLastSyncTimestampHandler,
+  SET_SYNC_PENDING_CHANGES: setSyncPendingChangesHandler,
+  SET_SYNC_ERROR: setSyncErrorHandler,
+  RESET_SYNC_STATE: resetSyncStateHandler,
+  MERGE_SYNCED_TRIP: mergeSyncedTripHandler,
+  MERGE_SYNCED_PERSON: mergeSyncedPersonHandler,
+  MERGE_SYNCED_ITEM: mergeSyncedItemHandler,
+  TRACK_SYNC_CHANGE: (state: StoreType) => state, // Placeholder - no-op for now
+  UPSERT_SYNCED_TRIP: upsertSyncedTrip,
+  UPSERT_SYNCED_PERSON: upsertSyncedPerson,
+  UPSERT_SYNCED_ITEM: upsertSyncedItem,
+  RELOAD_FROM_INDEXEDDB: (
+    state: StoreType,
+    action: {
+      type: 'RELOAD_FROM_INDEXEDDB';
+      payload: { syncedCount: number; isInitialSync: boolean };
+    }
+  ) => {
+    // This is just a placeholder - the actual work is done by the thunk
+    console.log(
+      `🔄 [RELOAD] Sync completed: ${action.payload.syncedCount} records synced (initial: ${action.payload.isInitialSync})`
+    );
+    return state;
+  },
+  SYNC_UPDATE_TRIP_SUMMARIES: (
+    state: StoreType,
+    action: {
+      type: 'SYNC_UPDATE_TRIP_SUMMARIES';
+      payload: {
+        summaries: Array<{
+          tripId: string;
+          title: string;
+          description: string;
+          createdAt: string;
+          updatedAt: string;
+          totalItems: number;
+          packedItems: number;
+          totalPeople: number;
+        }>;
+      };
+    }
+  ) => {
+    console.log(
+      `🔄 [SYNC_UPDATE_TRIP_SUMMARIES] Updating ${action.payload.summaries.length} trip summaries from sync`
+    );
+
+    return {
+      ...state,
+      trips: {
+        ...state.trips,
+        summaries: action.payload.summaries,
+      },
+    };
+  },
+};
+
+/**
+ * Thunk to reload trip data from IndexedDB after sync
+ */
+export const reloadFromIndexedDB = (payload: {
+  syncedCount: number;
+  isInitialSync: boolean;
+  userId: string;
+}) => {
+  return async (
+    dispatch: (action: AllActions) => void,
+    getState: () => StoreType
+  ) => {
+    console.log(
+      `🔄 [RELOAD_THUNK] Starting reload: ${payload.syncedCount} records synced (initial: ${payload.isInitialSync})`
+    );
+
+    try {
+      // Import storage and sync utilities dynamically to avoid circular dependencies
+
+      // Enable sync mode to prevent change tracking during sync operations
+      enableSyncMode();
+
+      try {
+        // Get trips for the current user
+        const trips = await TripStorage.getUserTrips(payload.userId);
+        console.log(
+          `📋 [RELOAD_THUNK] Loaded ${trips.length} trips from IndexedDB`
+        );
+
+        // First dispatch the placeholder action to trigger any sync state updates
+        dispatch({
+          type: 'RELOAD_FROM_INDEXEDDB',
+          payload: {
+            syncedCount: payload.syncedCount,
+            isInitialSync: payload.isInitialSync,
+          },
+        });
+
+        // Use direct state updates for synced trips to avoid triggering change tracking
+        const currentState = getState();
+        const updatedSummaries = trips.map((trip: Trip) => ({
+          tripId: trip.id,
+          title: trip.title,
+          description: trip.description || '',
+          createdAt: trip.createdAt,
+          updatedAt: trip.updatedAt,
+          totalItems: 0, // Will be recalculated when trip is loaded
+          packedItems: 0, // Will be recalculated when trip is loaded
+          totalPeople: 0, // Will be recalculated when trip is loaded
+        }));
+
+        // Create a sync-safe state update that doesn't trigger change tracking
+        dispatch({
+          type: 'SYNC_UPDATE_TRIP_SUMMARIES',
+          payload: { summaries: updatedSummaries },
+        } as any);
+
+        console.log(
+          `✅ [RELOAD_THUNK] Successfully updated ${trips.length} trip summaries without triggering sync changes`
+        );
+      } finally {
+        // Always disable sync mode, even if an error occurred
+        disableSyncMode();
+      }
+    } catch (error) {
+      console.error(
+        '❌ [RELOAD_THUNK] Failed to reload from IndexedDB:',
+        error
+      );
+    }
+  };
 };
 
 export const actions = {
@@ -243,4 +398,5 @@ export const actions = {
   initFlow,
   setWizardStep,
   resetWizard,
+  reloadFromIndexedDB,
 };

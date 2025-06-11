@@ -207,8 +207,24 @@ export function createStore(pageContext?: PageContext, _state?: StoreType) {
     };
   };
 
-  return configureStore({
+  const store = configureStore({
     reducer: rootReducer,
     preloadedState,
   });
+
+  // Expose store to window for development and e2e testing
+  if (
+    typeof globalThis !== 'undefined' &&
+    typeof (globalThis as any).window !== 'undefined'
+  ) {
+    (globalThis as any).__REDUX_STORE__ = store;
+  }
+
+  // Also expose directly to window for e2e tests
+  if (typeof globalThis !== 'undefined' && (globalThis as any).window) {
+    ((globalThis as any).window as any).__REDUX_STORE__ = store;
+    console.log('[STORE] Redux store exposed to window.__REDUX_STORE__');
+  }
+
+  return store;
 }

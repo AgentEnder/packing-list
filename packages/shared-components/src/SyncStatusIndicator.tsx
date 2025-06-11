@@ -122,6 +122,7 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
         title={`${conflicts.length} sync conflict${
           conflicts.length > 1 ? 's' : ''
         } need resolution`}
+        data-testid="sync-conflict-badge"
       >
         <AlertTriangle className="h-5 w-5" />
         <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full flex items-center justify-center text-xs text-white font-bold animate-pulse">
@@ -141,6 +142,7 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
       <div
         className="inline-flex items-center justify-center p-2 text-gray-500"
         title="Offline - changes will sync when online"
+        data-testid="sync-offline-badge"
       >
         <WifiOff className="h-5 w-5" />
         {showText && <span className="ml-2 text-sm">Offline</span>}
@@ -153,6 +155,7 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
       <div
         className="inline-flex items-center justify-center p-2 text-blue-600"
         title="Syncing changes..."
+        data-testid="sync-syncing-badge"
       >
         <RotateCw className="h-5 w-5 animate-spin" />
         {showText && <span className="ml-2 text-sm">Syncing...</span>}
@@ -168,6 +171,7 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
         title={`${pendingChanges.length} change${
           pendingChanges.length > 1 ? 's' : ''
         } pending sync`}
+        data-testid="sync-pending-badge"
       >
         <Clock className="h-5 w-5" />
         <span className="absolute -top-1 -right-1 h-3 w-3 bg-orange-500 rounded-full flex items-center justify-center text-xs text-white font-bold">
@@ -184,6 +188,7 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
     <div
       className="inline-flex items-center justify-center p-2 text-green-600"
       title="All changes synced"
+      data-testid="sync-synced-badge"
     >
       <CheckCircle className="h-5 w-5" />
       {showText && <span className="ml-2 text-sm">Synced</span>}
