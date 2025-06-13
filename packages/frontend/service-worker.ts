@@ -3,6 +3,8 @@
 
 /// <reference lib="webworker" />
 
+import { applyBaseUrl } from '@packing-list/shared-utils';
+
 // TypeScript types for service worker
 declare const self: ServiceWorkerGlobalScope;
 
@@ -255,14 +257,17 @@ async function checkVersion() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
-    const response = await fetch('/api/version.json', {
-      cache: 'no-cache',
-      signal: controller.signal,
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        Pragma: 'no-cache',
-      },
-    });
+    const response = await fetch(
+      applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/api/version.json'),
+      {
+        cache: 'no-cache',
+        signal: controller.signal,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+        },
+      }
+    );
 
     clearTimeout(timeoutId);
 

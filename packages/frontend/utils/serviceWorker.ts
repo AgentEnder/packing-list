@@ -1,6 +1,8 @@
 // Service Worker Registration and Version Management
 // Note: Service worker is now built as a separate entry point at /service-worker.js
 
+import { applyBaseUrl } from '@packing-list/shared-utils';
+
 export interface VersionInfo {
   version: string;
   buildHash: string;
@@ -189,14 +191,17 @@ class ServiceWorkerManager {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
-      let response = await fetch('/api/version.json', {
-        cache: 'no-cache',
-        signal: controller.signal,
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          Pragma: 'no-cache',
-        },
-      });
+      let response = await fetch(
+        applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/api/version.json'),
+        {
+          cache: 'no-cache',
+          signal: controller.signal,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache',
+          },
+        }
+      );
 
       clearTimeout(timeoutId);
 

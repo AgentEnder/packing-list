@@ -6,10 +6,10 @@ import { createHash } from 'crypto';
 import {
   writeFileSync,
   mkdirSync,
-  copyFileSync,
   existsSync,
   readdirSync,
   unlinkSync,
+  readFileSync,
 } from 'fs';
 import { join } from 'path';
 
@@ -98,7 +98,12 @@ function apiAndServiceWorkerPlugin(): Plugin {
           const sourceFile = join(assetsDir, serviceWorkerFile);
           const targetFile = join(distDir, 'service-worker.js');
 
-          copyFileSync(sourceFile, targetFile);
+          const contents = readFileSync(sourceFile, 'utf-8');
+          const contentsWithBaseUrl = contents.replace(
+            'import.meta.env.PUBLIC_ENV__BASE_URL',
+            "'" + import.meta.env.PUBLIC_ENV__BASE_URL + "'"
+          );
+          writeFileSync(targetFile, contentsWithBaseUrl);
           console.log('📦 Build: Moved service worker to root:', targetFile);
 
           // Remove the original file from assets to avoid confusion

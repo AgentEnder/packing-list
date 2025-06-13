@@ -1,3 +1,5 @@
+import { applyBaseUrl } from '@packing-list/shared-utils';
+
 export interface ConnectivityState {
   isOnline: boolean;
   isConnected: boolean; // More specific check for auth service connectivity
@@ -104,11 +106,14 @@ export class ConnectivityService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
 
-      const response = await fetch('/api/version.json', {
-        method: 'HEAD', // Just check if we can reach the server
-        signal: controller.signal,
-        cache: 'no-cache',
-      });
+      const response = await fetch(
+        applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/api/version.json'),
+        {
+          method: 'HEAD', // Just check if we can reach the server
+          signal: controller.signal,
+          cache: 'no-cache',
+        }
+      );
 
       clearTimeout(timeoutId);
 
