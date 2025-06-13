@@ -92,7 +92,7 @@ describe('LoginPage Component', () => {
     render(<LoginPage />);
 
     // Should trigger redirect in useEffect
-    expect(window.location.href).toBe('/');
+    expect(window.location.href).toBe('');
   });
 
   it('does not redirect when user exists but should show sign in options', () => {

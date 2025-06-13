@@ -1,4 +1,4 @@
-import { useAppSelector, useAppDispatch } from '@packing-list/state';
+import { useAppSelector, useAppDispatch, actions } from '@packing-list/state';
 import { XCircle } from 'lucide-react';
 import { Banner } from '@packing-list/shared-components';
 
@@ -12,7 +12,7 @@ export function DemoBanner() {
 
   const handleClearDemo = () => {
     sessionStorage.setItem(SESSION_DEMO_CHOICE_KEY, 'fresh');
-    dispatch({ type: 'CLEAR_DEMO_DATA' });
+    dispatch(actions.clearDemoData());
   };
 
   return (

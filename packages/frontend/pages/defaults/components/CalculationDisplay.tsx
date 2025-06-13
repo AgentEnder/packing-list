@@ -125,7 +125,7 @@ export const CalculationDisplay = ({
         rowGap: '0.125rem', // space-y-0.5 equivalent
       }}
     >
-      {...rows.flatMap((row, rowIndex) =>
+      {rows.flatMap((row, rowIndex) =>
         row.map((cell, colIndex) => (
           <div key={`${rowIndex}-${colIndex}`}>{cell}</div>
         ))

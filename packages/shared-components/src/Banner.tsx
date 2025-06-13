@@ -18,6 +18,7 @@ interface BannerContextValue {
   unregisterBanner: (id: string) => void;
   updateBannerHeight: (id: string, height: number) => void;
   getBottomOffset: (priority: number) => number;
+  getTotalBannerHeight: () => number;
 }
 
 const BannerContext = createContext<BannerContextValue | null>(null);
@@ -68,6 +69,13 @@ export const BannerProvider: React.FC<{ children: React.ReactNode }> = ({
     [banners]
   );
 
+  const getTotalBannerHeight = useCallback((): number => {
+    return Array.from(banners.values()).reduce(
+      (total, banner) => total + banner.height,
+      0
+    );
+  }, [banners]);
+
   return (
     <BannerContext.Provider
       value={{
@@ -75,6 +83,7 @@ export const BannerProvider: React.FC<{ children: React.ReactNode }> = ({
         unregisterBanner,
         updateBannerHeight,
         getBottomOffset,
+        getTotalBannerHeight,
       }}
     >
       {children}
@@ -88,6 +97,11 @@ const useBannerContext = () => {
     throw new Error('Banner must be used within BannerProvider');
   }
   return context;
+};
+
+export const useBannerHeight = () => {
+  const { getTotalBannerHeight } = useBannerContext();
+  return getTotalBannerHeight();
 };
 
 interface BannerProps {
@@ -121,6 +135,7 @@ export const Banner: React.FC<BannerProps> = ({
       registerBanner(id, priority);
       return () => unregisterBanner(id);
     }
+    return () => void 0;
   }, [visible, id, priority, registerBanner, unregisterBanner]);
 
   // Update height when banner renders

@@ -1,11 +1,27 @@
 import type { Trip, TripSummary } from '@packing-list/model';
 import { getDatabase } from './database.js';
+import { shouldSkipPersistence } from './demo-mode-detector.js';
 
 export class TripStorage {
   /**
    * Save a trip to IndexedDB
    */
   static async saveTrip(trip: Trip): Promise<void> {
+    console.log(`💾 [TripStorage] Attempting to save trip:`, {
+      id: trip.id,
+      userId: trip.userId,
+      title: trip.title,
+    });
+
+    // Skip persistence in demo mode
+    if (shouldSkipPersistence(trip.id, trip.id)) {
+      console.log(
+        `🎭 [TripStorage] Skipping persistence due to demo mode for trip:`,
+        trip.id
+      );
+      return;
+    }
+
     const db = await getDatabase();
     const tx = db.transaction(['trips'], 'readwrite');
     const store = tx.objectStore('trips');
@@ -13,7 +29,9 @@ export class TripStorage {
     await store.put(trip);
     await tx.done;
 
-    console.log(`[TripStorage] Saved trip: ${trip.id} - ${trip.title}`);
+    console.log(
+      `✅ [TripStorage] Successfully saved trip: ${trip.id} - ${trip.title} for user: ${trip.userId}`
+    );
   }
 
   /**
@@ -34,31 +52,105 @@ export class TripStorage {
    * Get all trips for a user
    */
   static async getUserTrips(userId: string): Promise<Trip[]> {
+    console.log(`🔍 [TripStorage] Getting trips for user: "${userId}"`);
+
     const db = await getDatabase();
-    const index = db
-      .transaction(['trips'], 'readonly')
-      .objectStore('trips')
-      .index('userId');
-    const allUserTrips = await index.getAll(userId);
+    const tx = db.transaction(['trips'], 'readonly');
+    const store = tx.objectStore('trips');
 
-    // Filter out deleted trips
-    const trips = allUserTrips.filter((trip) => !trip.isDeleted);
+    try {
+      // Try to use the userId index for efficient querying
+      const index = store.index('userId');
+      console.log(
+        `🔍 [TripStorage] Using userId index to query for userId: "${userId}"`
+      );
+      const allUserTrips = await index.getAll(userId);
 
-    console.log(
-      `[TripStorage] Retrieved ${trips.length} trips for user: ${userId}`
-    );
-    return trips;
+      console.log(
+        `🔍 [TripStorage] Trips from userId index:`,
+        allUserTrips.length,
+        allUserTrips.map((t) => ({
+          id: t.id,
+          userId: t.userId,
+          title: t.title,
+          isDeleted: t.isDeleted,
+        }))
+      );
+
+      // Filter out deleted trips
+      const trips = allUserTrips.filter((trip) => !trip.isDeleted);
+      console.log(
+        `🔍 [TripStorage] Active trips after filtering:`,
+        trips.length,
+        trips.map((t) => ({ id: t.id, userId: t.userId, title: t.title }))
+      );
+
+      console.log(
+        `[TripStorage] Retrieved ${trips.length} trips for user: ${userId}`
+      );
+      return trips;
+    } catch (indexError) {
+      // Fallback: get all trips and filter client-side
+      console.warn(
+        `⚠️ [TripStorage] Failed to use userId index, falling back to client-side filtering:`,
+        indexError
+      );
+
+      const allTrips = await store.getAll();
+      console.log(
+        `🔍 [TripStorage] All trips from IndexedDB (fallback):`,
+        allTrips.length,
+        allTrips.map((t) => ({
+          id: t.id,
+          userId: t.userId,
+          title: t.title,
+          isDeleted: t.isDeleted,
+        }))
+      );
+
+      // Filter by userId and exclude deleted trips
+      const userTrips = allTrips.filter((trip) => {
+        const matchesUser = trip.userId === userId;
+        const isActive = !trip.isDeleted;
+
+        if (!matchesUser) {
+          console.log(
+            `🔍 [TripStorage] Trip ${trip.id} userId mismatch: expected "${userId}", got "${trip.userId}"`
+          );
+        }
+
+        return matchesUser && isActive;
+      });
+
+      console.log(
+        `🔍 [TripStorage] Filtered trips for user "${userId}":`,
+        userTrips.length,
+        userTrips.map((t) => ({ id: t.id, userId: t.userId, title: t.title }))
+      );
+
+      console.log(
+        `[TripStorage] Retrieved ${userTrips.length} trips for user: ${userId} (via fallback)`
+      );
+      return userTrips;
+    }
   }
 
   /**
    * Get trip summaries for a user (optimized for listing)
    */
   static async getUserTripSummaries(userId: string): Promise<TripSummary[]> {
+    console.log(
+      `🔍 [TripStorage] Getting trip summaries for user: "${userId}"`
+    );
+
     const trips = await this.getUserTrips(userId);
+    console.log(
+      `🔍 [TripStorage] Got ${trips.length} trips, converting to summaries`
+    );
 
     // TODO: In a real implementation, we'd get counts from related tables
     // For now, return basic summaries
-    return trips.map((trip) => ({
+    const summaries = trips.map((trip) => ({
       tripId: trip.id,
       title: trip.title,
       description: trip.description,
@@ -68,6 +160,12 @@ export class TripStorage {
       packedItems: 0, // TODO: Count packed items
       totalPeople: 0, // TODO: Count from tripPeople table
     }));
+
+    console.log(
+      `🔍 [TripStorage] Returning ${summaries.length} trip summaries:`,
+      summaries.map((s) => ({ tripId: s.tripId, title: s.title }))
+    );
+    return summaries;
   }
 
   /**
@@ -153,5 +251,39 @@ export class TripStorage {
       if (!trip.lastSyncedAt) return true; // Never synced
       return new Date(trip.updatedAt) > new Date(trip.lastSyncedAt);
     });
+  }
+
+  /**
+   * Debug utility: Get all trips in the database with their userIds for debugging
+   */
+  static async debugGetAllTrips(): Promise<
+    { id: string; userId: string; title: string; isDeleted: boolean }[]
+  > {
+    console.log(`🔍 [TripStorage] DEBUG - Getting all trips in database`);
+
+    const db = await getDatabase();
+    const store = db.transaction(['trips'], 'readonly').objectStore('trips');
+    const allTrips = await store.getAll();
+
+    const tripInfo = allTrips.map((trip) => ({
+      id: trip.id,
+      userId: trip.userId,
+      title: trip.title,
+      isDeleted: trip.isDeleted,
+    }));
+
+    console.log(`🔍 [TripStorage] DEBUG - All trips in database:`, tripInfo);
+
+    // Group by userId for easier analysis
+    const byUserId = tripInfo.reduce((acc, trip) => {
+      const userId = trip.userId || 'undefined';
+      if (!acc[userId]) acc[userId] = [];
+      acc[userId].push(trip);
+      return acc;
+    }, {} as Record<string, typeof tripInfo>);
+
+    console.log(`🔍 [TripStorage] DEBUG - Trips grouped by userId:`, byUserId);
+
+    return tripInfo;
   }
 }

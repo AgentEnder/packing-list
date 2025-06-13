@@ -12,3 +12,12 @@ export { ItemStorage } from './item-storage.js';
 export { RuleOverrideStorage } from './rule-override-storage.js';
 export { DefaultItemRulesStorage } from './default-item-rules-storage.js';
 export { RulePacksStorage } from './rule-packs-storage.js';
+export { ConflictsStorage } from './conflicts-storage.js';
+
+// Demo mode utilities
+export {
+  shouldSkipPersistence,
+  isDemoMode,
+  isDemoTripId,
+  isDemoEntityId,
+} from './demo-mode-detector.js';

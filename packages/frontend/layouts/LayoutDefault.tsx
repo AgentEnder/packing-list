@@ -1,6 +1,6 @@
 import './tailwind.css';
 import './style.css';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 // import logoUrl from '../assets/logo.svg';
 import { Link } from '../components/Link';
 import { DemoBanner } from '../components/DemoBanner';
@@ -9,13 +9,7 @@ import { TripSelector } from '../components/TripSelector';
 import { SyncProvider } from '../components/SyncProvider';
 import { SyncStatus } from '../components/SyncStatus';
 import { useConflictBanner } from '../hooks/useConflictBanner';
-import {
-  actions,
-  useAppDispatch,
-  useAppSelector,
-  loadOfflineState,
-  type StoreType,
-} from '@packing-list/state';
+import { useAppDispatch, loadOfflineState } from '@packing-list/state';
 import {
   useAuth,
   useLoginModal,
@@ -23,6 +17,8 @@ import {
   LoginModal,
   ConflictBanner,
   BannerProvider,
+  OfflineBanner,
+  useBannerHeight,
 } from '@packing-list/shared-components';
 import {
   Menu,
@@ -54,113 +50,163 @@ const ConflictBannerContainer: React.FC = () => {
   );
 };
 
+// Component to handle offline detection and banner display
+const OfflineBannerContainer: React.FC = () => {
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    // Initial check
+    if (typeof window !== 'undefined') {
+      const initialOfflineState = !navigator.onLine;
+      console.log(
+        '🔍 [OFFLINE BANNER] Initial state - navigator.onLine:',
+        navigator.onLine,
+        'isOffline:',
+        initialOfflineState
+      );
+      setIsOffline(initialOfflineState);
+
+      // Listen for online/offline events
+      const handleOnline = () => {
+        console.log('🌐 [OFFLINE BANNER] Network came online');
+        setIsOffline(false);
+      };
+
+      const handleOffline = () => {
+        console.log('📡 [OFFLINE BANNER] Network went offline');
+        setIsOffline(true);
+      };
+
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+
+      return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      };
+    }
+  }, []);
+
+  return <OfflineBanner isOffline={isOffline} />;
+};
+
+// Component to apply banner height as bottom padding to main content
+interface MainContentProps {
+  children: React.ReactNode;
+}
+
+const MainContentWithBannerOffset = ({ children }: MainContentProps) => {
+  const bannerHeight = useBannerHeight();
+
+  return (
+    <main
+      className="flex-1 p-4"
+      style={{ paddingBottom: `${Math.max(24, bannerHeight + 24)}px` }}
+    >
+      {children}
+    </main>
+  );
+};
+
+// Component to apply banner height as bottom padding to sidenav
+interface SidenavProps {
+  children: React.ReactNode;
+}
+
+const SidenavWithBannerOffset = ({ children }: SidenavProps) => {
+  const bannerHeight = useBannerHeight();
+
+  return (
+    <div
+      className="menu p-4 w-80 min-h-full bg-base-200 text-base-content flex flex-col"
+      style={{ paddingBottom: `${Math.max(16, bannerHeight + 16)}px` }}
+    >
+      {children}
+    </div>
+  );
+};
+
 export default function LayoutDefault({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const dispatch = useAppDispatch();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const initRef = useRef(false);
+
+  // Auth and login modal
   const {
     user,
-    shouldShowSignInOptions,
-    loading,
+    loading: authLoading,
     isRemotelyAuthenticated,
-    isInitialized,
+    shouldShowSignInOptions,
+    isInitialized: authIsInitialized,
+    authStatus,
   } = useAuth();
-  const dispatch = useAppDispatch();
-  const flowStepHref = useAppSelector((state) =>
-    state.ui.flow.current !== null
-      ? state.ui.flow.steps[state.ui.flow.current]?.path
-      : null
-  );
-
   const { openLoginModal, closeLoginModal } = useLoginModal();
-  const dataHydratedRef = useRef(false);
 
-  // Hydrate offline data when user is available and auth is initialized
+  // Debug auth loading state
+  useEffect(() => {
+    console.log('🔍 [LAYOUT DEBUG] Auth state:', {
+      authLoading,
+      authIsInitialized,
+      user: user ? { id: user.id, email: user.email } : null,
+      authStatus,
+      pathname: window.location.pathname,
+    });
+  }, [authLoading, authIsInitialized, user, authStatus]);
+
+  // Close login modal when user becomes remotely authenticated
+  useEffect(() => {
+    if (isRemotelyAuthenticated) {
+      closeLoginModal();
+    }
+  }, [isRemotelyAuthenticated, closeLoginModal]);
+
   useEffect(() => {
     const hydrateData = async () => {
-      if (
-        typeof window !== 'undefined' &&
-        user &&
-        isInitialized &&
-        !dataHydratedRef.current &&
-        !loading
-      ) {
-        try {
-          console.log('🔄 [LAYOUT] Hydrating offline data for user:', user.id);
-          const offlineState = await loadOfflineState(user.id);
-          dispatch({ type: 'HYDRATE_OFFLINE', payload: offlineState });
-          dataHydratedRef.current = true;
-          console.log('✅ [LAYOUT] Data hydration completed');
+      console.log('🔧 [LAYOUT] Starting data hydration...');
+      try {
+        // Use the actual user ID, fallback to 'local-user' for shared accounts
+        const userId = user?.id || 'local-user';
+        console.log('🔧 [LAYOUT] Hydrating data for user:', userId);
 
-          // For remote authenticated users, fetch server data after hydration
-          if (isRemotelyAuthenticated && user.type === 'remote') {
-            console.log(
-              '🌐 [LAYOUT] Triggering initial server sync for authenticated user'
-            );
-            // Import sync service dynamically to avoid circular dependencies
-            import('@packing-list/sync')
-              .then(({ getSyncService }) => {
-                console.log('🌐 [LAYOUT] Starting server sync...');
-                const syncService = getSyncService();
-                // Trigger sync but don't wait for it to complete to avoid blocking the UI
-                syncService
-                  .forceSync()
-                  .then(() => {
-                    console.log('✅ [LAYOUT] Initial server sync completed');
-                    // Reload state after sync to pick up any new data
-                    return loadOfflineState(user.id);
-                  })
-                  .then(
-                    (
-                      updatedState: Omit<
-                        StoreType,
-                        'auth' | 'rulePacks' | 'ui' | 'sync'
-                      >
-                    ) => {
-                      console.log(
-                        '🔄 [LAYOUT] Refreshing state with synced data'
-                      );
-                      dispatch({
-                        type: 'HYDRATE_OFFLINE',
-                        payload: updatedState,
-                      });
-                    }
-                  )
-                  .catch((syncError: Error) => {
-                    console.warn(
-                      '⚠️ [LAYOUT] Initial server sync failed:',
-                      syncError
-                    );
-                    // Don't block the app if sync fails
-                  });
-              })
-              .catch((importError: Error) => {
-                console.warn(
-                  '⚠️ [LAYOUT] Could not import sync service:',
-                  importError
-                );
-              });
-          }
-        } catch (error) {
-          console.warn('⚠️ [LAYOUT] Failed to hydrate offline data:', error);
-          // Don't block the app if offline hydration fails
+        // Load offline state data
+        const offlineState = await loadOfflineState(userId);
+
+        // Dispatch the HYDRATE_OFFLINE action with the loaded data
+        dispatch({
+          type: 'HYDRATE_OFFLINE',
+          payload: offlineState,
+        });
+
+        console.log('✅ [LAYOUT] Data hydration completed for user:', userId);
+      } catch (error) {
+        console.error('❌ [LAYOUT] Data hydration failed:', error);
+      } finally {
+        // Only set initialized on the first hydration
+        if (!initRef.current) {
+          setIsInitialized(true);
+          initRef.current = true;
         }
       }
     };
 
     hydrateData();
-  }, [user, isInitialized, loading, isRemotelyAuthenticated, dispatch]);
+  }, [dispatch, user?.id]); // Re-hydrate when user ID changes
 
-  const path = typeof window !== 'undefined' ? window.location.pathname : null;
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      if (flowStepHref && path !== flowStepHref) {
-        dispatch(actions.resetFlow(`${path} -> ${flowStepHref}`));
-      }
-    }
-  }, [path]);
+  // Show loading state during initialization - simplified condition
+  if (!isInitialized || authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="loading loading-spinner loading-lg"></div>
+        {!isInitialized ? 'Initializing...' : null}
+        {authLoading ? 'Auth Loading...' : null}
+      </div>
+    );
+  }
 
   const handleLinkClick = () => {
     setIsDrawerOpen(false);
@@ -170,17 +216,11 @@ export default function LayoutDefault({
     openLoginModal();
   };
 
-  // Close login modal when user successfully signs in with Google
-  useEffect(() => {
-    if (isRemotelyAuthenticated) {
-      closeLoginModal();
-    }
-  }, [isRemotelyAuthenticated, closeLoginModal]);
-
-  if (loading) {
+  // Early return for loading states
+  if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <span className="loading loading-spinner loading-lg"></span>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="loading loading-spinner loading-lg"></div>
       </div>
     );
   }
@@ -219,9 +259,7 @@ export default function LayoutDefault({
               </div>
               <div className="flex-none flex items-center gap-2">
                 <SyncStatus />
-                {user && !shouldShowSignInOptions ? (
-                  <UserProfile />
-                ) : (
+                {shouldShowSignInOptions ? (
                   <button
                     className="btn btn-ghost btn-sm"
                     onClick={handleLoginClick}
@@ -230,12 +268,16 @@ export default function LayoutDefault({
                     <LogIn className="w-4 h-4" />
                     Sign In
                   </button>
+                ) : (
+                  <UserProfile />
                 )}
               </div>
             </div>
 
-            {/* Main content */}
-            <main className="flex-1 p-4 pb-24">{children}</main>
+            {/* Main content with banner offset */}
+            <MainContentWithBannerOffset>
+              {children}
+            </MainContentWithBannerOffset>
 
             {/* Toast Container */}
             <ToastContainer />
@@ -244,7 +286,7 @@ export default function LayoutDefault({
           {/* Sidebar */}
           <div className="drawer-side">
             <label htmlFor="drawer" className="drawer-overlay"></label>
-            <div className="menu p-4 w-80 min-h-full bg-base-200 text-base-content flex flex-col">
+            <SidenavWithBannerOffset>
               {/* Top Header - Only Title and User Profile */}
               <div className="hidden lg:flex mb-8 justify-between items-center">
                 <Link
@@ -255,9 +297,7 @@ export default function LayoutDefault({
                   Packing List
                 </Link>
                 <div className="flex items-center">
-                  {user && !shouldShowSignInOptions ? (
-                    <UserProfile />
-                  ) : (
+                  {shouldShowSignInOptions ? (
                     <button
                       className="btn btn-primary btn-sm"
                       onClick={handleLoginClick}
@@ -266,6 +306,8 @@ export default function LayoutDefault({
                       <LogIn className="w-4 h-4" />
                       Sign In
                     </button>
+                  ) : (
+                    <UserProfile />
                   )}
                 </div>
               </div>
@@ -344,7 +386,7 @@ export default function LayoutDefault({
               <div className="mt-4 p-2 bg-base-300 rounded-lg">
                 <SyncStatus />
               </div>
-            </div>
+            </SidenavWithBannerOffset>
           </div>
 
           {/* Redux Based Modals */}
@@ -352,7 +394,8 @@ export default function LayoutDefault({
           <RulePackModal />
         </div>
 
-        {/* Banner Components */}
+        {/* Banner Components - Order matters for priority */}
+        <OfflineBannerContainer />
         <DemoBanner />
         <ConflictBannerContainer />
       </BannerProvider>

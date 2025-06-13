@@ -1,11 +1,18 @@
 import type { StoreType } from '../../store.js';
-import type { SyncActions } from '@packing-list/sync-state';
 import { syncStateReducer } from '@packing-list/sync-state';
+import type {
+  SyncState,
+  SyncConflict,
+  Trip,
+  Person,
+  TripItem,
+  Change,
+} from '@packing-list/model';
 
 // Sync state action handlers that work with the main store
 export const setSyncStateHandler = (
   state: StoreType,
-  action: { type: 'SET_SYNC_STATE'; payload: any }
+  action: { type: 'SET_SYNC_STATE'; payload: Partial<SyncState> }
 ): StoreType => {
   const newSyncState = syncStateReducer(state.sync, action);
   return {
@@ -27,7 +34,7 @@ export const setSyncInitializedHandler = (
 
 export const addSyncConflictHandler = (
   state: StoreType,
-  action: { type: 'ADD_SYNC_CONFLICT'; payload: any }
+  action: { type: 'ADD_SYNC_CONFLICT'; payload: SyncConflict }
 ): StoreType => {
   const newSyncState = syncStateReducer(state.sync, action);
   return {
@@ -60,7 +67,7 @@ export const clearSyncConflictsHandler = (
 
 export const setSyncConflictsHandler = (
   state: StoreType,
-  action: { type: 'SET_SYNC_CONFLICTS'; payload: any }
+  action: { type: 'SET_SYNC_CONFLICTS'; payload: SyncConflict[] }
 ): StoreType => {
   const newSyncState = syncStateReducer(state.sync, action);
   return {
@@ -104,7 +111,7 @@ export const updateLastSyncTimestampHandler = (
 
 export const setSyncPendingChangesHandler = (
   state: StoreType,
-  action: { type: 'SET_SYNC_PENDING_CHANGES'; payload: any }
+  action: { type: 'SET_SYNC_PENDING_CHANGES'; payload: Change[] }
 ): StoreType => {
   const newSyncState = syncStateReducer(state.sync, action);
   return {
@@ -137,7 +144,7 @@ export const resetSyncStateHandler = (
 
 export const mergeSyncedTripHandler = (
   state: StoreType,
-  action: { type: 'MERGE_SYNCED_TRIP'; payload: any }
+  action: { type: 'MERGE_SYNCED_TRIP'; payload: Trip }
 ): StoreType => {
   const newSyncState = syncStateReducer(state.sync, action);
   return {
@@ -148,7 +155,7 @@ export const mergeSyncedTripHandler = (
 
 export const mergeSyncedPersonHandler = (
   state: StoreType,
-  action: { type: 'MERGE_SYNCED_PERSON'; payload: any }
+  action: { type: 'MERGE_SYNCED_PERSON'; payload: Person }
 ): StoreType => {
   const newSyncState = syncStateReducer(state.sync, action);
   return {
@@ -159,7 +166,7 @@ export const mergeSyncedPersonHandler = (
 
 export const mergeSyncedItemHandler = (
   state: StoreType,
-  action: { type: 'MERGE_SYNCED_ITEM'; payload: any }
+  action: { type: 'MERGE_SYNCED_ITEM'; payload: TripItem }
 ): StoreType => {
   const newSyncState = syncStateReducer(state.sync, action);
   return {

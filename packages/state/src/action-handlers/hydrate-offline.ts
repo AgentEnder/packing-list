@@ -2,7 +2,7 @@ import type { StoreType } from '../store.js';
 
 export type HydrateOfflineAction = {
   type: 'HYDRATE_OFFLINE';
-  payload: Omit<StoreType, 'auth'>;
+  payload: Omit<StoreType, 'auth' | 'rulePacks' | 'ui' | 'sync'>;
 };
 
 export const hydrateOfflineHandler = (

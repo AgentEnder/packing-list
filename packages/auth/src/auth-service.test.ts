@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { authService } from './auth-service.js';
 import { getSupabaseClient } from '@packing-list/supabase';
-import { AuthService } from './auth-service.js';
 
 // Mock dependencies
 vi.mock('@packing-list/supabase', () => ({

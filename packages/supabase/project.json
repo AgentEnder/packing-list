@@ -19,6 +19,12 @@
       "cache": true,
       "inputs": ["{projectRoot}/supabase/**/*"],
       "outputs": ["{projectRoot}/src/database-types.ts"]
+    },
+    "deploy": {
+      "command": "node scripts/deploy-supabase.cjs",
+      "options": {
+        "cwd": "{projectRoot}"
+      }
     }
   }
 }

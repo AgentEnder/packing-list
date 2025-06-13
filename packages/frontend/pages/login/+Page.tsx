@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAuth, LoginForm } from '@packing-list/shared-components';
 import { Link } from '../../components/Link';
+import { navigate } from 'vike/client/router';
 
 export default function LoginPage() {
   const { user, shouldShowSignInOptions } = useAuth();
@@ -8,7 +9,7 @@ export default function LoginPage() {
   useEffect(() => {
     // Redirect to home if already logged in with personal account (not shared)
     if (user && !shouldShowSignInOptions) {
-      window.location.href = '/';
+      navigate('/');
     }
   }, [user, shouldShowSignInOptions]);
 

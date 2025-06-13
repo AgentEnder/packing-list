@@ -138,18 +138,21 @@ jobs:
           path: e2e/frontend-e2e/playwright-report/
           retention-days: 7
 
-      - name: Stop Supabase services
-        if: always()
-        run: |
-          cd packages/supabase
-          supabase stop || true
-
       - name: Deploy
-        run: pnpm nx deploy frontend
+        run: pnpm nx run-many -t deploy
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PUBLIC_ENV__BASE_URL: /${{ github.event.repository.name }}
           PUBLIC_ENV__LOCATION: https://craigory.dev/${{ github.event.repository.name }}
           PUBLIC_ENV__SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           PUBLIC_ENV__SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+      - name: Stop Supabase services
+        if: always()
+        run: |
+          cd packages/supabase
+          supabase stop || true

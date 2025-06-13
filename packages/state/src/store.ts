@@ -176,7 +176,7 @@ function createAppReducer(
         !action.type.startsWith('@@redux') &&
         !action.type.startsWith('auth')
       ) {
-        console.warn(`Unknown action: ${action.type}`);
+        console.warn(`🏪 [STORE] Unknown action: ${action.type}`);
       }
     }
     return state ?? initialState;
@@ -215,15 +215,9 @@ export function createStore(pageContext?: PageContext, _state?: StoreType) {
   // Expose store to window for development and e2e testing
   if (
     typeof globalThis !== 'undefined' &&
-    typeof (globalThis as any).window !== 'undefined'
+    typeof (globalThis as Record<string, unknown>).window !== 'undefined'
   ) {
-    (globalThis as any).__REDUX_STORE__ = store;
-  }
-
-  // Also expose directly to window for e2e tests
-  if (typeof globalThis !== 'undefined' && (globalThis as any).window) {
-    ((globalThis as any).window as any).__REDUX_STORE__ = store;
-    console.log('[STORE] Redux store exposed to window.__REDUX_STORE__');
+    (globalThis as Record<string, unknown>).__REDUX_STORE__ = store;
   }
 
   return store;

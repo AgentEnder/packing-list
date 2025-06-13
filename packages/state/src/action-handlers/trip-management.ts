@@ -42,7 +42,14 @@ export function createTripHandler(
   state: StoreType,
   action: CreateTripAction
 ): StoreType {
+  console.log('🚀 [CREATE_TRIP_HANDLER] Handler called with action:', action);
+
   const { tripId, title, description } = action.payload;
+  console.log('🚀 [CREATE_TRIP_HANDLER] Extracted payload:', {
+    tripId,
+    title,
+    description,
+  });
 
   // Create new trip summary
   const newTripSummary: TripSummary = {
@@ -67,6 +74,13 @@ export function createTripHandler(
 
   // Build trip model for persistence
   const userId = state.auth.user?.id || 'local-user';
+  console.log(
+    '🔧 [CREATE_TRIP] Creating trip for user:',
+    userId,
+    'Auth user:',
+    state.auth.user
+  );
+
   const tripModel: Trip = {
     id: tripId,
     userId,
@@ -81,8 +95,27 @@ export function createTripHandler(
     isDeleted: false,
   };
 
+  console.log('🔧 [CREATE_TRIP] Trip model to save:', {
+    id: tripModel.id,
+    userId: tripModel.userId,
+    title: tripModel.title,
+  });
+
   // Persist trip and track change asynchronously
-  TripStorage.saveTrip(tripModel).catch(console.error);
+  TripStorage.saveTrip(tripModel)
+    .then(() => {
+      console.log(
+        '✅ [CREATE_TRIP] Trip saved successfully to IndexedDB:',
+        tripModel.id
+      );
+    })
+    .catch((error) => {
+      console.error(
+        '❌ [CREATE_TRIP] Failed to save trip to IndexedDB:',
+        error
+      );
+    });
+
   getChangeTracker()
     .trackTripChange('create', tripModel, userId)
     .catch(console.error);

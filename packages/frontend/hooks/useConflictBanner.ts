@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useSyncContext } from '../components/SyncProvider.js';
+import { navigate } from 'vike/client/router';
 
 export const useConflictBanner = () => {
   // Use try-catch to handle potential context errors during initialization
@@ -34,7 +35,7 @@ export const useConflictBanner = () => {
 
   const handleViewConflicts = useCallback(() => {
     // Navigate to settings page with sync dashboard tab
-    window.location.href = '/settings#sync-dashboard';
+    navigate('/settings#sync-dashboard');
   }, []);
 
   const handleDismiss = useCallback(() => {

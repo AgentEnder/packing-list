@@ -92,6 +92,7 @@ export class ConnectivityService {
 
     // If navigator says we're offline, we're definitely offline
     if (!navigator.onLine) {
+      console.log('🔍 [CONNECTIVITY] Browser reports offline');
       this.updateConnectedStatus(false);
       return;
     }
@@ -103,7 +104,7 @@ export class ConnectivityService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
 
-      const response = await fetch('/version?format=json', {
+      const response = await fetch('/api/version.json', {
         method: 'HEAD', // Just check if we can reach the server
         signal: controller.signal,
         cache: 'no-cache',
@@ -112,17 +113,41 @@ export class ConnectivityService {
       clearTimeout(timeoutId);
 
       // If we get any response (even an error), we have connectivity
-      this.updateConnectedStatus(true);
+      if (response.ok || response.status < 500) {
+        console.log('🔍 [CONNECTIVITY] Connectivity test successful');
+        this.updateConnectedStatus(true);
+      } else {
+        console.log(
+          `🔍 [CONNECTIVITY] Server error (${response.status}) - treating as offline`
+        );
+        this.updateConnectedStatus(false);
+      }
     } catch (error) {
-      console.log(
-        '🔍 [CONNECTIVITY] Connectivity test failed:',
-        error instanceof Error ? error.message : String(error)
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const isNetworkError =
+        error instanceof Error &&
+        (error.name === 'AbortError' ||
+          error.message.includes('fetch') ||
+          error.message.includes('network') ||
+          error.message.includes('Failed to fetch'));
 
-      // Conservative fallback: If the test fails but navigator.onLine is true,
-      // assume we're connected (might be a CORS issue, dev environment, etc.)
-      // This prevents false negatives in development
-      this.updateConnectedStatus(navigator.onLine);
+      if (isNetworkError) {
+        console.log(
+          '🔍 [CONNECTIVITY] Network error detected - marking as offline:',
+          errorMessage
+        );
+        this.updateConnectedStatus(false);
+      } else {
+        console.log(
+          '🔍 [CONNECTIVITY] Connectivity test failed (non-network error):',
+          errorMessage
+        );
+        // Conservative fallback: If the test fails but navigator.onLine is true,
+        // assume we're connected (might be a CORS issue, dev environment, etc.)
+        // This prevents false negatives in development
+        this.updateConnectedStatus(navigator.onLine);
+      }
     }
   }
 

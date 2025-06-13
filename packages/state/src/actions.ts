@@ -58,6 +58,7 @@ import {
 } from './action-handlers/load-demo-data.js';
 import {
   clearDemoDataHandler,
+  clearDemoDataThunk,
   ClearDemoDataAction,
 } from './action-handlers/clear-demo-data.js';
 import {
@@ -327,10 +328,7 @@ export const reloadFromIndexedDB = (payload: {
   isInitialSync: boolean;
   userId: string;
 }) => {
-  return async (
-    dispatch: (action: AllActions) => void,
-    getState: () => StoreType
-  ) => {
+  return async (dispatch: (action: AllActions) => void) => {
     console.log(
       `🔄 [RELOAD_THUNK] Starting reload: ${payload.syncedCount} records synced (initial: ${payload.isInitialSync})`
     );
@@ -358,7 +356,6 @@ export const reloadFromIndexedDB = (payload: {
         });
 
         // Use direct state updates for synced trips to avoid triggering change tracking
-        const currentState = getState();
         const updatedSummaries = trips.map((trip: Trip) => ({
           tripId: trip.id,
           title: trip.title,
@@ -374,7 +371,7 @@ export const reloadFromIndexedDB = (payload: {
         dispatch({
           type: 'SYNC_UPDATE_TRIP_SUMMARIES',
           payload: { summaries: updatedSummaries },
-        } as any);
+        });
 
         console.log(
           `✅ [RELOAD_THUNK] Successfully updated ${trips.length} trip summaries without triggering sync changes`
@@ -399,4 +396,5 @@ export const actions = {
   setWizardStep,
   resetWizard,
   reloadFromIndexedDB,
+  clearDemoData: clearDemoDataThunk,
 };

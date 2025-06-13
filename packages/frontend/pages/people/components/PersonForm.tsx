@@ -1,4 +1,4 @@
-import React, { ChangeEvent, FormEvent, useState } from 'react';
+import { useState, type ChangeEvent, type FormEvent } from 'react';
 import type { LegacyPerson } from '@packing-list/model';
 import { useAppDispatch } from '@packing-list/state';
 import { uuid } from '@packing-list/shared-utils';

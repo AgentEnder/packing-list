@@ -9,6 +9,9 @@ import type { Mock } from 'vitest';
 vi.mock('@packing-list/state', () => ({
   useAppSelector: vi.fn(),
   useAppDispatch: vi.fn(),
+  actions: {
+    clearDemoData: vi.fn(),
+  },
 }));
 
 const renderWithProvider = (component: React.ReactElement) => {
@@ -47,6 +50,10 @@ describe('DemoBanner Component', () => {
 
   it('handles clear demo action correctly', () => {
     (state.useAppSelector as unknown as Mock).mockReturnValue('DEMO_TRIP');
+    const mockClearDemoData = vi.fn();
+    (state.actions.clearDemoData as unknown as Mock).mockReturnValue(
+      mockClearDemoData
+    );
 
     renderWithProvider(<DemoBanner />);
 
@@ -54,7 +61,8 @@ describe('DemoBanner Component', () => {
     fireEvent.click(clearButton);
 
     expect(sessionStorage.getItem('session-demo-choice')).toBe('fresh');
-    expect(mockDispatch).toHaveBeenCalledWith({ type: 'CLEAR_DEMO_DATA' });
+    expect(state.actions.clearDemoData).toHaveBeenCalled();
+    expect(mockDispatch).toHaveBeenCalledWith(mockClearDemoData);
   });
 
   it('renders with correct styling', () => {

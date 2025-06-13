@@ -180,37 +180,6 @@ async function main() {
   log('🚀 Setting up Supabase for local development...', true);
   log('', true);
 
-  // Check if Docker or Podman is available and running
-  const dockerAvailable = await checkCommandExists('docker');
-  const podmanAvailable = await checkCommandExists('podman');
-
-  if (!dockerAvailable && !podmanAvailable) {
-    colorLog('red', '❌ No container runtime is installed!');
-    log('Please install Docker Desktop or Podman and try again.', true);
-    process.exit(1);
-  }
-
-  // Determine which runtime is available
-  const containerRuntime = await checkContainerRuntime();
-  if (!containerRuntime.available) {
-    if (dockerAvailable && podmanAvailable) {
-      colorLog('red', '❌ Neither Docker nor Podman is running!');
-      log('Please start Docker Desktop or Podman and try again.');
-    } else if (dockerAvailable) {
-      colorLog('red', '❌ Docker is not running!');
-      log('Please start Docker Desktop and try again.');
-    } else {
-      colorLog('red', '❌ Podman is not running!');
-      log('Please start Podman and try again.');
-    }
-    process.exit(1);
-  }
-
-  const runtimeName =
-    containerRuntime.runtime === 'docker' ? 'Docker' : 'Podman';
-  colorLog('green', `✅ ${runtimeName} CLI found`);
-  colorLog('green', `✅ ${runtimeName} is running`);
-
   // Check if Supabase is available locally
   try {
     await runCommand('pnpm', ['supabase', '--version'], {
@@ -252,8 +221,40 @@ async function main() {
     });
   } catch (_error) {
     void _error; // Explicitly acknowledge unused variable
-    // Migration might already exist
     colorLog('red', '❌ Failed to start Supabase services');
+
+    // Check if Docker or Podman is available and running
+    const dockerAvailable = await checkCommandExists('docker');
+    const podmanAvailable = await checkCommandExists('podman');
+
+    if (!dockerAvailable && !podmanAvailable) {
+      colorLog('red', '❌ No container runtime is installed!');
+      log('Please install Docker Desktop or Podman and try again.', true);
+      process.exit(1);
+    }
+
+    // Determine which runtime is available
+    const containerRuntime = await checkContainerRuntime();
+    if (!containerRuntime.available) {
+      if (dockerAvailable && podmanAvailable) {
+        colorLog('red', '❌ Neither Docker nor Podman is running!');
+        log('Please start Docker Desktop or Podman and try again.');
+      } else if (dockerAvailable) {
+        colorLog('red', '❌ Docker is not running!');
+        log('Please start Docker Desktop and try again.');
+      } else {
+        colorLog('red', '❌ Podman is not running!');
+        log('Please start Podman and try again.');
+      }
+      process.exit(1);
+    }
+
+    const runtimeName =
+      containerRuntime.runtime === 'docker' ? 'Docker' : 'Podman';
+    colorLog('green', `✅ ${runtimeName} CLI found`);
+    colorLog('green', `✅ ${runtimeName} is running`);
+
+    // Migration might already exist
     log('');
     log('Try running the following commands manually:');
     log('  cd packages/supabase');
@@ -279,8 +280,6 @@ async function main() {
   } catch {
     colorLog('yellow', '⚠️  Could not display status');
   }
-
-  await ensureSupabaseDbIsMigrated();
 
   // Display seed data info
   log('');

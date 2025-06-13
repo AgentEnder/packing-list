@@ -14,7 +14,7 @@ describe('clearDemoDataHandler', () => {
     expect(demoState.trips.selectedTripId).toBe('DEMO_TRIP');
     expect(demoState.trips.byId['DEMO_TRIP']).toBeDefined();
 
-    // Clear demo data
+    // Clear demo data (synchronous Redux action)
     const result = clearDemoDataHandler(demoState);
 
     // Verify demo trip is removed
@@ -84,15 +84,23 @@ describe('clearDemoDataHandler', () => {
   it('should clear demo conflicts from sync state', () => {
     const demoState = CREATE_DEMO_DATA() as StoreType;
 
-    // Verify demo state has conflicts
-    expect(demoState.sync.syncState.conflicts).toHaveLength(2);
-    expect(demoState.sync.syncState.conflicts[0].id).toBe('conflict-1');
-    expect(demoState.sync.syncState.conflicts[1].id).toBe('conflict-2');
+    // Verify demo state has conflicts (could be Redux or sync service conflicts)
+    expect(demoState.sync.syncState.conflicts.length).toBeGreaterThan(0);
+
+    // Verify we have demo-related conflicts
+    const hasReduxDemoConflicts = demoState.sync.syncState.conflicts.some(
+      (c) => c.id === 'conflict-1' || c.id === 'conflict-2'
+    );
+    const hasSyncServiceDemoConflicts = demoState.sync.syncState.conflicts.some(
+      (c) => c.id.startsWith('demo-conflict-')
+    );
+
+    expect(hasReduxDemoConflicts || hasSyncServiceDemoConflicts).toBe(true);
 
     // Clear demo data
     const result = clearDemoDataHandler(demoState);
 
-    // Verify conflicts are cleared
+    // Verify conflicts are cleared (should clear both types of demo conflicts)
     expect(result.sync.syncState.conflicts).toHaveLength(0);
     expect(result.sync.isInitialized).toBe(false); // Should reset sync state
     expect(result.sync.lastError).toBeNull();

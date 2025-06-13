@@ -138,6 +138,8 @@ async function handlePostLoginEffects(
 export const initializeAuth = createAsyncThunk(
   'auth/initializeAuth',
   async (_, { getState }) => {
+    console.log('🔧 [AUTH SLICE] Starting auth initialization...');
+
     // Check connectivity with timeout to prevent blocking auth init
     let connectivityState: ConnectivityState;
     try {
@@ -150,9 +152,17 @@ export const initializeAuth = createAsyncThunk(
         connectivityPromise,
         timeoutPromise,
       ]);
-    } catch {
+      console.log(
+        '🔧 [AUTH SLICE] Connectivity check completed:',
+        connectivityState
+      );
+    } catch (error) {
       // If connectivity check times out or fails, assume online for better UX
       // Better to err on the side of trying remote auth first
+      console.log(
+        '🔧 [AUTH SLICE] Connectivity check failed, assuming online:',
+        error
+      );
       connectivityState = { isOnline: true, isConnected: true };
     }
 
@@ -233,7 +243,7 @@ export const initializeAuth = createAsyncThunk(
       // Get the current local auth state
       const localState = localAuthService.getState();
 
-      return {
+      const result = {
         user: localState.user
           ? transformLocalUserToAuthUser(localState.user)
           : null,
@@ -247,6 +257,18 @@ export const initializeAuth = createAsyncThunk(
           ? !!localState.user.passcode_hash
           : false,
       };
+
+      console.log(
+        '✅ [AUTH SLICE] Auth initialization completed (offline mode):',
+        {
+          hasUser: !!result.user,
+          userEmail: result.user?.email,
+          loading: result.loading,
+          isOfflineMode: result.isOfflineMode,
+        }
+      );
+
+      return result;
     } else {
       // Start with remote auth state
       const remoteState = authService.getState();
@@ -259,7 +281,8 @@ export const initializeAuth = createAsyncThunk(
         );
       }
 
-      return {
+      // FOO
+      const result = {
         user: remoteState.user,
         session: remoteState.session,
         loading: remoteState.loading,
@@ -269,7 +292,21 @@ export const initializeAuth = createAsyncThunk(
         offlineAccounts,
         hasOfflinePasscode,
       };
+
+      console.log(
+        '✅ [AUTH SLICE] Auth initialization completed (online mode):',
+        {
+          hasUser: !!result.user,
+          userEmail: result.user?.email,
+          loading: result.loading,
+          isOfflineMode: result.isOfflineMode,
+        }
+      );
+
+      return result;
     }
+
+    console.log('✅ [AUTH SLICE] Auth initialization completed');
   }
 );
 
@@ -680,7 +717,6 @@ export const authSlice = createSlice({
       state,
       action: PayloadAction<ConnectivityState>
     ) => {
-      const previousConnectivityState = state.connectivityState;
       state.connectivityState = action.payload;
 
       // Automatically determine if we should switch modes

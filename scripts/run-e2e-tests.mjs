@@ -2,10 +2,11 @@
 
 import { exec, execSync } from 'child_process';
 import { existsSync, renameSync, copyFileSync } from 'fs';
-import { resolve } from 'path';
+import { resolve, join } from 'path';
 import { platform } from 'os';
+import { workspaceRoot } from '@nx/devkit';
 
-const ROOT_DIR = resolve(process.cwd());
+const ROOT_DIR = workspaceRoot;
 const ENV_FILE = resolve(ROOT_DIR, '.env');
 const ENV_E2E_FILE = resolve(ROOT_DIR, '.env.e2e');
 const ENV_BACKUP_FILE = resolve(ROOT_DIR, '.env.backup');
@@ -182,12 +183,22 @@ function showPlaywrightReportInfo() {
   console.log('');
 }
 
+function resetDb() {
+  execSync('pnpm supabase db reset', {
+    stdio: 'inherit',
+    cwd: join(ROOT_DIR, 'packages', 'supabase'),
+  });
+}
+
 async function main() {
   log('Starting e2e test run with environment swap...');
 
   let testsSucceeded = false;
 
   try {
+    // Step 0: Reset the database
+    resetDb();
+
     // Step 1: Kill any process using port 3000
     await killProcessOnPort3000();
 
