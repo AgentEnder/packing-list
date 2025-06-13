@@ -103,4 +103,17 @@ describe('store', () => {
 
     expect(store.getState()).toEqual(initialStateSnapshot);
   });
+
+  it('should update confetti source when triggering burst', () => {
+    const store = createStore({});
+
+    store.dispatch({
+      type: 'TRIGGER_CONFETTI_BURST',
+      payload: { x: 10, y: 20, w: 5, h: 5 },
+    });
+
+    const state = store.getState();
+    expect(state.ui.confetti.burstId).toBe(1);
+    expect(state.ui.confetti.source).toEqual({ x: 10, y: 20, w: 5, h: 5 });
+  });
 });

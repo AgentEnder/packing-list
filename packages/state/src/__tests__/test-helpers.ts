@@ -44,6 +44,7 @@ export function createTestTripState(options: {
       loginModal: {
         isOpen: false,
       },
+      confetti: { burstId: 0, source: null },
     },
     auth: {
       user: null,
