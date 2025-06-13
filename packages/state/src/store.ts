@@ -56,6 +56,10 @@ export type StoreType = {
     tripWizard: {
       currentStep: number;
     };
+    confetti: {
+      burstId: number;
+      source: { x: number; y: number; w: number; h: number } | null;
+    };
   };
 
   // Auth state
@@ -141,6 +145,10 @@ export const initialState: StoreType = {
     },
     tripWizard: {
       currentStep: 1,
+    },
+    confetti: {
+      burstId: 0,
+      source: null,
     },
   },
   auth: authInitialState,

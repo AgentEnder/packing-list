@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useAppSelector, useAppDispatch } from '@packing-list/state';
+import React, { useState, useEffect, useRef } from 'react';
+import { useAppSelector, useAppDispatch, actions } from '@packing-list/state';
 import { PackingListViewState } from '@packing-list/model';
 import { RuleOverrideDialog } from './RuleOverrideDialog';
 import { PackItemsDialog } from './PackItemsDialog';
@@ -36,6 +36,34 @@ export const PackingList: React.FC = () => {
   const people = useAppSelector(selectPeople);
   const defaultItemRules = useAppSelector(selectDefaultItemRules);
   const categories = getAllCategories();
+  const prevAllPacked = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const allGroups = [
+      ...groupedItems.flatMap((g) => g.items),
+      ...groupedGeneralItems,
+    ];
+    const totalCount = allGroups.reduce((s, i) => s + i.totalCount, 0);
+    const packedCount = allGroups.reduce((s, i) => s + i.packedCount, 0);
+    const allPacked = totalCount > 0 && totalCount === packedCount;
+    const prefersReduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!prefersReduced && allPacked && !prevAllPacked.current) {
+      const rect = containerRef.current?.getBoundingClientRect();
+      const payload = rect
+        ? {
+            x: rect.left + rect.width / 2,
+            y: rect.top + window.scrollY,
+            w: rect.width,
+            h: rect.height,
+          }
+        : undefined;
+      dispatch(actions.triggerConfettiBurst(payload));
+    }
+    prevAllPacked.current = allPacked;
+  }, [groupedItems, groupedGeneralItems, dispatch]);
 
   const [selectedItem, setSelectedItem] = useState<GroupedItem | null>(null);
   const [isOverrideDialogOpen, setIsOverrideDialogOpen] = useState(false);
@@ -216,7 +244,7 @@ export const PackingList: React.FC = () => {
 
   // If we have no items, show the empty state
   return (
-    <div className="container mx-auto p-4">
+    <div ref={containerRef} className="container mx-auto p-4">
       <div className="flex flex-col gap-3 mb-4">
         <PageHeader title="Packing List" actions={<PrintButton />} />
 
