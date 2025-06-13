@@ -64,6 +64,7 @@
     "nx-github-pages": "^1.0.0",
     "prettier": "^2.8.8",
     "react": "^19.1.0",
+    "react-confetti": "^6.4.0",
     "react-dom": "^19.1.0",
     "react-redux": "^9.2.0",
     "supabase": "^2.24.3",

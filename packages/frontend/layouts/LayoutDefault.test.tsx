@@ -65,6 +65,9 @@ vi.mock('../components/Toast', () => ({
     <div data-testid="toast-container">Toast Container</div>
   ),
 }));
+vi.mock('../components/ConfettiBurst', () => ({
+  ConfettiBurst: () => <div data-testid="confetti-burst" />,
+}));
 
 vi.mock('../components/TripSelector', () => ({
   TripSelector: () => <div data-testid="trip-selector">Trip Selector</div>,

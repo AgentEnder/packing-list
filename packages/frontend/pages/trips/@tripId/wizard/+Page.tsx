@@ -34,6 +34,18 @@ export default function TripWizardPage() {
 
   const handleSave = (events: TripEvent[]) => {
     dispatch({ type: 'UPDATE_TRIP_EVENTS', payload: events });
+    const prefersReduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!prefersReduced) {
+      const source = {
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+        w: 0,
+        h: 0,
+      };
+      dispatch(actions.triggerConfettiBurst(source));
+    }
 
     // Use flow navigation if available, otherwise go to people page
     if (flow.current !== null && flow.current < flow.steps.length - 1) {
