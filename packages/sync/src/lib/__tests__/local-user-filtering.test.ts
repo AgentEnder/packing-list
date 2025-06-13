@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  createTripChange,
+  createPersonChange,
+  createItemChange,
+  createLocalSharedUserChange,
+} from './test-utils.js';
 
 // Recreate the local user checking function
 function isLocalUser(userId: string): boolean {
@@ -139,14 +145,10 @@ describe('Local User Filtering', () => {
 
   describe('Change tracking for local users', () => {
     it('should not track changes for local-shared-user', async () => {
-      const change = {
-        entityType: 'trip',
+      const change = createLocalSharedUserChange({
         entityId: 'test-trip-1',
         operation: 'create',
-        data: { title: 'Test Trip' },
-        userId: 'local-shared-user',
-        version: 1,
-      };
+      });
 
       await syncService.trackChange(change);
 
@@ -155,14 +157,11 @@ describe('Local User Filtering', () => {
     });
 
     it('should not track changes for local-user', async () => {
-      const change = {
-        entityType: 'person',
+      const change = createPersonChange({
         entityId: 'test-person-1',
         operation: 'update',
-        data: { name: 'John Doe' },
         userId: 'local-user',
-        version: 2,
-      };
+      });
 
       await syncService.trackChange(change);
 
@@ -172,30 +171,21 @@ describe('Local User Filtering', () => {
 
     it('should not track changes for users with local- prefix', async () => {
       const changes = [
-        {
-          entityType: 'item',
+        createItemChange({
           entityId: 'test-item-1',
           operation: 'create',
-          data: { name: 'Test Item' },
           userId: 'local-guest-123',
-          version: 1,
-        },
-        {
-          entityType: 'item',
+        }),
+        createItemChange({
           entityId: 'test-item-2',
           operation: 'update',
-          data: { name: 'Updated Item' },
           userId: 'local-temp-user',
-          version: 2,
-        },
-        {
-          entityType: 'trip',
+        }),
+        createTripChange({
           entityId: 'test-trip-2',
           operation: 'delete',
-          data: null,
           userId: 'local-anonymous',
-          version: 3,
-        },
+        }),
       ];
 
       for (const change of changes) {
@@ -207,20 +197,35 @@ describe('Local User Filtering', () => {
     });
 
     it('should track changes for regular users', async () => {
-      const change = {
-        entityType: 'trip',
-        entityId: 'test-trip-1',
-        operation: 'create',
-        data: { title: 'Test Trip' },
-        userId: 'user-123',
-        version: 1,
-      };
+      const changes = [
+        createTripChange({
+          entityId: 'test-trip-1',
+          operation: 'create',
+          userId: 'user-123',
+        }),
+        createPersonChange({
+          entityId: 'test-person-1',
+          operation: 'update',
+          userId: 'authenticated-user-456',
+        }),
+        createItemChange({
+          entityId: 'test-item-1',
+          operation: 'delete',
+          userId: 'google-oauth-789',
+        }),
+      ];
 
-      await syncService.trackChange(change);
+      for (const change of changes) {
+        await syncService.trackChange(change);
+      }
 
       const pendingChanges = await syncService.getPendingChanges();
-      expect(pendingChanges).toHaveLength(1);
+      expect(pendingChanges).toHaveLength(3);
+
+      // Verify the changes were tracked correctly
       expect(pendingChanges[0].userId).toBe('user-123');
+      expect(pendingChanges[1].userId).toBe('authenticated-user-456');
+      expect(pendingChanges[2].userId).toBe('google-oauth-789');
     });
 
     it('should track changes for authenticated users', async () => {

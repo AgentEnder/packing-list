@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createTripChange, createPersonChange } from './test-utils.js';
 
 // Mock Supabase client
 const mockSupabase = {
@@ -346,20 +347,17 @@ describe('Push Operations', () => {
 
   describe('Trip Push Operations', () => {
     it('should push trip creation correctly', async () => {
-      const tripChange = {
+      const tripChange = createTripChange({
         operation: 'create',
         entityId: 'trip-123',
         userId: 'user-456',
         version: 1,
-        data: {
-          id: 'trip-123',
-          title: 'Summer Vacation',
-          description: 'A fun summer trip',
-          days: [{ date: '2024-07-01', activities: ['beach'] }],
-          tripEvents: [{ type: 'departure', time: '10:00' }],
-          settings: { notifications: true },
-        },
-      };
+        title: 'Summer Vacation',
+        description: 'A fun summer trip',
+        days: [{ date: '2024-07-01', activities: ['beach'] }],
+        tripEvents: [{ type: 'departure', time: '10:00' }],
+        settings: { notifications: true },
+      });
 
       await syncService.pushTripChange(tripChange);
 
@@ -378,20 +376,15 @@ describe('Push Operations', () => {
     });
 
     it('should push trip update correctly', async () => {
-      const tripChange = {
+      const tripChange = createTripChange({
         operation: 'update',
         entityId: 'trip-123',
         userId: 'user-456',
         version: 2,
-        data: {
-          id: 'trip-123',
-          title: 'Updated Summer Vacation',
-          description: 'Updated description',
-          days: [],
-          tripEvents: [],
-          settings: { notifications: false },
-        },
-      };
+        title: 'Updated Summer Vacation',
+        description: 'Updated description',
+        settings: { notifications: false },
+      });
 
       await syncService.pushTripChange(tripChange);
 
@@ -408,13 +401,12 @@ describe('Push Operations', () => {
     });
 
     it('should push trip deletion correctly', async () => {
-      const tripChange = {
+      const tripChange = createTripChange({
         operation: 'delete',
         entityId: 'trip-123',
         userId: 'user-456',
         version: 3,
-        data: null,
-      };
+      });
 
       await syncService.pushTripChange(tripChange);
 
@@ -427,18 +419,13 @@ describe('Push Operations', () => {
     });
 
     it('should handle trip with empty title', async () => {
-      const tripChange = {
+      const tripChange = createTripChange({
         operation: 'create',
         entityId: 'trip-123',
         userId: 'user-456',
         version: 1,
-        data: {
-          id: 'trip-123',
-          title: '',
-          days: [],
-          tripEvents: [],
-        },
-      };
+        title: '',
+      });
 
       await syncService.pushTripChange(tripChange);
 
@@ -453,19 +440,17 @@ describe('Push Operations', () => {
 
   describe('Person Push Operations', () => {
     it('should push person creation correctly', async () => {
-      const personChange = {
+      const personChange = createPersonChange({
         operation: 'create',
         entityId: 'person-123',
         userId: 'user-456',
         tripId: 'trip-789',
         version: 1,
-        data: {
-          name: 'John Doe',
-          age: 30,
-          gender: 'male',
-          settings: { dietary: ['vegetarian'] },
-        },
-      };
+        name: 'John Doe',
+        age: 30,
+        gender: 'male',
+        settings: { dietary: ['vegetarian'] },
+      });
 
       await syncService.pushPersonChange(personChange);
 
@@ -482,17 +467,15 @@ describe('Push Operations', () => {
     });
 
     it('should push person update correctly', async () => {
-      const personChange = {
+      const personChange = createPersonChange({
         operation: 'update',
         entityId: 'person-123',
         version: 2,
-        data: {
-          name: 'John Smith',
-          age: 31,
-          gender: 'male',
-          settings: { dietary: ['vegan'] },
-        },
-      };
+        name: 'John Smith',
+        age: 31,
+        gender: 'male',
+        settings: { dietary: ['vegan'] },
+      });
 
       await syncService.pushPersonChange(personChange);
 
@@ -510,12 +493,11 @@ describe('Push Operations', () => {
     });
 
     it('should push person deletion correctly', async () => {
-      const personChange = {
+      const personChange = createPersonChange({
         operation: 'delete',
         entityId: 'person-123',
         version: 3,
-        data: null,
-      };
+      });
 
       await syncService.pushPersonChange(personChange);
 
