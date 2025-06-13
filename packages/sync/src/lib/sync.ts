@@ -1,5 +1,13 @@
 import type {
   Change,
+  TripChange,
+  PersonChange,
+  ItemChange,
+  RuleOverrideChange,
+  DefaultItemRuleChange,
+  RulePackChange,
+  PackingStatusChange,
+  BulkPackingChange,
   SyncConflict,
   SyncState,
   Trip,
@@ -38,25 +46,8 @@ import {
 } from '@packing-list/connectivity';
 import { Dispatch } from '@reduxjs/toolkit';
 
-// Type definitions for special sync data formats
-interface PackingStatusData {
-  id: string;
-  packed: boolean;
-  updatedAt?: string;
-  _packingStatusOnly: true;
-  _previousStatus?: boolean;
-  _bulkOperation?: boolean;
-}
-
-interface BulkPackingData {
-  bulkPackingUpdate: true;
-  changes: Array<{
-    itemId: string;
-    packed: boolean;
-    previousStatus?: boolean;
-  }>;
-  updatedAt?: string;
-}
+// Type definitions for special sync data formats - these are now moved to the model package
+// but kept here temporarily for any remaining references
 
 export interface SyncOptions {
   supabaseUrl?: string;
@@ -121,93 +112,100 @@ function isValidTripId(tripId: string | undefined): tripId is string {
   return typeof tripId === 'string' && tripId.length > 0;
 }
 
-function isPackingStatusData(data: unknown): data is PackingStatusData {
+// Type guard functions for discriminated union changes
+function isPackingStatusChange(change: Change): change is PackingStatusChange {
   return (
-    typeof data === 'object' &&
-    data !== null &&
-    '_packingStatusOnly' in data &&
-    data._packingStatusOnly === true
+    change.entityType === 'item' &&
+    typeof change.data === 'object' &&
+    change.data !== null &&
+    '_packingStatusOnly' in change.data &&
+    change.data._packingStatusOnly === true
   );
 }
 
-function isBulkPackingData(data: unknown): data is BulkPackingData {
+function isBulkPackingChange(change: Change): change is BulkPackingChange {
   return (
-    typeof data === 'object' &&
-    data !== null &&
-    'bulkPackingUpdate' in data &&
-    data.bulkPackingUpdate === true
+    change.entityType === 'item' &&
+    typeof change.data === 'object' &&
+    change.data !== null &&
+    'bulkPackingUpdate' in change.data &&
+    change.data.bulkPackingUpdate === true
   );
 }
 
-function isPersonData(data: unknown): data is Person {
+function isTripChange(change: Change): change is TripChange {
+  return change.entityType === 'trip';
+}
+
+function isPersonChange(change: Change): change is PersonChange {
+  return change.entityType === 'person';
+}
+
+function isItemChange(change: Change): change is ItemChange {
   return (
-    typeof data === 'object' &&
-    data !== null &&
-    'name' in data &&
-    typeof data.name === 'string' &&
-    'age' in data &&
-    'gender' in data
+    change.entityType === 'item' &&
+    !isPackingStatusChange(change) &&
+    !isBulkPackingChange(change)
   );
 }
 
-function isTripItemData(data: unknown): data is TripItem {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'name' in data &&
-    typeof data.name === 'string' &&
-    'category' in data &&
-    'quantity' in data &&
-    'packed' in data &&
-    typeof data.packed === 'boolean'
-  );
+function isRuleOverrideChange(change: Change): change is RuleOverrideChange {
+  return change.entityType === 'rule_override';
 }
 
-function isRulePackData(data: unknown): data is RulePack {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'id' in data &&
-    'name' in data &&
-    typeof data.name === 'string' &&
-    'rules' in data &&
-    'primaryCategoryId' in data &&
-    'author' in data
-  );
+function isDefaultItemRuleChange(
+  change: Change
+): change is DefaultItemRuleChange {
+  return change.entityType === 'default_item_rule';
 }
 
-function isTripData(data: unknown): data is Trip {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'title' in data &&
-    typeof data.title === 'string' &&
-    'days' in data &&
-    'tripEvents' in data
-  );
+function isRulePackChange(change: Change): change is RulePackChange {
+  return change.entityType === 'rule_pack';
 }
 
-function isRuleOverrideData(data: unknown): data is RuleOverride {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'ruleId' in data &&
-    typeof data.ruleId === 'string' &&
-    ('tripId' in data || 'entityId' in data) // RuleOverrides are trip-specific
-  );
-}
+// Helper function to validate required fields for different operations
+function validateChangeData(change: Change): boolean {
+  switch (change.entityType) {
+    case 'trip':
+      // For trips, we need at least an id (always) and for creates we need a title
+      if (change.operation === 'create') {
+        return 'title' in change.data && typeof change.data.title === 'string';
+      }
+      return 'id' in change.data && typeof change.data.id === 'string';
 
-function isDefaultItemRuleData(data: unknown): data is DefaultItemRule {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'id' in data &&
-    'name' in data &&
-    typeof data.name === 'string' &&
-    'calculation' in data &&
-    'conditions' in data &&
-    'categoryId' in data
-  );
+    case 'person':
+      // For people, we need at least name for creates, id for updates/deletes
+      if (change.operation === 'create') {
+        return 'name' in change.data && typeof change.data.name === 'string';
+      }
+      return true; // Updates and deletes are more flexible
+
+    case 'item':
+      // Handle special packing cases
+      if (isPackingStatusChange(change) || isBulkPackingChange(change)) {
+        return true; // These have their own validation
+      }
+      // For regular items, we need at least name for creates
+      if (change.operation === 'create') {
+        return 'name' in change.data && typeof change.data.name === 'string';
+      }
+      return true;
+
+    case 'rule_override':
+      // Rule overrides always need a ruleId
+      return 'ruleId' in change.data && typeof change.data.ruleId === 'string';
+
+    case 'default_item_rule':
+      // Default rules need an id
+      return 'id' in change.data && typeof change.data.id === 'string';
+
+    case 'rule_pack':
+      // Rule packs need an id
+      return 'id' in change.data && typeof change.data.id === 'string';
+
+    default:
+      return false;
+  }
 }
 
 export class SyncService {
@@ -363,7 +361,7 @@ export class SyncService {
       id: generateChangeId(),
       timestamp: Date.now(),
       synced: false,
-    };
+    } as Change; // Type assertion needed due to discriminated union complexity
 
     await db.put('syncChanges', fullChange);
     console.log(
@@ -570,30 +568,42 @@ export class SyncService {
       `[SyncService] Pushing change to server: ${change.operation} ${change.entityType}:${change.entityId}`
     );
 
+    // Validate the change data before proceeding
+    if (!validateChangeData(change)) {
+      throw new Error(
+        `Invalid change data for ${change.entityType} ${change.operation}`
+      );
+    }
+
     try {
       switch (change.entityType) {
         case 'trip':
-          await this.pushTripChange(change);
+          await this.pushTripChange(change as TripChange);
           break;
         case 'person':
-          await this.pushPersonChange(change);
+          await this.pushPersonChange(change as PersonChange);
           break;
         case 'item':
-          await this.pushItemChange(change);
+          await this.pushItemChange(
+            change as ItemChange | PackingStatusChange | BulkPackingChange
+          );
           break;
         case 'rule_override':
-          await this.pushRuleOverrideChange(change);
+          await this.pushRuleOverrideChange(change as RuleOverrideChange);
           break;
         case 'default_item_rule':
-          await this.pushDefaultItemRuleChange(change);
+          await this.pushDefaultItemRuleChange(change as DefaultItemRuleChange);
           break;
         case 'rule_pack':
-          await this.pushRulePackChange(change);
+          await this.pushRulePackChange(change as RulePackChange);
           break;
-        default:
-          console.warn(
-            `[SyncService] Unknown entity type: ${change.entityType}`
+        default: {
+          // This should never happen with discriminated unions
+          const exhaustiveCheck: never = change;
+          throw new Error(
+            `Unknown entity type: ${(exhaustiveCheck as any).entityType}`
           );
+        }
       }
     } catch (error) {
       console.error(`[SyncService] Failed to push change ${change.id}:`, error);
@@ -601,13 +611,10 @@ export class SyncService {
     }
   }
 
-  private async pushTripChange(change: Change): Promise<void> {
+  private async pushTripChange(change: TripChange): Promise<void> {
     const table = 'trips';
 
-    if (!isTripData(change.data)) {
-      throw new Error(`Invalid trip data for change ${change.id}`);
-    }
-
+    // The discriminated union ensures this is trip data
     const data = change.data;
 
     switch (change.operation) {
@@ -627,17 +634,22 @@ export class SyncService {
       }
 
       case 'update': {
+        const updateData: any = {
+          version: change.version,
+          updated_at: new Date().toISOString(),
+        };
+
+        // Only include fields that are present in the partial data
+        if ('title' in data) updateData.title = data.title;
+        if ('description' in data) updateData.description = data.description;
+        if ('days' in data) updateData.days = toJson(data.days);
+        if ('tripEvents' in data)
+          updateData.trip_events = toJson(data.tripEvents);
+        if ('settings' in data) updateData.settings = toJson(data.settings);
+
         const { error: updateError } = await supabase
           .from(table)
-          .update({
-            title: data.title,
-            description: data.description,
-            days: toJson(data.days),
-            trip_events: toJson(data.tripEvents),
-            settings: toJson(data.settings),
-            version: change.version,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq('id', change.entityId)
           .eq('user_id', change.userId);
         if (updateError) throw updateError;
@@ -656,17 +668,10 @@ export class SyncService {
     }
   }
 
-  private async pushPersonChange(change: Change): Promise<void> {
+  private async pushPersonChange(change: PersonChange): Promise<void> {
     const table = 'trip_people';
 
-    if (!isPersonData(change.data)) {
-      throw new Error(`Invalid person data for change ${change.id}`);
-    }
-
-    if (!isValidTripId(change.tripId)) {
-      throw new Error(`Invalid trip ID for person change ${change.id}`);
-    }
-
+    // The discriminated union ensures this is person data
     const data = change.data;
 
     switch (change.operation) {
@@ -684,16 +689,20 @@ export class SyncService {
       }
 
       case 'update': {
+        const updateData: any = {
+          version: change.version,
+          updated_at: new Date().toISOString(),
+        };
+
+        // Only include fields that are present in the partial data
+        if ('name' in data) updateData.name = data.name;
+        if ('age' in data) updateData.age = data.age;
+        if ('gender' in data) updateData.gender = data.gender;
+        if ('settings' in data) updateData.settings = toJson(data.settings);
+
         const { error: updateError } = await supabase
           .from(table)
-          .update({
-            name: data.name,
-            age: data.age,
-            gender: data.gender,
-            settings: toJson(data.settings),
-            version: change.version,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq('id', change.entityId);
         if (updateError) throw updateError;
         break;
@@ -710,29 +719,23 @@ export class SyncService {
     }
   }
 
-  private async pushItemChange(change: Change): Promise<void> {
-    const table = 'trip_items';
-
+  private async pushItemChange(
+    change: ItemChange | PackingStatusChange | BulkPackingChange
+  ): Promise<void> {
     // Handle bulk packing updates
-    if (isBulkPackingData(change.data)) {
+    if (isBulkPackingChange(change)) {
       await this.pushBulkPackingUpdate(change);
       return;
     }
 
     // Handle individual packing status changes
-    if (isPackingStatusData(change.data)) {
+    if (isPackingStatusChange(change)) {
       await this.pushPackingStatusUpdate(change);
       return;
     }
 
-    if (!isTripItemData(change.data)) {
-      throw new Error(`Invalid trip item data for change ${change.id}`);
-    }
-
-    if (!isValidTripId(change.tripId)) {
-      throw new Error(`Invalid trip ID for item change ${change.id}`);
-    }
-
+    // Handle regular item changes
+    const table = 'trip_items';
     const data = change.data;
 
     switch (change.operation) {
@@ -753,19 +756,23 @@ export class SyncService {
       }
 
       case 'update': {
+        const updateData: any = {
+          version: change.version,
+          updated_at: new Date().toISOString(),
+        };
+
+        // Only include fields that are present in the partial data
+        if ('name' in data) updateData.name = data.name;
+        if ('category' in data) updateData.category = data.category;
+        if ('quantity' in data) updateData.quantity = data.quantity;
+        if ('packed' in data) updateData.packed = data.packed;
+        if ('notes' in data) updateData.notes = data.notes;
+        if ('personId' in data) updateData.person_id = data.personId;
+        if ('dayIndex' in data) updateData.day_index = data.dayIndex;
+
         const { error: updateError } = await supabase
           .from(table)
-          .update({
-            name: data.name,
-            category: data.category,
-            quantity: data.quantity,
-            packed: data.packed,
-            notes: data.notes,
-            person_id: data.personId,
-            day_index: data.dayIndex,
-            version: change.version,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq('id', change.entityId);
         if (updateError) throw updateError;
         break;
@@ -782,11 +789,9 @@ export class SyncService {
     }
   }
 
-  private async pushPackingStatusUpdate(change: Change): Promise<void> {
-    if (!isPackingStatusData(change.data)) {
-      throw new Error(`Invalid packing status data for change ${change.id}`);
-    }
-
+  private async pushPackingStatusUpdate(
+    change: PackingStatusChange
+  ): Promise<void> {
     const data = change.data;
     const { error } = await supabase
       .from('trip_items')
@@ -799,11 +804,9 @@ export class SyncService {
     if (error) throw error;
   }
 
-  private async pushBulkPackingUpdate(change: Change): Promise<void> {
-    if (!isBulkPackingData(change.data)) {
-      throw new Error(`Invalid bulk packing data for change ${change.id}`);
-    }
-
+  private async pushBulkPackingUpdate(
+    change: BulkPackingChange
+  ): Promise<void> {
     const data = change.data;
     const updates = data.changes;
 
@@ -833,19 +836,16 @@ export class SyncService {
     }
   }
 
-  private async pushRuleOverrideChange(change: Change): Promise<void> {
+  private async pushRuleOverrideChange(
+    change: RuleOverrideChange
+  ): Promise<void> {
     const table = 'trip_rule_overrides';
-
-    if (!isRuleOverrideData(change.data)) {
-      throw new Error(`Invalid rule override data for change ${change.id}`);
-    }
-
     const data = change.data;
 
     switch (change.operation) {
       case 'create': {
         const { error: createError } = await supabase.from(table).insert({
-          trip_id: change.tripId || data.tripId,
+          trip_id: change.tripId,
           rule_id: data.ruleId,
           override_data: toJson(data),
           version: change.version,
@@ -862,7 +862,7 @@ export class SyncService {
             version: change.version,
             updated_at: new Date().toISOString(),
           })
-          .eq('trip_id', change.tripId || data.tripId)
+          .eq('trip_id', change.tripId)
           .eq('rule_id', data.ruleId);
         if (updateError) throw updateError;
         break;
@@ -872,7 +872,7 @@ export class SyncService {
         const { error: deleteError } = await supabase
           .from(table)
           .update({ is_deleted: true, updated_at: new Date().toISOString() })
-          .eq('trip_id', change.tripId || data.tripId)
+          .eq('trip_id', change.tripId)
           .eq('rule_id', data.ruleId);
         if (deleteError) throw deleteError;
         break;
@@ -880,13 +880,10 @@ export class SyncService {
     }
   }
 
-  private async pushDefaultItemRuleChange(change: Change): Promise<void> {
+  private async pushDefaultItemRuleChange(
+    change: DefaultItemRuleChange
+  ): Promise<void> {
     const table = 'default_item_rules';
-
-    if (!isDefaultItemRuleData(change.data)) {
-      throw new Error(`Invalid default item rule data for change ${change.id}`);
-    }
-
     const data = change.data;
 
     switch (change.operation) {
@@ -908,19 +905,27 @@ export class SyncService {
       }
 
       case 'update': {
+        const updateData: any = {
+          version: change.version,
+          updated_at: new Date().toISOString(),
+        };
+
+        // Only include fields that are present in the partial data
+        if ('name' in data) updateData.name = data.name;
+        if ('calculation' in data)
+          updateData.calculation = toJson(data.calculation);
+        if ('conditions' in data)
+          updateData.conditions = toJson(data.conditions) || null;
+        if ('notes' in data) updateData.notes = data.notes;
+        if ('categoryId' in data) updateData.category_id = data.categoryId;
+        if ('subcategoryId' in data)
+          updateData.subcategory_id = data.subcategoryId;
+        if ('packIds' in data)
+          updateData.pack_ids = toJson(data.packIds) || null;
+
         const { error: updateError } = await supabase
           .from(table)
-          .update({
-            name: data.name,
-            calculation: toJson(data.calculation),
-            conditions: toJson(data.conditions) || null,
-            notes: data.notes,
-            category_id: data.categoryId,
-            subcategory_id: data.subcategoryId,
-            pack_ids: toJson(data.packIds) || null,
-            version: change.version,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq('user_id', change.userId)
           .eq('rule_id', data.id);
         if (updateError) throw updateError;
@@ -939,13 +944,8 @@ export class SyncService {
     }
   }
 
-  private async pushRulePackChange(change: Change): Promise<void> {
+  private async pushRulePackChange(change: RulePackChange): Promise<void> {
     const table = 'rule_packs';
-
-    if (!isRulePackData(change.data)) {
-      throw new Error(`Invalid rule pack data for change ${change.id}`);
-    }
-
     const data = change.data;
 
     switch (change.operation) {
@@ -968,20 +968,25 @@ export class SyncService {
       }
 
       case 'update': {
+        const updateData: any = {
+          version: change.version,
+          updated_at: new Date().toISOString(),
+        };
+
+        // Only include fields that are present in the partial data
+        if ('name' in data) updateData.name = data.name;
+        if ('description' in data) updateData.description = data.description;
+        if ('author' in data) updateData.author = toJson(data.author);
+        if ('metadata' in data) updateData.metadata = toJson(data.metadata);
+        if ('stats' in data) updateData.stats = toJson(data.stats);
+        if ('primaryCategoryId' in data)
+          updateData.primary_category_id = data.primaryCategoryId;
+        if ('icon' in data) updateData.icon = data.icon;
+        if ('color' in data) updateData.color = data.color;
+
         const { error: updateError } = await supabase
           .from(table)
-          .update({
-            name: data.name,
-            description: data.description,
-            author: toJson(data.author),
-            metadata: toJson(data.metadata),
-            stats: toJson(data.stats),
-            primary_category_id: data.primaryCategoryId,
-            icon: data.icon,
-            color: data.color,
-            version: change.version,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq('user_id', change.userId)
           .eq('pack_id', data.id);
         if (updateError) throw updateError;
