@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   serviceWorkerManager,
   getServiceWorkerStatus,
@@ -63,7 +63,7 @@ export function ServiceWorkerStatus({
 
   const handleTestServiceWorker = async () => {
     try {
-      const response = await fetch('/sw.js');
+      const response = await fetch('/service-worker.js');
       if (response.ok) {
         alert('✅ Service worker is accessible! Check console for details.');
         console.log('🔧 Service worker test successful:', {

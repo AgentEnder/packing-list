@@ -1,9 +1,16 @@
-import React from 'react';
 import { useData } from 'vike-react/useData';
+
+interface VersionInfo {
+  version: string;
+  buildHash: string;
+  buildTime: string;
+  environment: string;
+  timestamp: string;
+}
 
 // This page returns version information
 export default function VersionPage() {
-  const { versionInfo } = useData<{ versionInfo: any }>();
+  const { versionInfo } = useData<{ versionInfo: VersionInfo }>();
 
   // Check if this is a JSON request by looking at URL params
   const urlParams = new URLSearchParams(window.location.search);

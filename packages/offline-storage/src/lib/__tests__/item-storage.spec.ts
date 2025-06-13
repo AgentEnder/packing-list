@@ -16,12 +16,12 @@ describe('ItemStorage', () => {
 
   it('should save and retrieve an item', async () => {
     const item: TripItem = {
-      id: 'item-1',
+      id: 'test-item-abc123',
       name: 'Test Item',
-      tripId: 'trip-1',
+      tripId: 'test-trip-abc123',
       packed: false,
       dayIndex: 0,
-      personId: 'person-1',
+      personId: 'test-person-abc123',
       notes: 'Test notes',
       quantity: 1,
       category: 'clothing',
@@ -32,7 +32,7 @@ describe('ItemStorage', () => {
     };
 
     await ItemStorage.saveItem(item);
-    const tripItems = await ItemStorage.getTripItems('trip-1');
+    const tripItems = await ItemStorage.getTripItems('test-trip-abc123');
 
     expect(tripItems).toHaveLength(1);
     expect(tripItems[0]).toEqual(item);
@@ -40,12 +40,12 @@ describe('ItemStorage', () => {
 
   it('should update an existing item', async () => {
     const item: TripItem = {
-      id: 'item-1',
+      id: 'test-item-abc123',
       name: 'Test Item',
-      tripId: 'trip-1',
+      tripId: 'test-trip-abc123',
       packed: false,
       dayIndex: 0,
-      personId: 'person-1',
+      personId: 'test-person-abc123',
       notes: 'Original notes',
       quantity: 1,
       category: 'clothing',
@@ -67,7 +67,7 @@ describe('ItemStorage', () => {
     };
 
     await ItemStorage.saveItem(updatedItem);
-    const tripItems = await ItemStorage.getTripItems('trip-1');
+    const tripItems = await ItemStorage.getTripItems('test-trip-abc123');
 
     expect(tripItems).toHaveLength(1);
     expect(tripItems[0].name).toBe('Updated Item');
@@ -77,12 +77,12 @@ describe('ItemStorage', () => {
 
   it('should soft delete an item', async () => {
     const item: TripItem = {
-      id: 'item-1',
+      id: 'test-item-abc123',
       name: 'Test Item',
-      tripId: 'trip-1',
+      tripId: 'test-trip-abc123',
       packed: false,
       dayIndex: 0,
-      personId: 'person-1',
+      personId: 'test-person-abc123',
       notes: 'Test notes',
       quantity: 1,
       category: 'clothing',
@@ -93,11 +93,11 @@ describe('ItemStorage', () => {
     };
 
     await ItemStorage.saveItem(item);
-    const itemsBeforeDelete = await ItemStorage.getTripItems('trip-1');
+    const itemsBeforeDelete = await ItemStorage.getTripItems('test-trip-abc123');
     expect(itemsBeforeDelete).toHaveLength(1);
 
-    await ItemStorage.deleteItem('item-1');
-    const itemsAfterDelete = await ItemStorage.getTripItems('trip-1');
+    await ItemStorage.deleteItem('test-item-abc123');
+    const itemsAfterDelete = await ItemStorage.getTripItems('test-trip-abc123');
     expect(itemsAfterDelete).toHaveLength(0);
   });
 
@@ -108,12 +108,12 @@ describe('ItemStorage', () => {
 
   it('should filter out deleted items when retrieving trip items', async () => {
     const item1: TripItem = {
-      id: 'item-1',
+      id: 'test-item-abc123',
       name: 'Active Item',
-      tripId: 'trip-1',
+      tripId: 'test-trip-abc123',
       packed: false,
       dayIndex: 0,
-      personId: 'person-1',
+      personId: 'test-person-abc123',
       notes: '',
       quantity: 1,
       category: 'clothing',
@@ -124,12 +124,12 @@ describe('ItemStorage', () => {
     };
 
     const item2: TripItem = {
-      id: 'item-2',
+      id: 'test-item-def456',
       name: 'Deleted Item',
-      tripId: 'trip-1',
+      tripId: 'test-trip-abc123',
       packed: true,
       dayIndex: 1,
-      personId: 'person-2',
+      personId: 'test-person-def456',
       notes: '',
       quantity: 2,
       category: 'misc',
@@ -142,7 +142,7 @@ describe('ItemStorage', () => {
     await ItemStorage.saveItem(item1);
     await ItemStorage.saveItem(item2);
 
-    const tripItems = await ItemStorage.getTripItems('trip-1');
+    const tripItems = await ItemStorage.getTripItems('test-trip-abc123');
     expect(tripItems).toHaveLength(1);
     expect(tripItems[0].name).toBe('Active Item');
   });
@@ -155,12 +155,12 @@ describe('ItemStorage', () => {
 
   it('should handle multiple trips separately', async () => {
     const trip1Item: TripItem = {
-      id: 'item-1',
+      id: 'test-item-abc123',
       name: 'Trip 1 Item',
-      tripId: 'trip-1',
+      tripId: 'test-trip-abc123',
       packed: false,
       dayIndex: 0,
-      personId: 'person-1',
+      personId: 'test-person-abc123',
       notes: '',
       quantity: 1,
       category: 'clothing',
@@ -171,12 +171,12 @@ describe('ItemStorage', () => {
     };
 
     const trip2Item: TripItem = {
-      id: 'item-2',
+      id: 'test-item-def456',
       name: 'Trip 2 Item',
-      tripId: 'trip-2',
+      tripId: 'test-trip-def456',
       packed: true,
       dayIndex: 0,
-      personId: 'person-2',
+      personId: 'test-person-def456',
       notes: '',
       quantity: 1,
       category: 'misc',
@@ -189,8 +189,8 @@ describe('ItemStorage', () => {
     await ItemStorage.saveItem(trip1Item);
     await ItemStorage.saveItem(trip2Item);
 
-    const trip1Items = await ItemStorage.getTripItems('trip-1');
-    const trip2Items = await ItemStorage.getTripItems('trip-2');
+    const trip1Items = await ItemStorage.getTripItems('test-trip-abc123');
+    const trip2Items = await ItemStorage.getTripItems('test-trip-def456');
 
     expect(trip1Items).toHaveLength(1);
     expect(trip1Items[0].name).toBe('Trip 1 Item');

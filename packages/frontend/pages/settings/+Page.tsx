@@ -23,8 +23,9 @@ import {
 } from 'lucide-react';
 import { showToast } from '../../components/Toast';
 import { HELP_ALL_KEY } from '../../components/HelpBlurb';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SyncDashboard } from '../../components/SyncDashboard.js';
+import { navigate } from 'vike/client/router';
 
 // Simple interface to type offline accounts
 interface OfflineAccount {
@@ -47,10 +48,31 @@ export default function SettingsPage() {
     isConnected,
     authStatus,
     connectivityStatus,
+    loading: authLoading,
+    isInitialized: authIsInitialized,
   } = useAuth();
   const [activeTab, setActiveTab] = useState<
     'settings' | 'account' | 'debug' | 'sync'
   >('settings');
+
+  // Debug auth state on settings page
+  useEffect(() => {
+    console.log('🔍 [SETTINGS DEBUG] Auth state on settings page:', {
+      authLoading,
+      authIsInitialized,
+      isAuthenticated,
+      user: user ? { id: user.id, email: user.email } : null,
+      authStatus,
+      connectivityStatus,
+    });
+  }, [
+    authLoading,
+    authIsInitialized,
+    isAuthenticated,
+    user,
+    authStatus,
+    connectivityStatus,
+  ]);
 
   // Cast offlineAccounts to proper type since useAuth returns unknown[]
   const typedOfflineAccounts = (offlineAccounts || []) as OfflineAccount[];
@@ -172,7 +194,7 @@ export default function SettingsPage() {
                 showToast={showToast}
                 onAccountDeleted={() => {
                   // Redirect to home after account deletion
-                  window.location.href = '/';
+                  navigate('/');
                 }}
               />
 

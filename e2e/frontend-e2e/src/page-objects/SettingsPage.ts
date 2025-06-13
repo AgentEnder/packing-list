@@ -31,7 +31,10 @@ export class SettingsPage {
   }
 
   async switchToAccountTab() {
-    await this.page.getByRole('button', { name: 'Account' }).click();
+    await this.page
+      .locator('.tabs.tabs-boxed')
+      .getByRole('button', { name: 'Account' })
+      .click();
 
     // Wait for either account content or sign-in prompt
     try {
@@ -47,7 +50,10 @@ export class SettingsPage {
   }
 
   async switchToDebugTab() {
-    await this.page.getByRole('button', { name: 'Debug & Status' }).click();
+    await this.page
+      .locator('.tabs.tabs-boxed')
+      .getByRole('button', { name: 'Debug & Status' })
+      .click();
 
     // Wait for Connection Status section to be visible (Debug tab content)
     await this.page.waitForSelector('text=Connection Status', {
@@ -182,9 +188,15 @@ export class SettingsPage {
 
   // Helper method to check if we're on a specific tab
   async getCurrentTab(): Promise<'settings' | 'account' | 'debug'> {
-    const settingsTab = this.page.getByRole('button', { name: 'Settings' });
-    const accountTab = this.page.getByRole('button', { name: 'Account' });
-    const debugTab = this.page.getByRole('button', { name: 'Debug & Status' });
+    const settingsTab = this.page
+      .locator('.tabs.tabs-boxed')
+      .getByRole('button', { name: 'Settings' });
+    const accountTab = this.page
+      .locator('.tabs.tabs-boxed')
+      .getByRole('button', { name: 'Account' });
+    const debugTab = this.page
+      .locator('.tabs.tabs-boxed')
+      .getByRole('button', { name: 'Debug & Status' });
 
     if (
       await settingsTab

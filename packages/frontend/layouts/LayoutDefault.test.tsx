@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import LayoutDefault from './LayoutDefault';
 
@@ -9,6 +9,12 @@ vi.mock('@packing-list/state', () => ({
   },
   useAppDispatch: vi.fn(),
   useAppSelector: vi.fn(),
+  loadOfflineState: vi.fn(() =>
+    Promise.resolve({
+      trips: { summaries: [] },
+      ui: { flow: { current: null, steps: [] } },
+    })
+  ),
 }));
 
 vi.mock('@packing-list/shared-components', () => ({
@@ -23,6 +29,8 @@ vi.mock('@packing-list/shared-components', () => ({
   BannerProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="banner-provider">{children}</div>
   ),
+  OfflineBanner: () => <div data-testid="offline-banner">Offline Banner</div>,
+  useBannerHeight: () => 0,
 }));
 
 vi.mock('../components/Link', () => ({
@@ -97,6 +105,9 @@ vi.mock('lucide-react', () => ({
   Zap: () => <div data-testid="zap-icon">Zap</div>,
 }));
 
+// Add this at the top of the file to mock SVG imports
+vi.mock('../assets/logo.svg', () => ({ default: '' }));
+
 import { useAppDispatch, useAppSelector } from '@packing-list/state';
 import { useAuth, useLoginModal } from '@packing-list/shared-components';
 import { useConflictBanner } from '../hooks/useConflictBanner';
@@ -120,13 +131,11 @@ describe('LayoutDefault Component', () => {
       handleViewConflicts: vi.fn(),
       handleDismiss: vi.fn(),
     });
-
     // Mock window.location
     Object.defineProperty(window, 'location', {
       value: { pathname: '/' },
       writable: true,
     });
-
     // Mock sessionStorage
     Object.defineProperty(window, 'sessionStorage', {
       value: {
@@ -154,7 +163,7 @@ describe('LayoutDefault Component', () => {
     expect(screen.queryByText('Test content')).not.toBeInTheDocument();
   });
 
-  it('renders main layout when not loading', () => {
+  it('renders main layout when not loading', async () => {
     (useAuth as Mock).mockReturnValue({
       user: null,
       shouldShowSignInOptions: true,
@@ -164,7 +173,7 @@ describe('LayoutDefault Component', () => {
     (useAppSelector as unknown as Mock).mockImplementation((selector) => {
       if (typeof selector === 'function') {
         return selector({
-          trips: { selectedTripId: null },
+          trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
         });
       }
@@ -173,12 +182,14 @@ describe('LayoutDefault Component', () => {
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 
-    expect(screen.getByText('Test content')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Test content')).toBeInTheDocument();
+    });
     expect(screen.getByTestId('demo-banner')).toBeInTheDocument();
     expect(screen.getByTestId('toast-container')).toBeInTheDocument();
   });
 
-  it('renders mobile navbar with menu button', () => {
+  it('renders mobile navbar with menu button', async () => {
     (useAuth as Mock).mockReturnValue({
       user: null,
       shouldShowSignInOptions: true,
@@ -188,7 +199,7 @@ describe('LayoutDefault Component', () => {
     (useAppSelector as unknown as Mock).mockImplementation((selector) => {
       if (typeof selector === 'function') {
         return selector({
-          trips: { selectedTripId: null },
+          trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
         });
       }
@@ -197,12 +208,14 @@ describe('LayoutDefault Component', () => {
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 
-    expect(screen.getByTestId('menu-icon')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('menu-icon')).toBeInTheDocument();
+    });
     expect(screen.getAllByTestId('link-/')).toHaveLength(2); // Mobile and desktop
     expect(screen.getAllByTestId('trip-selector')).toHaveLength(2); // Mobile and desktop
   });
 
-  it('renders sign in button when user not authenticated', () => {
+  it('renders sign in button when user not authenticated', async () => {
     (useAuth as Mock).mockReturnValue({
       user: null,
       shouldShowSignInOptions: true,
@@ -212,7 +225,7 @@ describe('LayoutDefault Component', () => {
     (useAppSelector as unknown as Mock).mockImplementation((selector) => {
       if (typeof selector === 'function') {
         return selector({
-          trips: { selectedTripId: null },
+          trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
         });
       }
@@ -221,12 +234,14 @@ describe('LayoutDefault Component', () => {
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 
-    const signInButtons = screen.getAllByTestId('sign-in-button');
-    expect(signInButtons).toHaveLength(2); // Mobile and desktop
-    expect(signInButtons[0]).toHaveTextContent('Sign In');
+    await waitFor(() => {
+      const signInButtons = screen.getAllByTestId('sign-in-button');
+      expect(signInButtons).toHaveLength(2); // Mobile and desktop
+      expect(signInButtons[0]).toHaveTextContent('Sign In');
+    });
   });
 
-  it('renders user profile when authenticated', () => {
+  it('renders user profile when authenticated', async () => {
     (useAuth as Mock).mockReturnValue({
       user: { id: 'user-123', name: 'John Doe' },
       shouldShowSignInOptions: false,
@@ -236,7 +251,7 @@ describe('LayoutDefault Component', () => {
     (useAppSelector as unknown as Mock).mockImplementation((selector) => {
       if (typeof selector === 'function') {
         return selector({
-          trips: { selectedTripId: null },
+          trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
         });
       }
@@ -245,11 +260,13 @@ describe('LayoutDefault Component', () => {
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 
-    expect(screen.getAllByTestId('user-profile')).toHaveLength(2); // Mobile and desktop
+    await waitFor(() => {
+      expect(screen.getAllByTestId('user-profile')).toHaveLength(2); // Mobile and desktop
+    });
     expect(screen.queryByTestId('sign-in-button')).not.toBeInTheDocument();
   });
 
-  it('handles drawer toggle functionality', () => {
+  it('handles drawer toggle functionality', async () => {
     (useAuth as Mock).mockReturnValue({
       user: null,
       shouldShowSignInOptions: true,
@@ -259,7 +276,7 @@ describe('LayoutDefault Component', () => {
     (useAppSelector as unknown as Mock).mockImplementation((selector) => {
       if (typeof selector === 'function') {
         return selector({
-          trips: { selectedTripId: null },
+          trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
         });
       }
@@ -268,14 +285,17 @@ describe('LayoutDefault Component', () => {
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 
-    const drawerToggle = screen.getByRole('checkbox');
-    expect(drawerToggle).not.toBeChecked();
+    await waitFor(() => {
+      const drawerToggle = screen.getByRole('checkbox');
+      expect(drawerToggle).not.toBeChecked();
+    });
 
+    const drawerToggle = screen.getByRole('checkbox');
     fireEvent.click(drawerToggle);
     expect(drawerToggle).toBeChecked();
   });
 
-  it('calls openLoginModal when sign in button clicked', () => {
+  it('calls openLoginModal when sign in button clicked', async () => {
     (useAuth as Mock).mockReturnValue({
       user: null,
       shouldShowSignInOptions: true,
@@ -285,7 +305,7 @@ describe('LayoutDefault Component', () => {
     (useAppSelector as unknown as Mock).mockImplementation((selector) => {
       if (typeof selector === 'function') {
         return selector({
-          trips: { selectedTripId: null },
+          trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
         });
       }
@@ -294,13 +314,15 @@ describe('LayoutDefault Component', () => {
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 
-    const signInButton = screen.getAllByTestId('sign-in-button')[0];
-    fireEvent.click(signInButton);
+    await waitFor(() => {
+      const signInButton = screen.getAllByTestId('sign-in-button')[0];
+      fireEvent.click(signInButton);
+    });
 
     expect(mockOpenLoginModal).toHaveBeenCalled();
   });
 
-  it('closes login modal when user becomes remotely authenticated', () => {
+  it('closes login modal when user becomes remotely authenticated', async () => {
     (useAuth as Mock).mockReturnValue({
       user: { id: 'user-123' },
       shouldShowSignInOptions: false,
@@ -310,7 +332,7 @@ describe('LayoutDefault Component', () => {
     (useAppSelector as unknown as Mock).mockImplementation((selector) => {
       if (typeof selector === 'function') {
         return selector({
-          trips: { selectedTripId: null },
+          trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
         });
       }
@@ -319,10 +341,13 @@ describe('LayoutDefault Component', () => {
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 
+    await waitFor(() => {
+      expect(screen.getByText('Test content')).toBeInTheDocument();
+    });
     expect(mockCloseLoginModal).toHaveBeenCalled();
   });
 
-  it('renders navigation menu with all links', () => {
+  it('renders navigation menu with all links', async () => {
     (useAuth as Mock).mockReturnValue({
       user: null,
       shouldShowSignInOptions: true,
@@ -332,7 +357,7 @@ describe('LayoutDefault Component', () => {
     (useAppSelector as unknown as Mock).mockImplementation((selector) => {
       if (typeof selector === 'function') {
         return selector({
-          trips: { selectedTripId: null },
+          trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
         });
       }
@@ -341,8 +366,10 @@ describe('LayoutDefault Component', () => {
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 
-    // Check navigation links - use getAllBy for duplicates
-    expect(screen.getAllByTestId('link-/')).toHaveLength(2); // Mobile and sidebar
+    await waitFor(() => {
+      // Check navigation links - use getAllBy for duplicates
+      expect(screen.getAllByTestId('link-/')).toHaveLength(2); // Mobile and sidebar
+    });
     expect(screen.getByTestId('link-/people')).toBeInTheDocument();
     expect(screen.getByText('Overview')).toBeInTheDocument();
     expect(screen.getByTestId('home-icon')).toBeInTheDocument();
@@ -359,7 +386,7 @@ describe('LayoutDefault Component', () => {
     (useAppSelector as unknown as Mock).mockImplementation((selector) => {
       if (typeof selector === 'function') {
         return selector({
-          trips: { selectedTripId: null },
+          trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
         });
       }
@@ -371,12 +398,14 @@ describe('LayoutDefault Component', () => {
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 
+    await waitFor(() => {
+      expect(screen.getByText('Test content')).toBeInTheDocument();
+    });
     // Demo data loading is now user-triggered, not automatic based on session storage
     expect(mockDispatch).not.toHaveBeenCalledWith({ type: 'LOAD_DEMO_DATA' });
-    expect(screen.getByText('Test content')).toBeInTheDocument();
   });
 
-  it('renders responsive layout with desktop sidebar', () => {
+  it('renders responsive layout with desktop sidebar', async () => {
     (useAuth as Mock).mockReturnValue({
       user: null,
       shouldShowSignInOptions: true,
@@ -386,7 +415,7 @@ describe('LayoutDefault Component', () => {
     (useAppSelector as unknown as Mock).mockImplementation((selector) => {
       if (typeof selector === 'function') {
         return selector({
-          trips: { selectedTripId: null },
+          trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
         });
       }
@@ -395,13 +424,15 @@ describe('LayoutDefault Component', () => {
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 
-    // Check drawer structure
-    expect(screen.getByRole('checkbox')).toHaveClass('drawer-toggle');
+    await waitFor(() => {
+      // Check drawer structure
+      expect(screen.getByRole('checkbox')).toHaveClass('drawer-toggle');
+    });
     expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.getByText('Test content')).toBeInTheDocument();
   });
 
-  it('handles flow reset when path changes', () => {
+  it('handles flow reset when path changes', async () => {
     const mockResetFlow = vi.fn();
 
     // Mock the actions module properly
@@ -409,7 +440,7 @@ describe('LayoutDefault Component', () => {
       (selector) => {
         if (typeof selector === 'function') {
           return selector({
-            trips: { selectedTripId: null },
+            trips: { selectedTripId: null, summaries: [] },
             ui: { flow: { current: 0, steps: [{ path: '/different-path' }] } },
           });
         }
@@ -446,11 +477,14 @@ describe('LayoutDefault Component', () => {
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 
+    await waitFor(() => {
+      expect(screen.getByText('Test content')).toBeInTheDocument();
+    });
     // Just check that dispatch was called, the flow logic is complex
     expect(mockDispatch).toHaveBeenCalled();
   });
 
-  it('renders all required UI components', () => {
+  it('renders all required UI components', async () => {
     (useAuth as Mock).mockReturnValue({
       user: null,
       shouldShowSignInOptions: true,
@@ -460,7 +494,7 @@ describe('LayoutDefault Component', () => {
     (useAppSelector as unknown as Mock).mockImplementation((selector) => {
       if (typeof selector === 'function') {
         return selector({
-          trips: { selectedTripId: null },
+          trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
         });
       }
@@ -469,13 +503,15 @@ describe('LayoutDefault Component', () => {
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 
-    expect(screen.getAllByTestId('trip-selector')).toHaveLength(2); // Mobile and desktop
+    await waitFor(() => {
+      expect(screen.getAllByTestId('trip-selector')).toHaveLength(2); // Mobile and desktop
+    });
     expect(screen.getByTestId('demo-banner')).toBeInTheDocument();
     expect(screen.getByTestId('toast-container')).toBeInTheDocument();
     expect(screen.getByRole('main')).toBeInTheDocument();
   });
 
-  it('closes drawer when navigation link is clicked', () => {
+  it('closes drawer when navigation link is clicked', async () => {
     (useAuth as Mock).mockReturnValue({
       user: null,
       shouldShowSignInOptions: true,
@@ -485,7 +521,7 @@ describe('LayoutDefault Component', () => {
     (useAppSelector as unknown as Mock).mockImplementation((selector) => {
       if (typeof selector === 'function') {
         return selector({
-          trips: { selectedTripId: null },
+          trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
         });
       }
@@ -494,10 +530,12 @@ describe('LayoutDefault Component', () => {
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 
-    // Open drawer first
-    const drawerToggle = screen.getByRole('checkbox');
-    fireEvent.click(drawerToggle);
-    expect(drawerToggle).toBeChecked();
+    await waitFor(() => {
+      // Open drawer first
+      const drawerToggle = screen.getByRole('checkbox');
+      fireEvent.click(drawerToggle);
+      expect(drawerToggle).toBeChecked();
+    });
 
     // Click navigation link - get the sidebar one
     const homeLinks = screen.getAllByTestId('link-/');
@@ -510,6 +548,7 @@ describe('LayoutDefault Component', () => {
     fireEvent.click(sidebarHomeLink);
 
     // Drawer should close (this would happen via the onClick handler)
+    const drawerToggle = screen.getByRole('checkbox');
     expect(drawerToggle).not.toBeChecked();
   });
 });

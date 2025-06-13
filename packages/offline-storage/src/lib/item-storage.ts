@@ -1,9 +1,15 @@
 import type { TripItem } from '@packing-list/model';
 import { getDatabase } from './database.js';
+import { shouldSkipPersistence } from './demo-mode-detector.js';
 
 export class ItemStorage {
   /** Save or update a trip item */
   static async saveItem(item: TripItem): Promise<void> {
+    // Skip persistence in demo mode
+    if (shouldSkipPersistence(item.tripId, item.id)) {
+      return;
+    }
+
     const db = await getDatabase();
     const tx = db.transaction(['tripItems'], 'readwrite');
     await tx.objectStore('tripItems').put(item);
@@ -14,7 +20,9 @@ export class ItemStorage {
   /** Soft delete an item */
   static async deleteItem(itemId: string): Promise<void> {
     const db = await getDatabase();
-    const store = db.transaction(['tripItems'], 'readwrite').objectStore('tripItems');
+    const store = db
+      .transaction(['tripItems'], 'readwrite')
+      .objectStore('tripItems');
     const item = await store.get(itemId);
     if (item) {
       item.isDeleted = true;

@@ -264,7 +264,7 @@ test.describe('Trips Listing Page', () => {
     test('navigates to trip edit page', async () => {
       await tripsPage.editTripFromMenu(tripId);
       await expect(tripsPage.page).toHaveURL(
-        new RegExp(`/trips/${tripId}/edit`)
+        new RegExp(`/trips/${tripId}/settings`)
       );
     });
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@packing-list/shared-components';
 import { Link } from '../../../components/Link';
+import { navigate } from 'vike/client/router';
 
 export default function AuthCallback() {
   console.log('🎯 [CALLBACK] AuthCallback component is rendering');
@@ -63,7 +64,7 @@ export default function AuthCallback() {
             if (prev <= 1) {
               clearInterval(timer);
               console.log('🎯 [CALLBACK] Redirecting to home page');
-              window.location.href = '/';
+              navigate('/');
               return 0;
             }
             return prev - 1;

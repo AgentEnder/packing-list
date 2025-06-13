@@ -3,7 +3,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SyncService, getSyncService, initializeSyncService } from './sync.js';
 import { isSupabaseAvailable, supabase } from '@packing-list/supabase';
-import { getDatabase } from '@packing-list/offline-storage';
+import { ConflictsStorage, getDatabase } from '@packing-list/offline-storage';
 
 // Mock IDBKeyRange for test environment
 (global as typeof globalThis & { IDBKeyRange: unknown }).IDBKeyRange = {
@@ -54,6 +54,15 @@ vi.mock('@packing-list/offline-storage', () => ({
   },
   RulePacksStorage: {
     saveRulePack: vi.fn(),
+  },
+  ConflictsStorage: {
+    saveConflict: vi.fn(),
+    getConflict: vi.fn(),
+    getAllConflicts: vi.fn().mockResolvedValue([]),
+    getConflictsByEntityType: vi.fn().mockResolvedValue([]),
+    deleteConflict: vi.fn(),
+    clearAllConflicts: vi.fn(),
+    clearDemoConflicts: vi.fn().mockResolvedValue(0),
   },
 }));
 
@@ -454,7 +463,7 @@ describe('SyncService', () => {
 
   describe('Conflict Resolution', () => {
     it('should resolve conflicts correctly', async () => {
-      // Create a mock conflict in the database
+      // Create a mock conflict
       const conflictId = 'conflict-123';
       const conflict = {
         id: conflictId,
@@ -466,15 +475,15 @@ describe('SyncService', () => {
         timestamp: Date.now(),
       };
 
-      // Add conflict to mock database
-      await mockDatabase.put('syncConflicts', conflict, conflictId);
+      vi.mocked(ConflictsStorage.getConflict).mockResolvedValueOnce(
+        conflict as any
+      );
 
       // Resolve the conflict
       await syncService.resolveConflict(conflictId, 'server');
 
-      // Conflict should be removed
-      const conflicts = await mockDatabase.getAll('syncConflicts');
-      expect(conflicts.find((c: any) => c.id === conflictId)).toBeUndefined();
+      // Verify that ConflictsStorage.deleteConflict was called
+      expect(ConflictsStorage.deleteConflict).toHaveBeenCalledWith(conflictId);
     });
 
     it('should handle non-existent conflict gracefully', async () => {

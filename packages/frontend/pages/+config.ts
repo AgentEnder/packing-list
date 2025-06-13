@@ -12,6 +12,13 @@ export default {
   // https://vike.dev/head-tags
   title: 'My Vike App',
   description: 'Demo showcasing Vike',
+
+  // Enable client-side routing
+  clientRouting: true,
+
+  // Hydration configuration
+  hydrationCanBeAborted: true,
+
   prerender: {
     partial: true,
   },

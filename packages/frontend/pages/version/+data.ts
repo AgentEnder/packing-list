@@ -1,6 +1,4 @@
-import type { PageContextServer } from 'vike/types';
-
-export async function data(pageContext: PageContextServer) {
+export async function data() {
   // Version information
   const versionInfo = {
     version: import.meta.env.VITE_APP_VERSION || '1.0.0',

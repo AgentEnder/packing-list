@@ -1,7 +1,18 @@
-import React, { createContext, useContext, useEffect } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useCallback,
+} from 'react';
 import { useAppSelector, useAppDispatch } from '@packing-list/state';
 import { reloadFromIndexedDB } from '@packing-list/state';
 import type { SyncState } from '@packing-list/model';
+import {
+  getSyncService,
+  resetSyncService,
+  SyncService,
+} from '@packing-list/sync';
 
 interface SyncContextValue {
   syncState: SyncState;
@@ -34,6 +45,16 @@ interface SyncProviderProps {
 
 export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
   const dispatch = useAppDispatch();
+  const dispatchRef = useRef(dispatch);
+  const currentUserRef = useRef<string | null>(null);
+  const syncServiceRef = useRef<SyncService | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const isInitializingRef = useRef<boolean>(false);
+
+  // Update dispatch ref when it changes
+  useEffect(() => {
+    dispatchRef.current = dispatch;
+  }, [dispatch]);
 
   // Get sync state from Redux with fallback defaults
   const syncState = useAppSelector((state) => state.sync?.syncState) || {
@@ -52,30 +73,36 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
   const selectedTripId = useAppSelector((state) => state.trips?.selectedTripId);
   const isDemoMode = selectedTripId === 'DEMO_TRIP';
 
-  // Initialize sync service when authenticated
-  useEffect(() => {
-    let syncService: any = null;
-    let unsubscribe: (() => void) | null = null;
+  const cleanupSync = useCallback(() => {
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+    if (syncServiceRef.current) {
+      syncServiceRef.current.stop();
+      syncServiceRef.current = null;
+    }
+    isInitializingRef.current = false;
+  }, []);
 
-    const initializeSync = async () => {
+  const initializeSync = useCallback(
+    async (userId: string) => {
+      if (isInitializingRef.current) {
+        console.log('🔍 [SYNC PROVIDER] Already initializing, skipping...');
+        return;
+      }
+
       try {
-        console.log(
-          '🚀 [SYNC PROVIDER] Initializing real sync service with Redux dispatch...'
-        );
-        console.log('👤 [SYNC PROVIDER] Current user:', user);
+        isInitializingRef.current = true;
+        console.log('🚀 [SYNC PROVIDER] Initializing sync service...');
+        console.log('👤 [SYNC PROVIDER] User ID:', userId);
         console.log('🎭 [SYNC PROVIDER] Demo mode:', isDemoMode);
 
-        // Reset the singleton and sync state when user changes
-        const { getSyncService, resetSyncService } = await import(
-          '@packing-list/sync'
-        );
-
-        // Force reset the sync service singleton to ensure fresh instance with new user
-        if (isInitialized) {
+        if (isDemoMode) {
           console.log(
-            '🔄 [SYNC PROVIDER] Resetting sync service for new user...'
+            '🎭 [SYNC PROVIDER] Demo mode active, skipping sync service initialization'
           );
-          resetSyncService();
+          return;
         }
 
         // Create a function to handle IndexedDB reload
@@ -85,93 +112,136 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
           userId: string;
         }) => {
           console.log('🔄 [SYNC PROVIDER] Dispatching reload thunk:', payload);
-          dispatch(reloadFromIndexedDB(payload) as any);
+          dispatchRef.current(reloadFromIndexedDB(payload));
         };
 
         // Pass Redux dispatch and current user ID to sync service options
-        syncService = getSyncService({
-          dispatch: dispatch, // Provide Redux dispatch to sync service
-          reloadFromIndexedDB: handleReloadFromIndexedDB, // Thunk dispatcher for IndexedDB reload
-          userId: user?.id, // Pass current user ID for data filtering
-          demoMode: isDemoMode, // Enable demo mode when using demo trip
+        syncServiceRef.current = getSyncService({
+          dispatch: dispatchRef.current,
+          reloadFromIndexedDB: handleReloadFromIndexedDB,
+          userId: userId,
+          demoMode: isDemoMode,
         });
 
         // Subscribe to sync state changes and update Redux
-        unsubscribe = syncService.subscribe((state: SyncState) => {
-          console.log('🔄 [SYNC PROVIDER] Sync state updated:', state);
-          dispatch({ type: 'SET_SYNC_STATE', payload: state });
-        });
+        unsubscribeRef.current = syncServiceRef.current.subscribe(
+          (state: SyncState) => {
+            console.log('🔄 [SYNC PROVIDER] Sync state updated:', state);
+            dispatchRef.current({ type: 'SET_SYNC_STATE', payload: state });
+          }
+        );
 
         // Start the sync service
-        await syncService.start();
+        await syncServiceRef.current.start();
 
         // Mark as initialized
-        dispatch({ type: 'SET_SYNC_INITIALIZED', payload: true });
+        dispatchRef.current({ type: 'SET_SYNC_INITIALIZED', payload: true });
 
-        console.log(
-          '✅ [SYNC PROVIDER] Sync service initialized successfully with Redux integration'
-        );
+        console.log('✅ [SYNC PROVIDER] Sync service initialized successfully');
       } catch (error) {
         console.error(
           '❌ [SYNC PROVIDER] Failed to initialize sync service:',
           error
         );
-        dispatch({
+        dispatchRef.current({
           type: 'SET_SYNC_ERROR',
           payload:
             error instanceof Error
               ? error.message
               : 'Sync initialization failed',
         });
+      } finally {
+        isInitializingRef.current = false;
       }
-    };
+    },
+    [isDemoMode]
+  ); // Only depend on isDemoMode
 
-    // Only initialize if we have a user
-    if (user) {
-      // Reset sync state when user changes to force re-initialization
-      if (isInitialized) {
-        console.log('🔄 [SYNC PROVIDER] User changed, resetting sync state...');
-        dispatch({ type: 'RESET_SYNC_STATE' });
+  // Initialize sync service when authenticated
+  useEffect(() => {
+    const currentUserId = user?.id || null;
+    const hasUserChanged = currentUserRef.current !== currentUserId;
+
+    console.log('🔍 [SYNC PROVIDER] useEffect triggered:', {
+      currentUserId,
+      previousUserId: currentUserRef.current,
+      hasUserChanged,
+      isDemoMode,
+      isInitializing: isInitializingRef.current,
+    });
+
+    if (user && !isDemoMode && hasUserChanged && !isInitializingRef.current) {
+      console.log(
+        '🔄 [SYNC PROVIDER] Auth status changed, initializing sync...'
+      );
+
+      // Clean up existing sync service if any
+      cleanupSync();
+
+      // Reset sync state for new user (but only if we had a previous user)
+      if (currentUserRef.current !== null) {
+        console.log(
+          '🔄 [SYNC PROVIDER] Resetting sync state for user change...'
+        );
+        dispatchRef.current({ type: 'RESET_SYNC_STATE' });
+        resetSyncService();
       }
 
-      initializeSync();
+      // Update the current user ref BEFORE initializing to prevent re-entry
+      currentUserRef.current = currentUserId;
+
+      // Initialize sync service
+      initializeSync(currentUserId!);
+    } else if (!user && currentUserRef.current !== null) {
+      // User logged out, reset everything
+      console.log('🔄 [SYNC PROVIDER] User logged out, cleaning up sync...');
+      cleanupSync();
+      currentUserRef.current = null;
+      dispatchRef.current({ type: 'RESET_SYNC_STATE' });
+      resetSyncService();
+    } else {
+      console.log('🔍 [SYNC PROVIDER] No action needed:', {
+        hasUser: !!user,
+        isDemoMode,
+        hasUserChanged,
+        isInitializing: isInitializingRef.current,
+      });
     }
 
+    // Only cleanup on unmount, not on every render
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-      if (syncService) {
-        syncService.stop();
-      }
+      console.log('🧹 [SYNC PROVIDER] Component unmounting, cleaning up...');
+      cleanupSync();
     };
-  }, [dispatch, user, selectedTripId]); // React to demo mode changes via selectedTripId
+  }, [user?.id, isDemoMode]); // Remove callback dependencies to prevent re-creation loops
 
   const forceSync = async (): Promise<void> => {
     try {
-      console.log('🔄 [SYNC PROVIDER] Forcing sync with Redux integration...');
-      dispatch({ type: 'SET_SYNC_SYNCING_STATUS', payload: true });
+      console.log('🔄 [SYNC PROVIDER] Forcing sync...');
+      dispatchRef.current({ type: 'SET_SYNC_SYNCING_STATUS', payload: true });
 
       // Get the sync service and force sync
-      const { getSyncService } = await import('@packing-list/sync');
       const syncService = getSyncService({
-        dispatch: dispatch, // Ensure dispatch is available for force sync too
-        demoMode: isDemoMode, // Pass demo mode for consistency
+        dispatch: dispatchRef.current,
+        demoMode: isDemoMode,
       });
       await syncService.forceSync();
 
       // Sync completion and Redux updates are handled automatically via the dispatch callbacks
-      dispatch({ type: 'UPDATE_LAST_SYNC_TIMESTAMP', payload: Date.now() });
-      dispatch({ type: 'SET_SYNC_SYNCING_STATUS', payload: false });
+      dispatchRef.current({
+        type: 'UPDATE_LAST_SYNC_TIMESTAMP',
+        payload: Date.now(),
+      });
+      dispatchRef.current({ type: 'SET_SYNC_SYNCING_STATUS', payload: false });
 
-      console.log('✅ [SYNC PROVIDER] Force sync completed with Redux updates');
+      console.log('✅ [SYNC PROVIDER] Force sync completed');
     } catch (error) {
       console.error('❌ [SYNC PROVIDER] Force sync error:', error);
-      dispatch({
+      dispatchRef.current({
         type: 'SET_SYNC_ERROR',
         payload: error instanceof Error ? error.message : 'Sync failed',
       });
-      dispatch({ type: 'SET_SYNC_SYNCING_STATUS', payload: false });
+      dispatchRef.current({ type: 'SET_SYNC_SYNCING_STATUS', payload: false });
     }
   };
 

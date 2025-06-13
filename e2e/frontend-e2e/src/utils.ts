@@ -24,37 +24,6 @@ export async function setupTestSession(
 
     // Clear sessionStorage
     sessionStorage.clear();
-
-    // Clear IndexedDB databases
-    try {
-      // Get all databases and delete them
-      if ('indexedDB' in window) {
-        // Clear the main app database
-        const deleteDbNames = [
-          'PackingListOfflineDB',
-          'packing_list_offline_auth',
-          'PackingListReduxPersist', // In case there's redux persist
-        ];
-
-        for (const dbName of deleteDbNames) {
-          try {
-            const deleteReq = indexedDB.deleteDatabase(dbName);
-            await new Promise<void>((resolve) => {
-              deleteReq.onsuccess = () => resolve();
-              deleteReq.onerror = () => resolve(); // Don't fail if DB doesn't exist
-              deleteReq.onblocked = () => {
-                console.warn(`Delete of ${dbName} was blocked`);
-                resolve(); // Don't fail, just continue
-              };
-            });
-          } catch (e) {
-            console.warn(`Failed to delete database ${dbName}:`, e);
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to clear IndexedDB:', e);
-    }
   });
 
   // // Refresh the page to ensure the app starts with clean state

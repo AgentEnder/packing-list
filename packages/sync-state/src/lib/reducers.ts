@@ -4,13 +4,7 @@ import type {
   EntityCallbacks,
   EntityExistence,
 } from './types.js';
-import type {
-  SyncState,
-  Trip,
-  Person,
-  TripItem,
-  SyncConflict,
-} from '@packing-list/model';
+import type { SyncConflict, Change } from '@packing-list/model';
 
 /**
  * Initial sync state
@@ -233,7 +227,9 @@ export function createEntityMergeReducer(
  * Change tracking reducer
  */
 export function createChangeTrackingReducer(
-  trackChangeCallback: (change: any) => void
+  trackChangeCallback: (
+    change: Omit<Change, 'id' | 'timestamp' | 'synced'>
+  ) => void
 ) {
   return function changeTrackingReducer(
     state: SyncStateSlice,

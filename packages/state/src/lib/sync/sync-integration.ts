@@ -1,9 +1,10 @@
 import type { StoreType, TripData } from '../../store.js';
 import type { Trip, Person, TripItem } from '@packing-list/model';
 import type {
-  EntityCallbacks,
   EntityExistence,
+  EntityCallbacks,
 } from '@packing-list/sync-state';
+import type { AllActions } from '../../actions.js';
 import {
   TripStorage,
   PersonStorage,
@@ -11,8 +12,28 @@ import {
 } from '@packing-list/offline-storage';
 import { createEmptyTripData } from '../../store.js';
 
+interface PackingListItem {
+  id: string;
+  name: string;
+  itemName: string;
+  ruleId: string;
+  ruleHash: string;
+  isPacked: boolean;
+  isOverridden: boolean;
+  dayIndex?: number;
+  personId?: string;
+  personName?: string;
+  notes?: string;
+  dayStart?: number;
+  dayEnd?: number;
+  isExtra: boolean;
+  quantity: number;
+  categoryId?: string;
+  subcategoryId?: string;
+}
+
 // Helper function to map TripItem to PackingListItem format
-function mapItem(item: TripItem): any {
+function mapItem(item: TripItem): PackingListItem {
   return {
     id: item.id,
     name: item.name,
@@ -64,7 +85,7 @@ export function createEntityExistence(state: StoreType): EntityExistence {
  * Create entity callbacks that update Redux state
  */
 export function createEntityCallbacks(
-  dispatch: (action: any) => void
+  dispatch: (action: AllActions) => void
 ): EntityCallbacks {
   return {
     onTripUpsert: (trip: Trip) => {

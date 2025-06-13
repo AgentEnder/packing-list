@@ -14,6 +14,11 @@ const STATIC_CACHE = `packing-list-static-v${CACHE_VERSION}`;
 const STATIC_ASSETS = [
   '/',
   '/login',
+  '/trips',
+  '/settings',
+  '/people',
+  '/days',
+  '/packing-list',
   // Don't pre-cache all routes to avoid breaking client-side routing
 ];
 
@@ -30,7 +35,9 @@ const CACHE_STRATEGIES = {
     /\.ico$/,
   ],
   // API calls: Network first with cache fallback
-  api: [/\/api\//, /\/version$/],
+  api: [/\/api\//, /\/version.*$/],
+  // Never cache these endpoints (they need fresh data)
+  noCache: [/\/api\/version$.*/, /\/version(\?.*)?$/],
   // Note: Pages are no longer cached to preserve client-side routing
 };
 
@@ -101,6 +108,11 @@ self.addEventListener('fetch', (event: FetchEvent) => {
 function getCacheStrategy(url: URL): string {
   const pathname = url.pathname;
 
+  // Check for no-cache endpoints first (highest priority)
+  if (CACHE_STRATEGIES.noCache.some((pattern) => pattern.test(pathname))) {
+    return 'no-cache';
+  }
+
   // Check for static assets
   if (CACHE_STRATEGIES.static.some((pattern) => pattern.test(pathname))) {
     return 'cache-first';
@@ -128,6 +140,9 @@ async function handleRequest(
     case 'network-first':
       return networkFirst(request, cache);
 
+    case 'no-cache':
+      return noCache(request);
+
     default:
       return fetch(request);
   }
@@ -138,7 +153,6 @@ async function cacheFirst(request: Request, cache: Cache): Promise<Response> {
     // Try cache first
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {
-      console.log('💾 Service Worker: Serving from cache:', request.url);
       return cachedResponse;
     }
 
@@ -147,14 +161,7 @@ async function cacheFirst(request: Request, cache: Cache): Promise<Response> {
 
     // Cache successful GET responses only (Cache API only supports GET requests)
     if (networkResponse.ok && request.method === 'GET') {
-      console.log('📥 Service Worker: Caching new asset:', request.url);
       cache.put(request, networkResponse.clone());
-    } else if (request.method !== 'GET') {
-      console.log(
-        '🚫 Service Worker: Skipping cache for non-GET request:',
-        request.method,
-        request.url
-      );
     }
 
     return networkResponse;
@@ -183,14 +190,7 @@ async function networkFirst(request: Request, cache: Cache): Promise<Response> {
 
     // Cache successful GET responses only (Cache API only supports GET requests)
     if (networkResponse.ok && request.method === 'GET') {
-      console.log('📥 Service Worker: Caching network response:', request.url);
       cache.put(request, networkResponse.clone());
-    } else if (request.method !== 'GET') {
-      console.log(
-        '🚫 Service Worker: Skipping cache for non-GET request:',
-        request.method,
-        request.url
-      );
     }
 
     return networkResponse;
@@ -200,7 +200,6 @@ async function networkFirst(request: Request, cache: Cache): Promise<Response> {
     // Fallback to cache (only possible for GET requests anyway)
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {
-      console.log('💾 Service Worker: Serving cached fallback:', request.url);
       return cachedResponse;
     }
 
@@ -211,6 +210,32 @@ async function networkFirst(request: Request, cache: Cache): Promise<Response> {
       );
     }
 
+    throw error;
+  }
+}
+
+async function noCache(request: Request): Promise<Response> {
+  try {
+    // Always fetch from network, never cache
+    const networkResponse = await fetch(request);
+
+    // Add cache-control headers to prevent browser caching
+    const headers = new Headers(networkResponse.headers);
+    headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    headers.set('Pragma', 'no-cache');
+    headers.set('Expires', '0');
+
+    return new Response(networkResponse.body, {
+      status: networkResponse.status,
+      statusText: networkResponse.statusText,
+      headers: headers,
+    });
+  } catch (error) {
+    console.warn(
+      '⚠️ Service Worker: No-cache request failed:',
+      request.url,
+      error
+    );
     throw error;
   }
 }
@@ -226,12 +251,62 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
 
 async function checkVersion() {
   try {
-    const response = await fetch('/version');
+    // Use no-cache headers and timeout to ensure fresh version data
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+    const response = await fetch('/api/version.json', {
+      cache: 'no-cache',
+      signal: controller.signal,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+      },
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.warn(
+        `⚠️ Service Worker: Version endpoint returned ${response.status}`
+      );
+      return {
+        success: false,
+        error: `HTTP ${response.status}`,
+        offline: response.status >= 500 || response.status === 0,
+      };
+    }
+
     const data = await response.json();
+    console.log('✅ Service Worker: Version check successful');
     return { success: true, version: data };
-  } catch (error: any) {
-    console.warn('⚠️ Service Worker: Version check failed:', error);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isOfflineError =
+      error instanceof Error &&
+      (error.name === 'AbortError' ||
+        error.message.includes('fetch') ||
+        error.message.includes('network') ||
+        error.message.includes('Failed to fetch'));
+
+    if (isOfflineError) {
+      console.warn(
+        '📡 Service Worker: Version check failed - likely offline:',
+        errorMessage
+      );
+      return {
+        success: false,
+        error: errorMessage,
+        offline: true,
+      };
+    } else {
+      console.warn('⚠️ Service Worker: Version check failed:', error);
+      return {
+        success: false,
+        error: errorMessage,
+        offline: false,
+      };
+    }
   }
 }
 

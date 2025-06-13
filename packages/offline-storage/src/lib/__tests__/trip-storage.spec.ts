@@ -18,7 +18,7 @@ describe('TripStorage', () => {
 
   it('should save and retrieve a trip', async () => {
     const trip: Trip = {
-      id: 'trip-1',
+      id: 'test-trip-abc123',
       userId: 'user-1',
       title: 'Test Trip',
       description: 'A test trip',
@@ -43,14 +43,14 @@ describe('TripStorage', () => {
     };
 
     await TripStorage.saveTrip(trip);
-    const retrievedTrip = await TripStorage.getTrip('trip-1');
+    const retrievedTrip = await TripStorage.getTrip('test-trip-abc123');
 
     expect(retrievedTrip).toEqual(trip);
   });
 
   it('should update an existing trip', async () => {
     const trip: Trip = {
-      id: 'trip-1',
+      id: 'test-trip-abc123',
       userId: 'user-1',
       title: 'Test Trip',
       description: 'A test trip',
@@ -77,7 +77,7 @@ describe('TripStorage', () => {
     };
 
     await TripStorage.saveTrip(updatedTrip);
-    const retrievedTrip = await TripStorage.getTrip('trip-1');
+    const retrievedTrip = await TripStorage.getTrip('test-trip-abc123');
 
     expect(retrievedTrip?.title).toBe('Updated Trip');
     expect(retrievedTrip?.description).toBe('An updated test trip');
@@ -91,7 +91,7 @@ describe('TripStorage', () => {
 
   it('should get user trips and filter deleted ones', async () => {
     const trip1: Trip = {
-      id: 'trip-1',
+      id: 'test-trip-abc123',
       userId: 'user-1',
       title: 'Active Trip',
       description: '',
@@ -108,7 +108,7 @@ describe('TripStorage', () => {
     };
 
     const trip2: Trip = {
-      id: 'trip-2',
+      id: 'test-trip-def456',
       userId: 'user-1',
       title: 'Deleted Trip',
       description: '',
@@ -125,7 +125,7 @@ describe('TripStorage', () => {
     };
 
     const trip3: Trip = {
-      id: 'trip-3',
+      id: 'test-trip-ghi789',
       userId: 'user-2',
       title: 'Other User Trip',
       description: '',
@@ -156,7 +156,7 @@ describe('TripStorage', () => {
 
   it('should get user trip summaries', async () => {
     const trip: Trip = {
-      id: 'trip-1',
+      id: 'test-trip-abc123',
       userId: 'user-1',
       title: 'Test Trip',
       description: 'A test trip',
@@ -177,7 +177,7 @@ describe('TripStorage', () => {
 
     expect(summaries).toHaveLength(1);
     expect(summaries[0]).toMatchObject({
-      tripId: 'trip-1',
+      tripId: 'test-trip-abc123',
       title: 'Test Trip',
       description: 'A test trip',
       createdAt: '2024-01-01T00:00:00.000Z',
@@ -190,7 +190,7 @@ describe('TripStorage', () => {
 
   it('should soft delete a trip', async () => {
     const trip: Trip = {
-      id: 'trip-1',
+      id: 'test-trip-abc123',
       userId: 'user-1',
       title: 'Test Trip',
       description: '',
@@ -210,19 +210,19 @@ describe('TripStorage', () => {
     const tripsBeforeDelete = await TripStorage.getUserTrips('user-1');
     expect(tripsBeforeDelete).toHaveLength(1);
 
-    await TripStorage.deleteTrip('trip-1');
+    await TripStorage.deleteTrip('test-trip-abc123');
     const tripsAfterDelete = await TripStorage.getUserTrips('user-1');
     expect(tripsAfterDelete).toHaveLength(0);
 
     // Trip should still exist in database but marked as deleted
-    const deletedTrip = await TripStorage.getTrip('trip-1');
+    const deletedTrip = await TripStorage.getTrip('test-trip-abc123');
     expect(deletedTrip?.isDeleted).toBe(true);
     expect(deletedTrip?.version).toBe(2);
   });
 
   it('should hard delete a trip and all related data', async () => {
     const trip: Trip = {
-      id: 'trip-1',
+      id: 'test-trip-abc123',
       userId: 'user-1',
       title: 'Test Trip',
       description: '',
@@ -239,9 +239,9 @@ describe('TripStorage', () => {
     };
 
     const person: Person = {
-      id: 'person-1',
+      id: 'test-person-abc123',
       name: 'Alice',
-      tripId: 'trip-1',
+      tripId: 'test-trip-abc123',
       age: 25,
       gender: 'female',
       createdAt: '2024-01-01T00:00:00.000Z',
@@ -251,12 +251,12 @@ describe('TripStorage', () => {
     };
 
     const item: TripItem = {
-      id: 'item-1',
+      id: 'test-item-abc123',
       name: 'Test Item',
-      tripId: 'trip-1',
+      tripId: 'test-trip-abc123',
       packed: false,
       dayIndex: 0,
-      personId: 'person-1',
+      personId: 'test-person-abc123',
       notes: '',
       quantity: 1,
       category: 'clothing',
@@ -271,21 +271,21 @@ describe('TripStorage', () => {
     await ItemStorage.saveItem(item);
 
     // Verify data exists
-    expect(await TripStorage.getTrip('trip-1')).toBeDefined();
-    expect(await PersonStorage.getTripPeople('trip-1')).toHaveLength(1);
-    expect(await ItemStorage.getTripItems('trip-1')).toHaveLength(1);
+    expect(await TripStorage.getTrip('test-trip-abc123')).toBeDefined();
+    expect(await PersonStorage.getTripPeople('test-trip-abc123')).toHaveLength(1);
+    expect(await ItemStorage.getTripItems('test-trip-abc123')).toHaveLength(1);
 
-    await TripStorage.hardDeleteTrip('trip-1');
+    await TripStorage.hardDeleteTrip('test-trip-abc123');
 
     // Verify all data is gone
-    expect(await TripStorage.getTrip('trip-1')).toBeUndefined();
-    expect(await PersonStorage.getTripPeople('trip-1')).toHaveLength(0);
-    expect(await ItemStorage.getTripItems('trip-1')).toHaveLength(0);
+    expect(await TripStorage.getTrip('test-trip-abc123')).toBeUndefined();
+    expect(await PersonStorage.getTripPeople('test-trip-abc123')).toHaveLength(0);
+    expect(await ItemStorage.getTripItems('test-trip-abc123')).toHaveLength(0);
   });
 
   it('should update last synced timestamp', async () => {
     const trip: Trip = {
-      id: 'trip-1',
+      id: 'test-trip-abc123',
       userId: 'user-1',
       title: 'Test Trip',
       description: '',
@@ -308,8 +308,8 @@ describe('TripStorage', () => {
     // Wait a small amount to ensure timestamp difference
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    await TripStorage.updateLastSynced('trip-1');
-    const updatedTrip = await TripStorage.getTrip('trip-1');
+    await TripStorage.updateLastSynced('test-trip-abc123');
+    const updatedTrip = await TripStorage.getTrip('test-trip-abc123');
 
     expect(updatedTrip?.lastSyncedAt).not.toBe(originalLastSynced);
     if (updatedTrip?.lastSyncedAt) {
@@ -319,7 +319,7 @@ describe('TripStorage', () => {
 
   it('should identify trips needing sync', async () => {
     const recentlyUpdatedTrip: Trip = {
-      id: 'trip-1',
+      id: 'test-trip-abc123',
       userId: 'user-1',
       title: 'Recently Updated',
       description: '',
@@ -336,7 +336,7 @@ describe('TripStorage', () => {
     };
 
     const neverSyncedTrip: Trip = {
-      id: 'trip-2',
+      id: 'test-trip-def456',
       userId: 'user-1',
       title: 'Never Synced',
       description: '',
@@ -353,7 +353,7 @@ describe('TripStorage', () => {
     };
 
     const upToDateTrip: Trip = {
-      id: 'trip-3',
+      id: 'test-trip-ghi789',
       userId: 'user-1',
       title: 'Up to Date',
       description: '',

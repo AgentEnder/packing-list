@@ -17,9 +17,9 @@ describe('PersonStorage', () => {
 
   it('should save and retrieve a person', async () => {
     const person: Person = {
-      id: 'person-1',
+      id: 'test-person-abc123',
       name: 'Alice',
-      tripId: 'trip-1',
+      tripId: 'test-trip-abc123',
       age: 25,
       gender: 'female',
       createdAt: '2024-01-01T00:00:00.000Z',
@@ -29,7 +29,7 @@ describe('PersonStorage', () => {
     };
 
     await PersonStorage.savePerson(person);
-    const tripPeople = await PersonStorage.getTripPeople('trip-1');
+    const tripPeople = await PersonStorage.getTripPeople('test-trip-abc123');
 
     expect(tripPeople).toHaveLength(1);
     expect(tripPeople[0]).toEqual(person);
@@ -37,9 +37,9 @@ describe('PersonStorage', () => {
 
   it('should update an existing person', async () => {
     const person: Person = {
-      id: 'person-1',
+      id: 'test-person-abc123',
       name: 'Alice',
-      tripId: 'trip-1',
+      tripId: 'test-trip-abc123',
       age: 25,
       gender: 'female',
       createdAt: '2024-01-01T00:00:00.000Z',
@@ -59,7 +59,7 @@ describe('PersonStorage', () => {
     };
 
     await PersonStorage.savePerson(updatedPerson);
-    const tripPeople = await PersonStorage.getTripPeople('trip-1');
+    const tripPeople = await PersonStorage.getTripPeople('test-trip-abc123');
 
     expect(tripPeople).toHaveLength(1);
     expect(tripPeople[0].name).toBe('Alice Smith');
@@ -69,9 +69,9 @@ describe('PersonStorage', () => {
 
   it('should soft delete a person', async () => {
     const person: Person = {
-      id: 'person-1',
+      id: 'test-person-abc123',
       name: 'Alice',
-      tripId: 'trip-1',
+      tripId: 'test-trip-abc123',
       age: 25,
       gender: 'female',
       createdAt: '2024-01-01T00:00:00.000Z',
@@ -81,11 +81,11 @@ describe('PersonStorage', () => {
     };
 
     await PersonStorage.savePerson(person);
-    const peopleBeforeDelete = await PersonStorage.getTripPeople('trip-1');
+    const peopleBeforeDelete = await PersonStorage.getTripPeople('test-trip-abc123');
     expect(peopleBeforeDelete).toHaveLength(1);
 
-    await PersonStorage.deletePerson('person-1');
-    const peopleAfterDelete = await PersonStorage.getTripPeople('trip-1');
+    await PersonStorage.deletePerson('test-person-abc123');
+    const peopleAfterDelete = await PersonStorage.getTripPeople('test-trip-abc123');
     expect(peopleAfterDelete).toHaveLength(0);
   });
 
@@ -98,9 +98,9 @@ describe('PersonStorage', () => {
 
   it('should filter out deleted people when retrieving trip people', async () => {
     const person1: Person = {
-      id: 'person-1',
+      id: 'test-person-abc123',
       name: 'Alice',
-      tripId: 'trip-1',
+      tripId: 'test-trip-abc123',
       age: 25,
       gender: 'female',
       createdAt: '2024-01-01T00:00:00.000Z',
@@ -110,9 +110,9 @@ describe('PersonStorage', () => {
     };
 
     const person2: Person = {
-      id: 'person-2',
+      id: 'test-person-def456',
       name: 'Bob',
-      tripId: 'trip-1',
+      tripId: 'test-trip-abc123',
       age: 30,
       gender: 'male',
       createdAt: '2024-01-01T00:00:00.000Z',
@@ -124,7 +124,7 @@ describe('PersonStorage', () => {
     await PersonStorage.savePerson(person1);
     await PersonStorage.savePerson(person2);
 
-    const tripPeople = await PersonStorage.getTripPeople('trip-1');
+    const tripPeople = await PersonStorage.getTripPeople('test-trip-abc123');
     expect(tripPeople).toHaveLength(1);
     expect(tripPeople[0].name).toBe('Alice');
   });
@@ -137,9 +137,9 @@ describe('PersonStorage', () => {
 
   it('should handle multiple trips separately', async () => {
     const trip1Person: Person = {
-      id: 'person-1',
+      id: 'test-person-abc123',
       name: 'Alice',
-      tripId: 'trip-1',
+      tripId: 'test-trip-abc123',
       age: 25,
       gender: 'female',
       createdAt: '2024-01-01T00:00:00.000Z',
@@ -149,9 +149,9 @@ describe('PersonStorage', () => {
     };
 
     const trip2Person: Person = {
-      id: 'person-2',
+      id: 'test-person-def456',
       name: 'Bob',
-      tripId: 'trip-2',
+      tripId: 'test-trip-def456',
       age: 30,
       gender: 'male',
       createdAt: '2024-01-01T00:00:00.000Z',
@@ -163,8 +163,8 @@ describe('PersonStorage', () => {
     await PersonStorage.savePerson(trip1Person);
     await PersonStorage.savePerson(trip2Person);
 
-    const trip1People = await PersonStorage.getTripPeople('trip-1');
-    const trip2People = await PersonStorage.getTripPeople('trip-2');
+    const trip1People = await PersonStorage.getTripPeople('test-trip-abc123');
+    const trip2People = await PersonStorage.getTripPeople('test-trip-def456');
 
     expect(trip1People).toHaveLength(1);
     expect(trip1People[0].name).toBe('Alice');
@@ -176,9 +176,9 @@ describe('PersonStorage', () => {
   it('should handle different gender values', async () => {
     const people: Person[] = [
       {
-        id: 'person-1',
+        id: 'test-person-abc123',
         name: 'Alice',
-        tripId: 'trip-1',
+        tripId: 'test-trip-abc123',
         age: 25,
         gender: 'female',
         createdAt: '2024-01-01T00:00:00.000Z',
@@ -187,9 +187,9 @@ describe('PersonStorage', () => {
         isDeleted: false,
       },
       {
-        id: 'person-2',
+        id: 'test-person-def456',
         name: 'Bob',
-        tripId: 'trip-1',
+        tripId: 'test-trip-abc123',
         age: 30,
         gender: 'male',
         createdAt: '2024-01-01T00:00:00.000Z',
@@ -198,9 +198,9 @@ describe('PersonStorage', () => {
         isDeleted: false,
       },
       {
-        id: 'person-3',
+        id: 'test-person-ghi789',
         name: 'Charlie',
-        tripId: 'trip-1',
+        tripId: 'test-trip-abc123',
         age: 28,
         gender: 'other',
         createdAt: '2024-01-01T00:00:00.000Z',
@@ -209,9 +209,9 @@ describe('PersonStorage', () => {
         isDeleted: false,
       },
       {
-        id: 'person-4',
+        id: 'test-person-jkl012',
         name: 'Dana',
-        tripId: 'trip-1',
+        tripId: 'test-trip-abc123',
         age: 22,
         gender: 'prefer-not-to-say',
         createdAt: '2024-01-01T00:00:00.000Z',
@@ -225,7 +225,7 @@ describe('PersonStorage', () => {
       await PersonStorage.savePerson(person);
     }
 
-    const tripPeople = await PersonStorage.getTripPeople('trip-1');
+    const tripPeople = await PersonStorage.getTripPeople('test-trip-abc123');
     expect(tripPeople).toHaveLength(4);
 
     const genders = tripPeople.map((p) => p.gender);

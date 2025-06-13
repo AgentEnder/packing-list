@@ -1,5 +1,5 @@
 // Service Worker Registration and Version Management
-import serviceWorkerUrl from '../src/service-worker.ts?worker&url';
+// Note: Service worker is now built as a separate entry point at /service-worker.js
 
 export interface VersionInfo {
   version: string;
@@ -30,16 +30,20 @@ class ServiceWorkerManager {
         } mode`
       );
 
-      // Register service worker using Vite's ?worker&url import
+      // Register service worker from fixed location at root
+      const serviceWorkerPath = '/service-worker.js';
+
       this.registration = await navigator.serviceWorker.register(
-        serviceWorkerUrl,
+        serviceWorkerPath,
         {
           scope: '/',
+          type: this.isDevelopment ? 'module' : 'classic',
         }
       );
 
       console.log(
-        '✅ Service Worker: Registered successfully via ?worker&url import'
+        '✅ Service Worker: Registered successfully from',
+        serviceWorkerPath
       );
 
       // Set up update checking
@@ -85,7 +89,7 @@ class ServiceWorkerManager {
           '- Make sure the TypeScript service worker compiles correctly'
         );
         console.log('- Check browser console for any compilation errors');
-        console.log('- Service worker is now loaded via Vite ?worker import');
+        console.log('- Service worker is now built as separate entry point');
       }
     }
   }
@@ -172,21 +176,105 @@ class ServiceWorkerManager {
    * Get current version information
    */
   public async getCurrentVersion(): Promise<VersionInfo | null> {
+    // Quick offline check first
+    if (!navigator.onLine) {
+      console.log(
+        '📡 Service Worker: Skipping version check - browser reports offline'
+      );
+      return null;
+    }
+
     try {
-      // Try the API endpoint first, fallback to page endpoint
-      let response = await fetch('/api/version');
+      // Try the API endpoint first with no-cache headers and timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+      let response = await fetch('/api/version.json', {
+        cache: 'no-cache',
+        signal: controller.signal,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+        },
+      });
+
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        response = await fetch('/version?format=json');
+        // Try fallback endpoint
+        const fallbackController = new AbortController();
+        const fallbackTimeoutId = setTimeout(
+          () => fallbackController.abort(),
+          5000
+        );
+
+        response = await fetch('/version?format=json', {
+          cache: 'no-cache',
+          signal: fallbackController.signal,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache',
+          },
+        });
+
+        clearTimeout(fallbackTimeoutId);
       }
 
       if (response.ok) {
         this.currentVersion = await response.json();
         return this.currentVersion;
+      } else {
+        console.warn(
+          `⚠️ Service Worker: Version endpoint returned ${response.status}`
+        );
+        this.handleOfflineState('Version endpoint returned error status');
       }
     } catch (error) {
-      console.warn('⚠️ Version check failed:', error);
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          console.warn(
+            '⏰ Service Worker: Version check timed out - likely offline'
+          );
+          this.handleOfflineState('Version check timeout');
+        } else if (error.message.includes('fetch')) {
+          console.warn(
+            '📡 Service Worker: Network error during version check - likely offline'
+          );
+          this.handleOfflineState('Network error');
+        } else {
+          console.warn(
+            '⚠️ Service Worker: Version check failed:',
+            error.message
+          );
+        }
+      } else {
+        console.warn(
+          '⚠️ Service Worker: Version check failed with unknown error:',
+          error
+        );
+      }
     }
     return null;
+  }
+
+  /**
+   * Handle offline state detection
+   */
+  private handleOfflineState(reason: string): void {
+    console.log(`📡 Service Worker: Detected offline state - ${reason}`);
+
+    // Dispatch custom event to notify the app about offline detection
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('offlineDetected', {
+          detail: {
+            source: 'version-check',
+            reason,
+            timestamp: Date.now(),
+          },
+        })
+      );
+    }
   }
 
   /**

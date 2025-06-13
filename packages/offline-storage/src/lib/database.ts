@@ -11,6 +11,13 @@ import type {
   RulePack,
 } from '@packing-list/model';
 
+// Declare global window type for database instance
+declare global {
+  interface Window {
+    __offlineDbForceClose?: () => Promise<void>;
+  }
+}
+
 export interface OfflineDB {
   // User data
   userPreferences: UserPreferences;
@@ -163,6 +170,14 @@ export async function initializeDatabase(): Promise<IDBPDatabase<OfflineDB>> {
     },
     blocking() {
       console.warn('[OfflineDB] Database connection is blocking an upgrade');
+      // Auto-close when blocking to allow upgrades
+      if (dbInstance) {
+        console.log(
+          '[OfflineDB] Auto-closing database to resolve blocking upgrade'
+        );
+        dbInstance.close();
+        dbInstance = null;
+      }
     },
     terminated() {
       console.warn('[OfflineDB] Database connection was terminated');
@@ -182,9 +197,28 @@ export async function getDatabase(): Promise<IDBPDatabase<OfflineDB>> {
 
 export async function closeDatabase(): Promise<void> {
   if (dbInstance) {
+    console.log('[OfflineDB] Closing database connection');
     dbInstance.close();
     dbInstance = null;
   }
+}
+
+// Test cleanup function - force close and clear instance
+export async function forceCloseDatabase(): Promise<void> {
+  if (dbInstance) {
+    console.log('[OfflineDB] Force closing database for test cleanup');
+    try {
+      dbInstance.close();
+    } catch (e) {
+      console.warn('[OfflineDB] Error closing database:', e);
+    }
+    dbInstance = null;
+  }
+}
+
+// Expose force close function globally for test access
+if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
+  (globalThis as any).window.__offlineDbForceClose = forceCloseDatabase;
 }
 
 function generateDeviceId(): string {

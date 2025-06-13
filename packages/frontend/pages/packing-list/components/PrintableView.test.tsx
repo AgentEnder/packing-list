@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import { PrintableView } from './PrintableView';
+import { describe, it, expect } from 'vitest';
 
 describe('PrintableView', () => {
   describe('by-person view', () => {

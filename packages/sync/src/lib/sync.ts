@@ -13,6 +13,14 @@ import type {
   RulePackStats,
 } from '@packing-list/model';
 import {
+  mapDatabaseTripToTrip,
+  mapDatabasePersonToPerson,
+  mapDatabaseItemToTripItem,
+  isDatabaseTripRow,
+  isDatabasePersonRow,
+  isDatabaseItemRow,
+} from './database-mappers.js';
+import {
   getDatabase,
   TripStorage,
   PersonStorage,
@@ -20,6 +28,7 @@ import {
   RuleOverrideStorage,
   DefaultItemRulesStorage,
   RulePacksStorage,
+  ConflictsStorage,
 } from '@packing-list/offline-storage';
 import { supabase, isSupabaseAvailable } from '@packing-list/supabase';
 import type { Json } from '@packing-list/supabase';
@@ -27,6 +36,7 @@ import {
   ConnectivityService,
   getConnectivityService,
 } from '@packing-list/connectivity';
+import { Dispatch } from '@reduxjs/toolkit';
 
 // Type definitions for special sync data formats
 interface PackingStatusData {
@@ -53,25 +63,14 @@ export interface SyncOptions {
   supabaseAnonKey?: string;
   autoSyncInterval?: number; // milliseconds
   demoMode?: boolean; // Disable active syncing, only show demo conflicts
-  dispatch?: any; // Redux dispatch function for integration
-  reloadFromIndexedDB?: any; // Thunk dispatcher for IndexedDB reload
+  dispatch?: Dispatch; // Redux dispatch function for integration
+  reloadFromIndexedDB?: (payload: {
+    syncedCount: number;
+    isInitialSync: boolean;
+    userId: string;
+  }) => void;
   userId?: string; // Current user ID for data filtering
 }
-
-// Environment detection with proper type guards
-const isBrowser = typeof window !== 'undefined';
-const hasNavigator = typeof navigator !== 'undefined';
-
-// Type-safe access to browser globals
-const getNavigatorOnline = (): boolean => {
-  return hasNavigator ? navigator.onLine : true;
-};
-
-const addWindowEventListener = (event: string, handler: () => void): void => {
-  if (isBrowser) {
-    window.addEventListener(event, handler);
-  }
-};
 
 // Helper function to check if a user is local and should not sync to remote
 function isLocalUser(userId: string): boolean {
@@ -230,7 +229,7 @@ export class SyncService {
     // Initialize connectivity service
     this.connectivityService = getConnectivityService();
 
-    if (isBrowser && !this.options.demoMode) {
+    if (typeof window !== 'undefined' && !this.options.demoMode) {
       this.setupConnectivityListener();
     }
 
@@ -289,7 +288,6 @@ export class SyncService {
       console.log(
         '[SyncService] Demo mode enabled - initializing with demo conflicts only'
       );
-      await this.initializeDemoConflicts();
       this.notifySubscribers();
       return;
     }
@@ -321,7 +319,6 @@ export class SyncService {
       console.log(
         '[SyncService] 🎭 Demo mode - sync disabled, regenerating demo conflicts'
       );
-      await this.initializeDemoConflicts();
       this.notifySubscribers();
       return;
     }
@@ -370,9 +367,14 @@ export class SyncService {
 
     this.notifySubscribers();
 
-    // Try to sync immediately if online
+    // Try to sync immediately if online and not already syncing
     if (this.getIsOnline() && !this.isSyncing) {
-      this.performSync().catch(console.error);
+      // Use setTimeout to avoid synchronous sync operations
+      setTimeout(() => {
+        if (!this.isSyncing) {
+          this.performSync().catch(console.error);
+        }
+      }, 100);
     }
   }
 
@@ -383,8 +385,7 @@ export class SyncService {
     conflictId: string,
     resolution: 'local' | 'server' | 'manual'
   ): Promise<void> {
-    const db = await getDatabase();
-    const conflict = await db.get('syncConflicts', conflictId);
+    const conflict = await ConflictsStorage.getConflict(conflictId);
 
     if (!conflict) {
       console.warn(`[SyncService] Conflict not found: ${conflictId}`);
@@ -395,7 +396,7 @@ export class SyncService {
     await this.applyConflictResolution(conflict);
 
     // Remove the conflict
-    await db.delete('syncConflicts', conflictId);
+    await ConflictsStorage.deleteConflict(conflictId);
 
     console.log(
       `[SyncService] Resolved conflict: ${conflictId} with ${resolution} resolution`
@@ -404,7 +405,7 @@ export class SyncService {
   }
 
   private setupConnectivityListener(): void {
-    if (!isBrowser) {
+    if (typeof window === 'undefined') {
       console.warn(
         '[SyncService] Online/offline detection not available in this environment'
       );
@@ -533,8 +534,7 @@ export class SyncService {
   }
 
   private async getConflicts(): Promise<SyncConflict[]> {
-    const db = await getDatabase();
-    return await db.getAll('syncConflicts');
+    return await ConflictsStorage.getAllConflicts();
   }
 
   private async markChangeAsSynced(changeId: string): Promise<void> {
@@ -552,95 +552,6 @@ export class SyncService {
   private async updateSyncTimestamp(): Promise<void> {
     const db = await getDatabase();
     await db.put('syncMetadata', Date.now(), 'lastSyncTimestamp');
-  }
-
-  /**
-   * Initialize demo conflicts when in demo mode
-   */
-  private async initializeDemoConflicts(): Promise<void> {
-    console.log('[SyncService] 🎭 Initializing demo conflicts...');
-
-    const db = await getDatabase();
-
-    // Clear any existing conflicts first
-    await db.clear('syncConflicts');
-
-    // Create demo conflicts similar to those in demo data
-    const demoConflicts: SyncConflict[] = [
-      {
-        id: 'demo-conflict-1',
-        entityType: 'item',
-        entityId: 'demo-item-beach-towel',
-        localVersion: {
-          name: 'Beach Towel',
-          category: 'beach',
-          isPacked: true,
-          quantity: 1,
-          timestamp: Date.now() - 3600000, // 1 hour ago
-        },
-        serverVersion: {
-          name: 'Large Beach Towel',
-          category: 'beach',
-          isPacked: false,
-          quantity: 2,
-          timestamp: Date.now() - 1800000, // 30 minutes ago
-        },
-        conflictType: 'update_conflict',
-        timestamp: Date.now() - 1800000,
-      },
-      {
-        id: 'demo-conflict-2',
-        entityType: 'person',
-        entityId: 'demo-person-sarah',
-        localVersion: {
-          name: 'Sarah Johnson',
-          age: 42,
-          gender: 'female',
-          preferences: { temperature: 'warm' },
-          timestamp: Date.now() - 2400000, // 40 minutes ago
-        },
-        serverVersion: {
-          name: 'Sarah J. Johnson',
-          age: 42,
-          gender: 'female',
-          preferences: { temperature: 'hot', style: 'casual' },
-          timestamp: Date.now() - 900000, // 15 minutes ago
-        },
-        conflictType: 'update_conflict',
-        timestamp: Date.now() - 900000,
-      },
-      {
-        id: 'demo-conflict-3',
-        entityType: 'rule_pack',
-        entityId: 'demo-rule-pack-summer',
-        localVersion: {
-          name: 'Summer Essentials',
-          version: '1.2.0',
-          description: 'Essential items for summer trips',
-          author: 'Local User',
-          timestamp: Date.now() - 7200000, // 2 hours ago
-        },
-        serverVersion: {
-          name: 'Summer Essentials Pro',
-          version: '2.0.0',
-          description:
-            'Enhanced essential items for summer trips with new gear recommendations',
-          author: 'Community',
-          timestamp: Date.now() - 1200000, // 20 minutes ago
-        },
-        conflictType: 'update_conflict',
-        timestamp: Date.now() - 1200000,
-      },
-    ];
-
-    // Store demo conflicts in IndexedDB
-    for (const conflict of demoConflicts) {
-      await db.put('syncConflicts', conflict);
-    }
-
-    console.log(
-      `[SyncService] 🎭 Initialized ${demoConflicts.length} demo conflicts`
-    );
   }
 
   private async pushChangeToServer(change: Change): Promise<void> {
@@ -1104,10 +1015,19 @@ export class SyncService {
       console.error('[SyncService] Failed to fetch trips', tripError);
     } else if (trips) {
       for (const tripRow of trips) {
+        if (!isDatabaseTripRow(tripRow)) {
+          console.error(
+            '[SyncService] Invalid trip row from database:',
+            tripRow
+          );
+          continue;
+        }
+
+        const mappedTrip = mapDatabaseTripToTrip(tripRow);
         await this.applyServerChange(
           'trip',
-          tripRow.id as string,
-          tripRow,
+          mappedTrip.id,
+          mappedTrip,
           async (serverTrip) => {
             await TripStorage.saveTrip(serverTrip as Trip);
           }
@@ -1124,10 +1044,19 @@ export class SyncService {
       console.error('[SyncService] Failed to fetch people', peopleError);
     } else if (people) {
       for (const personRow of people) {
+        if (!isDatabasePersonRow(personRow)) {
+          console.error(
+            '[SyncService] Invalid person row from database:',
+            personRow
+          );
+          continue;
+        }
+
+        const mappedPerson = mapDatabasePersonToPerson(personRow);
         await this.applyServerChange(
           'person',
-          personRow.id as string,
-          personRow,
+          mappedPerson.id,
+          mappedPerson,
           async (serverPerson) => {
             await PersonStorage.savePerson(serverPerson as Person);
           }
@@ -1144,10 +1073,19 @@ export class SyncService {
       console.error('[SyncService] Failed to fetch items', itemError);
     } else if (items) {
       for (const itemRow of items) {
+        if (!isDatabaseItemRow(itemRow)) {
+          console.error(
+            '[SyncService] Invalid item row from database:',
+            itemRow
+          );
+          continue;
+        }
+
+        const mappedItem = mapDatabaseItemToTripItem(itemRow);
         await this.applyServerChange(
           'item',
-          itemRow.id as string,
-          itemRow,
+          mappedItem.id,
+          mappedItem,
           async (serverItem) => {
             await ItemStorage.saveItem(serverItem as TripItem);
           }
@@ -1260,8 +1198,6 @@ export class SyncService {
 
   // @ts-expect-error - TODO: figure out where this was meant to be used
   private async handleConflict(localChange: Change): Promise<void> {
-    const db = await getDatabase();
-
     // Create a mock server version for demonstration
     const serverVersion = {
       ...(localChange.data as Record<string, unknown>),
@@ -1279,7 +1215,7 @@ export class SyncService {
       timestamp: Date.now(),
     };
 
-    await db.put('syncConflicts', conflict);
+    await ConflictsStorage.saveConflict(conflict);
     console.log(`[SyncService] Created conflict: ${conflict.id}`);
   }
 
@@ -1367,8 +1303,6 @@ export class SyncService {
     serverData: unknown,
     applyCallback: (serverData: unknown) => Promise<void>
   ): Promise<void> {
-    const db = await getDatabase();
-
     // Check for pending local changes for this entity
     const pendingChanges = await this.getPendingChanges();
     const localChange = pendingChanges.find(
@@ -1388,7 +1322,7 @@ export class SyncService {
         timestamp: Date.now(),
       };
 
-      await db.put('syncConflicts', conflict);
+      await ConflictsStorage.saveConflict(conflict);
       console.log(
         `[SyncService] Detected conflict for ${entityType}:${entityId}, stored as ${conflict.id}`
       );
@@ -1399,6 +1333,18 @@ export class SyncService {
         `[SyncService] Applied server change for ${entityType}:${entityId}`
       );
     }
+  }
+
+  /**
+   * Update the options of an existing sync service instance
+   */
+  updateOptions(newOptions: Partial<SyncOptions>): void {
+    const oldDemoMode = this.options.demoMode;
+    this.options = { ...this.options, ...newOptions };
+
+    console.log(
+      `🔧 [SYNC SERVICE] Options updated - demo mode: ${oldDemoMode} → ${this.options.demoMode}`
+    );
   }
 }
 
@@ -1421,6 +1367,9 @@ export function resetSyncService(): void {
 export function getSyncService(options?: SyncOptions): SyncService {
   if (!syncServiceInstance) {
     syncServiceInstance = new SyncService(options);
+  } else if (options) {
+    // Update options on existing instance
+    syncServiceInstance.updateOptions(options);
   }
   return syncServiceInstance;
 }

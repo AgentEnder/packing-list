@@ -38,7 +38,10 @@ test.describe('Settings Page Tabs', () => {
     if (hasAccounts) {
       // If user has accounts, we should see the accounts section
       await expect(
-        settingsPage.page.getByText('Offline Accounts')
+        settingsPage.page.getByRole('heading', {
+          name: 'Offline Accounts',
+          exact: true,
+        })
       ).toBeVisible();
     } else {
       // If not signed in, we should see the sign-in prompt
@@ -49,14 +52,17 @@ test.describe('Settings Page Tabs', () => {
   test('should switch to Debug & Status tab correctly', async () => {
     await settingsPage.switchToDebugTab();
 
-    // Should see debug content
+    // Should show debug tab content
     const connectionStatus = await settingsPage.getConnectionStatus();
     expect(connectionStatus).toMatch(/Online|Offline/);
+
+    // Should see copy button
+    await expect(
+      settingsPage.page.getByRole('button', { name: 'Copy System Info' })
+    ).toBeVisible();
   });
 
-  test('should maintain tab state when switching between tabs', async ({
-    page,
-  }) => {
+  test('should maintain tab state when switching between tabs', async () => {
     // Start on Settings tab
     await settingsPage.switchToSettingsTab();
     let currentTab = await settingsPage.getCurrentTab();
@@ -91,7 +97,7 @@ test.describe('Settings Page Tabs', () => {
     // Should see system information sections
     await expect(page.getByText('System Information')).toBeVisible();
     await expect(page.getByText('Browser')).toBeVisible();
-    await expect(page.getByText('Storage')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Storage' })).toBeVisible();
 
     // Should see copy button
     await expect(

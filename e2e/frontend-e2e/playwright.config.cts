@@ -22,7 +22,12 @@ export default defineConfig({
     baseURL,
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+    /* Enable storage persistence for IndexedDB tests */
+    storageState: undefined, // Don't use global storage state
   },
+  /* Global setup for all tests */
+  globalSetup: undefined,
+  globalTeardown: undefined,
   // Snapshot tests are only checked on Linux to avoid issues with
   // screenshot tests. If you have added or modified a snapshot test,
   // running `nx update-snapshots frontend-e2e` will run in a linux container.
@@ -42,7 +47,17 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         launchOptions: {
           slowMo: process.env.SLOW_MO ? parseInt(process.env.SLOW_MO) : 0,
+          /* Chrome args to ensure IndexedDB works properly */
+          args: [
+            '--allow-running-insecure-content',
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor',
+            '--enable-experimental-web-platform-features',
+            '--unlimited-storage',
+          ],
         },
+        /* Ensure each test has fresh storage context */
+        storageState: undefined,
       },
     },
 
