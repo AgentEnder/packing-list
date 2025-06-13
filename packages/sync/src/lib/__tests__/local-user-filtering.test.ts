@@ -1,7 +1,47 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SyncService } from '../sync.js';
+
+// Global state for test isolation
+let storedChanges: Map<string, any>;
+let storedSyncMetadata: Map<string, any>;
+let mockDb: any;
+
+// Mock all dependencies at the top level before any imports
+vi.mock('@packing-list/supabase', () => ({
+  supabase: {
+    from: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        gte: vi.fn().mockResolvedValue({ data: [], error: null }),
+      }),
+    }),
+  },
+  isSupabaseAvailable: vi.fn().mockReturnValue(false), // Disable actual syncing
+}));
+
+vi.mock('@packing-list/offline-storage', () => ({
+  getDatabase: vi.fn().mockImplementation(() => {
+    return Promise.resolve(mockDb);
+  }),
+  ConflictsStorage: {
+    getAllConflicts: vi.fn().mockResolvedValue([]),
+    saveConflict: vi.fn().mockResolvedValue(undefined),
+    deleteConflict: vi.fn().mockResolvedValue(undefined),
+    getConflict: vi.fn().mockResolvedValue(null),
+  },
+}));
+
+vi.mock('@packing-list/connectivity', () => ({
+  getConnectivityService: vi.fn().mockReturnValue({
+    getState: vi.fn().mockReturnValue({ isOnline: false, isConnected: false }),
+    subscribe: vi.fn().mockReturnValue(() => {
+      // Unsubscribe function
+    }),
+  }),
+}));
+
+// Import after mocks
+import { SyncService, resetSyncService } from '../sync.js';
 import {
   createTripChange,
   createPersonChange,
@@ -11,18 +51,31 @@ import {
 
 describe('Local User Filtering in Real SyncService', () => {
   let syncService: SyncService;
-  let storedChanges: Map<string, any>;
-  let mockDb: any;
 
   beforeEach(async () => {
-    // Create a mock database that actually stores data
-    storedChanges = new Map();
+    // Reset the singleton before each test
+    resetSyncService();
 
+    // Clear all mocks
+    vi.clearAllMocks();
+
+    // Create fresh test state for each test
+    storedChanges = new Map();
+    storedSyncMetadata = new Map();
+
+    // Create a fresh mock database for each test
     mockDb = {
-      get: vi.fn().mockResolvedValue(0),
+      get: vi.fn().mockImplementation((store, key) => {
+        if (store === 'syncMetadata') {
+          return Promise.resolve(storedSyncMetadata.get(key));
+        }
+        return Promise.resolve(0);
+      }),
       put: vi.fn().mockImplementation((store, value, key) => {
         if (store === 'syncChanges') {
           storedChanges.set(value.id, value);
+        } else if (store === 'syncMetadata') {
+          storedSyncMetadata.set(key, value);
         }
         return Promise.resolve();
       }),
@@ -42,36 +95,6 @@ describe('Local User Filtering in Real SyncService', () => {
       }),
     };
 
-    // Mock dependencies with dynamic mocking
-    vi.doMock('@packing-list/supabase', () => ({
-      supabase: {
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            gte: vi.fn().mockResolvedValue({ data: [], error: null }),
-          }),
-        }),
-      },
-      isSupabaseAvailable: vi.fn().mockReturnValue(false), // Disable actual syncing
-    }));
-
-    vi.doMock('@packing-list/offline-storage', () => ({
-      getDatabase: vi.fn().mockResolvedValue(mockDb),
-      ConflictsStorage: {
-        getAllConflicts: vi.fn().mockResolvedValue([]),
-      },
-    }));
-
-    vi.doMock('@packing-list/connectivity', () => ({
-      getConnectivityService: vi.fn().mockReturnValue({
-        getState: vi
-          .fn()
-          .mockReturnValue({ isOnline: false, isConnected: false }),
-        subscribe: vi.fn().mockReturnValue(() => {
-          // Unsubscribe function
-        }),
-      }),
-    }));
-
     // Create SyncService with offline mode
     syncService = new SyncService({
       demoMode: false,
@@ -81,10 +104,9 @@ describe('Local User Filtering in Real SyncService', () => {
 
   afterEach(() => {
     syncService.stop();
+    resetSyncService(); // Clean up singleton
     storedChanges.clear();
-    vi.doUnmock('@packing-list/supabase');
-    vi.doUnmock('@packing-list/offline-storage');
-    vi.doUnmock('@packing-list/connectivity');
+    storedSyncMetadata.clear();
   });
 
   describe('Change tracking for local users', () => {
@@ -171,10 +193,15 @@ describe('Local User Filtering in Real SyncService', () => {
       const syncState = await syncService.getSyncState();
       expect(syncState.pendingChanges).toHaveLength(3);
 
-      // Verify the changes were tracked correctly
-      expect(syncState.pendingChanges[0].userId).toBe('user-123');
-      expect(syncState.pendingChanges[1].userId).toBe('authenticated-user-456');
-      expect(syncState.pendingChanges[2].userId).toBe('google-oauth-789');
+      // Sort by entityId to ensure consistent ordering for testing
+      const sortedChanges = syncState.pendingChanges.sort((a, b) =>
+        a.entityId.localeCompare(b.entityId)
+      );
+
+      // Verify the changes were tracked correctly (sorted by entityId)
+      expect(sortedChanges[0].userId).toBe('google-oauth-789'); // test-item-1
+      expect(sortedChanges[1].userId).toBe('authenticated-user-456'); // test-person-1
+      expect(sortedChanges[2].userId).toBe('user-123'); // test-trip-1
 
       // Verify they're actually stored in the mock database
       expect(storedChanges.size).toBe(3);

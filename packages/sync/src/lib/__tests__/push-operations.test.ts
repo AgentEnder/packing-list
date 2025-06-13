@@ -1,8 +1,60 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SyncService } from '../sync.js';
 import { createTripChange, createPersonChange } from './test-utils.js';
+
+// Mock all dependencies at the top level
+vi.mock('@packing-list/supabase', () => {
+  const mockSupabaseTable = {
+    insert: vi.fn().mockResolvedValue({ error: null }),
+    update: vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }),
+    }),
+    upsert: vi.fn().mockResolvedValue({ error: null }),
+  };
+
+  const mockSupabase = {
+    from: vi.fn().mockReturnValue(mockSupabaseTable),
+  };
+
+  return {
+    supabase: mockSupabase,
+    isSupabaseAvailable: vi.fn().mockReturnValue(true),
+  };
+});
+
+vi.mock('@packing-list/offline-storage', () => ({
+  getDatabase: vi.fn().mockResolvedValue({
+    get: vi.fn().mockResolvedValue(0),
+    put: vi.fn().mockResolvedValue(undefined),
+    transaction: vi.fn().mockReturnValue({
+      objectStore: vi.fn().mockReturnValue({
+        getAll: vi.fn().mockResolvedValue([]),
+        get: vi.fn().mockResolvedValue(null),
+        put: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
+      }),
+      done: Promise.resolve(),
+    }),
+  }),
+  ConflictsStorage: {
+    getAllConflicts: vi.fn().mockResolvedValue([]),
+  },
+}));
+
+vi.mock('@packing-list/connectivity', () => ({
+  getConnectivityService: vi.fn().mockReturnValue({
+    getState: vi.fn().mockReturnValue({ isOnline: true, isConnected: true }),
+    subscribe: vi.fn().mockReturnValue(() => {
+      // Unsubscribe function
+    }),
+  }),
+}));
+
+// Import after mocks
+import { SyncService, resetSyncService } from '../sync.js';
 
 describe('Push Operations - Real SyncService', () => {
   let syncService: SyncService;
@@ -10,58 +62,16 @@ describe('Push Operations - Real SyncService', () => {
   let mockSupabase: any;
 
   beforeEach(async () => {
+    // Reset singleton and clear all mocks
+    resetSyncService();
     vi.clearAllMocks();
 
-    // Create mocks for this test
-    mockSupabaseTable = {
-      insert: vi.fn().mockResolvedValue({ error: null }),
-      update: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: null }),
-        }),
-      }),
-      upsert: vi.fn().mockResolvedValue({ error: null }),
-    };
-
-    mockSupabase = {
-      from: vi.fn().mockReturnValue(mockSupabaseTable),
-    };
-
-    // Mock the modules dynamically
-    vi.doMock('@packing-list/supabase', () => ({
-      supabase: mockSupabase,
-      isSupabaseAvailable: vi.fn().mockReturnValue(true),
-    }));
-
-    vi.doMock('@packing-list/offline-storage', () => ({
-      getDatabase: vi.fn().mockResolvedValue({
-        get: vi.fn().mockResolvedValue(0),
-        put: vi.fn().mockResolvedValue(undefined),
-        transaction: vi.fn().mockReturnValue({
-          objectStore: vi.fn().mockReturnValue({
-            getAll: vi.fn().mockResolvedValue([]),
-            get: vi.fn().mockResolvedValue(null),
-            put: vi.fn().mockResolvedValue(undefined),
-            delete: vi.fn().mockResolvedValue(undefined),
-          }),
-          done: Promise.resolve(),
-        }),
-      }),
-      ConflictsStorage: {
-        getAllConflicts: vi.fn().mockResolvedValue([]),
-      },
-    }));
-
-    vi.doMock('@packing-list/connectivity', () => ({
-      getConnectivityService: vi.fn().mockReturnValue({
-        getState: vi
-          .fn()
-          .mockReturnValue({ isOnline: true, isConnected: true }),
-        subscribe: vi.fn().mockReturnValue(() => {
-          // Unsubscribe function
-        }),
-      }),
-    }));
+    // Get the mocked instances (we need to import the mocked module)
+    const supabaseMock = await vi.importMock<
+      typeof import('@packing-list/supabase')
+    >('@packing-list/supabase');
+    mockSupabase = supabaseMock.supabase;
+    mockSupabaseTable = mockSupabase.from();
 
     // Create real SyncService with mocked dependencies
     syncService = new SyncService({
@@ -72,9 +82,7 @@ describe('Push Operations - Real SyncService', () => {
 
   afterEach(() => {
     syncService.stop();
-    vi.doUnmock('@packing-list/supabase');
-    vi.doUnmock('@packing-list/offline-storage');
-    vi.doUnmock('@packing-list/connectivity');
+    resetSyncService();
   });
 
   describe('Trip Push Operations', () => {
