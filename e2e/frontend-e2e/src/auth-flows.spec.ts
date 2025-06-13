@@ -92,14 +92,6 @@ test.describe('Authentication Flows', () => {
       const authState = await getAuthState(page);
       console.log('Auth state:', authState);
 
-      // If authentication didn't work (e.g., test environment limitations), skip the check
-      if (authState.user?.email && authState.user.email.includes('shared@')) {
-        console.log(
-          'Test environment using shared account - skipping auth verification'
-        );
-        test.skip();
-      }
-
       expect(authState.isAuthenticated).toBe(true);
       expect(authState.user).toBeTruthy();
 
@@ -183,14 +175,6 @@ test.describe('Authentication Flows', () => {
       let authState = await getAuthState(page);
       console.log('Auth state after sign in:', authState);
 
-      // If authentication didn't work (e.g., test environment limitations), skip the check
-      if (authState.user?.email && authState.user.email.includes('shared@')) {
-        console.log(
-          'Test environment using shared account - skipping auth test'
-        );
-        test.skip();
-      }
-
       expect(authState.isAuthenticated).toBe(true);
 
       // Should see user profile element (may be hidden)
@@ -242,14 +226,6 @@ test.describe('Authentication Flows', () => {
       const authState = await getAuthState(page);
       console.log('Admin auth state:', authState);
 
-      // If authentication didn't work (e.g., test environment limitations), skip the check
-      if (authState.user?.email && authState.user.email.includes('shared@')) {
-        console.log(
-          'Test environment using shared account - skipping admin auth test'
-        );
-        test.skip();
-      }
-
       expect(authState.isAuthenticated).toBe(true);
 
       if (authState.user?.email) {
@@ -276,22 +252,38 @@ test.describe('Authentication Flows', () => {
       let authState = await getAuthState(page);
       console.log('Auth persistence test - initial auth state:', authState);
 
-      // If authentication didn't work (e.g., test environment limitations), skip the check
-      if (authState.user?.email && authState.user.email.includes('shared@')) {
-        console.log(
-          'Test environment using shared account - skipping auth persistence test'
-        );
-        test.skip();
-      }
-
       expect(authState.isAuthenticated).toBe(true);
 
-      // Refresh page
-      await page.reload({ waitUntil: 'domcontentloaded' });
+      // Refresh page with more robust waiting
+      console.log('Refreshing page to test persistence...');
+      await page.reload({ waitUntil: 'networkidle' }); // Wait for network idle instead of just DOM
+
+      // Add explicit wait for auth system to initialize
+      await page.waitForTimeout(1000); // Give auth system time to restore state
       await waitForAuthReady(page);
+
+      // Wait for potential async auth restoration
+      await page.waitForFunction(
+        () => {
+          // Check if auth state has been restored by looking for either
+          // sign-in button (not authenticated) or user profile (authenticated)
+          const signInButton = document.querySelector(
+            '[data-testid="sign-in-button"]'
+          );
+          const userProfile = document.querySelector(
+            '[data-testid="user-profile"]'
+          );
+          return signInButton || userProfile;
+        },
+        { timeout: 10000 }
+      );
 
       // Should still be authenticated
       authState = await getAuthState(page);
+      console.log(
+        'Auth persistence test - after reload auth state:',
+        authState
+      );
       expect(authState.isAuthenticated).toBe(true);
     });
 
@@ -351,14 +343,6 @@ test.describe('Authentication Flows', () => {
         'Auth transition test - after transition auth state:',
         authState
       );
-
-      // If authentication didn't work (e.g., test environment limitations), skip the check
-      if (authState.user?.email && authState.user.email.includes('shared@')) {
-        console.log(
-          'Test environment using shared account - skipping auth transition test'
-        );
-        test.skip();
-      }
 
       expect(authState.isAuthenticated).toBe(true);
 

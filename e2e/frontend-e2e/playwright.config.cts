@@ -24,6 +24,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     /* Enable storage persistence for IndexedDB tests */
     storageState: undefined, // Don't use global storage state
+    video: 'retain-on-failure',
   },
   /* Global setup for all tests */
   globalSetup: undefined,

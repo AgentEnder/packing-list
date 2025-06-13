@@ -36,7 +36,7 @@ export class PackingListPage {
         .last();
 
       await packingListLink.click({ timeout: 2000 });
-      await this.page.waitForLoadState('networkidle');
+      await this.verifyPackingListPage();
     } finally {
       // ?
     }

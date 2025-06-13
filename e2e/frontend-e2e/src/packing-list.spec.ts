@@ -3,7 +3,7 @@ import { setupTestSession } from './utils.js';
 import { PackingListPage } from './page-objects/PackingListPage.js';
 import { TripManager } from './page-objects/trip-manager';
 
-test.describe.fixme('Packing List View', () => {
+test.describe('Packing List View', () => {
   let packingListPage: PackingListPage;
   let tripManager: TripManager;
 

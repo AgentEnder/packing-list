@@ -256,11 +256,16 @@ export class SyncService {
    */
   async getSyncState(): Promise<SyncState> {
     const db = await getDatabase();
-    const [pendingChanges, lastSyncTimestamp, conflicts] = await Promise.all([
-      this.getPendingChanges(),
-      db.get('syncMetadata', 'lastSyncTimestamp') || 0,
-      this.getConflicts(),
-    ]);
+    const [pendingChanges, lastSyncTimestampRaw, conflicts] = await Promise.all(
+      [
+        this.getPendingChanges(),
+        db.get('syncMetadata', 'lastSyncTimestamp'),
+        this.getConflicts(),
+      ]
+    );
+
+    // Handle the case where lastSyncTimestamp doesn't exist yet
+    const lastSyncTimestamp = lastSyncTimestampRaw || 0;
 
     // Only count syncable changes in the state
     const syncableChanges = pendingChanges.filter(

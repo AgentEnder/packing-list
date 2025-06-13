@@ -174,7 +174,7 @@ test.describe('Trips Listing Page', () => {
       }
     });
 
-    test.fixme('switches between trips', async () => {
+    test('switches between trips', async () => {
       expect(tripIds).toHaveLength(2);
 
       // Find the non-selected trip
@@ -196,7 +196,7 @@ test.describe('Trips Listing Page', () => {
       await tripsPage.expectTripSelected(nonSelectedTripId);
     });
 
-    test.fixme('navigates to selected trip', async () => {
+    test('navigates to selected trip', async () => {
       // Find the currently selected trip
       let selectedTripId = '';
       for (const tripId of tripIds) {
@@ -213,7 +213,7 @@ test.describe('Trips Listing Page', () => {
       await expect(tripsPage.page).toHaveURL(/\//); // Should navigate to home page
     });
 
-    test.fixme('opens trip settings', async () => {
+    test('opens trip settings', async () => {
       const tripId = tripIds[0];
 
       await tripsPage.openTripSettings(tripId);

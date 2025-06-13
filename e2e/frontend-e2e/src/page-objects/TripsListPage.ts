@@ -9,6 +9,14 @@ export class TripsListPage {
       .filter({ visible: true })
       .first()
       .click();
+    await this.verifyTripsListPage();
+  }
+
+  async verifyTripsListPage() {
+    await expect(this.page).toHaveURL('/trips');
+    await expect(
+      this.page.getByRole('heading', { name: 'Trips', level: 1 })
+    ).toBeVisible();
   }
 
   // Navigation

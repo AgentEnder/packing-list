@@ -70,13 +70,13 @@ export async function signInWithEmail(
 
   // Navigate to login page
   const signInButton = getSignInButton(page);
-  const hasSignInButton = await signInButton
-    .isVisible({ timeout: 3000 })
-    .catch(() => false);
 
-  if (hasSignInButton) {
+  // Check if sign-in button is available, but don't wait too long
+  try {
+    await signInButton.waitFor({ state: 'visible', timeout: 3000 });
     await signInButton.click();
-  } else {
+  } catch {
+    // If no sign-in button, navigate directly to login
     await page.goto('/login');
   }
 
@@ -87,12 +87,14 @@ export async function signInWithEmail(
   await loginForm.waitFor({ timeout: 10000 });
 
   const emailSignInLink = getEmailSignInLink(page);
-  const hasEmailLink = await emailSignInLink
-    .isVisible({ timeout: 5000 })
-    .catch(() => false);
 
-  if (hasEmailLink) {
+  // Check if email sign-in link is available
+  try {
+    await emailSignInLink.waitFor({ state: 'visible', timeout: 5000 });
     await emailSignInLink.click();
+  } catch {
+    // Email link not found, might already be on email form
+    console.log('Email sign-in link not found, assuming already on email form');
   }
 
   // Wait for email/password form
@@ -114,18 +116,15 @@ export async function signInWithEmail(
   // Wait for navigation or auth state change
   await page.waitForLoadState('networkidle');
 
-  // Give auth system time to process
-  await page.waitForTimeout(2000);
-
-  // Check for errors
+  // Check for errors without unnecessary delay
   const errorElement = page.locator('[data-testid="form-error"]');
-  const hasError = await errorElement
-    .isVisible({ timeout: 2000 })
-    .catch(() => false);
-  if (hasError) {
+  try {
+    await errorElement.waitFor({ state: 'visible', timeout: 2000 });
     const errorText = (await errorElement.textContent()) || 'Unknown error';
     console.log(`Authentication may have failed: ${errorText}`);
     // Don't throw immediately - let the calling test handle it
+  } catch {
+    // No error found, which is good
   }
 
   console.log('Sign in completed');
@@ -145,11 +144,10 @@ export async function signOut(page: Page): Promise<void> {
 
   // Look for user profile dropdown
   const userProfile = getUserProfile(page);
-  const isProfileVisible = await userProfile
-    .isVisible({ timeout: 3000 })
-    .catch(() => false);
 
-  if (!isProfileVisible) {
+  try {
+    await userProfile.waitFor({ state: 'visible', timeout: 3000 });
+  } catch {
     console.log('User profile not visible, assuming already signed out');
     return;
   }
@@ -171,7 +169,7 @@ export async function signOut(page: Page): Promise<void> {
 
 /**
  * Check if user is authenticated by looking at UI state
- * Simplified to focus on the most reliable indicators
+ * Fixed to properly wait for elements to become visible
  */
 export async function getAuthState(page: Page): Promise<{
   isAuthenticated: boolean;
@@ -179,44 +177,64 @@ export async function getAuthState(page: Page): Promise<{
   session: AuthSession | null;
   authMethod: 'ui' | 'none';
 }> {
-  // Check for user profile first (more reliable indicator of auth)
-  const userProfile = getUserProfile(page);
-  const hasUserProfile = await userProfile
-    .isVisible({ timeout: 2000 })
-    .catch(() => false);
+  // Wait for either user profile OR sign-in button to appear (one should always be present)
+  try {
+    const userProfile = getUserProfile(page);
+    const signInButton = getSignInButton(page);
 
-  if (hasUserProfile) {
-    // Try to get user email from the profile
-    let userEmail: string | null = null;
-    try {
-      await userProfile.click();
+    // Race between user profile and sign-in button appearing
+    const result = await Promise.race([
+      userProfile
+        .waitFor({ state: 'visible', timeout: 5000 })
+        .then(() => 'profile'),
+      signInButton
+        .waitFor({ state: 'visible', timeout: 5000 })
+        .then(() => 'signin'),
+    ]).catch(() => null);
 
-      const userEmailElement = page
-        .locator('[data-testid="user-email"]:visible')
-        .first();
-      userEmail = await userEmailElement.textContent().catch(() => null);
+    if (result === 'profile') {
+      // User profile is visible - try to get user email
+      let userEmail: string | null = null;
+      try {
+        await userProfile.click();
 
-      // Close dropdown by clicking elsewhere
-      await page.keyboard.press('Escape');
-    } catch {
-      // Could not get email, but user profile exists
-    }
+        const userEmailElement = page
+          .locator('[data-testid="user-email"]:visible')
+          .first();
+        userEmail = await userEmailElement
+          .textContent({ timeout: 2000 })
+          .catch(() => null);
 
-    // Verify this is not the shared local user
-    if (
-      userEmail &&
-      userEmail !== 'shared@local.device' &&
-      !userEmail.includes('shared@') &&
-      !userEmail.includes('local.device')
-    ) {
-      return {
-        isAuthenticated: true,
-        user: { email: userEmail },
-        session: null,
-        authMethod: 'ui',
-      };
-    } else {
-      // This is a shared local account, not actually authenticated
+        // Close dropdown by clicking elsewhere
+        await page.keyboard.press('Escape');
+      } catch {
+        // Could not get email, but user profile exists
+      }
+
+      // Verify this is not the shared local user
+      if (
+        userEmail &&
+        userEmail !== 'shared@local.device' &&
+        !userEmail.includes('shared@') &&
+        !userEmail.includes('local.device')
+      ) {
+        return {
+          isAuthenticated: true,
+          user: { email: userEmail },
+          session: null,
+          authMethod: 'ui',
+        };
+      } else {
+        // This is a shared local account, not actually authenticated
+        return {
+          isAuthenticated: false,
+          user: null,
+          session: null,
+          authMethod: 'none',
+        };
+      }
+    } else if (result === 'signin') {
+      // Sign-in button is visible - user is not authenticated
       return {
         isAuthenticated: false,
         user: null,
@@ -224,21 +242,8 @@ export async function getAuthState(page: Page): Promise<{
         authMethod: 'none',
       };
     }
-  }
-
-  // Check for sign-in button (indicates not authenticated)
-  const signInButton = getSignInButton(page);
-  const hasSignInButton = await signInButton
-    .isVisible({ timeout: 2000 })
-    .catch(() => false);
-
-  if (hasSignInButton) {
-    return {
-      isAuthenticated: false,
-      user: null,
-      session: null,
-      authMethod: 'none',
-    };
+  } catch (error) {
+    console.warn('Error determining auth state:', error);
   }
 
   // Default to not authenticated if we can't determine state
@@ -252,37 +257,54 @@ export async function getAuthState(page: Page): Promise<{
 
 /**
  * Wait for authentication state to be ready
- * Simplified to focus on UI readiness
+ * Fixed to properly wait for elements to become visible
  */
 export async function waitForAuthReady(
   page: Page,
-  timeoutMs = 10000
+  timeoutMs = 15000
 ): Promise<boolean> {
   const startTime = Date.now();
 
   while (Date.now() - startTime < timeoutMs) {
-    const signInButton = getSignInButton(page);
-    const userProfile = getUserProfile(page);
+    try {
+      const signInButton = getSignInButton(page);
+      const userProfile = getUserProfile(page);
 
-    const hasSignInButton = await signInButton
-      .isVisible({ timeout: 1000 })
-      .catch(() => false);
-    const hasUserProfile = await userProfile
-      .isVisible({ timeout: 1000 })
-      .catch(() => false);
+      // Use Promise.race to wait for either element to appear
+      const result = await Promise.race([
+        userProfile
+          .waitFor({ state: 'visible', timeout: 1000 })
+          .then(() => 'profile'),
+        signInButton
+          .waitFor({ state: 'visible', timeout: 1000 })
+          .then(() => 'signin'),
+        new Promise((resolve) => setTimeout(() => resolve('timeout'), 1000)),
+      ]);
 
-    // Auth is ready when we have either a sign-in button OR user profile (but not both)
-    if (hasSignInButton || hasUserProfile) {
-      return true;
+      if (result === 'profile') {
+        console.log('Auth ready: Authenticated state detected');
+        return true;
+      } else if (result === 'signin') {
+        console.log('Auth ready: Unauthenticated state detected');
+        return true;
+      }
+
+      // If we got timeout, continue the loop
+      console.log('Auth state not ready yet, continuing to wait...');
+    } catch (error) {
+      console.warn('Error during auth ready check:', error);
+      // Small delay before retrying to avoid hammering the DOM
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
 
+  console.warn(`waitForAuthReady timed out after ${timeoutMs}ms`);
   return false;
 }
 
 /**
  * Clear authentication state
- * Simplified to use Supabase signOut and basic storage clearing
+ * Enhanced to be more thorough for test isolation
  */
 export async function clearAllAuthState(page: Page): Promise<void> {
   await page.evaluate(async () => {
@@ -308,7 +330,35 @@ export async function clearAllAuthState(page: Page): Promise<void> {
     } catch (e) {
       console.warn('Storage clear error:', e);
     }
+
+    // Clear IndexedDB databases more thoroughly
+    if (typeof window !== 'undefined' && window.indexedDB) {
+      try {
+        // Clear common auth databases
+        const dbsToDelete = [
+          'firebaseLocalStorageDb',
+          'supabase-auth',
+          'keyval-store',
+          'packingListDb',
+          'authDB',
+        ];
+
+        for (const dbName of dbsToDelete) {
+          try {
+            window.indexedDB.deleteDatabase(dbName);
+          } catch (e) {
+            console.warn(`Error deleting database ${dbName}:`, e);
+          }
+        }
+      } catch (e) {
+        console.warn('IndexedDB clear error:', e);
+      }
+    }
   });
+
+  // Navigate to home page to ensure clean state
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
 }
 
 /**

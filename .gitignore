@@ -63,3 +63,5 @@ test-results
 .env.backup
  
  **/*.tsbuildinfo
+
+ **/version.json
