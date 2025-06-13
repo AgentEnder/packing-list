@@ -147,3 +147,5 @@ cdk.out
 ## Panda
 styled-system
 styled-system-studio
+
+public/api/version.json

@@ -64,4 +64,4 @@ test-results
  
  **/*.tsbuildinfo
 
- **/version.json
+ packages/frontend/public/api/version.json

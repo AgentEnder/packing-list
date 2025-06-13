@@ -149,8 +149,11 @@ import {
   upsertSyncedPerson,
   upsertSyncedItem,
 } from './lib/sync/sync-integration.js';
-import type { Trip } from '@packing-list/model';
-import { TripStorage } from '@packing-list/offline-storage';
+import {
+  TripStorage,
+  PersonStorage,
+  ItemStorage,
+} from '@packing-list/offline-storage';
 import { enableSyncMode, disableSyncMode } from '@packing-list/sync';
 
 export type ActionHandler<T extends AllActions> = (
@@ -355,26 +358,51 @@ export const reloadFromIndexedDB = (payload: {
           },
         });
 
-        // Use direct state updates for synced trips to avoid triggering change tracking
-        const updatedSummaries = trips.map((trip: Trip) => ({
-          tripId: trip.id,
-          title: trip.title,
-          description: trip.description || '',
-          createdAt: trip.createdAt,
-          updatedAt: trip.updatedAt,
-          totalItems: 0, // Will be recalculated when trip is loaded
-          packedItems: 0, // Will be recalculated when trip is loaded
-          totalPeople: 0, // Will be recalculated when trip is loaded
-        }));
+        // Use UPSERT_SYNCED_TRIP to properly populate tripsById with full TripData objects
+        // This ensures that tripsById[tripId] is populated and not undefined
+        for (const trip of trips) {
+          console.log(
+            `🔄 [RELOAD_THUNK] Upserting trip: ${trip.title} (${trip.id})`
+          );
+          dispatch({
+            type: 'UPSERT_SYNCED_TRIP',
+            payload: trip,
+          });
 
-        // Create a sync-safe state update that doesn't trigger change tracking
-        dispatch({
-          type: 'SYNC_UPDATE_TRIP_SUMMARIES',
-          payload: { summaries: updatedSummaries },
-        });
+          // Also load related people and items for each trip
+          try {
+            const people = await PersonStorage.getTripPeople(trip.id);
+            const items = await ItemStorage.getTripItems(trip.id);
+
+            console.log(
+              `👥 [RELOAD_THUNK] Loading ${people.length} people for trip ${trip.id}`
+            );
+            for (const person of people) {
+              dispatch({
+                type: 'UPSERT_SYNCED_PERSON',
+                payload: person,
+              });
+            }
+
+            console.log(
+              `📦 [RELOAD_THUNK] Loading ${items.length} items for trip ${trip.id}`
+            );
+            for (const item of items) {
+              dispatch({
+                type: 'UPSERT_SYNCED_ITEM',
+                payload: item,
+              });
+            }
+          } catch (relationError) {
+            console.error(
+              `❌ [RELOAD_THUNK] Failed to load people/items for trip ${trip.id}:`,
+              relationError
+            );
+          }
+        }
 
         console.log(
-          `✅ [RELOAD_THUNK] Successfully updated ${trips.length} trip summaries without triggering sync changes`
+          `✅ [RELOAD_THUNK] Successfully upserted ${trips.length} trips into Redux state (tripsById populated)`
         );
       } finally {
         // Always disable sync mode, even if an error occurred

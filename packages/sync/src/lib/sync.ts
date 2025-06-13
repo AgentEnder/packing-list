@@ -1216,11 +1216,12 @@ export class SyncService {
       }`
     );
 
-    // Call the callback if this looks like an initial sync with data
-    if (isInitialSync && syncedCount > 0 && this.options.reloadFromIndexedDB) {
+    // Always call the callback when data is synced (not just initial sync)
+    // This ensures Redux state gets updated whenever sync pulls data
+    if (syncedCount > 0 && this.options.reloadFromIndexedDB) {
       this.options.reloadFromIndexedDB({
         syncedCount,
-        isInitialSync: true,
+        isInitialSync,
         userId: this.options.userId || 'unknown',
       });
     }
