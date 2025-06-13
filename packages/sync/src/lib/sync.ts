@@ -477,7 +477,10 @@ export class SyncService {
       // Step 0: Clean up old local-only changes first
       await this.cleanupLocalOnlyChanges();
 
-      // Step 1: Get pending changes
+      // Step 1: Always pull server changes first (especially important for initial sync)
+      await this.pullChangesFromServer();
+
+      // Step 2: Get pending changes to push
       const pendingChanges = await this.getPendingChanges();
 
       // Filter out any local user changes that shouldn't be synced
@@ -487,33 +490,31 @@ export class SyncService {
 
       if (syncableChanges.length === 0) {
         console.log(
-          '[SyncService] No syncable changes found (all changes are from local users)'
+          '[SyncService] No local changes to push (all changes are from local users or none exist)'
         );
-        return;
-      }
+      } else {
+        console.log(
+          `[SyncService] Found ${
+            syncableChanges.length
+          } syncable changes to push (${pendingChanges.length} total, ${
+            pendingChanges.length - syncableChanges.length
+          } local-only)`
+        );
 
-      console.log(
-        `[SyncService] Found ${syncableChanges.length} syncable changes (${
-          pendingChanges.length
-        } total, ${pendingChanges.length - syncableChanges.length} local-only)`
-      );
-
-      // Step 2: Push local changes (placeholder)
-      for (const change of syncableChanges) {
-        try {
-          await this.pushChangeToServer(change);
-          await this.markChangeAsSynced(change.id);
-        } catch (error) {
-          console.error(
-            `[SyncService] Failed to push change: ${change.id}`,
-            error
-          );
-          // Continue with other changes
+        // Step 3: Push local changes to server
+        for (const change of syncableChanges) {
+          try {
+            await this.pushChangeToServer(change);
+            await this.markChangeAsSynced(change.id);
+          } catch (error) {
+            console.error(
+              `[SyncService] Failed to push change: ${change.id}`,
+              error
+            );
+            // Continue with other changes
+          }
         }
       }
-
-      // Step 3: Pull server changes (placeholder)
-      await this.pullChangesFromServer();
 
       // Step 4: Update sync timestamp
       await this.updateSyncTimestamp();
@@ -1008,8 +1009,15 @@ export class SyncService {
     const db = await getDatabase();
     const lastSync = (await db.get('syncMetadata', 'lastSyncTimestamp')) || 0;
     const since = new Date(lastSync).toISOString();
+    const isInitialSync = lastSync === 0;
 
-    console.log(`[SyncService] Pulling changes since ${since}`);
+    console.log(
+      `[SyncService] ${
+        isInitialSync ? '🚀 Initial sync -' : '📥'
+      } Pulling changes since ${since}${isInitialSync ? ' (all data)' : ''}`
+    );
+
+    let syncedCount = 0;
 
     // Pull trips
     const { data: trips, error: tripError } = await supabase
@@ -1035,6 +1043,7 @@ export class SyncService {
           mappedTrip,
           async (serverTrip) => {
             await TripStorage.saveTrip(serverTrip as Trip);
+            syncedCount++;
           }
         );
       }
@@ -1064,6 +1073,7 @@ export class SyncService {
           mappedPerson,
           async (serverPerson) => {
             await PersonStorage.savePerson(serverPerson as Person);
+            syncedCount++;
           }
         );
       }
@@ -1093,6 +1103,7 @@ export class SyncService {
           mappedItem,
           async (serverItem) => {
             await ItemStorage.saveItem(serverItem as TripItem);
+            syncedCount++;
           }
         );
       }
@@ -1120,6 +1131,7 @@ export class SyncService {
               (serverOverride as { override_data: Json }).override_data
             );
             await RuleOverrideStorage.saveRuleOverride(overrideData);
+            syncedCount++;
           }
         );
       }
@@ -1161,6 +1173,7 @@ export class SyncService {
             await DefaultItemRulesStorage.saveDefaultItemRule(
               serverRule as DefaultItemRule
             );
+            syncedCount++;
           }
         );
       }
@@ -1195,9 +1208,25 @@ export class SyncService {
           pack,
           async (serverPack) => {
             await RulePacksStorage.saveRulePack(serverPack as RulePack);
+            syncedCount++;
           }
         );
       }
+    }
+
+    console.log(
+      `[SyncService] ✅ Pull completed - ${syncedCount} records synced ${
+        isInitialSync ? '(initial sync)' : ''
+      }`
+    );
+
+    // Call the callback if this looks like an initial sync with data
+    if (isInitialSync && syncedCount > 0 && this.options.reloadFromIndexedDB) {
+      this.options.reloadFromIndexedDB({
+        syncedCount,
+        isInitialSync: true,
+        userId: this.options.userId || 'unknown',
+      });
     }
   }
 
