@@ -33,7 +33,10 @@ class ServiceWorkerManager {
       );
 
       // Register service worker from fixed location at root
-      const serviceWorkerPath = '/service-worker.js';
+      const serviceWorkerPath = applyBaseUrl(
+        import.meta.env.PUBLIC_ENV__BASE_URL,
+        '/service-worker.js'
+      );
 
       this.registration = await navigator.serviceWorker.register(
         serviceWorkerPath,

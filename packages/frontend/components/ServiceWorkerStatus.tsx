@@ -5,6 +5,7 @@ import {
   getCurrentVersion,
   type VersionInfo,
 } from '../utils/serviceWorker.js';
+import { applyBaseUrl } from '@packing-list/shared-utils';
 
 interface ServiceWorkerStatusProps {
   minimal?: boolean;
@@ -63,7 +64,9 @@ export function ServiceWorkerStatus({
 
   const handleTestServiceWorker = async () => {
     try {
-      const response = await fetch('/service-worker.js');
+      const response = await fetch(
+        applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/service-worker.js')
+      );
       if (response.ok) {
         alert('✅ Service worker is accessible! Check console for details.');
         console.log('🔧 Service worker test successful:', {

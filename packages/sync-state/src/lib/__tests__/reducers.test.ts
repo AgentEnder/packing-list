@@ -5,6 +5,7 @@ import type {
   Trip,
   Person,
   TripItem,
+  Change,
 } from '@packing-list/model';
 import type {
   SyncStateSlice,
@@ -134,13 +135,19 @@ describe('Sync State Reducers', () => {
     });
 
     it('should handle SET_SYNC_PENDING_CHANGES action', () => {
-      const changes = [
+      const changes: Change[] = [
         {
           id: 'change-1',
           entityType: 'trip' as const,
           entityId: 'trip-1',
           operation: 'create' as const,
-          data: { title: 'Test Trip' },
+          data: {
+            id: 'trip-1',
+            title: 'Test Trip',
+            userId: 'user-1',
+            days: [],
+            createdAt: '2024-01-01T00:00:00Z',
+          },
           timestamp: Date.now(),
           userId: 'user-1',
           version: 1,
@@ -515,11 +522,21 @@ describe('Sync State Reducers', () => {
     });
 
     it('should handle TRACK_SYNC_CHANGE action', () => {
-      const changePayload = {
+      const changePayload: Change = {
         entityType: 'trip' as const,
         entityId: 'trip-1',
         operation: 'update' as const,
-        data: { title: 'Updated Trip' },
+        data: {
+          id: 'trip-1',
+          title: 'Updated Trip',
+          userId: 'user-1',
+          days: [],
+          createdAt: '2024-01-01T00:00:00Z',
+        },
+        tripId: 'trip-1',
+        timestamp: Date.now(),
+        synced: false,
+        id: 'change-1',
         userId: 'user-1',
         version: 2,
       };
@@ -534,12 +551,22 @@ describe('Sync State Reducers', () => {
     });
 
     it('should handle different entity types and operations', () => {
-      const changes = [
+      const changes: Change[] = [
         {
           entityType: 'trip' as const,
           entityId: 'trip-1',
           operation: 'create' as const,
-          data: { title: 'New Trip' },
+          data: {
+            id: 'trip-1',
+            title: 'New Trip',
+            userId: 'user-1',
+            days: [],
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+          tripId: 'trip-1',
+          timestamp: Date.now(),
+          synced: false,
+          id: 'change-1',
           userId: 'user-1',
           version: 1,
         },
@@ -547,7 +574,17 @@ describe('Sync State Reducers', () => {
           entityType: 'person' as const,
           entityId: 'person-1',
           operation: 'update' as const,
-          data: { name: 'Updated Name' },
+          data: {
+            id: 'person-1',
+            name: 'Updated Name',
+            age: 30,
+            gender: 'male',
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+          tripId: 'trip-1',
+          timestamp: Date.now(),
+          synced: false,
+          id: 'change-2',
           userId: 'user-1',
           version: 2,
         },
@@ -555,7 +592,17 @@ describe('Sync State Reducers', () => {
           entityType: 'item' as const,
           entityId: 'item-1',
           operation: 'delete' as const,
-          data: null,
+          data: {
+            id: 'item-1',
+            name: 'Test Item',
+            category: 'clothing',
+            quantity: 2,
+            packed: false,
+          },
+          tripId: 'trip-1',
+          timestamp: Date.now(),
+          synced: false,
+          id: 'change-3',
           userId: 'user-1',
           version: 3,
         },

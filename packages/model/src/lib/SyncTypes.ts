@@ -1,14 +1,12 @@
-import type {
-  Trip,
-  Person,
-  TripItem,
-  RuleOverride,
-  DefaultItemRule,
-  RulePack,
-} from './index.js';
+import { DefaultItemRule } from './DefaultItemRule.js';
+import { Person } from './Person.js';
+import { RuleOverride } from './RuleOverride.js';
+import { RulePack } from './RulePack.js';
+import { Trip } from './Trip.js';
+import { TripItem } from './TripItem.js';
 
 // Base change interface
-interface BaseChange {
+export interface BaseChange {
   id: string;
   operation: 'create' | 'update' | 'delete';
   timestamp: number;

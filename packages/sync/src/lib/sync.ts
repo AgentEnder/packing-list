@@ -39,7 +39,7 @@ import {
   ConflictsStorage,
 } from '@packing-list/offline-storage';
 import { supabase, isSupabaseAvailable } from '@packing-list/supabase';
-import type { Json } from '@packing-list/supabase';
+import type { Json, Tables } from '@packing-list/supabase';
 import {
   ConnectivityService,
   getConnectivityService,
@@ -108,10 +108,6 @@ function fromJson<T>(json: Json): T {
   return json as unknown as T;
 }
 
-function isValidTripId(tripId: string | undefined): tripId is string {
-  return typeof tripId === 'string' && tripId.length > 0;
-}
-
 // Type guard functions for discriminated union changes
 function isPackingStatusChange(change: Change): change is PackingStatusChange {
   return (
@@ -131,36 +127,6 @@ function isBulkPackingChange(change: Change): change is BulkPackingChange {
     'bulkPackingUpdate' in change.data &&
     change.data.bulkPackingUpdate === true
   );
-}
-
-function isTripChange(change: Change): change is TripChange {
-  return change.entityType === 'trip';
-}
-
-function isPersonChange(change: Change): change is PersonChange {
-  return change.entityType === 'person';
-}
-
-function isItemChange(change: Change): change is ItemChange {
-  return (
-    change.entityType === 'item' &&
-    !isPackingStatusChange(change) &&
-    !isBulkPackingChange(change)
-  );
-}
-
-function isRuleOverrideChange(change: Change): change is RuleOverrideChange {
-  return change.entityType === 'rule_override';
-}
-
-function isDefaultItemRuleChange(
-  change: Change
-): change is DefaultItemRuleChange {
-  return change.entityType === 'default_item_rule';
-}
-
-function isRulePackChange(change: Change): change is RulePackChange {
-  return change.entityType === 'rule_pack';
 }
 
 // Helper function to validate required fields for different operations
@@ -601,7 +567,7 @@ export class SyncService {
           // This should never happen with discriminated unions
           const exhaustiveCheck: never = change;
           throw new Error(
-            `Unknown entity type: ${(exhaustiveCheck as any).entityType}`
+            `Unknown entity type: ${(exhaustiveCheck as Change).entityType}`
           );
         }
       }
@@ -634,7 +600,7 @@ export class SyncService {
       }
 
       case 'update': {
-        const updateData: any = {
+        const updateData: Partial<Tables<'trips'>> = {
           version: change.version,
           updated_at: new Date().toISOString(),
         };
@@ -676,6 +642,10 @@ export class SyncService {
 
     switch (change.operation) {
       case 'create': {
+        if (!data.name) {
+          throw new Error('Person name is required');
+        }
+
         const { error: createError } = await supabase.from(table).insert({
           trip_id: change.tripId,
           name: data.name,
@@ -689,7 +659,7 @@ export class SyncService {
       }
 
       case 'update': {
-        const updateData: any = {
+        const updateData: Partial<Tables<'trip_people'>> = {
           version: change.version,
           updated_at: new Date().toISOString(),
         };
@@ -740,6 +710,13 @@ export class SyncService {
 
     switch (change.operation) {
       case 'create': {
+        if (!data.name) {
+          throw new Error('Item name is required');
+        }
+
+        if (!data.personId) {
+          throw new Error('Item personId is required');
+        }
         const { error: createError } = await supabase.from(table).insert({
           trip_id: change.tripId,
           name: data.name,
@@ -756,7 +733,7 @@ export class SyncService {
       }
 
       case 'update': {
-        const updateData: any = {
+        const updateData: Partial<Tables<'trip_items'>> = {
           version: change.version,
           updated_at: new Date().toISOString(),
         };
@@ -888,6 +865,13 @@ export class SyncService {
 
     switch (change.operation) {
       case 'create': {
+        if (!data.name) {
+          throw new Error('Default item rule name is required');
+        }
+
+        if (!data.categoryId) {
+          throw new Error('Default item rule categoryId is required');
+        }
         const { error: createError } = await supabase.from(table).insert({
           user_id: change.userId,
           rule_id: data.id,
@@ -905,7 +889,7 @@ export class SyncService {
       }
 
       case 'update': {
-        const updateData: any = {
+        const updateData: Partial<Tables<'default_item_rules'>> = {
           version: change.version,
           updated_at: new Date().toISOString(),
         };
@@ -950,6 +934,13 @@ export class SyncService {
 
     switch (change.operation) {
       case 'create': {
+        if (!data.name) {
+          throw new Error('Rule pack name is required');
+        }
+
+        if (!data.primaryCategoryId) {
+          throw new Error('Rule pack primaryCategoryId is required');
+        }
         const { error: createError } = await supabase.from(table).insert({
           user_id: change.userId,
           pack_id: data.id,
@@ -968,7 +959,7 @@ export class SyncService {
       }
 
       case 'update': {
-        const updateData: any = {
+        const updateData: Partial<Tables<'rule_packs'>> = {
           version: change.version,
           updated_at: new Date().toISOString(),
         };

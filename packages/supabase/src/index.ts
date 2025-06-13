@@ -4,4 +4,4 @@ export {
   supabase,
 } from './supabase-client.js';
 
-export type { Json, Database } from './database-types.js';
+export type { Json, Database, Tables } from './database-types.js';

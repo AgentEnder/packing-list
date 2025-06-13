@@ -3,6 +3,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SyncService, getSyncService, initializeSyncService } from './sync.js';
 import { getDatabase } from '@packing-list/offline-storage';
+import { TripChange } from '@packing-list/model';
 
 // Mock Supabase
 vi.mock('@packing-list/supabase', () => ({
@@ -109,13 +110,21 @@ describe('SyncService', () => {
 
   describe('Change Tracking', () => {
     it('should track regular user changes', async () => {
-      const change = {
+      const change: TripChange = {
         entityType: 'trip' as const,
         entityId: 'test-trip-1',
         operation: 'create' as const,
-        data: { title: 'Test Trip', days: [], tripEvents: [] },
+        data: {
+          id: 'test-trip-1',
+          title: 'Test Trip',
+          days: [],
+          tripEvents: [],
+        },
         userId: 'user-123',
         version: 1,
+        timestamp: Date.now(),
+        synced: false,
+        id: 'change-1',
       };
 
       await syncService.trackChange(change);
@@ -133,30 +142,54 @@ describe('SyncService', () => {
     });
 
     it('should not track local user changes', async () => {
-      const localChanges = [
+      const localChanges: TripChange[] = [
         {
           entityType: 'trip' as const,
           entityId: 'local-trip-1',
           operation: 'create' as const,
-          data: { title: 'Local Trip' },
+          data: {
+            id: 'local-trip-1',
+            title: 'Local Trip',
+            days: [],
+            tripEvents: [],
+          },
           userId: 'local-user',
           version: 1,
+          timestamp: Date.now(),
+          synced: false,
+          id: 'change-1',
         },
         {
           entityType: 'trip' as const,
           entityId: 'local-trip-2',
           operation: 'create' as const,
-          data: { title: 'Local Shared Trip' },
+          data: {
+            id: 'local-trip-2',
+            title: 'Local Shared Trip',
+            days: [],
+            tripEvents: [],
+          },
           userId: 'local-shared-user',
           version: 1,
+          timestamp: Date.now(),
+          synced: false,
+          id: 'change-2',
         },
         {
           entityType: 'trip' as const,
           entityId: 'local-trip-3',
           operation: 'create' as const,
-          data: { title: 'Local Guest Trip' },
+          data: {
+            id: 'local-trip-3',
+            title: 'Local Guest Trip',
+            days: [],
+            tripEvents: [],
+          },
           userId: 'local-guest-123',
           version: 1,
+          timestamp: Date.now(),
+          synced: false,
+          id: 'change-3',
         },
       ];
 
@@ -170,22 +203,38 @@ describe('SyncService', () => {
 
     it('should filter out local changes from sync state', async () => {
       // Add mix of local and regular changes
-      const changes = [
+      const changes: TripChange[] = [
         {
           entityType: 'trip' as const,
           entityId: 'local-trip',
           operation: 'create' as const,
-          data: { title: 'Local Trip' },
+          data: {
+            id: 'local-trip',
+            title: 'Local Trip',
+            days: [],
+            tripEvents: [],
+          },
           userId: 'local-user',
           version: 1,
+          timestamp: Date.now(),
+          synced: false,
+          id: 'change-1',
         },
         {
           entityType: 'trip' as const,
           entityId: 'regular-trip',
           operation: 'create' as const,
-          data: { title: 'Regular Trip' },
+          data: {
+            id: 'regular-trip',
+            title: 'Regular Trip',
+            days: [],
+            tripEvents: [],
+          },
           userId: 'user-123',
           version: 1,
+          timestamp: Date.now(),
+          synced: false,
+          id: 'change-2',
         },
       ];
 
@@ -200,22 +249,38 @@ describe('SyncService', () => {
     });
 
     it('should handle multiple changes for the same entity', async () => {
-      const changes = [
+      const changes: TripChange[] = [
         {
           entityType: 'trip' as const,
           entityId: 'trip-1',
           operation: 'create' as const,
-          data: { title: 'Original Trip' },
+          data: {
+            id: 'trip-1',
+            title: 'Original Trip',
+            days: [],
+            tripEvents: [],
+          },
           userId: 'user-123',
           version: 1,
+          timestamp: Date.now(),
+          synced: false,
+          id: 'change-1',
         },
         {
           entityType: 'trip' as const,
           entityId: 'trip-1',
           operation: 'update' as const,
-          data: { title: 'Updated Trip' },
+          data: {
+            id: 'trip-1',
+            title: 'Updated Trip',
+            days: [],
+            tripEvents: [],
+          },
           userId: 'user-123',
           version: 2,
+          timestamp: Date.now(),
+          synced: false,
+          id: 'change-2',
         },
       ];
 
@@ -241,7 +306,12 @@ describe('SyncService', () => {
         entityType: 'trip' as const,
         entityId: 'test-trip',
         operation: 'create' as const,
-        data: { title: 'Test' },
+        data: {
+          id: 'test-trip',
+          title: 'Test',
+          days: [],
+          tripEvents: [],
+        },
         userId: 'user-123',
         version: 1,
       });
@@ -264,7 +334,12 @@ describe('SyncService', () => {
         entityType: 'trip' as const,
         entityId: 'test-trip-2',
         operation: 'create' as const,
-        data: { title: 'Test 2' },
+        data: {
+          id: 'test-trip-2',
+          title: 'Test 2',
+          days: [],
+          tripEvents: [],
+        },
         userId: 'user-123',
         version: 1,
       });
@@ -288,7 +363,12 @@ describe('SyncService', () => {
         entityType: 'trip' as const,
         entityId: 'test-trip',
         operation: 'create' as const,
-        data: { title: 'Test' },
+        data: {
+          id: 'test-trip',
+          title: 'Test',
+          days: [],
+          tripEvents: [],
+        },
         userId: 'user-123',
         version: 1,
       });
@@ -314,7 +394,12 @@ describe('SyncService', () => {
         entityType: 'trip' as const,
         entityId: 'test-trip',
         operation: 'create' as const,
-        data: { title: 'Test' },
+        data: {
+          id: 'test-trip',
+          title: 'Test',
+          days: [],
+          tripEvents: [],
+        },
         userId: 'user-123',
         version: 1,
       });
@@ -338,7 +423,12 @@ describe('SyncService', () => {
         entityType: 'trip' as const,
         entityId: 'test-trip',
         operation: 'create' as const,
-        data: { title: 'Test' },
+        data: {
+          id: 'test-trip',
+          title: 'Test',
+          days: [],
+          tripEvents: [],
+        },
         userId: 'user-123',
         version: 1,
       });
@@ -354,7 +444,12 @@ describe('SyncService', () => {
           entityType: 'trip' as const,
           entityId: 'trip-1',
           operation: 'create' as const,
-          data: { title: 'Trip 1' },
+          data: {
+            id: 'trip-1',
+            title: 'Trip 1',
+            days: [],
+            tripEvents: [],
+          },
           userId: 'user-123',
           version: 1,
         },
@@ -461,7 +556,12 @@ describe('Integration Tests', () => {
       entityType: 'trip' as const,
       entityId: 'integration-trip-1',
       operation: 'create' as const,
-      data: { title: 'Business Trip', days: [], tripEvents: [] },
+      data: {
+        id: 'integration-trip-1',
+        title: 'Business Trip',
+        days: [],
+        tripEvents: [],
+      },
       userId: 'integration-user-123',
       version: 1,
     });
