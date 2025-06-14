@@ -6,6 +6,7 @@ import type {
   RuleOverrideChange,
   DefaultItemRuleChange,
   RulePackChange,
+  TripRuleChange,
   PackingStatusChange,
   BulkPackingChange,
   SyncConflict,
@@ -14,6 +15,7 @@ import type {
   Person,
   TripItem,
   RuleOverride,
+  TripRule,
   DefaultItemRule,
   RulePack,
   RulePackAuthor,
@@ -563,6 +565,9 @@ export class SyncService {
         case 'rule_pack':
           await this.pushRulePackChange(change as RulePackChange);
           break;
+        case 'trip_rule':
+          await this.pushTripRuleChange(change as TripRuleChange);
+          break;
         default: {
           // This should never happen with discriminated unions
           const exhaustiveCheck: never = change;
@@ -857,6 +862,44 @@ export class SyncService {
     }
   }
 
+  private async pushTripRuleChange(change: TripRuleChange): Promise<void> {
+    const table = 'trip_default_item_rules';
+    const data = change.data;
+
+    switch (change.operation) {
+      case 'create': {
+        const { error: createError } = await supabase.from(table).insert({
+          trip_id: change.tripId,
+          rule_id: data.ruleId,
+          version: change.version,
+        });
+        if (createError) throw createError;
+        break;
+      }
+
+      case 'update': {
+        const { error: updateError } = await supabase
+          .from(table)
+          .update({
+            version: change.version,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', change.entityId);
+        if (updateError) throw updateError;
+        break;
+      }
+
+      case 'delete': {
+        const { error: deleteError } = await supabase
+          .from(table)
+          .update({ is_deleted: true, updated_at: new Date().toISOString() })
+          .eq('id', change.entityId);
+        if (deleteError) throw deleteError;
+        break;
+      }
+    }
+  }
+
   private async pushDefaultItemRuleChange(
     change: DefaultItemRuleChange
   ): Promise<void> {
@@ -1127,6 +1170,27 @@ export class SyncService {
               (serverOverride as { override_data: Json }).override_data
             );
             await RuleOverrideStorage.saveRuleOverride(overrideData);
+            syncedCount++;
+          }
+        );
+      }
+    }
+
+    // Pull trip rule links
+    const { data: tripRules, error: tripRuleError } = await supabase
+      .from('trip_default_item_rules')
+      .select('*')
+      .gte('updated_at', since);
+    if (tripRuleError) {
+      console.error('[SyncService] Failed to fetch trip rule links', tripRuleError);
+    } else if (tripRules) {
+      for (const link of tripRules) {
+        await this.applyServerChange(
+          'trip_rule',
+          link.id as string,
+          link,
+          async (serverLink) => {
+            await TripRulesStorage.saveTripRule(serverLink as TripRule);
             syncedCount++;
           }
         );

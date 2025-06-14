@@ -7,6 +7,7 @@ import type {
   Change,
   SyncConflict,
   RuleOverride,
+  TripRule,
   DefaultItemRule,
   RulePack,
 } from '@packing-list/model';
@@ -27,6 +28,7 @@ export interface OfflineDB {
   tripPeople: Person;
   tripItems: TripItem;
   tripRuleOverrides: RuleOverride;
+  tripDefaultItemRules: TripRule;
 
   // User rules data
   defaultItemRules: DefaultItemRule;
@@ -109,6 +111,16 @@ export async function initializeDatabase(): Promise<IDBPDatabase<OfflineDB>> {
         );
         tripRuleOverridesStore.createIndex('tripId', 'tripId');
         tripRuleOverridesStore.createIndex('ruleId', 'ruleId');
+      }
+
+      // Trip default item rules store (join table)
+      if (!db.objectStoreNames.contains('tripDefaultItemRules')) {
+        const tripRulesStore = db.createObjectStore('tripDefaultItemRules', {
+          keyPath: 'id',
+        });
+        tripRulesStore.createIndex('tripId', 'tripId');
+        tripRulesStore.createIndex('ruleId', 'ruleId');
+        tripRulesStore.createIndex('activeByTrip', ['tripId', 'isDeleted']);
       }
 
       // Default item rules store (user-specific rules)

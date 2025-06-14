@@ -4,6 +4,9 @@ import type {
   Person,
   TripItem,
   RuleOverride,
+  TripRule,
+  DefaultItemRule,
+  RulePack,
 } from '@packing-list/model';
 import { getSyncService } from './sync.js';
 
@@ -243,6 +246,80 @@ export class ChangeTracker {
       userId,
       tripId,
       version: 1, // Rule overrides don't have versions, so default to 1
+    };
+
+    await this.syncService.trackChange(change);
+  }
+
+  /**
+   * Track a default item rule change
+   */
+  async trackDefaultItemRuleChange(
+    operation: 'create' | 'update' | 'delete',
+    rule: DefaultItemRule,
+    userId: string
+  ): Promise<void> {
+    if (this.shouldSkipTracking(userId)) {
+      return;
+    }
+
+    const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+      entityType: 'default_item_rule',
+      entityId: rule.id,
+      operation,
+      data: rule,
+      userId,
+      version: 1,
+    };
+
+    await this.syncService.trackChange(change);
+  }
+
+  /**
+   * Track a rule pack change
+   */
+  async trackRulePackChange(
+    operation: 'create' | 'update' | 'delete',
+    pack: RulePack,
+    userId: string
+  ): Promise<void> {
+    if (this.shouldSkipTracking(userId)) {
+      return;
+    }
+
+    const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+      entityType: 'rule_pack',
+      entityId: pack.id,
+      operation,
+      data: pack,
+      userId,
+      version: 1,
+    };
+
+    await this.syncService.trackChange(change);
+  }
+
+  /**
+   * Track a trip rule association change
+   */
+  async trackTripRuleChange(
+    operation: 'create' | 'update' | 'delete',
+    link: TripRule,
+    userId: string,
+    tripId: string
+  ): Promise<void> {
+    if (this.shouldSkipTracking(userId)) {
+      return;
+    }
+
+    const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+      entityType: 'trip_rule',
+      entityId: link.id,
+      operation,
+      data: link,
+      userId,
+      tripId,
+      version: link.version,
     };
 
     await this.syncService.trackChange(change);

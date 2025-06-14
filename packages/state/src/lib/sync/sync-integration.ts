@@ -1,5 +1,5 @@
 import type { StoreType, TripData } from '../../store.js';
-import type { Trip, Person, TripItem } from '@packing-list/model';
+import type { Trip, Person, TripItem, DefaultItemRule, RulePack, TripRule } from '@packing-list/model';
 import type {
   EntityExistence,
   EntityCallbacks,
@@ -9,6 +9,9 @@ import {
   TripStorage,
   PersonStorage,
   ItemStorage,
+  TripRulesStorage,
+  DefaultItemRulesStorage,
+  RulePacksStorage,
 } from '@packing-list/offline-storage';
 import { createEmptyTripData } from '../../store.js';
 
@@ -132,6 +135,30 @@ export function createEntityCallbacks(
         payload: item,
       });
     },
+
+    onTripRuleUpsert: (link: TripRule) => {
+      console.log(
+        `🔗 [SYNC INTEGRATION] Upserting trip rule link ${link.id}`
+      );
+      TripRulesStorage.saveTripRule(link);
+      dispatch({ type: 'UPSERT_SYNCED_TRIP_RULE', payload: link });
+    },
+
+    onDefaultItemRuleUpsert: (rule: DefaultItemRule) => {
+      console.log(
+        `📜 [SYNC INTEGRATION] Upserting rule: ${rule.name} (${rule.id})`
+      );
+      DefaultItemRulesStorage.saveDefaultItemRule(rule);
+      dispatch({ type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE', payload: rule });
+    },
+
+    onRulePackUpsert: (pack: RulePack) => {
+      console.log(
+        `📚 [SYNC INTEGRATION] Upserting rule pack: ${pack.name} (${pack.id})`
+      );
+      RulePacksStorage.saveRulePack(pack);
+      dispatch({ type: 'UPSERT_SYNCED_RULE_PACK', payload: pack });
+    },
   };
 }
 
@@ -141,7 +168,10 @@ export function createEntityCallbacks(
 export type SyncIntegrationActions =
   | { type: 'UPSERT_SYNCED_TRIP'; payload: Trip }
   | { type: 'UPSERT_SYNCED_PERSON'; payload: Person }
-  | { type: 'UPSERT_SYNCED_ITEM'; payload: TripItem };
+  | { type: 'UPSERT_SYNCED_ITEM'; payload: TripItem }
+  | { type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE'; payload: DefaultItemRule }
+  | { type: 'UPSERT_SYNCED_RULE_PACK'; payload: RulePack }
+  | { type: 'UPSERT_SYNCED_TRIP_RULE'; payload: TripRule };
 
 /**
  * Redux reducers for sync integration
@@ -330,4 +360,62 @@ export const upsertSyncedItem = (
       },
     },
   };
+};
+
+export const upsertSyncedDefaultItemRule = (
+  state: StoreType,
+  action: { type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE'; payload: DefaultItemRule }
+): StoreType => {
+  const rule = action.payload;
+  const updatedById: Record<string, TripData> = { ...state.trips.byId };
+  for (const tripId of Object.keys(updatedById)) {
+    const tripData = updatedById[tripId];
+    const idx = tripData.defaultItemRules.findIndex((r) => r.id === rule.id);
+    const rules = [...tripData.defaultItemRules];
+    if (idx >= 0) {
+      rules[idx] = rule;
+    } else {
+      rules.push(rule);
+    }
+    updatedById[tripId] = { ...tripData, defaultItemRules: rules };
+  }
+  return {
+    ...state,
+    trips: { ...state.trips, byId: updatedById },
+  };
+};
+
+export const upsertSyncedRulePack = (
+  state: StoreType,
+  action: { type: 'UPSERT_SYNCED_RULE_PACK'; payload: RulePack }
+): StoreType => {
+  const pack = action.payload;
+  const idx = state.rulePacks.findIndex((p) => p.id === pack.id);
+  const packs = [...state.rulePacks];
+  if (idx >= 0) {
+    packs[idx] = pack;
+  } else {
+    packs.push(pack);
+  }
+  return { ...state, rulePacks: packs };
+};
+
+export const upsertSyncedTripRule = (
+  state: StoreType,
+  action: { type: 'UPSERT_SYNCED_TRIP_RULE'; payload: TripRule }
+): StoreType => {
+  const link = action.payload;
+  const tripData = state.trips.byId[link.tripId];
+  if (!tripData) {
+    return state;
+  }
+  const existingIndex = tripData.defaultItemRules.findIndex(
+    (r) => r.id === link.ruleId
+  );
+  if (existingIndex === -1) {
+    // simply ignore if rule not found for now
+    return state;
+  }
+  // association is implied by presence; nothing else to update
+  return state;
 };
