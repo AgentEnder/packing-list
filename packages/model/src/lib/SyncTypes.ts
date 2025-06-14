@@ -137,6 +137,16 @@ export type SyncConflict = {
   serverVersion: unknown;
   conflictType: 'update_conflict' | 'delete_conflict';
   timestamp: number;
+  // Enhanced conflict details for deep diff support
+  conflictDetails?: {
+    conflicts: Array<{
+      path: string;
+      localValue: unknown;
+      serverValue: unknown;
+      type: 'modified' | 'added' | 'removed';
+    }>;
+    mergedObject: Record<string, unknown>;
+  };
 };
 
 export type SyncState = {

@@ -35,6 +35,9 @@
     },
     {
       "path": "./packages/sync-state"
+    },
+    {
+      "path": "./packages/connectivity"
     }
   ]
 }

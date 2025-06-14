@@ -35,7 +35,7 @@ export const useConflictBanner = () => {
 
   const handleViewConflicts = useCallback(() => {
     // Navigate to settings page with sync dashboard tab
-    navigate('/settings#sync-dashboard');
+    navigate('/settings#sync');
   }, []);
 
   const handleDismiss = useCallback(() => {

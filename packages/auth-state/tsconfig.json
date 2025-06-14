@@ -11,6 +11,9 @@
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"],
   "references": [
     {
+      "path": "../connectivity"
+    },
+    {
       "path": "../auth"
     }
   ]

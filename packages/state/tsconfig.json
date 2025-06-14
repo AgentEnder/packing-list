@@ -4,19 +4,22 @@
   "include": [],
   "references": [
     {
+      "path": "../sync-state"
+    },
+    {
       "path": "../sync"
-    },
-    {
-      "path": "../offline-storage"
-    },
-    {
-      "path": "../auth-state"
     },
     {
       "path": "../shared-utils"
     },
     {
+      "path": "../offline-storage"
+    },
+    {
       "path": "../model"
+    },
+    {
+      "path": "../auth-state"
     },
     {
       "path": "./tsconfig.lib.json"

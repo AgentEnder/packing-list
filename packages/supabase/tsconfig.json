@@ -5,8 +5,7 @@
     "lib": ["ES2022", "DOM"],
     "types": ["vite/client"],
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "noEmit": true
+    "allowImportingTsExtensions": true
   },
   "include": ["src/**/*.ts", "src/**/*.js", "../../types/env.d.ts"],
   "exclude": ["dist", "node_modules", "**/*.spec.ts", "**/*.test.ts"]

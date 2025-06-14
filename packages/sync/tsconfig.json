@@ -4,6 +4,12 @@
   "include": [],
   "references": [
     {
+      "path": "../connectivity"
+    },
+    {
+      "path": "../supabase"
+    },
+    {
       "path": "../auth"
     },
     {

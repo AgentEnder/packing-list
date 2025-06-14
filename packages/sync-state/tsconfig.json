@@ -4,6 +4,12 @@
   "include": [],
   "references": [
     {
+      "path": "../offline-storage"
+    },
+    {
+      "path": "../model"
+    },
+    {
       "path": "./tsconfig.lib.json"
     },
     {

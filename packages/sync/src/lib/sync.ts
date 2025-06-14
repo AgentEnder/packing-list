@@ -38,6 +38,7 @@ import {
   RuleOverrideStorage,
   DefaultItemRulesStorage,
   RulePacksStorage,
+  TripRulesStorage,
   ConflictsStorage,
 } from '@packing-list/offline-storage';
 import { supabase, isSupabaseAvailable } from '@packing-list/supabase';
@@ -47,6 +48,13 @@ import {
   getConnectivityService,
 } from '@packing-list/connectivity';
 import { Dispatch } from '@reduxjs/toolkit';
+import {
+  deepDiff,
+  deepEqual,
+  smartMerge,
+  getDefaultIgnorePaths,
+  type DeepDiffResult,
+} from './deep-diff-utils.js';
 
 // Type definitions for special sync data formats - these are now moved to the model package
 // but kept here temporarily for any remaining references
@@ -170,6 +178,10 @@ function validateChangeData(change: Change): boolean {
     case 'rule_pack':
       // Rule packs need an id
       return 'id' in change.data && typeof change.data.id === 'string';
+
+    case 'trip_rule':
+      // Trip rules need a ruleId
+      return 'ruleId' in change.data && typeof change.data.ruleId === 'string';
 
     default:
       return false;
@@ -1182,7 +1194,10 @@ export class SyncService {
       .select('*')
       .gte('updated_at', since);
     if (tripRuleError) {
-      console.error('[SyncService] Failed to fetch trip rule links', tripRuleError);
+      console.error(
+        '[SyncService] Failed to fetch trip rule links',
+        tripRuleError
+      );
     } else if (tripRules) {
       for (const link of tripRules) {
         await this.applyServerChange(
@@ -1256,7 +1271,7 @@ export class SyncService {
           author: fromJson<RulePackAuthor>(packRow.author),
           metadata: fromJson<RulePackMetadata>(packRow.metadata),
           stats: fromJson<RulePackStats>(packRow.stats),
-          rules: [], // Rules will be loaded separately
+          rules: [], // Rules will be populated after default rules are synced
           primaryCategoryId: packRow.primary_category_id as string,
           icon: packRow.icon as string,
           color: packRow.color as string,
@@ -1267,6 +1282,7 @@ export class SyncService {
           pack.id,
           pack,
           async (serverPack) => {
+            // First save the rule pack with empty rules array
             await RulePacksStorage.saveRulePack(serverPack as RulePack);
             syncedCount++;
           }
@@ -1279,6 +1295,9 @@ export class SyncService {
         isInitialSync ? '(initial sync)' : ''
       }`
     );
+
+    // Populate rule pack rules after all data is synced
+    await this.populateRulePackRules();
 
     // Always call the callback when data is synced (not just initial sync)
     // This ensures Redux state gets updated whenever sync pulls data
@@ -1343,6 +1362,9 @@ export class SyncService {
       case 'rule_pack':
         await RulePacksStorage.saveRulePack(conflict.serverVersion as RulePack);
         break;
+      case 'trip_rule':
+        await TripRulesStorage.saveTripRule(conflict.serverVersion as TripRule);
+        break;
       default:
         console.warn(
           `[SyncService] Unknown entity type for conflict resolution: ${conflict.entityType}`
@@ -1406,27 +1428,99 @@ export class SyncService {
     );
 
     if (localChange && !localChange.synced) {
-      // We have a local change that conflicts with the server change
-      const conflict: SyncConflict = {
-        id: generateConflictId(),
-        entityType,
-        entityId,
-        localVersion: localChange.data,
-        serverVersion: serverData,
-        conflictType: 'update_conflict',
-        timestamp: Date.now(),
-      };
-
-      await ConflictsStorage.saveConflict(conflict);
-      console.log(
-        `[SyncService] Detected conflict for ${entityType}:${entityId}, stored as ${conflict.id}`
+      // We have a local change - perform deep comparison to check for actual conflicts
+      const diffResult = await this.performDeepConflictAnalysis(
+        localChange.data,
+        serverData,
+        entityType
       );
+
+      if (diffResult.hasConflicts) {
+        // We have actual conflicts that need resolution
+        const conflict: SyncConflict = {
+          id: generateConflictId(),
+          entityType,
+          entityId,
+          localVersion: localChange.data,
+          serverVersion: serverData,
+          conflictType: 'update_conflict',
+          timestamp: Date.now(),
+          // Store the deep diff result for enhanced conflict resolution
+          conflictDetails: {
+            conflicts: diffResult.conflicts,
+            mergedObject: diffResult.mergedObject,
+          },
+        };
+
+        await ConflictsStorage.saveConflict(conflict);
+        console.log(
+          `[SyncService] Detected ${diffResult.conflicts.length} field conflicts for ${entityType}:${entityId}, stored as ${conflict.id}`
+        );
+      } else {
+        // No actual conflicts - we can safely merge and apply
+        console.log(
+          `[SyncService] No conflicts detected for ${entityType}:${entityId}, applying smart merge`
+        );
+
+        // Apply the merged object
+        await applyCallback(diffResult.mergedObject);
+
+        // Mark the local change as synced since we've successfully merged
+        await this.markChangeAsSynced(localChange.id);
+      }
     } else {
-      // No conflict, apply the server change directly
+      // No local changes, apply the server change directly
       await applyCallback(serverData);
       console.log(
         `[SyncService] Applied server change for ${entityType}:${entityId}`
       );
+    }
+  }
+
+  /**
+   * Performs deep conflict analysis between local and server data
+   */
+  private async performDeepConflictAnalysis(
+    localData: unknown,
+    serverData: unknown,
+    entityType: string
+  ): Promise<DeepDiffResult> {
+    // Get default ignore paths plus entity-specific ignore paths
+    const ignorePaths = [
+      ...getDefaultIgnorePaths(),
+      ...this.getEntitySpecificIgnorePaths(entityType),
+    ];
+
+    // Ensure we're working with objects
+    const localObj = (localData as Record<string, unknown>) || {};
+    const serverObj = (serverData as Record<string, unknown>) || {};
+
+    return deepDiff(localObj, serverObj, ignorePaths);
+  }
+
+  /**
+   * Gets entity-specific paths to ignore during conflict detection
+   */
+  private getEntitySpecificIgnorePaths(entityType: string): string[] {
+    switch (entityType) {
+      case 'trip':
+        return [
+          'lastSyncedAt',
+          'createdAt', // Creation time shouldn't conflict
+        ];
+      case 'person':
+      case 'item':
+        return [
+          'createdAt',
+          'tripId', // Relationship fields shouldn't conflict
+        ];
+      case 'rule_override':
+      case 'default_item_rule':
+      case 'rule_pack':
+      case 'trip_rule':
+        return ['createdAt'];
+      default:
+        return [];
     }
   }
 
@@ -1440,6 +1534,39 @@ export class SyncService {
     console.log(
       `🔧 [SYNC SERVICE] Options updated - demo mode: ${oldDemoMode} → ${this.options.demoMode}`
     );
+  }
+
+  /**
+   * Populate rule pack rules by querying for default item rules that belong to each pack
+   */
+  private async populateRulePackRules(): Promise<void> {
+    try {
+      console.log('[SyncService] Populating rule pack rules...');
+
+      // Get all rule packs from storage
+      const allRulePacks = await RulePacksStorage.getAllRulePacks();
+
+      for (const pack of allRulePacks) {
+        // Get all default item rules that belong to this pack
+        const packRules =
+          await DefaultItemRulesStorage.getDefaultItemRulesByPackId(pack.id);
+
+        // Update the pack with its rules
+        const updatedPack: RulePack = {
+          ...pack,
+          rules: packRules,
+        };
+
+        // Save the updated pack back to storage
+        await RulePacksStorage.saveRulePack(updatedPack);
+      }
+
+      console.log(
+        `[SyncService] Populated rules for ${allRulePacks.length} rule packs`
+      );
+    } catch (error) {
+      console.error('[SyncService] Failed to populate rule pack rules:', error);
+    }
   }
 }
 

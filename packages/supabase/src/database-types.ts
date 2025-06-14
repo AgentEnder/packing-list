@@ -175,6 +175,44 @@ export type Database = {
         }
         Relationships: []
       }
+      trip_default_item_rules: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_deleted: boolean | null
+          rule_id: string
+          trip_id: string
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          rule_id: string
+          trip_id: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          rule_id?: string
+          trip_id?: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_default_item_rules_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_items: {
         Row: {
           category: string | null
@@ -326,45 +364,6 @@ export type Database = {
           },
         ]
       }
-      ,
-      trip_default_item_rules: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_deleted: boolean | null
-          rule_id: string
-          trip_id: string
-          updated_at: string | null
-          version: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_deleted?: boolean | null
-          rule_id: string
-          trip_id: string
-          updated_at?: string | null
-          version?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_deleted?: boolean | null
-          rule_id?: string
-          trip_id?: string
-          updated_at?: string | null
-          version?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "trip_default_item_rules_trip_id_fkey"
-            columns: ["trip_id"]
-            isOneToOne: false
-            referencedRelation: "trips"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       trips: {
         Row: {
           created_at: string | null
@@ -448,6 +447,22 @@ export type Database = {
           p_provider?: string
         }
         Returns: string
+      }
+      get_user_rule_packs: {
+        Args: { user_uuid?: string }
+        Returns: {
+          pack_id: string
+          name: string
+          description: string
+          author: Json
+          metadata: Json
+          stats: Json
+          primary_category_id: string
+          icon: string
+          color: string
+          created_at: string
+          updated_at: string
+        }[]
       }
       get_user_trips_summary: {
         Args: { user_uuid?: string }

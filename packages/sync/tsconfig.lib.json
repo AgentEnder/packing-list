@@ -13,6 +13,12 @@
   "include": ["src/**/*.ts"],
   "references": [
     {
+      "path": "../connectivity/tsconfig.lib.json"
+    },
+    {
+      "path": "../supabase/tsconfig.lib.json"
+    },
+    {
       "path": "../auth"
     },
     {

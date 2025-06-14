@@ -15,5 +15,13 @@
     "esModuleInterop": true
   },
   "include": ["src/**/*"],
-  "exclude": ["**/*.spec.ts", "**/*.test.ts", "dist/**/*"]
+  "exclude": ["**/*.spec.ts", "**/*.test.ts", "dist/**/*"],
+  "references": [
+    {
+      "path": "../connectivity"
+    },
+    {
+      "path": "../supabase"
+    }
+  ]
 }

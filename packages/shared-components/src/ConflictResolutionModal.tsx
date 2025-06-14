@@ -131,38 +131,74 @@ export const ConflictResolutionModal: React.FC<
 
   // Build the final merged object
   const mergedObject = useMemo(() => {
-    const result: ConflictData = {};
+    // If we have enhanced conflict details, use smart merging
+    if (conflict.conflictDetails) {
+      const result = { ...conflict.conflictDetails.mergedObject };
 
-    // Add user-selected field values
-    fieldChoices.forEach((choice) => {
-      if (!isSystemManagedField(choice.key)) {
-        result[choice.key] = choice.value;
-      }
-    });
+      // Apply user field choices on top of the smart merge
+      fieldChoices.forEach((choice) => {
+        if (!isSystemManagedField(choice.key)) {
+          result[choice.key] = choice.value;
+        }
+      });
 
-    // Auto-set system-managed fields
-    const now = Date.now();
-    systemFields.forEach((field) => {
-      if (
-        field.key.toLowerCase() === 'timestamp' ||
-        field.key.toLowerCase() === 'updatedat' ||
-        field.key.toLowerCase() === 'updated_at' ||
-        field.key.toLowerCase() === 'lastmodified' ||
-        field.key.toLowerCase() === 'last_modified'
-      ) {
-        result[field.key] = now;
-      } else if (
-        field.key.toLowerCase() === 'createdat' ||
-        field.key.toLowerCase() === 'created_at'
-      ) {
-        // Keep original creation time from local data, fallback to server data
-        result[field.key] =
-          localData[field.key] ?? serverData[field.key] ?? now;
-      }
-    });
+      // Auto-set system-managed fields
+      const now = Date.now();
+      systemFields.forEach((field) => {
+        if (
+          field.key.toLowerCase() === 'timestamp' ||
+          field.key.toLowerCase() === 'updatedat' ||
+          field.key.toLowerCase() === 'updated_at' ||
+          field.key.toLowerCase() === 'lastmodified' ||
+          field.key.toLowerCase() === 'last_modified'
+        ) {
+          result[field.key] = now;
+        } else if (
+          field.key.toLowerCase() === 'createdat' ||
+          field.key.toLowerCase() === 'created_at'
+        ) {
+          // Keep original creation time from local data, fallback to server data
+          result[field.key] =
+            localData[field.key] ?? serverData[field.key] ?? now;
+        }
+      });
 
-    return result;
-  }, [fieldChoices, systemFields, localData, serverData]);
+      return result;
+    } else {
+      // Fall back to the original simple merging
+      const result: ConflictData = {};
+
+      // Add user-selected field values
+      fieldChoices.forEach((choice) => {
+        if (!isSystemManagedField(choice.key)) {
+          result[choice.key] = choice.value;
+        }
+      });
+
+      // Auto-set system-managed fields
+      const now = Date.now();
+      systemFields.forEach((field) => {
+        if (
+          field.key.toLowerCase() === 'timestamp' ||
+          field.key.toLowerCase() === 'updatedat' ||
+          field.key.toLowerCase() === 'updated_at' ||
+          field.key.toLowerCase() === 'lastmodified' ||
+          field.key.toLowerCase() === 'last_modified'
+        ) {
+          result[field.key] = now;
+        } else if (
+          field.key.toLowerCase() === 'createdat' ||
+          field.key.toLowerCase() === 'created_at'
+        ) {
+          // Keep original creation time from local data, fallback to server data
+          result[field.key] =
+            localData[field.key] ?? serverData[field.key] ?? now;
+        }
+      });
+
+      return result;
+    }
+  }, [fieldChoices, systemFields, localData, serverData, conflict]);
 
   // Count impacted fields (where choice differs from original local value)
   const impactedFields = useMemo(() => {
@@ -431,11 +467,22 @@ export const ConflictResolutionModal: React.FC<
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-3">
                 Changes Overview
+                {conflict.conflictDetails && (
+                  <span className="ml-2 text-sm text-blue-600">
+                    ({conflict.conflictDetails.conflicts.length} field
+                    {conflict.conflictDetails.conflicts.length !== 1
+                      ? 's'
+                      : ''}{' '}
+                    conflicted)
+                  </span>
+                )}
               </h4>
               <ConflictDiffView
                 localData={localData}
                 serverData={serverData}
                 expanded={true}
+                conflict={conflict}
+                showOnlyConflicts={false}
               />
             </div>
 
