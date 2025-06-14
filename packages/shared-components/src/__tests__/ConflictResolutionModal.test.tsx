@@ -48,34 +48,6 @@ vi.mock('lucide-react', () => ({
   ),
 }));
 
-// Mock the ConflictDiffView component
-vi.mock('../ConflictDiffView.js', () => ({
-  ConflictDiffView: ({
-    localData,
-    serverData,
-    conflict,
-    showOnlyConflicts,
-  }: {
-    localData: Record<string, unknown>;
-    serverData: Record<string, unknown>;
-    conflict?: SyncConflict;
-    showOnlyConflicts?: boolean;
-  }) => (
-    <div data-testid="conflict-diff-view">
-      <div data-testid="local-data">{JSON.stringify(localData)}</div>
-      <div data-testid="server-data">{JSON.stringify(serverData)}</div>
-      {conflict?.conflictDetails && (
-        <div data-testid="conflict-details">
-          Conflicts: {conflict.conflictDetails.conflicts.length}
-        </div>
-      )}
-      <div data-testid="show-only-conflicts">
-        {showOnlyConflicts ? 'true' : 'false'}
-      </div>
-    </div>
-  ),
-}));
-
 describe('ConflictResolutionModal', () => {
   const mockOnResolve = vi.fn();
   const mockOnCancel = vi.fn();
@@ -265,10 +237,24 @@ describe('ConflictResolutionModal', () => {
       // Should show the enhanced conflict count
       expect(screen.getByText(/\(1 field conflicted\)/)).toBeInTheDocument();
 
-      // Should pass conflict details to the diff view
-      expect(screen.getByTestId('conflict-details')).toHaveTextContent(
-        'Conflicts: 1'
+      // Should show the ConflictDiffView with proper diff information
+      expect(screen.getByText('1 field changed')).toBeInTheDocument();
+
+      // Should display the nested conflict path (appears in multiple places)
+      expect(screen.getAllByText('days.1.items.0.packed')).toHaveLength(2);
+
+      // Should show the conflict type (changed) - find the specific conflict type span
+      const conflictTypeElements = screen.getAllByText('changed');
+      expect(conflictTypeElements.length).toBeGreaterThan(0);
+      // Find the one with uppercase styling (text-xs text-gray-500 uppercase)
+      const conflictTypeSpan = conflictTypeElements.find(
+        (el) =>
+          el.className.includes('text-xs') && el.className.includes('uppercase')
       );
+      expect(conflictTypeSpan).toBeInTheDocument();
+
+      // Should show nested indicator
+      expect(screen.getByText('Nested')).toBeInTheDocument();
     });
 
     it('should handle manual merge with nested conflicts', async () => {
@@ -493,7 +479,7 @@ describe('ConflictResolutionModal', () => {
   });
 
   describe('Integration with ConflictDiffView', () => {
-    it('should pass correct props to ConflictDiffView', () => {
+    it('should display real diff view with conflict details', () => {
       const conflict = createEnhancedNestedConflict();
 
       render(
@@ -506,23 +492,111 @@ describe('ConflictResolutionModal', () => {
         />
       );
 
-      // Should pass local and server data
-      expect(screen.getByTestId('local-data')).toHaveTextContent(
-        JSON.stringify(conflict.localVersion)
-      );
-      expect(screen.getByTestId('server-data')).toHaveTextContent(
-        JSON.stringify(conflict.serverVersion)
+      // Should show the diff summary
+      expect(screen.getByText('1 field changed')).toBeInTheDocument();
+
+      // Should show expand/collapse controls
+      expect(screen.getByText('Collapse details')).toBeInTheDocument();
+
+      // Should display the specific nested conflict (appears in multiple places)
+      expect(screen.getAllByText('days.1.items.0.packed')).toHaveLength(2);
+
+      // Should show the conflict values
+      expect(screen.getByText('Local Version')).toBeInTheDocument();
+      expect(screen.getByText('Server Version')).toBeInTheDocument();
+
+      // Should display boolean values for the packed field
+      expect(screen.getByText('false')).toBeInTheDocument();
+      expect(screen.getByText('true')).toBeInTheDocument();
+    });
+
+    it('should show enhanced diff view with nested path information', () => {
+      const conflict = createEnhancedNestedConflict();
+
+      render(
+        <ConflictResolutionModal
+          isOpen={true}
+          onClose={mockOnCancel}
+          conflict={conflict}
+          onResolve={mockOnResolve}
+          onCancel={mockOnCancel}
+        />
       );
 
-      // Should pass conflict details for enhanced diff
-      expect(screen.getByTestId('conflict-details')).toHaveTextContent(
-        'Conflicts: 1'
+      // Should show the path information for nested conflicts
+      expect(screen.getByText('Path:')).toBeInTheDocument();
+      expect(screen.getAllByText('days.1.items.0.packed')).toHaveLength(2);
+
+      // Should show nested indicator badge
+      expect(screen.getByText('Nested')).toBeInTheDocument();
+
+      // Should show conflict type (changed) - find the specific conflict type span
+      const conflictTypeElements = screen.getAllByText('changed');
+      expect(conflictTypeElements.length).toBeGreaterThan(0);
+      // Find the one with uppercase styling (text-xs text-gray-500 uppercase)
+      const conflictTypeSpan = conflictTypeElements.find(
+        (el) =>
+          el.className.includes('text-xs') && el.className.includes('uppercase')
+      );
+      expect(conflictTypeSpan).toBeInTheDocument();
+    });
+
+    it('should handle basic conflicts without enhanced details', () => {
+      const conflict = createBasicConflict();
+
+      render(
+        <ConflictResolutionModal
+          isOpen={true}
+          onClose={mockOnCancel}
+          conflict={conflict}
+          onResolve={mockOnResolve}
+          onCancel={mockOnCancel}
+        />
       );
 
-      // Should not show only conflicts by default
-      expect(screen.getByTestId('show-only-conflicts')).toHaveTextContent(
-        'false'
+      // Should show multiple field changes for basic conflict
+      expect(screen.getByText(/\d+ fields? changed/)).toBeInTheDocument();
+
+      // Should show individual field changes
+      expect(screen.getByText('title')).toBeInTheDocument();
+      expect(screen.getByText('description')).toBeInTheDocument();
+
+      // Should show the different values
+      expect(screen.getByText('"Local Trip Title"')).toBeInTheDocument();
+      expect(screen.getByText('"Server Trip Title"')).toBeInTheDocument();
+    });
+
+    it('should allow expanding and collapsing diff details', async () => {
+      const user = userEvent.setup();
+      const conflict = createBasicConflict();
+
+      render(
+        <ConflictResolutionModal
+          isOpen={true}
+          onClose={mockOnCancel}
+          conflict={conflict}
+          onResolve={mockOnResolve}
+          onCancel={mockOnCancel}
+        />
       );
+
+      // Should be expanded by default
+      expect(screen.getByText('Collapse details')).toBeInTheDocument();
+      expect(screen.getByText('title')).toBeInTheDocument();
+
+      // Click to collapse
+      await user.click(screen.getByText('Collapse details'));
+
+      // Should be collapsed
+      expect(screen.getByText('Expand details')).toBeInTheDocument();
+      expect(screen.queryByText('title')).not.toBeInTheDocument();
+
+      // Click to expand again
+      await user.click(screen.getByText('Expand details'));
+
+      // Should be expanded again
+      expect(screen.getByText('Collapse details')).toBeInTheDocument();
+      expect(screen.getByText('title')).toBeInTheDocument();
     });
   });
 
