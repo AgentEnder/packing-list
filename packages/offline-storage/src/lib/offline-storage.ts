@@ -13,6 +13,7 @@ export { RuleOverrideStorage } from './rule-override-storage.js';
 export { DefaultItemRulesStorage } from './default-item-rules-storage.js';
 export { RulePacksStorage } from './rule-packs-storage.js';
 export { ConflictsStorage } from './conflicts-storage.js';
+export { TripRulesStorage } from './trip-rules-storage.js';
 
 // Demo mode utilities
 export {

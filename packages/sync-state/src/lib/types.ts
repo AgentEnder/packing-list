@@ -4,6 +4,9 @@ import type {
   Trip,
   Person,
   TripItem,
+  TripRule,
+  DefaultItemRule,
+  RulePack,
   Change,
 } from '@packing-list/model';
 
@@ -47,6 +50,9 @@ export interface EntityCallbacks {
   onTripUpsert?: (trip: Trip) => void;
   onPersonUpsert?: (person: Person) => void;
   onItemUpsert?: (item: TripItem) => void;
+  onTripRuleUpsert?: (link: TripRule) => void;
+  onDefaultItemRuleUpsert?: (rule: DefaultItemRule) => void;
+  onRulePackUpsert?: (pack: RulePack) => void;
 }
 
 // Helper type for determining if an entity exists

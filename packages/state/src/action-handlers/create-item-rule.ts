@@ -2,6 +2,8 @@ import { DefaultItemRule } from '@packing-list/model';
 import { StoreType } from '../store.js';
 import { calculateDefaultItems } from './calculate-default-items.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
+import { DefaultItemRulesStorage, TripRulesStorage } from '@packing-list/offline-storage';
+import { getChangeTracker } from '@packing-list/sync';
 
 export type CreateItemRuleAction = {
   type: 'CREATE_ITEM_RULE';
@@ -37,6 +39,32 @@ export const createItemRuleHandler = (
       },
     },
   };
+
+  const userId = state.auth.user?.id || 'local-user';
+  DefaultItemRulesStorage.saveDefaultItemRule(action.payload).catch(console.error);
+  TripRulesStorage.saveTripRule({
+    id: action.payload.id,
+    tripId: selectedTripId,
+    ruleId: action.payload.id,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    version: 1,
+    isDeleted: false,
+  }).catch(console.error);
+  getChangeTracker()
+    .trackDefaultItemRuleChange('create', action.payload, userId)
+    .catch(console.error);
+  getChangeTracker()
+    .trackTripRuleChange('create', {
+      id: action.payload.id,
+      tripId: selectedTripId,
+      ruleId: action.payload.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      version: 1,
+      isDeleted: false,
+    }, userId, selectedTripId)
+    .catch(console.error);
 
   // Then recalculate default items
   const stateWithDefaultItems = calculateDefaultItems(stateWithNewRule);

@@ -148,6 +148,9 @@ import {
   upsertSyncedTrip,
   upsertSyncedPerson,
   upsertSyncedItem,
+  upsertSyncedDefaultItemRule,
+  upsertSyncedRulePack,
+  upsertSyncedTripRule,
 } from './lib/sync/sync-integration.js';
 import {
   TripStorage,
@@ -278,6 +281,9 @@ export const Mutations: {
   UPSERT_SYNCED_TRIP: upsertSyncedTrip,
   UPSERT_SYNCED_PERSON: upsertSyncedPerson,
   UPSERT_SYNCED_ITEM: upsertSyncedItem,
+  UPSERT_SYNCED_DEFAULT_ITEM_RULE: upsertSyncedDefaultItemRule,
+  UPSERT_SYNCED_RULE_PACK: upsertSyncedRulePack,
+  UPSERT_SYNCED_TRIP_RULE: upsertSyncedTripRule,
   RELOAD_FROM_INDEXEDDB: (
     state: StoreType,
     action: {
