@@ -12,11 +12,30 @@ export const calculateDaysHandler: ActionHandler<CalculateDaysAction> = (
   state: StoreType,
   action: CalculateDaysAction
 ) => {
+  const selectedTripId = state.trips.selectedTripId;
+  if (!selectedTripId) {
+    return state;
+  }
+
+  const tripData = state.trips.byId[selectedTripId];
+  if (!tripData) {
+    return state;
+  }
+
   return {
     ...state,
-    trip: {
-      ...state.trip,
-      days: enumerateTripDays(action.payload.tripEvents ?? []),
+    trips: {
+      ...state.trips,
+      byId: {
+        ...state.trips.byId,
+        [selectedTripId]: {
+          ...tripData,
+          trip: {
+            ...tripData.trip,
+            days: enumerateTripDays(action.payload.tripEvents ?? []),
+          },
+        },
+      },
     },
   };
 };

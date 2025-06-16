@@ -25,6 +25,11 @@ export function createTestTripState(options: {
   const tripData: TripData = {
     ...createEmptyTripData(tripId),
     people,
+    trip: {
+      ...createEmptyTripData(tripId).trip,
+      title: options.title || 'Test Trip',
+      description: options.description || 'A test trip',
+    },
   };
 
   return {

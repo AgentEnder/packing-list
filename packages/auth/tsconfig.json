@@ -10,6 +10,7 @@
     "noFallthroughCasesInSwitch": true,
     "declaration": true,
     "outDir": "./dist",
+    "tsBuildInfoFile": "./dist/tsconfig.lib.tsbuildinfo",
     "rootDir": "./src",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true

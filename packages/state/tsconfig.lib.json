@@ -7,9 +7,9 @@
     "tsBuildInfoFile": "dist/tsconfig.lib.tsbuildinfo",
     "emitDeclarationOnly": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node"]
+    "types": ["node", "vite/client"]
   },
-  "include": ["src/**/*.ts"],
+  "include": ["./src/**/*.ts"],
   "references": [
     {
       "path": "../sync-state/tsconfig.lib.json"

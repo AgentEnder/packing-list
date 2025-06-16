@@ -31,6 +31,7 @@ describe('TripStorage', () => {
           date: new Date('2024-01-01').getTime(),
         },
       ],
+      defaultItemRules: [],
       lastSyncedAt: '2024-01-01T00:00:00.000Z',
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T00:00:00.000Z',
@@ -55,6 +56,7 @@ describe('TripStorage', () => {
       title: 'Test Trip',
       description: 'A test trip',
       days: [],
+      defaultItemRules: [],
       lastSyncedAt: '2024-01-01T00:00:00.000Z',
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T00:00:00.000Z',
@@ -96,6 +98,7 @@ describe('TripStorage', () => {
       title: 'Active Trip',
       description: '',
       days: [],
+      defaultItemRules: [],
       lastSyncedAt: '2024-01-01T00:00:00.000Z',
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T00:00:00.000Z',
@@ -113,6 +116,7 @@ describe('TripStorage', () => {
       title: 'Deleted Trip',
       description: '',
       days: [],
+      defaultItemRules: [],
       lastSyncedAt: '2024-01-01T00:00:00.000Z',
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T01:00:00.000Z',
@@ -130,6 +134,7 @@ describe('TripStorage', () => {
       title: 'Other User Trip',
       description: '',
       days: [],
+      defaultItemRules: [],
       lastSyncedAt: '2024-01-01T00:00:00.000Z',
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T00:00:00.000Z',
@@ -161,6 +166,7 @@ describe('TripStorage', () => {
       title: 'Test Trip',
       description: 'A test trip',
       days: [],
+      defaultItemRules: [],
       lastSyncedAt: '2024-01-01T00:00:00.000Z',
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T00:00:00.000Z',
@@ -195,6 +201,7 @@ describe('TripStorage', () => {
       title: 'Test Trip',
       description: '',
       days: [],
+      defaultItemRules: [],
       lastSyncedAt: '2024-01-01T00:00:00.000Z',
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T00:00:00.000Z',
@@ -227,6 +234,7 @@ describe('TripStorage', () => {
       title: 'Test Trip',
       description: '',
       days: [],
+      defaultItemRules: [],
       lastSyncedAt: '2024-01-01T00:00:00.000Z',
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T00:00:00.000Z',
@@ -272,14 +280,18 @@ describe('TripStorage', () => {
 
     // Verify data exists
     expect(await TripStorage.getTrip('test-trip-abc123')).toBeDefined();
-    expect(await PersonStorage.getTripPeople('test-trip-abc123')).toHaveLength(1);
+    expect(await PersonStorage.getTripPeople('test-trip-abc123')).toHaveLength(
+      1
+    );
     expect(await ItemStorage.getTripItems('test-trip-abc123')).toHaveLength(1);
 
     await TripStorage.hardDeleteTrip('test-trip-abc123');
 
     // Verify all data is gone
     expect(await TripStorage.getTrip('test-trip-abc123')).toBeUndefined();
-    expect(await PersonStorage.getTripPeople('test-trip-abc123')).toHaveLength(0);
+    expect(await PersonStorage.getTripPeople('test-trip-abc123')).toHaveLength(
+      0
+    );
     expect(await ItemStorage.getTripItems('test-trip-abc123')).toHaveLength(0);
   });
 
@@ -290,6 +302,7 @@ describe('TripStorage', () => {
       title: 'Test Trip',
       description: '',
       days: [],
+      defaultItemRules: [],
       lastSyncedAt: '2024-01-01T00:00:00.000Z',
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T00:00:00.000Z',
@@ -324,6 +337,7 @@ describe('TripStorage', () => {
       title: 'Recently Updated',
       description: '',
       days: [],
+      defaultItemRules: [],
       lastSyncedAt: '2024-01-01T00:00:00.000Z',
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T01:00:00.000Z', // Updated after last sync
@@ -341,6 +355,7 @@ describe('TripStorage', () => {
       title: 'Never Synced',
       description: '',
       days: [],
+      defaultItemRules: [],
       lastSyncedAt: '', // Never synced
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T00:00:00.000Z',
@@ -358,6 +373,7 @@ describe('TripStorage', () => {
       title: 'Up to Date',
       description: '',
       days: [],
+      defaultItemRules: [],
       lastSyncedAt: '2024-01-01T02:00:00.000Z',
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T01:00:00.000Z', // Updated before last sync

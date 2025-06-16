@@ -38,6 +38,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
     rules: [
       {
         id: 'beach-swimsuit',
+        originalRuleId: 'beach-swimsuit',
         name: 'Swimsuit',
         calculation: {
           baseQuantity: 2,
@@ -50,6 +51,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
       },
       {
         id: 'beach-sunscreen',
+        originalRuleId: 'beach-sunscreen',
         name: 'Sunscreen',
         calculation: {
           baseQuantity: 1,
@@ -65,6 +67,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
       },
       {
         id: 'beach-towel',
+        originalRuleId: 'beach-towel',
         name: 'Beach Towel',
         calculation: {
           baseQuantity: 1,
@@ -75,6 +78,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
       },
       {
         id: 'beach-sandals',
+        originalRuleId: 'beach-sandals',
         name: 'Sandals/Flip-flops',
         calculation: {
           baseQuantity: 1,
@@ -86,6 +90,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
       },
       {
         id: 'beach-hat',
+        originalRuleId: 'beach-hat',
         name: 'Sun Hat',
         calculation: {
           baseQuantity: 1,
@@ -96,6 +101,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
       },
       {
         id: 'beach-sunglasses',
+        originalRuleId: 'beach-sunglasses',
         name: 'Sunglasses',
         calculation: {
           baseQuantity: 1,
@@ -106,6 +112,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
       },
       {
         id: 'beach-first-aid',
+        originalRuleId: 'beach-first-aid',
         name: 'First Aid Kit',
         calculation: {
           baseQuantity: 1,
@@ -133,6 +140,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
     rules: [
       {
         id: 'business-suit',
+        originalRuleId: 'business-suit',
         name: 'Business Suit',
         calculation: {
           baseQuantity: 1,
@@ -145,6 +153,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
       },
       {
         id: 'business-laptop',
+        originalRuleId: 'business-laptop',
         name: 'Laptop & Charger',
         calculation: {
           baseQuantity: 1,
@@ -155,6 +164,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
       },
       {
         id: 'business-documents',
+        originalRuleId: 'business-documents',
         name: 'Business Documents',
         calculation: {
           baseQuantity: 1,
@@ -165,6 +175,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
       },
       {
         id: 'business-dress-shirts',
+        originalRuleId: 'business-dress-shirts',
         name: 'Dress Shirts',
         calculation: {
           baseQuantity: 1,
@@ -181,6 +192,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
       },
       {
         id: 'business-dress-shoes',
+        originalRuleId: 'business-dress-shoes',
         name: 'Dress Shoes',
         calculation: {
           baseQuantity: 1,
@@ -192,6 +204,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
       },
       {
         id: 'business-toiletries',
+        originalRuleId: 'business-toiletries',
         name: 'Travel Toiletries',
         calculation: {
           baseQuantity: 1,
@@ -203,6 +216,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
       },
       {
         id: 'business-phone-charger',
+        originalRuleId: 'business-phone-charger',
         name: 'Phone & Charger',
         calculation: {
           baseQuantity: 1,
@@ -213,6 +227,7 @@ export const DEFAULT_RULE_PACKS: RulePack[] = [
       },
       {
         id: 'business-medications',
+        originalRuleId: 'business-medications',
         name: 'Personal Medications',
         calculation: {
           baseQuantity: 1,

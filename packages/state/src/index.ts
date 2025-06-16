@@ -7,7 +7,6 @@ export * from './store.js';
 export * from './actions.js';
 export * from './hooks.js';
 export * from './selectors/packing-list.js';
-export * from './selectors/base.js';
 
 export * from './store.js';
 export * from './data.js';
