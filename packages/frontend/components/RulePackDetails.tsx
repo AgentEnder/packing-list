@@ -46,14 +46,6 @@ export function RulePackDetails({ pack }: RulePackDetailsProps) {
     ? (Icons as unknown as Record<string, LucideIcon>)[pack.icon]
     : null;
 
-  // Match pack rules with current rules to get full details and filter out missing rules
-  const packRulesWithDetails = pack.rules
-    .map((packRule) => {
-      const fullRule = currentRules.find((rule) => rule.id === packRule.id);
-      return fullRule ? { ...packRule, ...fullRule } : null;
-    })
-    .filter((rule): rule is NonNullable<typeof rule> => rule !== null);
-
   return (
     <div className="space-y-6" data-testid="rule-pack-details">
       <div className="flex items-start justify-between">
@@ -150,7 +142,7 @@ export function RulePackDetails({ pack }: RulePackDetailsProps) {
       <div>
         <h3 className="text-lg font-medium mb-4">Pack Rules</h3>
         <div className="grid gap-2" data-testid="pack-rules-list">
-          {packRulesWithDetails.map((rule) => (
+          {pack.rules.map((rule) => (
             <div
               key={rule.id}
               className="card bg-base-100"

@@ -49,6 +49,7 @@ describe('RulePackDetails Component', () => {
       {
         id: 'rule1',
         name: 'Beach Towel',
+        notes: 'Essential for beach trips',
         calculation: { baseQuantity: 1, perDay: false, perPerson: true },
         originalRuleId: 'rule1',
       },
@@ -266,34 +267,6 @@ describe('RulePackDetails Component', () => {
 
     expect(screen.getByText('Beach Essentials')).toBeInTheDocument();
     // Should not crash and should still render the pack name
-  });
-
-  it('handles rules that are not found in allRules', () => {
-    const packWithMissingRule: RulePack = {
-      ...mockRulePack,
-      rules: [
-        {
-          id: 'rule1',
-          name: 'Beach Towel',
-          calculation: { baseQuantity: 1, perDay: false, perPerson: true },
-          originalRuleId: 'rule1',
-        },
-        {
-          id: 'missing-rule',
-          name: 'Missing Rule',
-          calculation: { baseQuantity: 1, perDay: false, perPerson: false },
-          originalRuleId: 'missing-rule',
-        },
-      ],
-    };
-
-    render(<RulePackDetails pack={packWithMissingRule} />);
-
-    // Should only render the rule that exists
-    expect(screen.getByTestId('pack-rule-Beach Towel')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('pack-rule-Missing Rule')
-    ).not.toBeInTheDocument();
   });
 
   it('displays all required UI elements', () => {
