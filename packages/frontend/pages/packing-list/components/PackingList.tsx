@@ -26,6 +26,7 @@ import { PrintButton } from './PrintButton';
 import { getAllCategories } from '@packing-list/model';
 import { format } from 'date-fns';
 import { PageHeader } from '../../../components/PageHeader';
+import { useMousePosition } from '@packing-list/shared-utils';
 
 export const PackingList: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -36,8 +37,9 @@ export const PackingList: React.FC = () => {
   const people = useAppSelector(selectPeople);
   const defaultItemRules = useAppSelector(selectDefaultItemRules);
   const categories = getAllCategories();
-  const prevAllPacked = useRef(false);
+  const prevAllPacked = useRef<boolean | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { x, y } = useMousePosition();
 
   useEffect(() => {
     const allGroups = [
@@ -47,20 +49,14 @@ export const PackingList: React.FC = () => {
     const totalCount = allGroups.reduce((s, i) => s + i.totalCount, 0);
     const packedCount = allGroups.reduce((s, i) => s + i.packedCount, 0);
     const allPacked = totalCount > 0 && totalCount === packedCount;
-    if (allPacked && !prevAllPacked.current) {
-      const rect = containerRef.current?.getBoundingClientRect();
-      const payload = rect
-        ? {
-            x: rect.left + rect.width / 2,
-            y: rect.top + (typeof window !== 'undefined' ? window.scrollY : 0),
-            w: rect.width,
-            h: rect.height,
-          }
-        : undefined;
-      dispatch(actions.triggerConfettiBurst(payload));
+
+    // Only trigger confetti if this is a transition from not-all-packed to all-packed
+    // (not on initial mount when prevAllPacked is null)
+    if (allPacked && prevAllPacked.current === false) {
+      dispatch(actions.triggerConfettiBurst({ x, y }));
     }
     prevAllPacked.current = allPacked;
-  }, [groupedItems, groupedGeneralItems, dispatch]);
+  }, [groupedItems, groupedGeneralItems, dispatch, x, y]);
 
   const [selectedItem, setSelectedItem] = useState<GroupedItem | null>(null);
   const [isOverrideDialogOpen, setIsOverrideDialogOpen] = useState(false);
@@ -129,9 +125,9 @@ export const PackingList: React.FC = () => {
         className="card bg-base-100 shadow-sm overflow-visible"
         data-testid="packing-item"
       >
-        <div className="relative flex items-center gap-1.5 p-1.5 overflow-visible rounded-lg">
+        <div className="relative flex items-center h-full gap-1.5 p-1.5 overflow-visible rounded-lg">
           <div
-            className="absolute inset-0 bg-success/30 transition-all duration-300 ease-in-out z-0"
+            className="absolute inset-0 bg-success/30 h-full transition-all duration-300 ease-in-out z-0 rounded-lg"
             style={{ width: `${progress}%` }}
           />
           <div className="relative z-10 flex items-center gap-1.5 min-w-0 flex-1 hover:z-15">
@@ -235,7 +231,7 @@ export const PackingList: React.FC = () => {
   const hasAnyItems =
     groupedItems.some((group) => group.items.length > 0) ||
     groupedGeneralItems.length > 0;
-  const hasTrip = trip?.days.length > 0;
+  const hasTrip = trip?.days.length;
   const hasPeople = people.length > 0;
   const hasRules = defaultItemRules.length > 0;
 

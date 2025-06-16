@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight, Plane } from 'lucide-react';
 import { PackingListItem, TripEvent } from '@packing-list/model';
 import { useState, useEffect, useRef } from 'react';
 import { useAppDispatch, actions } from '@packing-list/state';
+import { useMousePosition } from '@packing-list/shared-utils';
 
 interface TripDayRowProps {
   index: number;
@@ -133,18 +134,11 @@ export function TripDayRow({
   const prevProgress = useRef(packingProgress);
   const rowRef = useRef<HTMLLIElement>(null);
 
+  const { x, y } = useMousePosition();
+
   useEffect(() => {
     if (packingProgress === 100 && prevProgress.current < 100) {
-      const rect = rowRef.current?.getBoundingClientRect();
-      const payload = rect
-        ? {
-            x: rect.left + rect.width / 2,
-            y: rect.top + (typeof window !== 'undefined' ? window.scrollY : 0),
-            w: rect.width,
-            h: rect.height,
-          }
-        : undefined;
-      dispatch(actions.triggerConfettiBurst(payload));
+      dispatch(actions.triggerConfettiBurst({ x, y }));
     }
     prevProgress.current = packingProgress;
   }, [packingProgress, dispatch]);

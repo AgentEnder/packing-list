@@ -6,6 +6,7 @@ import type { TripEvent } from '@packing-list/model';
 import { PageContainer } from '../../../../components/PageContainer';
 import { PageHeader } from '../../../../components/PageHeader';
 import { TripWizard } from '../../../days/TripWizard';
+import { useMousePosition } from '@packing-list/shared-utils';
 
 export default function TripWizardPage() {
   const pageContext = usePageContext();
@@ -16,7 +17,7 @@ export default function TripWizardPage() {
   );
   const flow = useAppSelector((s) => s.ui.flow);
   const currentEvents: TripEvent[] = tripData?.trip?.tripEvents || [];
-
+  const { x, y } = useMousePosition();
   // If trip not found, redirect to trips list
   useEffect(() => {
     if (!tripData) {
@@ -34,13 +35,7 @@ export default function TripWizardPage() {
 
   const handleSave = (events: TripEvent[]) => {
     dispatch({ type: 'UPDATE_TRIP_EVENTS', payload: events });
-    const source = {
-      x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0,
-      y: typeof window !== 'undefined' ? window.innerHeight / 2 : 0,
-      w: 0,
-      h: 0,
-    };
-    dispatch(actions.triggerConfettiBurst(source));
+    dispatch(actions.triggerConfettiBurst({ x, y }));
 
     // Use flow navigation if available, otherwise go to people page
     if (flow.current !== null && flow.current < flow.steps.length - 1) {

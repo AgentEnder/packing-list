@@ -443,9 +443,10 @@ export const actions = {
   resetWizard,
   reloadFromIndexedDB,
   clearDemoData: clearDemoDataThunk,
-  triggerConfettiBurst: (
-    payload?: { x: number; y: number; w?: number; h?: number }
-  ): TriggerConfettiBurstAction => ({
+  triggerConfettiBurst: (payload?: {
+    x: number;
+    y: number;
+  }): TriggerConfettiBurstAction => ({
     type: 'TRIGGER_CONFETTI_BURST',
     payload,
   }),

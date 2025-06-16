@@ -1,5 +1,5 @@
 import Confetti from 'react-confetti-boom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAppSelector } from '@packing-list/state';
 
 interface ActiveBurst {
@@ -11,13 +11,30 @@ interface ActiveBurst {
 export function ConfettiBurst() {
   const { burstId, source } = useAppSelector((s) => s.ui.confetti);
   const [activeBursts, setActiveBursts] = useState<ActiveBurst[]>([]);
+  const lastProcessedBurstId = useRef<number | null>(null);
+
+  // Clear all bursts when component unmounts
+  useEffect(() => {
+    return () => {
+      setActiveBursts([]);
+    };
+  }, []);
 
   useEffect(() => {
     if (!burstId) return;
 
-    // Check if this burst ID already exists
-    const existingBurst = activeBursts.find((burst) => burst.id === burstId);
-    if (existingBurst) return;
+    // Only process if this is a new burst ID
+    if (burstId === lastProcessedBurstId.current) return;
+
+    console.log('[ConfettiBurst] New burst ID:', burstId);
+    console.log('[ConfettiBurst] Source:', source);
+    console.log('[ConfettiBurst] Active bursts:', activeBursts);
+    console.log(
+      '[ConfettiBurst] Last processed burst ID:',
+      lastProcessedBurstId.current
+    );
+
+    lastProcessedBurstId.current = burstId;
 
     // Add new burst
     const newBurst: ActiveBurst = {
@@ -34,7 +51,7 @@ export function ConfettiBurst() {
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, [burstId, source, activeBursts]);
+  }, [burstId, source]);
 
   return (
     <>
@@ -54,8 +71,9 @@ export function ConfettiBurst() {
             mode="boom"
             x={x}
             y={y}
-            particleCount={100}
-            deg={270}
+            particleCount={20}
+            spreadDeg={360}
+            deg={0}
             colors={['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6']}
           />
         );

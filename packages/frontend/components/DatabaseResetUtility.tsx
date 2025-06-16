@@ -24,7 +24,7 @@ export const DatabaseResetUtility: React.FC<DatabaseResetUtilityProps> = ({
 
     try {
       // Delete the database
-      await new Promise<void>((resolve, _reject) => {
+      await new Promise<void>((resolve) => {
         const deleteReq = indexedDB.deleteDatabase(dbName);
         deleteReq.onsuccess = () => {
           console.log(`🗑️ [DATABASE RESET] Deleted database: ${dbName}`);
