@@ -7,24 +7,27 @@
     "tsBuildInfoFile": "dist/tsconfig.lib.tsbuildinfo",
     "emitDeclarationOnly": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node"]
+    "types": ["node", "vite/client"]
   },
-  "include": ["src/**/*.ts"],
+  "include": ["./src/**/*.ts"],
   "references": [
     {
+      "path": "../sync-state/tsconfig.lib.json"
+    },
+    {
       "path": "../sync/tsconfig.lib.json"
-    },
-    {
-      "path": "../offline-storage/tsconfig.lib.json"
-    },
-    {
-      "path": "../auth-state"
     },
     {
       "path": "../shared-utils/tsconfig.lib.json"
     },
     {
+      "path": "../offline-storage/tsconfig.lib.json"
+    },
+    {
       "path": "../model/tsconfig.lib.json"
+    },
+    {
+      "path": "../auth-state"
     }
   ]
 }

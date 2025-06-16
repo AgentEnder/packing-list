@@ -1,4 +1,4 @@
-import { StoreType } from './store.js';
+import { initialState, StoreType } from './store.js';
 import type { SyncActions } from '@packing-list/sync-state';
 import {
   addPersonHandler,
@@ -144,10 +144,12 @@ import {
   mergeSyncedItemHandler,
 } from './lib/sync/sync-handlers.js';
 import {
-  SyncIntegrationActions,
   upsertSyncedTrip,
   upsertSyncedPerson,
   upsertSyncedItem,
+  upsertSyncedDefaultItemRule,
+  upsertSyncedRulePack,
+  type SyncIntegrationActions,
 } from './lib/sync/sync-integration.js';
 import {
   TripStorage,
@@ -180,6 +182,7 @@ export type AllActions =
   | LoadDemoDataAction
   | ClearDemoDataAction
   | ClearTripDataAction
+  | { type: 'CLEAR_ALL_DATA' }
   | ToggleRulePackAction
   | CreateRulePackAction
   | UpdateRulePackAction
@@ -240,6 +243,13 @@ export const Mutations: {
   LOAD_DEMO_DATA: loadDemoDataHandler,
   CLEAR_DEMO_DATA: clearDemoDataHandler,
   CLEAR_TRIP_DATA: clearTripDataHandler,
+  CLEAR_ALL_DATA: (state: StoreType) => {
+    console.log('🧹 [CLEAR_ALL_DATA] Clearing all data except auth');
+    return {
+      ...initialState,
+      auth: state.auth,
+    };
+  },
   TOGGLE_RULE_PACK: toggleRulePackHandler,
   CREATE_RULE_PACK: createRulePackHandler,
   UPDATE_RULE_PACK: updateRulePackHandler,
@@ -278,6 +288,8 @@ export const Mutations: {
   UPSERT_SYNCED_TRIP: upsertSyncedTrip,
   UPSERT_SYNCED_PERSON: upsertSyncedPerson,
   UPSERT_SYNCED_ITEM: upsertSyncedItem,
+  UPSERT_SYNCED_DEFAULT_ITEM_RULE: upsertSyncedDefaultItemRule,
+  UPSERT_SYNCED_RULE_PACK: upsertSyncedRulePack,
   RELOAD_FROM_INDEXEDDB: (
     state: StoreType,
     action: {

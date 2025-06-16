@@ -225,7 +225,7 @@ CREATE POLICY "Users can update own trips" ON public.trips
 CREATE POLICY "Users can delete own trips" ON public.trips
   FOR DELETE USING (auth.uid() = user_id);
 
--- Trip People Policies (access through trip ownership)
+-- Trip People Policies (acc ess through trip ownership)
 CREATE POLICY "Users can view trip people for own trips" ON public.trip_people
   FOR SELECT USING (
     EXISTS (

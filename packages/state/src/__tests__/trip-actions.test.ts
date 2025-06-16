@@ -89,14 +89,7 @@ describe('trip actions', () => {
         baseQuantity: 1,
         perPerson: true,
       },
-      conditions: [
-        {
-          type: 'day',
-          field: 'date',
-          operator: '==',
-          value: parseISO('2024-01-01').getTime(),
-        },
-      ],
+      originalRuleId: 'rule1',
     };
 
     store.dispatch({ type: 'CREATE_ITEM_RULE', payload: rule });

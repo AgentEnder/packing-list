@@ -30,8 +30,8 @@ describe('loadDemoDataHandler', () => {
     expect(selectedTripId).toBeDefined();
     if (selectedTripId) {
       const tripData = result.trips.byId[selectedTripId];
-      expect(tripData.defaultItemRules).toHaveLength(
-        demoData.trips?.byId?.['DEMO_TRIP']?.defaultItemRules?.length || 0
+      expect(tripData.trip.defaultItemRules).toHaveLength(
+        demoData.trips?.byId?.['DEMO_TRIP']?.trip?.defaultItemRules?.length || 0
       );
     }
     expect(result.rulePacks).toHaveLength(demoData.rulePacks?.length || 0);
@@ -56,7 +56,7 @@ describe('loadDemoDataHandler', () => {
     expect(selectedTripId).toBeDefined();
     if (selectedTripId) {
       const tripData = result.trips.byId[selectedTripId];
-      expect(tripData.defaultItemRules).toBeDefined();
+      expect(tripData.trip.defaultItemRules).toBeDefined();
     }
     expect(packingListView).toBeDefined();
   });
@@ -123,8 +123,8 @@ describe('loadDemoDataHandler', () => {
     if (!selectedTripId) return;
 
     const tripData = result.trips.byId[selectedTripId];
-    expect(tripData.defaultItemRules.length).toBeGreaterThan(0);
-    const firstRule = tripData.defaultItemRules[0];
+    expect(tripData.trip.defaultItemRules.length).toBeGreaterThan(0);
+    const firstRule = tripData.trip.defaultItemRules[0];
 
     // Check rule structure
     expect(firstRule).toHaveProperty('id');

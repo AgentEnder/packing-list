@@ -1,12 +1,7 @@
 import { createSelector } from '@reduxjs/toolkit';
 import type { Selector } from '@reduxjs/toolkit';
 import type { StoreType, TripData } from './store.js';
-import type {
-  Day,
-  LegacyPerson as Person,
-  TripSummary,
-  RulePack,
-} from '@packing-list/model';
+import type { Day, Person, TripSummary, RulePack } from '@packing-list/model';
 
 // Multi-trip selectors
 export const selectTripSummaries: Selector<StoreType, TripSummary[]> = (
@@ -76,7 +71,7 @@ export const selectTripDays: Selector<StoreType, Day[]> = createSelector(
 
 export const selectCurrentTrip = createSelector(
   [selectSelectedTripData],
-  (selectedTrip) => selectedTrip?.trip || { id: 'no-trip', days: [] }
+  (selectedTrip) => selectedTrip?.trip
 );
 
 export const selectRuleOverrides = createSelector(
@@ -108,7 +103,7 @@ export const selectRulePacks: Selector<StoreType, RulePack[]> = (state) =>
 // Trip-specific rule selectors
 export const selectDefaultItemRules = createSelector(
   [selectSelectedTripData],
-  (selectedTrip) => selectedTrip?.defaultItemRules || []
+  (selectedTrip) => selectedTrip?.trip?.defaultItemRules || []
 );
 
 // UI selectors

@@ -8,9 +8,8 @@ import {
 import { AllActions, Mutations, type StoreActions } from './actions.js';
 import {
   Item,
-  DefaultItemRule,
-  LegacyTrip as Trip,
-  LegacyPerson as Person,
+  Trip,
+  Person,
   RuleOverride,
   PackingListViewState,
   PackingListItem,
@@ -19,6 +18,7 @@ import {
   SyncState,
 } from '@packing-list/model';
 import { DEFAULT_RULE_PACKS } from './default-rule-packs.js';
+import { syncTrackingMiddleware } from './middleware/sync-tracking-middleware.js';
 
 // New multi-trip store structure
 export type StoreType = {
@@ -67,7 +67,6 @@ export type TripData = {
   // Trip info
   trip: Trip;
   people: Person[];
-  defaultItemRules: DefaultItemRule[]; // Moved from global to trip-specific
   ruleOverrides: RuleOverride[];
   packingListView: PackingListViewState;
 
@@ -84,13 +83,27 @@ export type TripData = {
 
 // Helper function to create empty trip data
 export function createEmptyTripData(tripId: string): TripData {
+  const now = new Date().toISOString();
   return {
     trip: {
       id: tripId,
+      userId: '', // Will be set when user is known
+      title: 'New Trip',
+      description: '',
       days: [],
+      tripEvents: [],
+      createdAt: now,
+      updatedAt: now,
+      lastSyncedAt: undefined,
+      settings: {
+        defaultTimeZone: 'UTC',
+        packingViewMode: 'by-day',
+      },
+      version: 1,
+      isDeleted: false,
+      defaultItemRules: [],
     },
     people: [],
-    defaultItemRules: [], // Add empty rules array for new trips
     ruleOverrides: [],
     packingListView: {
       viewMode: 'by-day',
@@ -210,6 +223,8 @@ export function createStore(pageContext?: PageContext, _state?: StoreType) {
   const store = configureStore({
     reducer: rootReducer,
     preloadedState,
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware().concat(syncTrackingMiddleware),
   });
 
   // Expose store to window for development and e2e testing

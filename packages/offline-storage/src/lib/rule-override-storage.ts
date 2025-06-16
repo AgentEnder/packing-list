@@ -14,21 +14,21 @@ export class RuleOverrideStorage {
   }
 
   /** Remove a rule override */
-  static async deleteRuleOverride(
-    tripId: string,
-    ruleId: string,
-    personId?: string,
-    dayIndex?: number
-  ): Promise<void> {
-    const db = await getDatabase();
-    const key = [tripId, ruleId, personId ?? null, dayIndex ?? null];
-    const tx = db.transaction(['tripRuleOverrides'], 'readwrite');
-    await tx.objectStore('tripRuleOverrides').delete(key);
-    await tx.done;
-    console.log(
-      `[RuleOverrideStorage] Deleted rule override: ${ruleId} for trip ${tripId}`
-    );
-  }
+  // static async deleteRuleOverride(
+  //   tripId: string,
+  //   ruleId: string,
+  //   personId?: string,
+  //   dayIndex?: number
+  // ): Promise<void> {
+  //   const db = await getDatabase();
+  //   const key = [tripId, ruleId, personId ?? null, dayIndex ?? null];
+  //   const tx = db.transaction(['tripRuleOverrides'], 'readwrite');
+  //   await tx.objectStore('tripRuleOverrides').delete(key);
+  //   await tx.done;
+  //   console.log(
+  //     `[RuleOverrideStorage] Deleted rule override: ${ruleId} for trip ${tripId}`
+  //   );
+  // }
 
   /** Get all rule overrides for a specific trip */
   static async getTripRuleOverrides(tripId: string): Promise<RuleOverride[]> {
@@ -45,21 +45,21 @@ export class RuleOverrideStorage {
   }
 
   /** Get a specific rule override */
-  static async getRuleOverride(
-    tripId: string,
-    ruleId: string,
-    personId?: string,
-    dayIndex?: number
-  ): Promise<RuleOverride | undefined> {
-    const db = await getDatabase();
-    const key = [tripId, ruleId, personId ?? null, dayIndex ?? null];
-    const store = db
-      .transaction(['tripRuleOverrides'], 'readonly')
-      .objectStore('tripRuleOverrides');
-    const override = await store.get(key);
-    console.log(
-      `[RuleOverrideStorage] Retrieved rule override: ${ruleId} for trip ${tripId}`
-    );
-    return override;
-  }
+  // static async getRuleOverride(
+  //   tripId: string,
+  //   ruleId: string,
+  //   personId?: string,
+  //   dayIndex?: number
+  // ): Promise<RuleOverride | undefined> {
+  //   const db = await getDatabase();
+  //   const key = [tripId, ruleId, personId ?? null, dayIndex ?? null];
+  //   const store = db
+  //     .transaction(['tripRuleOverrides'], 'readonly')
+  //     .objectStore('tripRuleOverrides');
+  //   const override = await store.get(key);
+  //   console.log(
+  //     `[RuleOverrideStorage] Retrieved rule override: ${ruleId} for trip ${tripId}`
+  //   );
+  //   return override;
+  // }
 }

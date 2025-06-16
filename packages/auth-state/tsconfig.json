@@ -5,11 +5,15 @@
     "outDir": "./dist",
     "declaration": true,
     "declarationMap": true,
+    "lib": ["es2022", "dom"],
     "types": ["vite/client"]
   },
   "include": ["src/**/*"],
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"],
   "references": [
+    {
+      "path": "../connectivity"
+    },
     {
       "path": "../auth"
     }

@@ -1,16 +1,18 @@
 import type { StoreType, TripData } from '../../store.js';
-import type { Trip, Person, TripItem } from '@packing-list/model';
 import type {
-  EntityExistence,
-  EntityCallbacks,
-} from '@packing-list/sync-state';
+  Trip,
+  Person,
+  TripItem,
+  DefaultItemRule,
+  RulePack,
+  TripRule,
+} from '@packing-list/model';
+import type { EntityExistence } from '@packing-list/sync-state';
 import type { AllActions } from '../../actions.js';
-import {
-  TripStorage,
-  PersonStorage,
-  ItemStorage,
-} from '@packing-list/offline-storage';
+import { DefaultItemRulesStorage } from '@packing-list/offline-storage';
 import { createEmptyTripData } from '../../store.js';
+import { calculateDefaultItems } from '../../action-handlers/calculate-default-items.js';
+import { calculatePackingListHandler } from '../../action-handlers/calculate-packing-list.js';
 
 interface PackingListItem {
   id: string;
@@ -55,6 +57,35 @@ function mapItem(item: TripItem): PackingListItem {
   };
 }
 
+// Queue for trip rules that couldn't be applied because trips weren't loaded
+let pendingTripRules: Array<{ rule: DefaultItemRule; tripId: string }> = [];
+
+/**
+ * Process any pending trip rules that were queued while trips were loading
+ */
+export const processPendingTripRules = (
+  dispatch: (action: AllActions) => void
+) => {
+  if (pendingTripRules.length === 0) {
+    return;
+  }
+
+  console.log(
+    `📋 [SYNC INTEGRATION] Processing ${pendingTripRules.length} pending trip rules`
+  );
+
+  const rulesToProcess = [...pendingTripRules];
+  pendingTripRules = []; // Clear the queue
+
+  // Process each queued rule
+  for (const { rule, tripId } of rulesToProcess) {
+    console.log(
+      `📋 [SYNC INTEGRATION] Processing queued rule: ${rule.name} (${rule.id}) for trip ${tripId}`
+    );
+    applySyncedRuleToTrip(dispatch, { rule, tripId });
+  }
+};
+
 /**
  * Create entity existence checker based on current Redux state
  */
@@ -82,58 +113,35 @@ export function createEntityExistence(state: StoreType): EntityExistence {
 }
 
 /**
- * Create entity callbacks that update Redux state
+ * Create entity callbacks for sync integration
  */
-export function createEntityCallbacks(
+export const createEntityCallbacks = (
   dispatch: (action: AllActions) => void
-): EntityCallbacks {
+) => {
   return {
-    onTripUpsert: (trip: Trip) => {
+    onTripRuleUpsert: (tripRule: TripRule) => {
       console.log(
-        `🔄 [SYNC INTEGRATION] Upserting trip: ${trip.title} (${trip.id})`
+        `🔗 [SYNC INTEGRATION] Associating rule ${tripRule.ruleId} with trip ${tripRule.tripId}`
       );
 
-      // Save to IndexedDB first
-      TripStorage.saveTrip(trip);
-
-      // Update Redux state with create/update action
-      dispatch({
-        type: 'UPSERT_SYNCED_TRIP',
-        payload: trip,
-      });
-    },
-
-    onPersonUpsert: (person: Person) => {
-      console.log(
-        `👤 [SYNC INTEGRATION] Upserting person: ${person.name} (${person.id})`
-      );
-
-      // Save to IndexedDB first
-      PersonStorage.savePerson(person);
-
-      // Update Redux state with create/update action
-      dispatch({
-        type: 'UPSERT_SYNCED_PERSON',
-        payload: person,
-      });
-    },
-
-    onItemUpsert: (item: TripItem) => {
-      console.log(
-        `📦 [SYNC INTEGRATION] Upserting item: ${item.name} (${item.id})`
-      );
-
-      // Save to IndexedDB first
-      ItemStorage.saveItem(item);
-
-      // Update Redux state with create/update action
-      dispatch({
-        type: 'UPSERT_SYNCED_ITEM',
-        payload: item,
-      });
+      // Fetch the rule and then apply it
+      DefaultItemRulesStorage.getDefaultItemRule(tripRule.ruleId)
+        .then((rule) => {
+          if (rule) {
+            applySyncedRuleToTrip(dispatch, {
+              rule,
+              tripId: tripRule.tripId,
+            });
+          } else {
+            console.warn(
+              `[SYNC INTEGRATION] Rule ${tripRule.ruleId} not found for trip association`
+            );
+          }
+        })
+        .catch(console.error);
     },
   };
-}
+};
 
 /**
  * Redux actions for sync integration
@@ -141,7 +149,12 @@ export function createEntityCallbacks(
 export type SyncIntegrationActions =
   | { type: 'UPSERT_SYNCED_TRIP'; payload: Trip }
   | { type: 'UPSERT_SYNCED_PERSON'; payload: Person }
-  | { type: 'UPSERT_SYNCED_ITEM'; payload: TripItem };
+  | { type: 'UPSERT_SYNCED_ITEM'; payload: TripItem }
+  | {
+      type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE';
+      payload: { rule: DefaultItemRule; tripId: string };
+    }
+  | { type: 'UPSERT_SYNCED_RULE_PACK'; payload: RulePack };
 
 /**
  * Redux reducers for sync integration
@@ -330,4 +343,154 @@ export const upsertSyncedItem = (
       },
     },
   };
+};
+
+/**
+ * Upsert a default item rule that came from sync (reducer function)
+ * This is called when rules are synced from the server
+ */
+export const upsertSyncedDefaultItemRule = (
+  state: StoreType,
+  action: {
+    type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE';
+    payload: { rule: DefaultItemRule; tripId: string };
+  }
+): StoreType => {
+  const { rule, tripId } = action.payload;
+
+  console.log(
+    `📋 [SYNC REDUCER] Upserting default item rule: ${rule.name} (${rule.id}) for trip ${tripId}`
+  );
+
+  const tripData = state.trips.byId[tripId];
+  if (!tripData) {
+    console.warn(`⚠️ [SYNC REDUCER] Trip not found for rule: ${tripId}`);
+    return state;
+  }
+
+  // Update or add rule in the specific trip
+  const existingRuleIndex = tripData.trip.defaultItemRules.findIndex(
+    (r) => r.id === rule.id
+  );
+  const updatedRules = [...tripData.trip.defaultItemRules];
+
+  if (existingRuleIndex >= 0) {
+    updatedRules[existingRuleIndex] = rule;
+    console.log(
+      `🔄 [SYNC REDUCER] Updated existing rule in trip ${tripId}: ${rule.id}`
+    );
+  } else {
+    updatedRules.push(rule);
+    console.log(
+      `➕ [SYNC REDUCER] Added new rule to trip ${tripId}: ${rule.id}`
+    );
+  }
+
+  // Update the trip with the new rules
+  const updatedTripData = {
+    ...tripData,
+    trip: { ...tripData.trip, defaultItemRules: updatedRules },
+  };
+
+  let updatedState = {
+    ...state,
+    trips: {
+      ...state.trips,
+      byId: {
+        ...state.trips.byId,
+        [tripId]: updatedTripData,
+      },
+    },
+  };
+
+  // Recalculate default items and packing list for this specific trip
+  console.log(
+    `🔄 [SYNC REDUCER] Recalculating items for trip ${tripId} after rule update: ${rule.id}`
+  );
+
+  // Temporarily set the selected trip to trigger calculations
+  const tempState = {
+    ...updatedState,
+    trips: {
+      ...updatedState.trips,
+      selectedTripId: tripId,
+    },
+  };
+
+  // Calculate default items first
+  const stateWithDefaultItems = calculateDefaultItems(tempState);
+
+  // Then calculate packing list
+  const stateWithPackingList = calculatePackingListHandler(
+    stateWithDefaultItems
+  );
+
+  // Update the trip data in our final state and restore original selected trip
+  updatedState = {
+    ...updatedState,
+    trips: {
+      ...updatedState.trips,
+      selectedTripId: state.trips.selectedTripId,
+      byId: {
+        ...updatedState.trips.byId,
+        [tripId]: stateWithPackingList.trips.byId[tripId],
+      },
+    },
+  };
+
+  return updatedState;
+};
+
+/**
+ * Helper function to apply a synced rule to a trip (used by callbacks)
+ */
+const applySyncedRuleToTrip = (
+  dispatch: (action: AllActions) => void,
+  payload: { rule: DefaultItemRule; tripId: string }
+): void => {
+  const { rule, tripId } = payload;
+
+  console.log(
+    `📋 [SYNC INTEGRATION] Applying synced rule: ${rule.name} (${rule.id}) to trip ${tripId}`
+  );
+
+  // Check if the trip exists in the store
+  const state = (
+    dispatch as unknown as { getState?: () => StoreType }
+  ).getState?.();
+  const trip = state?.trips?.byId?.[tripId];
+
+  if (!trip) {
+    console.log(
+      `⏳ [SYNC INTEGRATION] Trip not loaded yet, queuing rule: ${tripId}`
+    );
+    // Queue the rule for later processing when trips are loaded
+    pendingTripRules.push({ rule, tripId });
+    return;
+  }
+
+  console.log(
+    `✅ [SYNC INTEGRATION] Trip found, applying rule to trip ${tripId}`
+  );
+
+  // Dispatch the action to update the rule in the specific trip
+  dispatch({
+    type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE',
+    payload: { rule, tripId },
+  });
+};
+
+export const upsertSyncedRulePack = (
+  state: StoreType,
+  action: { type: 'UPSERT_SYNCED_RULE_PACK'; payload: RulePack }
+): StoreType => {
+  const pack = action.payload;
+  const idx = state.rulePacks.findIndex((p) => p.id === pack.id);
+  const packs = [...state.rulePacks];
+  if (idx >= 0) {
+    packs[idx] = pack;
+  } else {
+    packs.push(pack);
+  }
+  return { ...state, rulePacks: packs };
 };

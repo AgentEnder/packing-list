@@ -1,13 +1,21 @@
 import { describe, it, expect } from 'vitest';
 import { selectAccurateTripSummaries } from './selectors.js';
-import { createTestTripState } from './__tests__/test-helpers.js';
-import { PackingListItem, LegacyPerson as Person } from '@packing-list/model';
+import {
+  createTestTripState,
+  createTestPerson,
+} from './__tests__/test-helpers.js';
+import { PackingListItem, Person } from '@packing-list/model';
 
 describe('selectAccurateTripSummaries', () => {
   it('should calculate accurate people count', () => {
     const people: Person[] = [
-      { id: 'person1', name: 'Alice', age: 25, gender: 'female' },
-      { id: 'person2', name: 'Bob', age: 30, gender: 'male' },
+      createTestPerson({
+        id: 'person1',
+        name: 'Alice',
+        age: 25,
+        gender: 'female',
+      }),
+      createTestPerson({ id: 'person2', name: 'Bob', age: 30, gender: 'male' }),
     ];
 
     const state = createTestTripState({ people });

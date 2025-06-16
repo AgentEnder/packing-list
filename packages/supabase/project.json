@@ -25,6 +25,9 @@
       "options": {
         "cwd": "{projectRoot}"
       }
+    },
+    "typecheck": {
+      "dependsOn": ["gen-types"]
     }
   }
 }

@@ -103,7 +103,8 @@ describe('RulePackModal Component', () => {
             perDay: false,
             perPerson: true,
           },
-          packIds: ['pack1'],
+          packIds: [{ packId: 'pack1', ruleId: 'rule1' }],
+          originalRuleId: 'rule1',
         },
       ],
       icon: 'sun',
@@ -141,7 +142,8 @@ describe('RulePackModal Component', () => {
             perDay: false,
             perPerson: false,
           },
-          packIds: ['pack2'],
+          packIds: [{ packId: 'pack2', ruleId: 'rule2' }],
+          originalRuleId: 'rule2',
         },
       ],
       icon: 'briefcase',
@@ -161,7 +163,8 @@ describe('RulePackModal Component', () => {
         perDay: false,
         perPerson: true,
       },
-      packIds: ['pack1'], // Active pack
+      packIds: [{ packId: 'pack1', ruleId: 'rule1' }],
+      originalRuleId: 'rule1',
     },
   ];
 

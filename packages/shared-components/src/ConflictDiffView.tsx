@@ -1,47 +1,112 @@
 import React from 'react';
 import { ChevronDown, ChevronRight, Plus, Minus, Edit3 } from 'lucide-react';
+import type { SyncConflict } from '@packing-list/model';
 
 interface DiffEntry {
   key: string;
   localValue: unknown;
   serverValue: unknown;
   type: 'changed' | 'added' | 'removed' | 'same';
+  path?: string; // Full path for nested conflicts
+  isNested?: boolean;
 }
 
 interface ConflictDiffViewProps {
   localData: Record<string, unknown>;
   serverData: Record<string, unknown>;
   expanded?: boolean;
+  // Enhanced props for deep diff support
+  conflict?: SyncConflict;
+  showOnlyConflicts?: boolean;
 }
 
 export const ConflictDiffView: React.FC<ConflictDiffViewProps> = ({
   localData,
   serverData,
   expanded = true,
+  conflict,
+  showOnlyConflicts = false,
 }) => {
   const [isExpanded, setIsExpanded] = React.useState(expanded);
 
-  // Create diff entries
-  const allKeys = new Set([
-    ...Object.keys(localData),
-    ...Object.keys(serverData),
-  ]);
+  // Use enhanced conflict details if available, otherwise fall back to simple diff
+  const diffEntries: DiffEntry[] = React.useMemo(() => {
+    if (conflict?.conflictDetails?.conflicts) {
+      // Use the detailed conflict information for more precise diffs
+      const conflictPaths = new Set(
+        conflict.conflictDetails.conflicts.map((c) => c.path)
+      );
 
-  const diffEntries: DiffEntry[] = Array.from(allKeys).map((key) => {
-    const localValue = localData[key];
-    const serverValue = serverData[key];
+      // Create diff entries from conflict details
+      const entries: DiffEntry[] = conflict.conflictDetails.conflicts.map(
+        (conflictItem) => {
+          const pathParts = conflictItem.path.split('.');
+          const key = pathParts[0];
+          const isNested = pathParts.length > 1;
 
-    if (!(key in localData)) {
-      return { key, localValue: undefined, serverValue, type: 'added' };
+          return {
+            key,
+            localValue: conflictItem.localValue,
+            serverValue: conflictItem.serverValue,
+            type:
+              conflictItem.type === 'modified'
+                ? 'changed'
+                : conflictItem.type === 'added'
+                ? 'added'
+                : 'removed',
+            path: conflictItem.path,
+            isNested,
+          };
+        }
+      );
+
+      // Add non-conflicting fields if not showing only conflicts
+      if (!showOnlyConflicts) {
+        const allKeys = new Set([
+          ...Object.keys(localData),
+          ...Object.keys(serverData),
+        ]);
+
+        for (const key of allKeys) {
+          if (!conflictPaths.has(key)) {
+            const localValue = localData[key];
+            const serverValue = serverData[key];
+
+            entries.push({
+              key,
+              localValue,
+              serverValue,
+              type: 'same',
+            });
+          }
+        }
+      }
+
+      return entries;
+    } else {
+      // Fall back to simple diff
+      const allKeys = new Set([
+        ...Object.keys(localData),
+        ...Object.keys(serverData),
+      ]);
+
+      return Array.from(allKeys).map((key) => {
+        const localValue = localData[key];
+        const serverValue = serverData[key];
+
+        if (!(key in localData)) {
+          return { key, localValue: undefined, serverValue, type: 'added' };
+        }
+        if (!(key in serverData)) {
+          return { key, localValue, serverValue: undefined, type: 'removed' };
+        }
+        if (JSON.stringify(localValue) !== JSON.stringify(serverValue)) {
+          return { key, localValue, serverValue, type: 'changed' };
+        }
+        return { key, localValue, serverValue, type: 'same' };
+      });
     }
-    if (!(key in serverData)) {
-      return { key, localValue, serverValue: undefined, type: 'removed' };
-    }
-    if (JSON.stringify(localValue) !== JSON.stringify(serverValue)) {
-      return { key, localValue, serverValue, type: 'changed' };
-    }
-    return { key, localValue, serverValue, type: 'same' };
-  });
+  }, [localData, serverData, conflict, showOnlyConflicts]);
 
   const isTimestampField = (key: string): boolean => {
     const timestampFields = [
@@ -210,16 +275,30 @@ export const ConflictDiffView: React.FC<ConflictDiffViewProps> = ({
           {/* Changed fields first */}
           {changedFields.map((entry) => (
             <div
-              key={entry.key}
+              key={entry.path || entry.key}
               className={`p-3 rounded-lg border ${getFieldClass(entry.type)}`}
             >
               <div className="flex items-center space-x-2 mb-2">
                 {getIcon(entry.type)}
-                <span className="font-medium text-gray-900">{entry.key}</span>
+                <span className="font-medium text-gray-900">
+                  {entry.path || entry.key}
+                </span>
+                {entry.isNested && (
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                    Nested
+                  </span>
+                )}
                 <span className="text-xs text-gray-500 uppercase">
                   {entry.type}
                 </span>
               </div>
+
+              {/* Show enhanced information for nested conflicts */}
+              {entry.isNested && entry.path && (
+                <div className="mb-2 text-sm text-gray-600">
+                  <span className="font-medium">Path:</span> {entry.path}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>

@@ -1,15 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
+import {
+  createTestTripState,
+  createTestPerson,
+} from '../__tests__/test-helpers.js';
 import type { StoreType } from '../store.js';
-import type {
-  DefaultItemRule,
-  LegacyPerson as Person,
-  Day,
-} from '@packing-list/model';
-import { createTestTripState } from '../__tests__/test-helpers.js';
+import type { DefaultItemRule, Person, Day } from '@packing-list/model';
 
 describe('calculatePackingListHandler', () => {
-  // Helper function to create a Day object
   const createDay = (
     dateStr: string,
     expectedClimate = 'sunny',
@@ -22,7 +20,25 @@ describe('calculatePackingListHandler', () => {
     travel: false,
   });
 
-  // Helper function to create a basic store state with new multi-trip structure
+  const createMockRule = (
+    overrides: Partial<DefaultItemRule> = {}
+  ): DefaultItemRule => ({
+    id: 'rule1',
+    name: 'Test Item',
+    calculation: {
+      baseQuantity: 1,
+      perPerson: false,
+      perDay: false,
+    },
+    conditions: [],
+    notes: '',
+    categoryId: '',
+    subcategoryId: '',
+    packIds: [],
+    originalRuleId: 'original-rule-1',
+    ...overrides,
+  });
+
   const createMockState = (
     rules: DefaultItemRule[] = [],
     people: Person[] = [],
@@ -32,7 +48,7 @@ describe('calculatePackingListHandler', () => {
     const tripId = state.trips.selectedTripId!;
 
     // Update with provided test data - set defaultItemRules in the trip data
-    state.trips.byId[tripId].defaultItemRules = rules;
+    state.trips.byId[tripId].trip.defaultItemRules = rules;
     state.trips.byId[tripId].trip.days = days;
     state.trips.byId[tripId].people = people;
     state.trips.byId[tripId].calculated.packingListItems = [];
@@ -51,7 +67,7 @@ describe('calculatePackingListHandler', () => {
   it('should create basic items without conditions', () => {
     const state = createMockState(
       [
-        {
+        createMockRule({
           id: 'rule1',
           name: 'Toothbrush',
           calculation: {
@@ -59,11 +75,21 @@ describe('calculatePackingListHandler', () => {
             perPerson: true,
             perDay: false,
           },
-        },
+        }),
       ],
       [
-        { id: 'person1', name: 'Alice', age: 25, gender: 'female' },
-        { id: 'person2', name: 'Bob', age: 30, gender: 'male' },
+        createTestPerson({
+          id: 'person1',
+          name: 'Alice',
+          age: 25,
+          gender: 'female',
+        }),
+        createTestPerson({
+          id: 'person2',
+          name: 'Bob',
+          age: 30,
+          gender: 'male',
+        }),
       ],
       [createDay('2024-01-01'), createDay('2024-01-02')]
     );
@@ -81,7 +107,7 @@ describe('calculatePackingListHandler', () => {
   it('should handle person conditions', () => {
     const state = createMockState(
       [
-        {
+        createMockRule({
           id: 'rule1',
           name: 'Swimming Suit',
           conditions: [
@@ -97,11 +123,21 @@ describe('calculatePackingListHandler', () => {
             perPerson: true,
             perDay: false,
           },
-        },
+        }),
       ],
       [
-        { id: 'person1', name: 'Child', age: 10, gender: 'other' },
-        { id: 'person2', name: 'Adult', age: 30, gender: 'other' },
+        createTestPerson({
+          id: 'person1',
+          name: 'Child',
+          age: 10,
+          gender: 'other',
+        }),
+        createTestPerson({
+          id: 'person2',
+          name: 'Adult',
+          age: 30,
+          gender: 'other',
+        }),
       ],
       [createDay('2024-01-01')]
     );
@@ -117,7 +153,7 @@ describe('calculatePackingListHandler', () => {
   it('should handle day conditions', () => {
     const state = createMockState(
       [
-        {
+        createMockRule({
           id: 'rule1',
           name: 'Sunscreen',
           conditions: [
@@ -133,9 +169,16 @@ describe('calculatePackingListHandler', () => {
             perPerson: false,
             perDay: true,
           },
-        },
+        }),
       ],
-      [{ id: 'person1', name: 'Alice', age: 25, gender: 'female' }],
+      [
+        createTestPerson({
+          id: 'person1',
+          name: 'Alice',
+          age: 25,
+          gender: 'female',
+        }),
+      ],
       [
         createDay('2024-01-01', 'sunny'),
         createDay('2024-01-02', 'rainy'),
@@ -156,7 +199,7 @@ describe('calculatePackingListHandler', () => {
   it.skip('should handle rule overrides', () => {
     const state = createMockState(
       [
-        {
+        createMockRule({
           id: 'rule1',
           name: 'Socks',
           calculation: {
@@ -164,11 +207,21 @@ describe('calculatePackingListHandler', () => {
             perPerson: true,
             perDay: false,
           },
-        },
+        }),
       ],
       [
-        { id: 'person1', name: 'Alice', age: 25, gender: 'female' },
-        { id: 'person2', name: 'Bob', age: 30, gender: 'male' },
+        createTestPerson({
+          id: 'person1',
+          name: 'Alice',
+          age: 25,
+          gender: 'female',
+        }),
+        createTestPerson({
+          id: 'person2',
+          name: 'Bob',
+          age: 30,
+          gender: 'male',
+        }),
       ],
       [createDay('2024-01-01')]
     );
@@ -189,7 +242,7 @@ describe('calculatePackingListHandler', () => {
   it('should preserve packed status from existing items', () => {
     const initialState = createMockState(
       [
-        {
+        createMockRule({
           id: 'rule1',
           name: 'Toothbrush',
           calculation: {
@@ -197,9 +250,16 @@ describe('calculatePackingListHandler', () => {
             perPerson: true,
             perDay: false,
           },
-        },
+        }),
       ],
-      [{ id: 'person1', name: 'Alice', age: 25, gender: 'female' }],
+      [
+        createTestPerson({
+          id: 'person1',
+          name: 'Alice',
+          age: 25,
+          gender: 'female',
+        }),
+      ],
       [createDay('2024-01-01')]
     );
 
@@ -242,9 +302,9 @@ describe('calculatePackingListHandler', () => {
   it('should handle day patterns correctly', () => {
     const state = createMockState(
       [
-        {
+        createMockRule({
           id: 'rule1',
-          name: 'Laundry Bag',
+          name: 'Laundry',
           calculation: {
             baseQuantity: 1,
             perPerson: true,
@@ -254,9 +314,16 @@ describe('calculatePackingListHandler', () => {
               roundUp: true,
             },
           },
-        },
+        }),
       ],
-      [{ id: 'person1', name: 'Alice', age: 25, gender: 'female' }],
+      [
+        createTestPerson({
+          id: 'person1',
+          name: 'Alice',
+          age: 25,
+          gender: 'female',
+        }),
+      ],
       [
         createDay('2024-01-01'),
         createDay('2024-01-02'),

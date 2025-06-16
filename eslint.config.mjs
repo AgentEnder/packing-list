@@ -14,6 +14,7 @@ export default [
       '**/node_modules/**',
       'packages/**/node_modules/**',
       'apps/**/node_modules/**',
+      '**/out-tsc/**',
       '**/.vite/**',
       '**/vite.config.*.timestamp*',
       '**/vitest.config.*.timestamp*',

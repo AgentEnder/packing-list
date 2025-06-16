@@ -1,12 +1,14 @@
-import { StoreType } from '../store.js';
+import type { StoreType } from '../store.js';
 import { calculateDefaultItems } from './calculate-default-items.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
+import {
+  DefaultItemRulesStorage,
+  TripRuleStorage,
+} from '@packing-list/offline-storage';
 
 export type DeleteItemRuleAction = {
   type: 'DELETE_ITEM_RULE';
-  payload: {
-    id: string;
-  };
+  payload: { id: string };
 };
 
 export const deleteItemRuleHandler = (
@@ -22,15 +24,21 @@ export const deleteItemRuleHandler = (
 
   const selectedTripData = state.trips.byId[selectedTripId];
 
-  // First delete the rule from the current trip
+  // Remove the rule from the current trip
+  const updatedRules =
+    selectedTripData.trip.defaultItemRules?.filter(
+      (rule) => rule.id !== action.payload.id
+    ) ?? [];
+
   const updatedTripData = {
     ...selectedTripData,
-    defaultItemRules: selectedTripData.defaultItemRules.filter(
-      (rule) => rule.id !== action.payload.id
-    ),
+    trip: {
+      ...selectedTripData.trip,
+      defaultItemRules: updatedRules,
+    },
   };
 
-  const stateWithDeletedRule = {
+  const stateWithoutRule = {
     ...state,
     trips: {
       ...state.trips,
@@ -41,8 +49,19 @@ export const deleteItemRuleHandler = (
     },
   };
 
+  // Soft delete the rule from global storage
+  // Note: We keep it in global storage as other trips might still use it
+  DefaultItemRulesStorage.deleteDefaultItemRule(action.payload.id).catch(
+    console.error
+  );
+
+  // Remove the trip rule association
+  TripRuleStorage.deleteTripRule(selectedTripId, action.payload.id).catch(
+    console.error
+  );
+
   // Then recalculate default items
-  const stateWithDefaultItems = calculateDefaultItems(stateWithDeletedRule);
+  const stateWithDefaultItems = calculateDefaultItems(stateWithoutRule);
 
   // Finally recalculate packing list
   return calculatePackingListHandler(stateWithDefaultItems);

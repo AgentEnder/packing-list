@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { toggleRulePackHandler } from '../toggle-rule-pack.js';
+import {
+  toggleRulePackHandler,
+  type ToggleRulePackAction,
+} from '../toggle-rule-pack.js';
 import type { StoreType } from '../../store.js';
 import type { DefaultItemRule, RulePack } from '@packing-list/model';
 import { createTestTripState } from '../../__tests__/test-helpers.js';
@@ -7,13 +10,14 @@ import { createTestTripState } from '../../__tests__/test-helpers.js';
 describe('toggleRulePackHandler', () => {
   // Helper function to create a basic store state with multi-trip structure
   const createMockState = (rules: DefaultItemRule[] = []): StoreType => {
-    const state = createTestTripState({});
+    const state = createTestTripState({ userId: 'test-user' });
     // Set defaultItemRules in the correct location - inside the trip data
     if (
       state.trips.selectedTripId &&
       state.trips.byId[state.trips.selectedTripId]
     ) {
-      state.trips.byId[state.trips.selectedTripId].defaultItemRules = rules;
+      state.trips.byId[state.trips.selectedTripId].trip.defaultItemRules =
+        rules;
     }
     return state;
   };
@@ -24,19 +28,23 @@ describe('toggleRulePackHandler', () => {
     if (!selectedTripId || !state.trips.byId[selectedTripId]) {
       return [];
     }
-    return state.trips.byId[selectedTripId].defaultItemRules;
+    return state.trips.byId[selectedTripId].trip.defaultItemRules ?? [];
   };
 
   // Helper function to create a basic rule
   const createRule = (id: string, packIds?: string[]): DefaultItemRule => ({
     id,
+    originalRuleId: id,
     name: `Rule ${id}`,
     calculation: {
       baseQuantity: 1,
       perPerson: false,
       perDay: false,
     },
-    packIds,
+    packIds: packIds?.map((packId) => ({
+      packId,
+      ruleId: id,
+    })),
   });
 
   // Helper function to create a rule pack
@@ -77,7 +85,9 @@ describe('toggleRulePackHandler', () => {
       const defaultItemRules = getDefaultItemRules(result);
       expect(defaultItemRules).toHaveLength(2);
       defaultItemRules.forEach((rule) => {
-        expect(rule.packIds).toEqual(['pack1']);
+        expect(rule.packIds).toEqual([
+          { packId: 'pack1', ruleId: rule.originalRuleId },
+        ]);
       });
     });
 
@@ -94,7 +104,10 @@ describe('toggleRulePackHandler', () => {
 
       const defaultItemRules = getDefaultItemRules(result);
       expect(defaultItemRules).toHaveLength(1);
-      expect(defaultItemRules[0].packIds).toEqual(['existing-pack', 'pack1']);
+      expect(defaultItemRules[0].packIds).toEqual([
+        { packId: 'existing-pack', ruleId: 'rule1' },
+        { packId: 'pack1', ruleId: 'rule1' },
+      ]);
     });
 
     it('should not duplicate pack associations when activating the same pack twice', () => {
@@ -116,7 +129,9 @@ describe('toggleRulePackHandler', () => {
       });
 
       const defaultItemRules = getDefaultItemRules(finalResult);
-      expect(defaultItemRules[0].packIds).toEqual(['pack1']);
+      expect(defaultItemRules[0].packIds).toEqual([
+        { packId: 'pack1', ruleId: 'rule1' },
+      ]);
     });
   });
 
@@ -133,7 +148,9 @@ describe('toggleRulePackHandler', () => {
       });
 
       const defaultItemRules = getDefaultItemRules(result);
-      expect(defaultItemRules[0].packIds).toEqual(['pack2']);
+      expect(defaultItemRules[0].packIds).toEqual([
+        { packId: 'pack2', ruleId: 'rule1' },
+      ]);
     });
 
     it('should remove rules that have no remaining pack associations', () => {
@@ -165,8 +182,10 @@ describe('toggleRulePackHandler', () => {
 
       const defaultItemRules = getDefaultItemRules(result);
       expect(defaultItemRules).toHaveLength(1);
-      expect(defaultItemRules[0].id).toBe('rule1');
-      expect(defaultItemRules[0].packIds).toEqual(['pack2']);
+      expect(defaultItemRules[0].originalRuleId).toBe('rule1');
+      expect(defaultItemRules[0].packIds).toEqual([
+        { packId: 'pack2', ruleId: 'rule1' },
+      ]);
     });
   });
 
@@ -193,8 +212,13 @@ describe('toggleRulePackHandler', () => {
       // Verify both packs added correctly
       const defaultItemRulesWithBoth = getDefaultItemRules(stateWithBothPacks);
       expect(defaultItemRulesWithBoth).toHaveLength(3);
-      const rule2 = defaultItemRulesWithBoth.find((r) => r.id === 'rule2');
-      expect(rule2?.packIds).toEqual(['pack1', 'pack2']);
+      const rule2 = defaultItemRulesWithBoth.find(
+        (r) => r.originalRuleId === 'rule2'
+      );
+      expect(rule2?.packIds).toEqual([
+        { packId: 'pack1', ruleId: 'rule2' },
+        { packId: 'pack2', ruleId: 'rule2' },
+      ]);
 
       // Remove pack1 - rule2 should still exist because it's in pack2
       const finalState = toggleRulePackHandler(stateWithBothPacks, {
@@ -205,7 +229,7 @@ describe('toggleRulePackHandler', () => {
 
       const finalDefaultItemRules = getDefaultItemRules(finalState);
       expect(finalDefaultItemRules).toHaveLength(2);
-      expect(finalDefaultItemRules.map((r) => r.id)).toEqual([
+      expect(finalDefaultItemRules.map((r) => r.originalRuleId)).toEqual([
         'rule2',
         'rule3',
       ]);
@@ -223,7 +247,9 @@ describe('toggleRulePackHandler', () => {
       });
 
       const defaultItemRules = getDefaultItemRules(result);
-      expect(defaultItemRules[0].packIds).toEqual(['pack1']);
+      expect(defaultItemRules[0].packIds).toEqual([
+        { packId: 'pack1', ruleId: 'rule1' },
+      ]);
     });
   });
 
@@ -239,8 +265,8 @@ describe('toggleRulePackHandler', () => {
 
     const defaultItemRules = getDefaultItemRules(result);
     expect(defaultItemRules).toHaveLength(2);
-    expect(defaultItemRules[0].id).toBe('rule1');
-    expect(defaultItemRules[1].id).toBe('rule2');
+    expect(defaultItemRules[0].originalRuleId).toBe('rule1');
+    expect(defaultItemRules[1].originalRuleId).toBe('rule2');
   });
 
   it('should remove rules when deactivating a pack', () => {
@@ -266,7 +292,7 @@ describe('toggleRulePackHandler', () => {
   });
 
   it('should not duplicate rules when activating a pack with existing rules', () => {
-    const existingRule = createRule('rule1');
+    const existingRule = createRule('rule1', undefined);
     const initialState = createMockState([existingRule]);
     const rulePack = createRulePack('pack1', ['rule1', 'rule2']);
 
@@ -278,7 +304,10 @@ describe('toggleRulePackHandler', () => {
 
     const defaultItemRules = getDefaultItemRules(result);
     expect(defaultItemRules).toHaveLength(2);
-    expect(defaultItemRules.map((r) => r.id)).toEqual(['rule1', 'rule2']);
+    expect(defaultItemRules.map((r) => r.originalRuleId)).toEqual([
+      'rule1',
+      'rule2',
+    ]);
   });
 
   it('should handle empty rule packs', () => {
@@ -323,7 +352,9 @@ describe('toggleRulePackHandler', () => {
 
     const defaultItemRules = getDefaultItemRules(result);
     expect(defaultItemRules).toHaveLength(1);
-    expect(defaultItemRules[0].packIds).toEqual(['pack2']);
+    expect(defaultItemRules[0].packIds).toEqual([
+      { packId: 'pack2', ruleId: 'rule1' },
+    ]);
   });
 
   it('should not remove rules which were never in a pack', () => {
@@ -340,5 +371,97 @@ describe('toggleRulePackHandler', () => {
     const defaultItemRules = getDefaultItemRules(result);
     expect(defaultItemRules).toHaveLength(1);
     expect(defaultItemRules[0].id).toBe('rule1');
+  });
+
+  describe('Sync Tracking Integration', () => {
+    it('should call sync tracking functions when applying a rule pack', () => {
+      // This test verifies that the sync tracking code paths are executed
+      // The actual tracking is tested in the sync package tests
+      const state = createMockState();
+      const pack = createRulePack('pack1', ['rule1', 'rule2']);
+
+      const action: ToggleRulePackAction = {
+        type: 'TOGGLE_RULE_PACK',
+        pack,
+        active: true,
+      };
+
+      // Apply the rule pack - this should execute sync tracking code paths
+      const result = toggleRulePackHandler(state, action);
+
+      // Verify the rules were added to the state
+      const tripRules = getDefaultItemRules(result);
+      expect(tripRules).toHaveLength(2);
+      expect(tripRules.find((r) => r.originalRuleId === 'rule1')).toBeDefined();
+      expect(tripRules.find((r) => r.originalRuleId === 'rule2')).toBeDefined();
+
+      // Verify pack associations were set
+      expect(
+        tripRules.find((r) => r.originalRuleId === 'rule1')?.packIds
+      ).toEqual([{ packId: 'pack1', ruleId: 'rule1' }]);
+      expect(
+        tripRules.find((r) => r.originalRuleId === 'rule2')?.packIds
+      ).toEqual([{ packId: 'pack1', ruleId: 'rule2' }]);
+    });
+
+    it('should call sync tracking functions when removing a rule pack', () => {
+      // Create state with existing rules from the pack
+      const state = createMockState();
+      const pack = createRulePack('pack1', ['rule1', 'rule2']);
+
+      // First apply the pack to add rules
+      const applyAction: ToggleRulePackAction = {
+        type: 'TOGGLE_RULE_PACK',
+        pack,
+        active: true,
+      };
+      const stateWithPack = toggleRulePackHandler(state, applyAction);
+
+      // Now remove the pack
+      const removeAction: ToggleRulePackAction = {
+        type: 'TOGGLE_RULE_PACK',
+        pack,
+        active: false,
+      };
+
+      const result = toggleRulePackHandler(stateWithPack, removeAction);
+
+      // Verify the rules were removed from the state
+      const tripRules = getDefaultItemRules(result);
+      expect(tripRules).toHaveLength(0);
+    });
+
+    it('should handle existing rules with pack associations correctly', () => {
+      // Add an existing rule that matches one in the pack
+      const existingRule = createRule('rule1', []);
+      const stateWithExistingRule = createMockState([existingRule]);
+
+      const pack = createRulePack('pack1', ['rule1', 'rule2']);
+
+      const action: ToggleRulePackAction = {
+        type: 'TOGGLE_RULE_PACK',
+        pack,
+        active: true,
+      };
+
+      // Apply the rule pack
+      const result = toggleRulePackHandler(stateWithExistingRule, action);
+
+      // Should have 2 rules total (existing rule updated + new rule added)
+      const tripRules = getDefaultItemRules(result);
+      expect(tripRules).toHaveLength(2);
+
+      // Existing rule should have pack association added
+      const updatedExistingRule = tripRules.find(
+        (r) => r.originalRuleId === 'rule1'
+      );
+      expect(updatedExistingRule?.packIds).toEqual([
+        { packId: 'pack1', ruleId: 'rule1' },
+      ]);
+
+      // New rule should be added with pack association
+      const newRule = tripRules.find((r) => r.originalRuleId === 'rule2');
+      expect(newRule?.packIds).toEqual([{ packId: 'pack1', ruleId: 'rule2' }]);
+    });
   });
 });

@@ -4,6 +4,7 @@ import {
   TripStorage,
   PersonStorage,
   ItemStorage,
+  TripRuleStorage,
 } from '@packing-list/offline-storage';
 import type { Trip, Person, TripItem } from '@packing-list/model';
 
@@ -14,12 +15,16 @@ vi.mock('@packing-list/offline-storage', () => ({
   },
   PersonStorage: { getTripPeople: vi.fn() },
   ItemStorage: { getTripItems: vi.fn() },
+  TripRuleStorage: { getTripRulesWithDetails: vi.fn() },
 }));
 
 type Mocked<T> = { [K in keyof T]: T[K] & Mock };
 const tripStorage = TripStorage as unknown as Mocked<typeof TripStorage>;
 const personStorage = PersonStorage as unknown as Mocked<typeof PersonStorage>;
 const itemStorage = ItemStorage as unknown as Mocked<typeof ItemStorage>;
+const tripRuleStorage = TripRuleStorage as unknown as Mocked<
+  typeof TripRuleStorage
+>;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -43,6 +48,7 @@ describe('loadOfflineState', () => {
       title: 'Trip One',
       description: '',
       days: [],
+      defaultItemRules: [],
       lastSyncedAt: '2024-01-01',
       createdAt: '2024-01-01',
       updatedAt: '2024-01-01',
@@ -88,6 +94,7 @@ describe('loadOfflineState', () => {
     tripStorage.getTrip.mockResolvedValue(trip);
     personStorage.getTripPeople.mockResolvedValue(people);
     itemStorage.getTripItems.mockResolvedValue(items);
+    tripRuleStorage.getTripRulesWithDetails.mockResolvedValue([]);
 
     const state = await loadOfflineState('user-1');
 
@@ -133,6 +140,7 @@ describe('loadOfflineState', () => {
       title: 'Trip with Days',
       description: 'A trip that has days',
       days: tripDays, // Include actual days data
+      defaultItemRules: [],
       tripEvents: [
         {
           id: 'event-1',
@@ -156,6 +164,7 @@ describe('loadOfflineState', () => {
     tripStorage.getTrip.mockResolvedValue(trip);
     personStorage.getTripPeople.mockResolvedValue([]);
     itemStorage.getTripItems.mockResolvedValue([]);
+    tripRuleStorage.getTripRulesWithDetails.mockResolvedValue([]);
 
     const state = await loadOfflineState('user-1');
 

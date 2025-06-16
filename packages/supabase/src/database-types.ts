@@ -44,6 +44,7 @@ export type Database = {
           is_deleted: boolean | null
           name: string
           notes: string | null
+          original_rule_id: string | null
           pack_ids: Json | null
           rule_id: string
           subcategory_id: string | null
@@ -60,6 +61,7 @@ export type Database = {
           is_deleted?: boolean | null
           name: string
           notes?: string | null
+          original_rule_id?: string | null
           pack_ids?: Json | null
           rule_id: string
           subcategory_id?: string | null
@@ -76,6 +78,7 @@ export type Database = {
           is_deleted?: boolean | null
           name?: string
           notes?: string | null
+          original_rule_id?: string | null
           pack_ids?: Json | null
           rule_id?: string
           subcategory_id?: string | null
@@ -174,6 +177,47 @@ export type Database = {
           version?: number
         }
         Relationships: []
+      }
+      trip_default_item_rules: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_deleted: boolean | null
+          rule_id: string
+          trip_id: string
+          updated_at: string | null
+          user_id: string
+          version: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          rule_id: string
+          trip_id: string
+          updated_at?: string | null
+          user_id: string
+          version?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          rule_id?: string
+          trip_id?: string
+          updated_at?: string | null
+          user_id?: string
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_default_item_rules_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trip_items: {
         Row: {

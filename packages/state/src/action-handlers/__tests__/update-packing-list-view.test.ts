@@ -108,7 +108,7 @@ describe('updatePackingListViewHandler', () => {
     });
 
     // Verify that other state properties are preserved
-    expect(result.defaultItemRules).toEqual(initialState.defaultItemRules);
+    expect(result.rulePacks).toEqual(initialState.rulePacks);
     expect(result.trips.summaries).toEqual(initialState.trips.summaries);
     expect(result.trips.selectedTripId).toEqual(
       initialState.trips.selectedTripId

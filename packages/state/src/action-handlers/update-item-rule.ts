@@ -1,7 +1,8 @@
-import { DefaultItemRule } from '@packing-list/model';
-import { StoreType } from '../store.js';
+import type { DefaultItemRule } from '@packing-list/model';
+import type { StoreType } from '../store.js';
 import { calculateDefaultItems } from './calculate-default-items.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
+import { DefaultItemRulesStorage } from '@packing-list/offline-storage';
 
 export type UpdateItemRuleAction = {
   type: 'UPDATE_ITEM_RULE';
@@ -21,12 +22,17 @@ export const updateItemRuleHandler = (
 
   const selectedTripData = state.trips.byId[selectedTripId];
 
-  // First update the rule in the current trip
+  // Find and update the rule
+  const updatedRules = selectedTripData.trip.defaultItemRules.map((rule) =>
+    rule.id === action.payload.id ? action.payload : rule
+  );
+
   const updatedTripData = {
     ...selectedTripData,
-    defaultItemRules: selectedTripData.defaultItemRules.map((rule) =>
-      rule.id === action.payload.id ? action.payload : rule
-    ),
+    trip: {
+      ...selectedTripData.trip,
+      defaultItemRules: updatedRules,
+    },
   };
 
   const stateWithUpdatedRule = {
@@ -39,6 +45,10 @@ export const updateItemRuleHandler = (
       },
     },
   };
+
+  DefaultItemRulesStorage.saveDefaultItemRule(action.payload).catch(
+    console.error
+  );
 
   // Then recalculate default items
   const stateWithDefaultItems = calculateDefaultItems(stateWithUpdatedRule);

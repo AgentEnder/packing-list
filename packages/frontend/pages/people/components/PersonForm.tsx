@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
-import type { LegacyPerson } from '@packing-list/model';
+import type { Person } from '@packing-list/model';
 import { useAppDispatch } from '@packing-list/state';
 import { uuid } from '@packing-list/shared-utils';
 
@@ -12,7 +12,7 @@ const DEFAULT_FORM = {
 };
 
 export type PersonFormProps = {
-  person?: LegacyPerson;
+  person?: Person;
   onCancel: () => void;
 };
 

@@ -17,10 +17,9 @@ interface RulePackDetailsProps {
 export function RulePackDetails({ pack }: RulePackDetailsProps) {
   const dispatch = useAppDispatch();
   const currentRules = useAppSelector(selectDefaultItemRules);
-  const allRules = useAppSelector(selectDefaultItemRules);
 
   const isPackActive = currentRules.some((rule) =>
-    rule.packIds?.includes(pack.id)
+    rule.packIds?.some((ref) => ref.packId === pack.id)
   );
 
   const handleTogglePack = () => {
@@ -46,10 +45,6 @@ export function RulePackDetails({ pack }: RulePackDetailsProps) {
   const IconComponent = pack.icon
     ? (Icons as unknown as Record<string, LucideIcon>)[pack.icon]
     : null;
-
-  const packRules = pack.rules
-    .map((ruleRef) => allRules.find((r) => r.id === ruleRef.id))
-    .filter((rule): rule is NonNullable<typeof rule> => rule !== undefined);
 
   return (
     <div className="space-y-6" data-testid="rule-pack-details">
@@ -147,7 +142,7 @@ export function RulePackDetails({ pack }: RulePackDetailsProps) {
       <div>
         <h3 className="text-lg font-medium mb-4">Pack Rules</h3>
         <div className="grid gap-2" data-testid="pack-rules-list">
-          {packRules.map((rule) => (
+          {pack.rules.map((rule) => (
             <div
               key={rule.id}
               className="card bg-base-100"

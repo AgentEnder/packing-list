@@ -2,11 +2,10 @@ import {
   PackingListItem,
   DefaultItemRule,
   Day,
-  LegacyPerson,
+  Person,
 } from '@packing-list/model';
-import type { TripItem } from '@packing-list/model';
+import type { RuleOverride, TripItem } from '@packing-list/model';
 import { ItemStorage } from '@packing-list/offline-storage';
-import { getChangeTracker } from '@packing-list/sync';
 import { StoreType } from '../store.js';
 import {
   calculateRuleHash,
@@ -19,24 +18,52 @@ export type CalculatePackingListAction = {
   type: 'CALCULATE_PACKING_LIST';
 };
 
+// Condition evaluation functions
+function evaluatePersonCondition<
+  T extends keyof Pick<Person, 'age' | 'gender'>
+>(person: Person, field: T, operator: string, value: Person[T]): boolean {
+  const personValue = person[field];
+  if (value === undefined) {
+    return false;
+  }
+  if (personValue === undefined) {
+    return false;
+  }
+  return compare(personValue, operator, value);
+}
+
+function evaluateDayCondition<T extends keyof Day>(
+  day: Day,
+  field: T,
+  operator: string,
+  value: Day[T]
+): boolean {
+  const dayValue = day[field];
+  if (dayValue === undefined) {
+    return false;
+  }
+  return compare(dayValue, operator, value);
+}
+
 function getApplicablePeople(
   rule: DefaultItemRule,
-  people: LegacyPerson[]
+  people: Person[]
 ): string[] {
-  if (!rule.conditions || rule.conditions.length === 0) {
+  const conditions = rule.conditions;
+  if (!conditions || conditions.length === 0) {
     return people.map((p) => p.id);
   }
 
-  const conditions = rule.conditions;
   return people
     .filter((person) =>
       conditions.every((condition) => {
         if (condition.type === 'person') {
-          const value = person[condition.field as keyof LegacyPerson];
-          if (value === undefined) {
-            return false;
-          }
-          return compare(value, condition.operator, condition.value);
+          return evaluatePersonCondition(
+            person,
+            condition.field,
+            condition.operator,
+            condition.value
+          );
         }
         return true;
       })
@@ -45,21 +72,22 @@ function getApplicablePeople(
 }
 
 function getApplicableDays(rule: DefaultItemRule, days: Day[]): number[] {
-  if (!rule.conditions || rule.conditions.length === 0) {
+  const conditions = rule.conditions;
+  if (!conditions || conditions.length === 0) {
     return days.map((_, index) => index);
   }
 
-  const conditions = rule.conditions;
   return days
     .map((day, index) => ({ day, index }))
     .filter(({ day }) =>
       conditions.every((condition) => {
         if (condition.type === 'day') {
-          const value = day[condition.field as keyof Day];
-          if (value === undefined) {
-            return false;
-          }
-          return compare(value, condition.operator, condition.value);
+          return evaluateDayCondition(
+            day,
+            condition.field,
+            condition.operator,
+            condition.value
+          );
         }
         return true;
       })
@@ -67,49 +95,332 @@ function getApplicableDays(rule: DefaultItemRule, days: Day[]): number[] {
     .map(({ index }) => index);
 }
 
+// Day grouping utilities
+function createDayGroups(
+  applicableDays: number[],
+  pattern?: { every: number; roundUp: boolean }
+): number[][] {
+  if (!pattern || pattern.every === 1) {
+    return applicableDays.map((day) => [day]);
+  }
+
+  const groups: number[][] = [];
+  const totalGroups = pattern.roundUp
+    ? Math.ceil(applicableDays.length / pattern.every)
+    : Math.floor(applicableDays.length / pattern.every);
+
+  for (let i = 0; i < totalGroups; i++) {
+    const start = i * pattern.every;
+    const end = Math.min(start + pattern.every, applicableDays.length);
+    if (start < applicableDays.length) {
+      groups.push(applicableDays.slice(start, end));
+    }
+  }
+
+  return groups;
+}
+
+// Item instance creation
+function buildItemName(
+  baseName: string,
+  person?: { id: string; name: string },
+  dayGroup?: number[],
+  dayIndex?: number,
+  isExtra = false
+): string {
+  let name = baseName;
+  if (isExtra) name += ' (Extra)';
+
+  if (person) {
+    name += ` (${person.name})`;
+  }
+
+  if (dayGroup && dayGroup.length > 1) {
+    const firstDay = Math.min(...dayGroup) + 1;
+    const lastDay = Math.max(...dayGroup) + 1;
+    name += ` (Days ${firstDay}-${lastDay})`;
+  } else if (dayIndex !== undefined) {
+    name += ` (Day ${dayIndex + 1})`;
+  }
+
+  return name;
+}
+
+function createSingleItem(
+  rule: DefaultItemRule,
+  ruleHash: string,
+  applicableDays: number[],
+  options: {
+    suffix: string;
+    personId?: string;
+    personName?: string;
+    dayIndex?: number;
+    dayGroup?: number[];
+    isExtra?: boolean;
+    quantity?: number;
+    isOverridden?: boolean;
+  }
+): PackingListItem {
+  const {
+    personId,
+    personName,
+    dayIndex,
+    dayGroup,
+    isExtra = false,
+    quantity = 1,
+    isOverridden = false,
+  } = options;
+
+  const person =
+    personId && personName ? { id: personId, name: personName } : undefined;
+  const name = buildItemName(rule.name, person, dayGroup, dayIndex, isExtra);
+
+  // Determine effective day index
+  const effectiveDayIndex =
+    dayIndex ??
+    (rule.conditions?.some((c) => c.type === 'day') && applicableDays.length > 0
+      ? applicableDays[0]
+      : undefined);
+
+  return {
+    id: uuid(),
+    name,
+    itemName: rule.name,
+    ruleId: rule.id,
+    ruleHash,
+    isPacked: false,
+    isOverridden,
+    dayIndex: dayGroup ? dayGroup[0] : effectiveDayIndex,
+    dayStart: dayGroup ? Math.min(...dayGroup) : undefined,
+    dayEnd: dayGroup ? Math.max(...dayGroup) : undefined,
+    personId,
+    personName,
+    notes: rule.notes,
+    isExtra,
+    quantity,
+    categoryId: rule.categoryId,
+    subcategoryId: rule.subcategoryId,
+  };
+}
+
+// Base item creation strategies
+function createBaseItemsPerPersonPerDay(
+  rule: DefaultItemRule,
+  applicablePeople: string[],
+  applicableDays: number[],
+  people: Person[],
+  ruleHash: string,
+  isOverridden: boolean
+): PackingListItem[] {
+  const items: PackingListItem[] = [];
+  const dayGroups = createDayGroups(
+    applicableDays,
+    rule.calculation.daysPattern
+  );
+
+  for (const personId of applicablePeople) {
+    const person = people.find((p) => p.id === personId);
+    for (const group of dayGroups) {
+      items.push(
+        createSingleItem(rule, ruleHash, applicableDays, {
+          suffix: `${personId}-days${group.join('_')}`,
+          personId,
+          personName: person?.name,
+          dayIndex: group[0],
+          dayGroup: group,
+          quantity: rule.calculation.baseQuantity,
+          isOverridden,
+        })
+      );
+    }
+  }
+
+  return items;
+}
+
+function createBaseItemsPerPerson(
+  rule: DefaultItemRule,
+  applicablePeople: string[],
+  applicableDays: number[],
+  people: Person[],
+  ruleHash: string,
+  isOverridden: boolean
+): PackingListItem[] {
+  const items: PackingListItem[] = [];
+
+  for (const personId of applicablePeople) {
+    const person = people.find((p) => p.id === personId);
+    items.push(
+      createSingleItem(rule, ruleHash, applicableDays, {
+        suffix: personId,
+        personId,
+        personName: person?.name,
+        quantity: rule.calculation.baseQuantity,
+        isOverridden,
+      })
+    );
+  }
+
+  return items;
+}
+
+function createBaseItemsPerDay(
+  rule: DefaultItemRule,
+  applicableDays: number[],
+  ruleHash: string,
+  isOverridden: boolean
+): PackingListItem[] {
+  const items: PackingListItem[] = [];
+  const dayGroups = createDayGroups(
+    applicableDays,
+    rule.calculation.daysPattern
+  );
+
+  for (const group of dayGroups) {
+    items.push(
+      createSingleItem(rule, ruleHash, applicableDays, {
+        suffix: `days${group.join('_')}`,
+        dayIndex: group[0],
+        dayGroup: group,
+        quantity: rule.calculation.baseQuantity,
+        isOverridden,
+      })
+    );
+  }
+
+  return items;
+}
+
+function createBaseItemsGeneral(
+  rule: DefaultItemRule,
+  applicableDays: number[],
+  ruleHash: string,
+  baseQuantity: number,
+  isOverridden: boolean
+): PackingListItem[] {
+  const items: PackingListItem[] = [];
+  const { daysPattern } = rule.calculation;
+
+  if (daysPattern) {
+    const dayGroups = createDayGroups(applicableDays, daysPattern);
+    for (const group of dayGroups) {
+      items.push(
+        createSingleItem(rule, ruleHash, applicableDays, {
+          suffix: `days${group.join('_')}`,
+          dayIndex: group[0],
+          dayGroup: group,
+          quantity: rule.calculation.baseQuantity,
+          isOverridden,
+        })
+      );
+    }
+  } else {
+    for (let i = 0; i < baseQuantity; i++) {
+      items.push(
+        createSingleItem(rule, ruleHash, applicableDays, {
+          suffix: `base-${i}`,
+          quantity: 1,
+          isOverridden,
+        })
+      );
+    }
+  }
+
+  return items;
+}
+
+// Extra item creation strategies
+function createExtraItems(
+  rule: DefaultItemRule,
+  applicablePeople: string[],
+  applicableDays: number[],
+  people: Person[],
+  ruleHash: string,
+  extraQuantity: number,
+  isOverridden: boolean
+): PackingListItem[] {
+  const items: PackingListItem[] = [];
+  const { extraItems } = rule.calculation;
+
+  if (!extraItems || extraQuantity <= 0) {
+    return items;
+  }
+
+  if (extraItems.perPerson && extraItems.perDay) {
+    const dayGroups = createDayGroups(applicableDays, extraItems.daysPattern);
+    for (const personId of applicablePeople) {
+      const person = people.find((p) => p.id === personId);
+      for (const group of dayGroups) {
+        items.push(
+          createSingleItem(rule, ruleHash, applicableDays, {
+            suffix: `extra-${personId}-days${group.join('_')}`,
+            personId,
+            personName: person?.name,
+            dayGroup: group,
+            quantity: extraItems.quantity,
+            isExtra: true,
+            isOverridden,
+          })
+        );
+      }
+    }
+  } else if (extraItems.perPerson) {
+    for (const personId of applicablePeople) {
+      const person = people.find((p) => p.id === personId);
+      items.push(
+        createSingleItem(rule, ruleHash, applicableDays, {
+          suffix: `extra-${personId}`,
+          personId,
+          personName: person?.name,
+          quantity: extraItems.quantity,
+          isExtra: true,
+          isOverridden,
+        })
+      );
+    }
+  } else if (extraItems.perDay) {
+    const dayGroups = createDayGroups(applicableDays, extraItems.daysPattern);
+    for (const group of dayGroups) {
+      items.push(
+        createSingleItem(rule, ruleHash, applicableDays, {
+          suffix: `extra-days${group.join('_')}`,
+          dayGroup: group,
+          quantity: extraItems.quantity,
+          isExtra: true,
+          isOverridden,
+        })
+      );
+    }
+  } else {
+    for (let i = 0; i < extraQuantity; i++) {
+      items.push(
+        createSingleItem(rule, ruleHash, applicableDays, {
+          suffix: `extra-${i}`,
+          quantity: 1,
+          isExtra: true,
+          isOverridden,
+        })
+      );
+    }
+  }
+
+  return items;
+}
+
+// Main item creation function
 function createItemInstances(
   rule: DefaultItemRule,
   applicablePeople: string[],
   applicableDays: number[],
-  people: LegacyPerson[],
+  people: Person[],
   days: Day[],
   ruleHash: string,
   isOverridden = false,
   overrideCount?: number
 ): PackingListItem[] {
-  const items: PackingListItem[] = [];
-  const { perPerson, perDay, daysPattern, extraItems } = rule.calculation;
+  const { perPerson, perDay, extraItems } = rule.calculation;
 
-  // Helper function to get day groups based on pattern
-  const getDayGroups = (pattern?: {
-    every: number;
-    roundUp: boolean;
-  }): number[][] => {
-    if (!pattern || pattern.every === 1) {
-      // If no pattern or every=1, each day is its own group
-      return applicableDays.map((day) => [day]);
-    }
-
-    const groups: number[][] = [];
-
-    // Calculate total number of groups needed
-    const totalGroups = pattern.roundUp
-      ? Math.ceil(applicableDays.length / pattern.every)
-      : Math.floor(applicableDays.length / pattern.every);
-
-    // Create groups based on the pattern
-    for (let i = 0; i < totalGroups; i++) {
-      const start = i * pattern.every;
-      const end = Math.min(start + pattern.every, applicableDays.length);
-      if (start < applicableDays.length) {
-        groups.push(applicableDays.slice(start, end));
-      }
-    }
-
-    return groups;
-  };
-
-  // Calculate base and extra quantities separately
+  // Calculate quantities
   const baseQuantity =
     overrideCount ??
     calculateItemQuantity(
@@ -133,205 +444,194 @@ function createItemInstances(
         )
       : 0;
 
-  // Helper function to create an item instance
-  const createInstance = (
-    suffix: string,
-    personId?: string,
-    dayIndex?: number,
-    dayGroup?: number[],
-    isExtra = false,
-    quantity = 1
-  ): PackingListItem => {
-    let name = rule.name;
-    if (isExtra) name += ' (Extra)';
+  let items: PackingListItem[] = [];
 
-    let personName: string | undefined;
-    if (personId) {
-      const person = people.find((p) => p.id === personId);
-      if (person) {
-        name += ` (${person.name})`;
-        personName = person.name;
-      }
-    }
-
-    if (dayGroup && dayGroup.length > 1) {
-      // For multi-day groups, show the range
-      const firstDay = Math.min(...dayGroup) + 1;
-      const lastDay = Math.max(...dayGroup) + 1;
-      name += ` (Days ${firstDay}-${lastDay})`;
-    } else if (dayIndex !== undefined) {
-      name += ` (Day ${dayIndex + 1})`;
-    }
-
-    // If there are applicable days but no specific dayIndex/dayGroup was provided,
-    // use the first applicable day as the dayIndex ONLY if there are day conditions
-    const effectiveDayIndex =
-      dayIndex ??
-      (rule.conditions?.some((c) => c.type === 'day') &&
-      applicableDays.length > 0
-        ? applicableDays[0]
-        : undefined);
-
-    return {
-      id: uuid(),
-      name,
-      itemName: rule.name,
-      ruleId: rule.id,
-      ruleHash,
-      isPacked: false,
-      isOverridden,
-      dayIndex: dayGroup ? dayGroup[0] : effectiveDayIndex,
-      dayStart: dayGroup ? Math.min(...dayGroup) : undefined,
-      dayEnd: dayGroup ? Math.max(...dayGroup) : undefined,
-      personId,
-      personName,
-      notes: rule.notes,
-      isExtra,
-      quantity,
-      categoryId: rule.categoryId,
-      subcategoryId: rule.subcategoryId,
-    };
-  };
-
-  // Create base items
+  // Create base items based on strategy
   if (perPerson && perDay) {
-    const dayGroups = getDayGroups(daysPattern);
-    // Create one instance per person per day group
-    for (const personId of applicablePeople) {
-      for (const group of dayGroups) {
-        items.push(
-          createInstance(
-            `${personId}-days${group.join('_')}`,
-            personId,
-            group[0], // First day of the group
-            group,
-            false,
-            rule.calculation.baseQuantity
-          )
-        );
-      }
-    }
+    items = createBaseItemsPerPersonPerDay(
+      rule,
+      applicablePeople,
+      applicableDays,
+      people,
+      ruleHash,
+      isOverridden
+    );
   } else if (perPerson) {
-    // Create one instance per person
-    for (const personId of applicablePeople) {
-      items.push(
-        createInstance(
-          personId,
-          personId,
-          undefined, // Let createInstance handle dayIndex based on applicableDays
-          undefined,
-          false,
-          rule.calculation.baseQuantity
-        )
-      );
-    }
+    items = createBaseItemsPerPerson(
+      rule,
+      applicablePeople,
+      applicableDays,
+      people,
+      ruleHash,
+      isOverridden
+    );
   } else if (perDay) {
-    const dayGroups = getDayGroups(daysPattern);
-    // Create one instance per day group
-    for (const group of dayGroups) {
-      items.push(
-        createInstance(
-          `days${group.join('_')}`,
-          undefined,
-          group[0], // First day of the group
-          group,
-          false,
-          rule.calculation.baseQuantity
-        )
-      );
-    }
+    items = createBaseItemsPerDay(rule, applicableDays, ruleHash, isOverridden);
   } else {
-    // For items without per-person or per-day, create based on pattern
-    const dayGroups = getDayGroups(daysPattern);
-    // If there's a pattern, create one instance per group
-    if (daysPattern) {
-      for (const group of dayGroups) {
-        items.push(
-          createInstance(
-            `days${group.join('_')}`,
-            undefined,
-            group[0], // First day of the group
-            group,
-            false,
-            rule.calculation.baseQuantity
-          )
-        );
-      }
-    } else {
-      // Create individual instances for the base quantity
-      for (let i = 0; i < baseQuantity; i++) {
-        items.push(
-          createInstance(`base-${i}`, undefined, undefined, undefined, false, 1)
-        );
-      }
-    }
+    items = createBaseItemsGeneral(
+      rule,
+      applicableDays,
+      ruleHash,
+      baseQuantity,
+      isOverridden
+    );
   }
 
-  // Create extra items if not overridden
-  if (extraQuantity > 0 && extraItems) {
-    if (extraItems.perPerson && extraItems.perDay) {
-      const dayGroups = getDayGroups(extraItems.daysPattern);
-      // Create one extra instance per person per day group
-      for (const personId of applicablePeople) {
-        for (const group of dayGroups) {
-          items.push(
-            createInstance(
-              `extra-${personId}-days${group.join('_')}`,
-              personId,
-              undefined,
-              group,
-              true,
-              extraItems.quantity
-            )
-          );
-        }
-      }
-    } else if (extraItems.perPerson) {
-      // Create one extra instance per person
-      for (const personId of applicablePeople) {
-        items.push(
-          createInstance(
-            `extra-${personId}`,
-            personId,
-            undefined,
-            undefined,
-            true,
-            extraItems.quantity
-          )
-        );
-      }
-    } else if (extraItems.perDay) {
-      const dayGroups = getDayGroups(extraItems.daysPattern);
-      // Create one extra instance per day group
-      for (const group of dayGroups) {
-        items.push(
-          createInstance(
-            `extra-days${group.join('_')}`,
-            undefined,
-            undefined,
-            group,
-            true,
-            extraItems.quantity
-          )
-        );
-      }
-    } else {
-      // Create individual instances for the extra quantity
-      for (let i = 0; i < extraQuantity; i++) {
-        items.push(
-          createInstance(`extra-${i}`, undefined, undefined, undefined, true, 1)
-        );
-      }
-    }
-  }
+  // Add extra items
+  const extraItemsList = createExtraItems(
+    rule,
+    applicablePeople,
+    applicableDays,
+    people,
+    ruleHash,
+    extraQuantity,
+    isOverridden
+  );
 
-  return items;
+  return [...items, ...extraItemsList];
 }
 
+// Override handling functions
+function handlePersonSpecificOverride(
+  rule: DefaultItemRule,
+  override: RuleOverride,
+  applicablePeople: string[],
+  applicableDays: number[],
+  people: Person[],
+  days: Day[],
+  ruleHash: string
+): PackingListItem[] {
+  if (!override.personId || !applicablePeople.includes(override.personId)) {
+    return [];
+  }
+
+  const person = people.find((p) => p.id === override.personId);
+  if (!person) {
+    return [];
+  }
+
+  return createItemInstances(
+    rule,
+    [override.personId],
+    applicableDays,
+    [person],
+    days,
+    ruleHash,
+    true,
+    override.overrideCount
+  );
+}
+
+function handleDaySpecificOverride(
+  rule: DefaultItemRule,
+  override: RuleOverride,
+  applicablePeople: string[],
+  applicableDays: number[],
+  people: Person[],
+  days: Day[],
+  ruleHash: string
+): PackingListItem[] {
+  if (!override.dayIndex || !applicableDays.includes(override.dayIndex)) {
+    return [];
+  }
+
+  return createItemInstances(
+    rule,
+    applicablePeople,
+    [override.dayIndex],
+    people,
+    [days[override.dayIndex]],
+    ruleHash,
+    true,
+    override.overrideCount
+  );
+}
+
+function handleGlobalOverride(
+  rule: DefaultItemRule,
+  override: { overrideCount?: number },
+  applicablePeople: string[],
+  applicableDays: number[],
+  people: Person[],
+  days: Day[],
+  ruleHash: string
+): PackingListItem[] {
+  return createItemInstances(
+    rule,
+    applicablePeople,
+    applicableDays,
+    people,
+    days,
+    ruleHash,
+    true,
+    override.overrideCount
+  );
+}
+
+// Item processing function
+function processRuleWithOverride(
+  rule: DefaultItemRule,
+  override: RuleOverride,
+  applicablePeople: string[],
+  applicableDays: number[],
+  people: Person[],
+  days: Day[],
+  ruleHash: string
+): PackingListItem[] {
+  if (override.personId) {
+    return handlePersonSpecificOverride(
+      rule,
+      override,
+      applicablePeople,
+      applicableDays,
+      people,
+      days,
+      ruleHash
+    );
+  } else if (override.dayIndex !== undefined) {
+    return handleDaySpecificOverride(
+      rule,
+      override,
+      applicablePeople,
+      applicableDays,
+      people,
+      days,
+      ruleHash
+    );
+  } else {
+    return handleGlobalOverride(
+      rule,
+      override,
+      applicablePeople,
+      applicableDays,
+      people,
+      days,
+      ruleHash
+    );
+  }
+}
+
+function preservePackedStatus(
+  newItems: PackingListItem[],
+  existingItems: PackingListItem[]
+): PackingListItem[] {
+  return newItems.map((item) => {
+    const existing = existingItems.find(
+      (e) =>
+        e.ruleId === item.ruleId &&
+        e.ruleHash === item.ruleHash &&
+        e.dayIndex === item.dayIndex &&
+        e.personId === item.personId
+    );
+
+    return existing ? { ...item, isPacked: existing.isPacked } : item;
+  });
+}
+
+// Main handler function
 export const calculatePackingListHandler = (state: StoreType): StoreType => {
   const selectedTripId = state.trips.selectedTripId;
 
-  // Early return if no trip is selected
   if (!selectedTripId || !state.trips.byId[selectedTripId]) {
     return state;
   }
@@ -339,10 +639,9 @@ export const calculatePackingListHandler = (state: StoreType): StoreType => {
   const selectedTripData = state.trips.byId[selectedTripId];
   const packingListItems: PackingListItem[] = [];
 
-  // Process each default item rule
-  for (const rule of selectedTripData.defaultItemRules) {
+  // Process each rule
+  for (const rule of selectedTripData.trip.defaultItemRules ?? []) {
     const ruleHash = calculateRuleHash(rule);
-
     const override = selectedTripData.ruleOverrides.find(
       (o) => o.ruleId === rule.id
     );
@@ -354,119 +653,38 @@ export const calculatePackingListHandler = (state: StoreType): StoreType => {
     const applicablePeople = getApplicablePeople(rule, selectedTripData.people);
     const applicableDays = getApplicableDays(rule, selectedTripData.trip.days);
 
+    let ruleItems: PackingListItem[] = [];
+
     if (override) {
-      // Handle person-specific override
-      if (override.personId) {
-        if (!applicablePeople.includes(override.personId)) {
-          continue;
-        }
-
-        const person = selectedTripData.people.find(
-          (p) => p.id === override.personId
-        );
-        if (!person) {
-          continue;
-        }
-
-        const relevantPeople = [person];
-        const relevantDays =
-          override.dayIndex !== undefined
-            ? [override.dayIndex]
-            : applicableDays;
-
-        packingListItems.push(
-          ...createItemInstances(
-            rule,
-            [override.personId],
-            relevantDays,
-            relevantPeople,
-            selectedTripData.trip.days,
-            ruleHash,
-            true,
-            override.overrideCount
-          )
-        );
-      }
-      // Handle day-specific override
-      else if (override.dayIndex !== undefined) {
-        if (!applicableDays.includes(override.dayIndex)) {
-          continue;
-        }
-
-        packingListItems.push(
-          ...createItemInstances(
-            rule,
-            applicablePeople,
-            [override.dayIndex],
-            selectedTripData.people,
-            [selectedTripData.trip.days[override.dayIndex]],
-            ruleHash,
-            true,
-            override.overrideCount
-          )
-        );
-      }
-      // Handle global override
-      else {
-        packingListItems.push(
-          ...createItemInstances(
-            rule,
-            applicablePeople,
-            applicableDays,
-            selectedTripData.people,
-            selectedTripData.trip.days,
-            ruleHash,
-            true,
-            override.overrideCount
-          )
-        );
-      }
+      ruleItems = processRuleWithOverride(
+        rule,
+        override,
+        applicablePeople,
+        applicableDays,
+        selectedTripData.people,
+        selectedTripData.trip.days,
+        ruleHash
+      );
     } else {
-      // No override - create default items
-      packingListItems.push(
-        ...createItemInstances(
-          rule,
-          applicablePeople,
-          applicableDays,
-          selectedTripData.people,
-          selectedTripData.trip.days,
-          ruleHash
-        )
+      ruleItems = createItemInstances(
+        rule,
+        applicablePeople,
+        applicableDays,
+        selectedTripData.people,
+        selectedTripData.trip.days,
+        ruleHash
       );
     }
+
+    packingListItems.push(...ruleItems);
   }
 
-  // Preserve packed status from existing items
+  // Preserve packed status and save to storage
   const existingItems = selectedTripData.calculated.packingListItems;
+  const updatedItems = preservePackedStatus(packingListItems, existingItems);
 
-  const updatedItems = packingListItems.map((item) => {
-    const existing = existingItems.find(
-      (e) =>
-        e.ruleId === item.ruleId &&
-        e.ruleHash === item.ruleHash &&
-        e.dayIndex === item.dayIndex &&
-        e.personId === item.personId
-    );
-    return existing ? { ...item, isPacked: existing.isPacked } : item;
-  });
-
-  const updatedTripData = {
-    ...selectedTripData,
-    calculated: {
-      ...selectedTripData.calculated,
-      packingListItems: updatedItems,
-    },
-  };
-
-  // Persist items and track changes
-  const userId = state.auth.user?.id || 'local-user';
-  const previousIds = new Set(existingItems.map((i) => i.id));
-  const updatedIds = new Set(updatedItems.map((i) => i.id));
-  const now = new Date().toISOString();
-
-  // Items to create or update
-  for (const item of updatedItems) {
-    const isNew = !previousIds.has(item.id);
+  // Save to storage
+  updatedItems.forEach((item) => {
     const tripItem: TripItem = {
       id: item.id,
       tripId: selectedTripId,
@@ -477,54 +695,28 @@ export const calculatePackingListHandler = (state: StoreType): StoreType => {
       notes: item.notes,
       personId: item.personId,
       dayIndex: item.dayIndex,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       version: 1,
       isDeleted: false,
     };
     ItemStorage.saveItem(tripItem).catch(console.error);
-    getChangeTracker()
-      .trackItemChange(
-        isNew ? 'create' : 'update',
-        tripItem,
-        userId,
-        selectedTripId
-      )
-      .catch(console.error);
-  }
+  });
 
-  // Items that were removed
-  for (const prevItem of existingItems) {
-    if (!updatedIds.has(prevItem.id)) {
-      const tripItem: TripItem = {
-        id: prevItem.id,
-        tripId: selectedTripId,
-        name: prevItem.name,
-        category: prevItem.categoryId,
-        quantity: prevItem.quantity,
-        packed: prevItem.isPacked,
-        notes: prevItem.notes,
-        personId: prevItem.personId,
-        dayIndex: prevItem.dayIndex,
-        createdAt: now,
-        updatedAt: now,
-        version: 1,
-        isDeleted: true,
-      };
-      ItemStorage.deleteItem(prevItem.id).catch(console.error);
-      getChangeTracker()
-        .trackItemChange('delete', tripItem, userId, selectedTripId)
-        .catch(console.error);
-    }
-  }
-
+  // Update state
   return {
     ...state,
     trips: {
       ...state.trips,
       byId: {
         ...state.trips.byId,
-        [selectedTripId]: updatedTripData,
+        [selectedTripId]: {
+          ...selectedTripData,
+          calculated: {
+            ...selectedTripData.calculated,
+            packingListItems: updatedItems,
+          },
+        },
       },
     },
   };

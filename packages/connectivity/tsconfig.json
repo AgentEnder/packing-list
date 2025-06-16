@@ -21,18 +21,6 @@
       "path": "../shared-utils"
     },
     {
-      "path": "../state"
-    },
-    {
-      "path": "../auth-state"
-    },
-    {
-      "path": "../auth"
-    },
-    {
-      "path": "../model"
-    },
-    {
       "path": "./tsconfig.lib.json"
     },
     {

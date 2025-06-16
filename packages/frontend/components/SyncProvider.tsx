@@ -6,7 +6,10 @@ import React, {
   useCallback,
 } from 'react';
 import { useAppSelector, useAppDispatch } from '@packing-list/state';
-import { reloadFromIndexedDB } from '@packing-list/state';
+import {
+  reloadFromIndexedDB,
+  createEntityCallbacks,
+} from '@packing-list/state';
 import type { SyncState } from '@packing-list/model';
 import {
   getSyncService,
@@ -73,6 +76,16 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
   const selectedTripId = useAppSelector((state) => state.trips?.selectedTripId);
   const isDemoMode = selectedTripId === 'DEMO_TRIP';
 
+  // Check if offline hydration has completed by looking for trips in the store
+  const tripsLoaded = useAppSelector((state) => {
+    const tripIds = Object.keys(state.trips?.byId || {});
+    const hasTrips = tripIds.length > 0;
+    console.log(
+      `🔍 [SYNC PROVIDER] Trips loaded check: ${hasTrips} (${tripIds.length} trips)`
+    );
+    return hasTrips;
+  });
+
   const cleanupSync = useCallback(() => {
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
@@ -97,6 +110,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
         console.log('🚀 [SYNC PROVIDER] Initializing sync service...');
         console.log('👤 [SYNC PROVIDER] User ID:', userId);
         console.log('🎭 [SYNC PROVIDER] Demo mode:', isDemoMode);
+        console.log('📁 [SYNC PROVIDER] Trips loaded:', tripsLoaded);
 
         if (isDemoMode) {
           console.log(
@@ -115,12 +129,18 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
           dispatchRef.current(reloadFromIndexedDB(payload));
         };
 
+        // Create entity callbacks for sync integration
+        const entityCallbacks = createEntityCallbacks(dispatchRef.current);
+
         // Pass Redux dispatch and current user ID to sync service options
         syncServiceRef.current = getSyncService({
           dispatch: dispatchRef.current,
           reloadFromIndexedDB: handleReloadFromIndexedDB,
           userId: userId,
           demoMode: isDemoMode,
+          callbacks: {
+            onTripRuleUpsert: entityCallbacks.onTripRuleUpsert,
+          },
         });
 
         // Subscribe to sync state changes and update Redux
@@ -154,10 +174,10 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
         isInitializingRef.current = false;
       }
     },
-    [isDemoMode]
-  ); // Only depend on isDemoMode
+    [isDemoMode, tripsLoaded]
+  );
 
-  // Initialize sync service when authenticated
+  // Initialize sync service when authenticated (don't wait for trips to be loaded)
   useEffect(() => {
     const currentUserId = user?.id || null;
     const hasUserChanged = currentUserRef.current !== currentUserId;
@@ -167,9 +187,16 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
       previousUserId: currentUserRef.current,
       hasUserChanged,
       isDemoMode,
+      tripsLoaded,
       isInitializing: isInitializingRef.current,
     });
 
+    // Initialize sync if:
+    // 1. User is authenticated
+    // 2. Not in demo mode
+    // 3. User has changed (or first time)
+    // 4. Not already initializing
+    // NOTE: Removed tripsLoaded requirement to fix chicken-and-egg problem
     if (user && !isDemoMode && hasUserChanged && !isInitializingRef.current) {
       console.log(
         '🔄 [SYNC PROVIDER] Auth status changed, initializing sync...'
@@ -209,6 +236,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
         hasUser: !!user,
         isDemoMode,
         hasUserChanged,
+        tripsLoaded,
         isInitializing: isInitializingRef.current,
       });
     }
@@ -218,7 +246,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
       console.log('🧹 [SYNC PROVIDER] Component unmounting, cleaning up...');
       cleanupSync();
     };
-  }, [user?.id, isDemoMode]); // Remove callback dependencies to prevent re-creation loops
+  }, [user?.id, isDemoMode]); // Removed tripsLoaded from dependencies
 
   const forceSync = async (): Promise<void> => {
     try {

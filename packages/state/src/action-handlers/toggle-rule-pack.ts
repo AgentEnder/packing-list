@@ -1,8 +1,18 @@
-import { RulePack, DefaultItemRule } from '@packing-list/model';
+import {
+  DefaultItemRule,
+  RulePack,
+  PackRuleRef,
+  TripRule,
+} from '@packing-list/model';
 import { StoreType } from '../store.js';
 import { calculateDefaultItems } from './calculate-default-items.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
 import { ActionHandler } from '../actions.js';
+import { uuid } from '@packing-list/shared-utils';
+import {
+  DefaultItemRulesStorage,
+  TripRuleStorage,
+} from '@packing-list/offline-storage';
 
 export type ToggleRulePackAction = {
   type: 'TOGGLE_RULE_PACK';
@@ -10,122 +20,177 @@ export type ToggleRulePackAction = {
   active: boolean;
 };
 
+// Helper function to create pack reference
+function createPackReference(packId: string, ruleId: string): PackRuleRef {
+  return { packId, ruleId };
+}
+
 export const toggleRulePackHandler: ActionHandler<ToggleRulePackAction> = (
   state: StoreType,
   action: ToggleRulePackAction
 ): StoreType => {
   const selectedTripId = state.trips.selectedTripId;
+  const userId = state.auth.user?.id;
 
-  // Early return if no trip is selected
-  if (!selectedTripId || !state.trips.byId[selectedTripId]) {
+  // Early return if no trip is selected or no user
+  if (!selectedTripId || !state.trips.byId[selectedTripId] || !userId) {
+    console.warn(
+      'Cannot toggle rule pack: no trip selected or no user authenticated'
+    );
     return state;
   }
 
   const selectedTripData = state.trips.byId[selectedTripId];
-  const packRuleIds = new Set(action.pack.rules.map((rule) => rule.id));
+  const { pack, active } = action;
 
-  // If activating, add all rules from the pack that aren't already present
-  // and update their pack associations
-  if (action.active) {
-    const defaultItemRules = [...selectedTripData.defaultItemRules];
+  if (active) {
+    // Activating rule pack - add pack associations to existing rules or create new instances
+    const defaultItemRules = [...selectedTripData.trip.defaultItemRules];
+    const newRuleIds: string[] = [];
 
-    // Add new rules and update pack associations for existing ones
-    action.pack.rules.forEach((packRule) => {
+    // Process each rule in the pack
+    for (const packRule of pack.rules) {
+      // Look for existing rule with same original ID
       const existingRuleIndex = defaultItemRules.findIndex(
-        (r) => r.id === packRule.id
+        (rule) => rule.originalRuleId === packRule.id || rule.id === packRule.id
       );
 
-      if (existingRuleIndex === -1) {
-        // Rule doesn't exist yet, add it with pack association
-        defaultItemRules.push({
-          ...packRule,
-          packIds: [action.pack.id],
-        });
-      } else {
-        // Rule exists, add this pack to its associations if not already present
+      if (existingRuleIndex >= 0) {
+        // Rule already exists, add pack association
         const existingRule = defaultItemRules[existingRuleIndex];
-        const existingPackIds = existingRule.packIds || [];
-        if (!existingPackIds.includes(action.pack.id)) {
+        const existingPackRefs = existingRule.packIds || [];
+        const hasPackRef = existingPackRefs.some(
+          (ref) => ref.packId === pack.id && ref.ruleId === packRule.id
+        );
+
+        if (!hasPackRef) {
+          const newPackRef = createPackReference(pack.id, packRule.id);
           defaultItemRules[existingRuleIndex] = {
             ...existingRule,
-            packIds: [...existingPackIds, action.pack.id],
+            packIds: [...existingPackRefs, newPackRef],
           };
+
+          // Save updated rule to storage
+          DefaultItemRulesStorage.saveDefaultItemRule(
+            defaultItemRules[existingRuleIndex]
+          ).catch(console.error);
         }
+      } else {
+        // Create new user instance of the rule
+        const packRef = createPackReference(pack.id, packRule.id);
+        const userRuleInstance: DefaultItemRule = {
+          ...packRule,
+          id: uuid(), // New unique ID for user instance
+          originalRuleId: packRule.id, // Track original source
+          packIds: [packRef],
+        };
+        defaultItemRules.push(userRuleInstance);
+        newRuleIds.push(userRuleInstance.id);
+
+        // Save new rule to storage
+        DefaultItemRulesStorage.saveDefaultItemRule(userRuleInstance).catch(
+          console.error
+        );
       }
-    });
+    }
 
-    // Update state with new rules for the current trip
-    const updatedTripData = {
-      ...selectedTripData,
-      defaultItemRules,
-    };
+    // Save trip rule associations for new rules
+    const now = new Date().toISOString();
+    for (const ruleId of newRuleIds) {
+      const tripRule: TripRule = {
+        id: `${selectedTripId}-${ruleId}`,
+        tripId: selectedTripId,
+        ruleId,
+        createdAt: now,
+        updatedAt: now,
+        version: 1,
+        isDeleted: false,
+      };
+      TripRuleStorage.saveTripRule(tripRule).catch(console.error);
+    }
 
-    const stateWithNewRules = {
+    // Update the state with new rules
+    const updatedState = {
       ...state,
       trips: {
         ...state.trips,
         byId: {
           ...state.trips.byId,
-          [selectedTripId]: updatedTripData,
+          [selectedTripId]: {
+            ...selectedTripData,
+            trip: {
+              ...selectedTripData.trip,
+              defaultItemRules,
+            },
+          },
         },
       },
     };
 
-    // Then recalculate default items
-    const stateWithDefaultItems = calculateDefaultItems(stateWithNewRules);
-
-    // Finally recalculate packing list
-    return calculatePackingListHandler(stateWithDefaultItems);
+    // Recalculate items and packing list
+    const stateWithItems = calculateDefaultItems(updatedState);
+    return calculatePackingListHandler(stateWithItems);
   } else {
-    // If deactivating, remove pack association and only remove rules that have no remaining packs
-    const defaultItemRules = selectedTripData.defaultItemRules.reduce<
-      DefaultItemRule[]
-    >((acc, rule) => {
-      if (!packRuleIds.has(rule.id)) {
-        // Rule was never in this pack, keep it as is
-        acc.push(rule);
-        return acc;
-      }
+    // Deactivating rule pack - remove pack associations or rules
+    const removedRuleIds: string[] = [];
+    const defaultItemRules = selectedTripData.trip.defaultItemRules.reduce(
+      (result, rule) => {
+        if (!rule.packIds || rule.packIds?.length === 0) {
+          // Rule never belonged to this pack
+          result.push(rule);
+          return result;
+        }
 
-      // Remove this pack from the rule's associations
-      const updatedPackIds = (rule.packIds || []).filter(
-        (id) => id !== action.pack.id
+        const updatedPackIds = rule.packIds.filter(
+          (ref) => ref.packId !== pack.id
+        );
+
+        if (updatedPackIds.length === 0) {
+          // Rule only belonged to this pack, remove it entirely
+          removedRuleIds.push(rule.id);
+          return result;
+        }
+
+        // Rule belongs to other packs too, just remove this pack association
+        const updatedRule = { ...rule, packIds: updatedPackIds };
+        result.push(updatedRule);
+
+        // Save updated rule to storage
+        DefaultItemRulesStorage.saveDefaultItemRule(updatedRule).catch(
+          console.error
+        );
+        return result;
+      },
+      [] as typeof selectedTripData.trip.defaultItemRules
+    );
+
+    // Remove trip rule associations for removed rules
+    for (const ruleId of removedRuleIds) {
+      TripRuleStorage.deleteTripRule(selectedTripId, ruleId).catch(
+        console.error
       );
+    }
 
-      // Keep the rule if:
-      // 1. It has remaining pack associations OR
-      // 2. It was never in any pack (packIds is undefined)
-      if (updatedPackIds.length > 0 || rule.packIds === undefined) {
-        acc.push({
-          ...rule,
-          packIds: updatedPackIds.length > 0 ? updatedPackIds : undefined,
-        });
-      }
-
-      return acc;
-    }, []);
-
-    // Update state with filtered rules for the current trip
-    const updatedTripData = {
-      ...selectedTripData,
-      defaultItemRules,
-    };
-
-    const stateWithNewRules = {
+    // Update the state with modified rules
+    const updatedState = {
       ...state,
       trips: {
         ...state.trips,
         byId: {
           ...state.trips.byId,
-          [selectedTripId]: updatedTripData,
+          [selectedTripId]: {
+            ...selectedTripData,
+            trip: {
+              ...selectedTripData.trip,
+              defaultItemRules,
+            },
+          },
         },
       },
     };
 
-    // Then recalculate default items
-    const stateWithDefaultItems = calculateDefaultItems(stateWithNewRules);
-
-    // Finally recalculate packing list
-    return calculatePackingListHandler(stateWithDefaultItems);
+    // Recalculate items and packing list
+    const stateWithItems = calculateDefaultItems(updatedState);
+    return calculatePackingListHandler(stateWithItems);
   }
 };

@@ -21,14 +21,19 @@ describe('RulePackRuleSelector Component', () => {
       calculation: { baseQuantity: 1, perDay: false, perPerson: true },
       categoryId: 'beach',
       notes: 'Essential for beach trips',
-      packIds: ['pack1'],
+      packIds: [{ packId: 'pack1', ruleId: 'rule1' }],
+      originalRuleId: 'rule1',
     },
     {
       id: 'rule2',
       name: 'Sunscreen',
       calculation: { baseQuantity: 1, perDay: false, perPerson: false },
       categoryId: 'beach',
-      packIds: ['pack1', 'pack2'],
+      packIds: [
+        { packId: 'pack1', ruleId: 'rule2' },
+        { packId: 'pack2', ruleId: 'rule2' },
+      ],
+      originalRuleId: 'rule2',
     },
     {
       id: 'rule3',
@@ -36,13 +41,15 @@ describe('RulePackRuleSelector Component', () => {
       calculation: { baseQuantity: 1, perDay: false, perPerson: true },
       categoryId: 'clothing',
       notes: 'For cold weather',
-      packIds: ['pack3'],
+      packIds: [{ packId: 'pack3', ruleId: 'rule3' }],
+      originalRuleId: 'rule3',
     },
     {
       id: 'rule4',
       name: 'Passport',
       calculation: { baseQuantity: 1, perDay: false, perPerson: false },
       categoryId: 'documents',
+      originalRuleId: 'rule4',
     },
   ];
 
@@ -207,7 +214,12 @@ describe('RulePackRuleSelector Component', () => {
     const addButton = screen.getByTestId('add-rule-Beach Towel-button');
     fireEvent.click(addButton);
 
-    expect(mockOnRulesChange).toHaveBeenCalledWith([mockRules[0]]);
+    expect(mockOnRulesChange).toHaveBeenCalledWith([
+      {
+        ...mockRules[0],
+        id: expect.any(String),
+      },
+    ]);
   });
 
   it('calls onRulesChange when removing a rule', () => {
@@ -236,7 +248,12 @@ describe('RulePackRuleSelector Component', () => {
     const ruleCard = screen.getByTestId('rule-Beach Towel');
     fireEvent.click(ruleCard);
 
-    expect(mockOnRulesChange).toHaveBeenCalledWith([mockRules[0]]);
+    expect(mockOnRulesChange).toHaveBeenCalledWith([
+      {
+        ...mockRules[0],
+        id: expect.any(String),
+      },
+    ]);
   });
 
   it('prevents event bubbling when clicking button directly', () => {

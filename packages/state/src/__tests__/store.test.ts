@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createStore, initialState } from '../store.js';
-import { LegacyPerson as Person } from '@packing-list/model';
+import { Person } from '@packing-list/model';
 import { UnknownAction } from '@reduxjs/toolkit';
 import { createTestTripState, createTestPerson } from './test-helpers.js';
 import { selectPeople } from '../selectors.js';

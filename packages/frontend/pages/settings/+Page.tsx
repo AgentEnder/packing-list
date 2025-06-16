@@ -23,9 +23,11 @@ import {
 } from 'lucide-react';
 import { showToast } from '../../components/Toast';
 import { HELP_ALL_KEY } from '../../components/HelpBlurb';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { SyncDashboard } from '../../components/SyncDashboard.js';
+import { DatabaseResetUtility } from '../../components/DatabaseResetUtility';
 import { navigate } from 'vike/client/router';
+import { useUrlHash } from '../../hooks/useUrlHash';
 
 // Simple interface to type offline accounts
 interface OfflineAccount {
@@ -51,9 +53,18 @@ export default function SettingsPage() {
     loading: authLoading,
     isInitialized: authIsInitialized,
   } = useAuth();
+
+  // Use URL hash for tab state management
+  const { hash, setHash } = useUrlHash('settings');
   const [activeTab, setActiveTab] = useState<
     'settings' | 'account' | 'debug' | 'sync'
   >('settings');
+
+  useEffect(() => {
+    if (hash) {
+      setActiveTab(hash as 'settings' | 'account' | 'debug' | 'sync');
+    }
+  }, [hash]);
 
   // Debug auth state on settings page
   useEffect(() => {
@@ -104,28 +115,28 @@ export default function SettingsPage() {
       <div className="tabs tabs-boxed mb-6">
         <button
           className={`tab ${activeTab === 'settings' ? 'tab-active' : ''}`}
-          onClick={() => setActiveTab('settings')}
+          onClick={() => setHash('settings')}
         >
           <Settings className="w-4 h-4 mr-2" />
           Settings
         </button>
         <button
           className={`tab ${activeTab === 'account' ? 'tab-active' : ''}`}
-          onClick={() => setActiveTab('account')}
+          onClick={() => setHash('account')}
         >
           <User className="w-4 h-4 mr-2" />
           Account
         </button>
         <button
           className={`tab ${activeTab === 'sync' ? 'tab-active' : ''}`}
-          onClick={() => setActiveTab('sync')}
+          onClick={() => setHash('sync')}
         >
           <Activity className="w-4 h-4 mr-2" />
           Sync Dashboard
         </button>
         <button
           className={`tab ${activeTab === 'debug' ? 'tab-active' : ''}`}
-          onClick={() => setActiveTab('debug')}
+          onClick={() => setHash('debug')}
         >
           <Bug className="w-4 h-4 mr-2" />
           Debug & Status
@@ -419,6 +430,9 @@ export default function SettingsPage() {
               <ServiceWorkerStatus />
             </div>
           </div>
+
+          {/* Database Reset Utility */}
+          <DatabaseResetUtility />
 
           {/* System Information */}
           <div className="card bg-base-100 shadow-xl">

@@ -6,8 +6,7 @@
     "types": ["vite/client"],
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "noEmit": true
-  },
-  "include": ["src/**/*.ts", "src/**/*.js", "../../types/env.d.ts"],
-  "exclude": ["dist", "node_modules", "**/*.spec.ts", "**/*.test.ts"]
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/tsconfig.lib.tsbuildinfo"
+  }
 }

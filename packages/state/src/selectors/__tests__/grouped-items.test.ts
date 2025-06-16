@@ -1,10 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { selectGroupedItems } from '../packing-list.js';
-import {
-  PackingListItem,
-  LegacyPerson as Person,
-  Day,
-} from '@packing-list/model';
+import { PackingListItem, Person, Day } from '@packing-list/model';
 import { createTestTripState } from '../../__tests__/test-helpers.js';
 
 describe('selectGroupedItems', () => {
@@ -139,12 +135,24 @@ describe('selectGroupedItems', () => {
         name: 'Person 1',
         age: 30,
         gender: 'male',
+        tripId: 'test-trip',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        version: 1,
+        isDeleted: false,
+        settings: {},
       },
       {
         id: 'person2',
         name: 'Person 2',
         age: 25,
         gender: 'female',
+        tripId: 'test-trip',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        version: 1,
+        isDeleted: false,
+        settings: {},
       },
     ];
 
@@ -268,6 +276,12 @@ describe('selectGroupedItems', () => {
         name: 'Person 1',
         age: 30,
         gender: 'male',
+        tripId: 'test-trip',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        version: 1,
+        isDeleted: false,
+        settings: {},
       },
     ];
 

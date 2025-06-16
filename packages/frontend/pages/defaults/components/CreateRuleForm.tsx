@@ -6,6 +6,7 @@ import { ConditionsList } from './ConditionsList';
 import { ItemCalculationForm } from './ItemCalculationForm';
 import { useAppDispatch } from '@packing-list/state';
 import { ConfirmDialog } from '@packing-list/shared-components';
+import { uuid } from '@packing-list/shared-utils';
 
 const DEFAULT_CALCULATION: Calculation = {
   baseQuantity: 1,
@@ -25,6 +26,7 @@ export const CreateRuleForm = () => {
     name: '',
     calculation: DEFAULT_CALCULATION,
     categoryId: '',
+    originalRuleId: '',
   });
   const [showDiscardModal, setShowDiscardModal] = useState(false);
 
@@ -33,11 +35,14 @@ export const CreateRuleForm = () => {
       e.preventDefault();
       if (!newRule.name || !newRule.categoryId) return;
 
+      const id = uuid();
+
       dispatch({
         type: 'CREATE_ITEM_RULE',
         payload: {
           ...newRule,
-          id: crypto.randomUUID(),
+          id,
+          originalRuleId: id,
         },
       });
 
@@ -46,6 +51,7 @@ export const CreateRuleForm = () => {
         name: '',
         calculation: DEFAULT_CALCULATION,
         categoryId: '',
+        originalRuleId: '',
       });
     },
     [dispatch, newRule]
@@ -57,6 +63,7 @@ export const CreateRuleForm = () => {
       name: '',
       calculation: DEFAULT_CALCULATION,
       categoryId: '',
+      originalRuleId: '',
     });
     setShowDiscardModal(false);
   };

@@ -198,6 +198,7 @@ describe('Push Operations - Real SyncService', () => {
 
       expect(mockSupabase.from).toHaveBeenCalledWith('trip_people');
       expect(mockSupabaseTable.insert).toHaveBeenCalledWith({
+        id: 'person-123',
         trip_id: 'trip-789',
         name: 'John Doe',
         age: 30,

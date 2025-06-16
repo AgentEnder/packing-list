@@ -4,6 +4,7 @@ import { RuleOverride } from './RuleOverride.js';
 import { RulePack } from './RulePack.js';
 import { Trip } from './Trip.js';
 import { TripItem } from './TripItem.js';
+import { TripRule } from './TripRule.js';
 
 // Base change interface
 export interface BaseChange {
@@ -58,6 +59,13 @@ export type RulePackChange = BaseChange & {
   tripId?: string;
 };
 
+export type TripRuleChange = BaseChange & {
+  entityType: 'trip_rule';
+  entityId: string;
+  data: Partial<TripRule> & { ruleId: string };
+  tripId: string;
+};
+
 // Special change types for packing operations
 export type PackingStatusChange = BaseChange & {
   entityType: 'item';
@@ -96,6 +104,7 @@ export type Change =
   | RuleOverrideChange
   | DefaultItemRuleChange
   | RulePackChange
+  | TripRuleChange
   | PackingStatusChange
   | BulkPackingChange;
 
@@ -108,7 +117,8 @@ export type LegacyChange = {
     | 'item'
     | 'rule_override'
     | 'default_item_rule'
-    | 'rule_pack';
+    | 'rule_pack'
+    | 'trip_rule';
   entityId: string;
   operation: 'create' | 'update' | 'delete';
   data: unknown;
@@ -127,6 +137,16 @@ export type SyncConflict = {
   serverVersion: unknown;
   conflictType: 'update_conflict' | 'delete_conflict';
   timestamp: number;
+  // Enhanced conflict details for deep diff support
+  conflictDetails?: {
+    conflicts: Array<{
+      path: string;
+      localValue: unknown;
+      serverValue: unknown;
+      type: 'modified' | 'added' | 'removed';
+    }>;
+    mergedObject: Record<string, unknown>;
+  };
 };
 
 export type SyncState = {

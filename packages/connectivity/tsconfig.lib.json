@@ -14,18 +14,6 @@
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "references": [
     {
-      "path": "../state/tsconfig.lib.json"
-    },
-    {
-      "path": "../auth-state"
-    },
-    {
-      "path": "../auth"
-    },
-    {
-      "path": "../model/tsconfig.lib.json"
-    },
-    {
       "path": "../shared-utils/tsconfig.lib.json"
     }
   ],
