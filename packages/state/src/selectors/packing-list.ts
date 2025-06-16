@@ -1,10 +1,6 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { StoreType } from '../store.js';
-import {
-  PackingListItem,
-  LegacyPerson as Person,
-  Day,
-} from '@packing-list/model';
+import { PackingListItem, Person, Day } from '@packing-list/model';
 import {
   selectPeople,
   selectTripDays,

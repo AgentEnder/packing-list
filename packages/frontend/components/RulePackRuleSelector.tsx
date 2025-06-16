@@ -4,6 +4,7 @@ import { useAppSelector, selectDefaultItemRules } from '@packing-list/state';
 import { Tag, Plus, Minus } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { uuid } from '@packing-list/shared-utils';
 
 interface RulePackRuleSelectorProps {
   selectedRules: DefaultItemRule[];
@@ -18,24 +19,34 @@ export function RulePackRuleSelector({
   const allRules = useAppSelector(selectDefaultItemRules);
   const rulePacks = useAppSelector((state) => state.rulePacks);
 
-  const selectedRuleIds = new Set(selectedRules.map((rule) => rule.id));
+  const selectedRuleIds = new Set(
+    selectedRules.map((rule) => rule.originalRuleId ?? rule.id)
+  );
 
   const filteredRules = allRules.filter((rule) =>
     rule.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleToggleRule = (rule: DefaultItemRule) => {
-    if (selectedRuleIds.has(rule.id)) {
-      onRulesChange(selectedRules.filter((r) => r.id !== rule.id));
+    if (selectedRuleIds.has(rule.originalRuleId)) {
+      onRulesChange(
+        selectedRules.filter((r) => r.originalRuleId !== rule.originalRuleId)
+      );
     } else {
-      onRulesChange([...selectedRules, rule]);
+      onRulesChange([
+        ...selectedRules,
+        {
+          ...rule,
+          id: uuid(),
+        },
+      ]);
     }
   };
 
   const getPackBadges = (rule: DefaultItemRule) => {
     if (!rule.packIds) return null;
     return rulePacks
-      .filter((pack) => rule.packIds?.includes(pack.id))
+      .filter((pack) => rule.packIds?.some((ref) => ref.packId === pack.id))
       .map((pack) => {
         const IconComponent = pack.icon
           ? (Icons as unknown as Record<string, LucideIcon>)[pack.icon]
@@ -77,7 +88,9 @@ export function RulePackRuleSelector({
 
       <div className="grid gap-2">
         {filteredRules.map((rule) => {
-          const isSelected = selectedRuleIds.has(rule.id);
+          const isSelected = selectedRuleIds.has(
+            rule.originalRuleId || rule.id
+          );
           const packBadges = getPackBadges(rule);
           return (
             <div

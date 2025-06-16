@@ -35,6 +35,7 @@ describe('RulePackSelector Component', () => {
         perDay: false,
         perPerson: false,
       },
+      originalRuleId: 'beach1',
     },
     {
       id: 'beach2',
@@ -44,6 +45,7 @@ describe('RulePackSelector Component', () => {
         perDay: false,
         perPerson: false,
       },
+      originalRuleId: 'beach2',
     },
     {
       id: 'camp1',
@@ -53,6 +55,7 @@ describe('RulePackSelector Component', () => {
         perDay: false,
         perPerson: false,
       },
+      originalRuleId: 'camp1',
     },
   ];
 
@@ -122,14 +125,25 @@ describe('RulePackSelector Component', () => {
                 trip: {
                   id: 'test-trip',
                   days: [],
+                  userId: 'test-user',
+                  title: 'Test Trip',
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  settings: {
+                    defaultTimeZone: 'America/New_York',
+                    packingViewMode: 'by-day',
+                  },
+                  version: 1,
+                  isDeleted: false,
+                  defaultItemRules: [
+                    {
+                      ...mockRules[0],
+                      originalRuleId: 'beach1', // Matches a rule ID in Beach Pack
+                      packIds: [{ packId: '1', ruleId: 'beach1' }],
+                    },
+                  ],
                 },
                 people: [],
-                defaultItemRules: [
-                  {
-                    ...mockRules[0],
-                    packIds: ['1'], // Beach Pack ID
-                  },
-                ],
                 ruleOverrides: [],
                 packingListView: {
                   filters: {
@@ -156,6 +170,24 @@ describe('RulePackSelector Component', () => {
             loginModal: {
               isOpen: false,
             },
+            flow: {
+              steps: [],
+              current: null,
+            },
+            tripWizard: {
+              currentStep: 0,
+            },
+          },
+          sync: {
+            syncState: {
+              isSyncing: false,
+              lastSyncTimestamp: new Date().getTime(),
+              pendingChanges: [],
+              isOnline: true,
+              conflicts: [],
+            },
+            isInitialized: true,
+            lastError: null,
           },
           auth: {
             user: null,
@@ -175,7 +207,7 @@ describe('RulePackSelector Component', () => {
 
         // Handle selectDefaultItemRules selector
         if (selector === state.selectDefaultItemRules) {
-          return mockState.trips.byId['test-trip'].defaultItemRules;
+          return mockState.trips.byId['test-trip'].trip.defaultItemRules;
         }
 
         return selector(mockState);

@@ -162,6 +162,7 @@ describe('Sync State Actions', () => {
         },
         version: 1,
         isDeleted: false,
+        defaultItemRules: [],
       } as Trip,
       serverVersion: {
         id: 'trip-1',
@@ -176,6 +177,7 @@ describe('Sync State Actions', () => {
         },
         version: 1,
         isDeleted: false,
+        defaultItemRules: [],
       } as Trip,
       timestamp: Date.now(),
       conflictType: 'update_conflict',
@@ -235,6 +237,7 @@ describe('Sync State Actions', () => {
         },
         version: 1,
         isDeleted: false,
+        defaultItemRules: [],
       };
 
       const action = mergeSyncedTrip(trip);

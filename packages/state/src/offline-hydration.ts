@@ -2,6 +2,7 @@ import {
   TripStorage,
   PersonStorage,
   ItemStorage,
+  TripRuleStorage,
 } from '@packing-list/offline-storage';
 import type { TripItem, PackingListItem } from '@packing-list/model';
 import { createEmptyTripData, type StoreType, type TripData } from './store.js';
@@ -35,13 +36,6 @@ export async function loadOfflineState(
   userId: string
 ): Promise<Omit<StoreType, 'auth' | 'rulePacks' | 'ui' | 'sync'>> {
   console.log('🔄 [HYDRATION] Loading offline state for user:', userId);
-
-  // Debug: Check what's in the database first
-  try {
-    await TripStorage.debugGetAllTrips();
-  } catch (debugError) {
-    console.error('❌ [HYDRATION] Debug query failed:', debugError);
-  }
 
   const base: Omit<StoreType, 'auth' | 'rulePacks' | 'ui' | 'sync'> = {
     trips: { summaries: [], selectedTripId: null, byId: {} },
@@ -108,6 +102,15 @@ export async function loadOfflineState(
 
         const people = await PersonStorage.getTripPeople(trip.id);
         const items = await ItemStorage.getTripItems(trip.id);
+
+        // Load trip rules and populate defaultItemRules
+        const defaultItemRules = await TripRuleStorage.getTripRulesWithDetails(
+          trip.id
+        );
+        console.log(
+          `📋 [HYDRATION] Loaded ${defaultItemRules.length} default item rules for trip ${trip.id}`
+        );
+
         const data: TripData = createEmptyTripData(trip.id);
 
         console.log(
@@ -118,8 +121,8 @@ export async function loadOfflineState(
         );
 
         // Preserve the complete trip data by assigning the full Trip object
-        // The LegacyTrip type in state will accept the full Trip object and use the fields it needs
-        data.trip = trip;
+        // The Trip type now includes all necessary fields for proper data management
+        data.trip = { ...trip, defaultItemRules };
         data.people = people;
         data.calculated.packingListItems = items.map(mapItem);
         data.lastSynced = trip.lastSyncedAt;
@@ -139,8 +142,8 @@ export async function loadOfflineState(
         Object.keys(base.trips.byId).length
       } trips into state - ready to update Redux`
     );
-  } catch (storageError) {
-    console.error('❌ [HYDRATION] Error loading trip summaries:', storageError);
+  } catch (error) {
+    console.error('❌ [HYDRATION] Error loading offline state:', error);
   }
 
   return base;

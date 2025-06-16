@@ -118,7 +118,7 @@ describe('Sync State Types', () => {
         entityType: 'trip',
         entityId: 'trip-1',
         operation: 'create',
-        data: { title: 'Test' },
+        data: { id: 'trip-1', title: 'Test' },
         userId: 'user-1',
         version: 1,
       });

@@ -15,12 +15,13 @@ import type {
   Person,
   TripItem,
   RuleOverride,
-  TripRule,
   DefaultItemRule,
+  PackRuleRef,
   RulePack,
   RulePackAuthor,
   RulePackMetadata,
   RulePackStats,
+  TripRule,
 } from '@packing-list/model';
 import {
   mapDatabaseTripToTrip,
@@ -38,7 +39,6 @@ import {
   RuleOverrideStorage,
   DefaultItemRulesStorage,
   RulePacksStorage,
-  TripRulesStorage,
   ConflictsStorage,
 } from '@packing-list/offline-storage';
 import { supabase, isSupabaseAvailable } from '@packing-list/supabase';
@@ -50,8 +50,6 @@ import {
 import { Dispatch } from '@reduxjs/toolkit';
 import {
   deepDiff,
-  deepEqual,
-  smartMerge,
   getDefaultIgnorePaths,
   type DeepDiffResult,
 } from './deep-diff-utils.js';
@@ -71,6 +69,9 @@ export interface SyncOptions {
     userId: string;
   }) => void;
   userId?: string; // Current user ID for data filtering
+  callbacks?: {
+    onTripRuleUpsert?: (tripRule: TripRule) => void;
+  };
 }
 
 // Helper function to check if a user is local and should not sync to remote
@@ -664,6 +665,7 @@ export class SyncService {
         }
 
         const { error: createError } = await supabase.from(table).insert({
+          id: change.entityId, // Include client-generated ID
           trip_id: change.tripId,
           name: data.name,
           age: data.age,
@@ -735,6 +737,7 @@ export class SyncService {
           throw new Error('Item personId is required');
         }
         const { error: createError } = await supabase.from(table).insert({
+          id: change.entityId, // Include client-generated ID
           trip_id: change.tripId,
           name: data.name,
           category: data.category,
@@ -881,6 +884,8 @@ export class SyncService {
     switch (change.operation) {
       case 'create': {
         const { error: createError } = await supabase.from(table).insert({
+          id: change.entityId, // Include client-generated ID
+          user_id: change.userId, // Required field for the new schema
           trip_id: change.tripId,
           rule_id: data.ruleId,
           version: change.version,
@@ -938,8 +943,23 @@ export class SyncService {
           subcategory_id: data.subcategoryId,
           pack_ids: toJson(data.packIds) || null,
           version: change.version,
+          original_rule_id: data.originalRuleId,
         });
         if (createError) throw createError;
+
+        // Create trip association if tripId is provided
+        if (change.tripId) {
+          const { error: tripRuleError } = await supabase
+            .from('trip_default_item_rules')
+            .insert({
+              user_id: change.userId,
+              trip_id: change.tripId,
+              rule_id: data.id,
+              version: change.version,
+            });
+          if (tripRuleError) throw tripRuleError;
+        }
+
         break;
       }
 
@@ -961,6 +981,8 @@ export class SyncService {
           updateData.subcategory_id = data.subcategoryId;
         if ('packIds' in data)
           updateData.pack_ids = toJson(data.packIds) || null;
+        if ('originalRuleId' in data)
+          updateData.original_rule_id = data.originalRuleId;
 
         const { error: updateError } = await supabase
           .from(table)
@@ -968,6 +990,20 @@ export class SyncService {
           .eq('user_id', change.userId)
           .eq('rule_id', data.id);
         if (updateError) throw updateError;
+
+        // Update trip association version if tripId is provided
+        if (change.tripId) {
+          const { error: tripRuleUpdateError } = await supabase
+            .from('trip_default_item_rules')
+            .update({
+              version: change.version,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', change.userId)
+            .eq('trip_id', change.tripId)
+            .eq('rule_id', data.id);
+          if (tripRuleUpdateError) throw tripRuleUpdateError;
+        }
         break;
       }
 
@@ -978,6 +1014,20 @@ export class SyncService {
           .eq('user_id', change.userId)
           .eq('rule_id', data.id);
         if (deleteError) throw deleteError;
+
+        // Remove trip association if tripId is provided
+        if (change.tripId) {
+          const { error: tripRuleDeleteError } = await supabase
+            .from('trip_default_item_rules')
+            .update({
+              is_deleted: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', change.userId)
+            .eq('trip_id', change.tripId)
+            .eq('rule_id', data.id);
+          if (tripRuleDeleteError) throw tripRuleDeleteError;
+        }
         break;
       }
     }
@@ -1093,7 +1143,14 @@ export class SyncService {
           mappedTrip.id,
           mappedTrip,
           async (serverTrip) => {
-            await TripStorage.saveTrip(serverTrip as Trip);
+            // Preserve existing defaultItemRules when syncing trip from server
+            // since rules are managed separately via trip_default_item_rules table
+            const existingTrip = await TripStorage.getTrip(mappedTrip.id);
+            const tripToSave = {
+              ...(serverTrip as Trip),
+              defaultItemRules: existingTrip?.defaultItemRules || [],
+            };
+            await TripStorage.saveTrip(tripToSave);
             syncedCount++;
           }
         );
@@ -1188,31 +1245,7 @@ export class SyncService {
       }
     }
 
-    // Pull trip rule links
-    const { data: tripRules, error: tripRuleError } = await supabase
-      .from('trip_default_item_rules')
-      .select('*')
-      .gte('updated_at', since);
-    if (tripRuleError) {
-      console.error(
-        '[SyncService] Failed to fetch trip rule links',
-        tripRuleError
-      );
-    } else if (tripRules) {
-      for (const link of tripRules) {
-        await this.applyServerChange(
-          'trip_rule',
-          link.id as string,
-          link,
-          async (serverLink) => {
-            await TripRulesStorage.saveTripRule(serverLink as TripRule);
-            syncedCount++;
-          }
-        );
-      }
-    }
-
-    // Pull default item rules
+    // Pull default item rules first (before trip associations)
     const { data: defaultRules, error: defaultRulesError } = await supabase
       .from('default_item_rules')
       .select('*')
@@ -1237,7 +1270,8 @@ export class SyncService {
           notes: ruleRow.notes as string,
           categoryId: ruleRow.category_id as string,
           subcategoryId: ruleRow.subcategory_id as string,
-          packIds: fromJson<string[]>(ruleRow.pack_ids),
+          packIds: fromJson<PackRuleRef[]>(ruleRow.pack_ids),
+          originalRuleId: ruleRow.original_rule_id as string,
         };
 
         await this.applyServerChange(
@@ -1251,6 +1285,51 @@ export class SyncService {
             syncedCount++;
           }
         );
+      }
+    }
+
+    // Pull trip rule associations and apply them to trips
+    const { data: tripRules, error: tripRuleError } = await supabase
+      .from('trip_default_item_rules')
+      .select('*')
+      .gte('updated_at', since);
+    if (tripRuleError) {
+      console.error(
+        '[SyncService] Failed to fetch trip rule links',
+        tripRuleError
+      );
+    } else if (tripRules) {
+      console.log(
+        `[SyncService] Processing ${tripRules.length} trip rule associations that changed since ${since}`
+      );
+
+      for (const tripRuleRow of tripRules) {
+        if (!tripRuleRow.is_deleted) {
+          const tripRule: TripRule = {
+            id: tripRuleRow.id as string,
+            tripId: tripRuleRow.trip_id as string,
+            ruleId: tripRuleRow.rule_id as string,
+            createdAt: tripRuleRow.created_at as string,
+            updatedAt: tripRuleRow.updated_at as string,
+            version: tripRuleRow.version as number,
+            isDeleted: false,
+          };
+
+          await this.applyServerChange(
+            'trip_rule',
+            `${tripRule.tripId}_${tripRule.ruleId}`,
+            tripRule,
+            async (serverTripRule) => {
+              // Use the callback to handle trip-rule association
+              if (this.options.callbacks?.onTripRuleUpsert) {
+                this.options.callbacks.onTripRuleUpsert(
+                  serverTripRule as TripRule
+                );
+              }
+              syncedCount++;
+            }
+          );
+        }
       }
     }
 
@@ -1363,7 +1442,10 @@ export class SyncService {
         await RulePacksStorage.saveRulePack(conflict.serverVersion as RulePack);
         break;
       case 'trip_rule':
-        await TripRulesStorage.saveTripRule(conflict.serverVersion as TripRule);
+        // Note: TripRulesStorage has been eliminated - trip rules are now managed per-trip
+        console.log(
+          `[SyncService] Skipping trip rule conflict resolution - now managed per-trip`
+        );
         break;
       default:
         console.warn(

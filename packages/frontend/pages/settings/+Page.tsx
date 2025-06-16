@@ -25,6 +25,7 @@ import { showToast } from '../../components/Toast';
 import { HELP_ALL_KEY } from '../../components/HelpBlurb';
 import { useEffect, useState } from 'react';
 import { SyncDashboard } from '../../components/SyncDashboard.js';
+import { DatabaseResetUtility } from '../../components/DatabaseResetUtility';
 import { navigate } from 'vike/client/router';
 import { useUrlHash } from '../../hooks/useUrlHash';
 
@@ -429,6 +430,9 @@ export default function SettingsPage() {
               <ServiceWorkerStatus />
             </div>
           </div>
+
+          {/* Database Reset Utility */}
+          <DatabaseResetUtility />
 
           {/* System Information */}
           <div className="card bg-base-100 shadow-xl">

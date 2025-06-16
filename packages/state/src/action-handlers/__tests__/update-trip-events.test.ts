@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { updateTripEventsHandler } from '../update-trip-events.js';
 import type { StoreType } from '../../store.js';
-import type { TripEvent } from '@packing-list/model';
+import type { TripEvent, Person } from '@packing-list/model';
 import { createTestTripState } from '../../__tests__/test-helpers.js';
 
 describe('updateTripEventsHandler', () => {
@@ -94,6 +94,18 @@ describe('updateTripEventsHandler', () => {
     ];
 
     // Add a person and a rule to generate some packing list items
+    const person: Person = {
+      id: 'person1',
+      tripId: tripId,
+      name: 'Test Person',
+      age: 30,
+      gender: 'other',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      version: 1,
+      isDeleted: false,
+    };
+
     const stateWithPersonAndRule: StoreType = {
       ...initialState,
       trips: {
@@ -102,25 +114,24 @@ describe('updateTripEventsHandler', () => {
           ...initialState.trips.byId,
           [tripId]: {
             ...initialState.trips.byId[tripId],
-            people: [
-              {
-                id: 'person1',
-                name: 'Test Person',
-                age: 30,
-                gender: 'other',
-              },
-            ],
-            defaultItemRules: [
-              {
-                id: 'rule1',
-                name: 'Test Rule',
-                calculation: {
-                  baseQuantity: 1,
-                  perPerson: true,
+            trip: {
+              ...initialState.trips.byId[tripId].trip,
+              defaultItemRules: [
+                {
+                  id: 'rule1',
+                  originalRuleId: 'rule1',
+                  name: 'Test Rule',
+                  calculation: {
+                    baseQuantity: 1,
+                    perPerson: true,
+                    perDay: false,
+                  },
+                  conditions: [],
                 },
-                conditions: [],
-              },
-            ],
+              ],
+            },
+
+            people: [person],
           },
         },
       },

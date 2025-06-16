@@ -1,11 +1,12 @@
 import { StoreType, TripData, createEmptyTripData } from '../store.js';
-import { LegacyPerson as Person, TripSummary } from '@packing-list/model';
+import { Person, TripSummary } from '@packing-list/model';
 
 export function createTestTripState(options: {
   tripId?: string;
   people?: Person[];
   title?: string;
   description?: string;
+  userId?: string;
 }): StoreType {
   const tripId = options.tripId || 'test-trip';
   const people = options.people || [];
@@ -44,9 +45,22 @@ export function createTestTripState(options: {
       loginModal: {
         isOpen: false,
       },
+      flow: {
+        steps: [],
+        current: null,
+      },
+      tripWizard: {
+        currentStep: 0,
+      },
     },
     auth: {
-      user: null,
+      user: options.userId
+        ? {
+            id: options.userId,
+            email: 'test@example.com',
+            type: 'local' as const,
+          }
+        : null,
       session: null,
       loading: false,
       error: null,
@@ -59,6 +73,17 @@ export function createTestTripState(options: {
       offlineAccounts: [],
       hasOfflinePasscode: false,
     },
+    sync: {
+      syncState: {
+        lastSyncTimestamp: new Date().getTime(),
+        pendingChanges: [],
+        conflicts: [],
+        isOnline: true,
+        isSyncing: false,
+      },
+      isInitialized: true,
+      lastError: null,
+    },
   };
 }
 
@@ -68,6 +93,12 @@ export function createTestPerson(overrides: Partial<Person> = {}): Person {
     name: 'Test Person',
     age: 30,
     gender: 'other',
+    tripId: 'test-trip',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    version: 1,
+    isDeleted: false,
+    settings: {},
     ...overrides,
   };
 }

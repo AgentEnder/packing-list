@@ -1,9 +1,8 @@
-import { DefaultItemRule } from '@packing-list/model';
-import { StoreType } from '../store.js';
+import type { DefaultItemRule } from '@packing-list/model';
+import type { StoreType } from '../store.js';
 import { calculateDefaultItems } from './calculate-default-items.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
-import { DefaultItemRulesStorage, TripRulesStorage } from '@packing-list/offline-storage';
-import { getChangeTracker } from '@packing-list/sync';
+import { DefaultItemRulesStorage } from '@packing-list/offline-storage';
 
 export type UpdateItemRuleAction = {
   type: 'UPDATE_ITEM_RULE';
@@ -23,12 +22,17 @@ export const updateItemRuleHandler = (
 
   const selectedTripData = state.trips.byId[selectedTripId];
 
-  // First update the rule in the current trip
+  // Find and update the rule
+  const updatedRules = selectedTripData.trip.defaultItemRules.map((rule) =>
+    rule.id === action.payload.id ? action.payload : rule
+  );
+
   const updatedTripData = {
     ...selectedTripData,
-    defaultItemRules: selectedTripData.defaultItemRules.map((rule) =>
-      rule.id === action.payload.id ? action.payload : rule
-    ),
+    trip: {
+      ...selectedTripData.trip,
+      defaultItemRules: updatedRules,
+    },
   };
 
   const stateWithUpdatedRule = {
@@ -42,31 +46,9 @@ export const updateItemRuleHandler = (
     },
   };
 
-  const userId = state.auth.user?.id || 'local-user';
-  DefaultItemRulesStorage.saveDefaultItemRule(action.payload).catch(console.error);
-  TripRulesStorage.saveTripRule({
-    id: action.payload.id,
-    tripId: selectedTripId,
-    ruleId: action.payload.id,
-    createdAt: action.payload.createdAt ?? new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    version: action.payload.version ?? 1,
-    isDeleted: false,
-  }).catch(console.error);
-  getChangeTracker()
-    .trackDefaultItemRuleChange('update', action.payload, userId)
-    .catch(console.error);
-  getChangeTracker()
-    .trackTripRuleChange('update', {
-      id: action.payload.id,
-      tripId: selectedTripId,
-      ruleId: action.payload.id,
-      createdAt: action.payload.createdAt ?? new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      version: action.payload.version ?? 1,
-      isDeleted: false,
-    }, userId, selectedTripId)
-    .catch(console.error);
+  DefaultItemRulesStorage.saveDefaultItemRule(action.payload).catch(
+    console.error
+  );
 
   // Then recalculate default items
   const stateWithDefaultItems = calculateDefaultItems(stateWithUpdatedRule);

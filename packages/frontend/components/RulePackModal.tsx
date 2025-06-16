@@ -60,7 +60,9 @@ export function RulePackModal() {
     : undefined;
 
   const isPackActive = (pack: RulePack): boolean => {
-    return currentRules.some((rule) => rule.packIds?.includes(pack.id));
+    return currentRules.some((rule) =>
+      rule.packIds?.some((ref) => ref.packId === pack.id)
+    );
   };
 
   const handleTogglePack = (pack: RulePack) => {

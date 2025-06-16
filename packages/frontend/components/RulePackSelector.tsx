@@ -40,7 +40,11 @@ export function RulePackSelector({
     .slice(0, 2);
 
   const isPackActive = (pack: RulePack): boolean => {
-    return currentRules.some((rule) => rule.packIds?.includes(pack.id));
+    return currentRules.some(
+      (rule) =>
+        rule.originalRuleId &&
+        pack.rules.some((packRule) => packRule.id === rule.originalRuleId)
+    );
   };
 
   const handleTogglePack = (pack: RulePack) => {

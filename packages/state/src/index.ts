@@ -14,5 +14,8 @@ export * from './data.js';
 export * from './default-rule-packs.js';
 export * from './offline-hydration.js';
 
+// Sync integration exports
+export { createEntityCallbacks } from './lib/sync/sync-integration.js';
+
 // Re-export auth-state for convenience
 export * from '@packing-list/auth-state';

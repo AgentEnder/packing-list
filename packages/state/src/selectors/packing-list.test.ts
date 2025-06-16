@@ -5,11 +5,7 @@ import {
   selectGroupedItems,
 } from './packing-list.js';
 import type { StoreType } from '../store.js';
-import type {
-  PackingListItem,
-  LegacyPerson as Person,
-  Day,
-} from '@packing-list/model';
+import type { PackingListItem, Person, Day } from '@packing-list/model';
 import { createTestTripState } from '../__tests__/test-helpers.js';
 
 // Helper function to create a basic store state
@@ -308,8 +304,30 @@ describe('Packing List Selectors', () => {
 
     it('should group items by person', () => {
       const people: Person[] = [
-        { id: 'person1', name: 'Alice', age: 25, gender: 'female' },
-        { id: 'person2', name: 'Bob', age: 30, gender: 'male' },
+        {
+          id: 'person1',
+          name: 'Alice',
+          age: 25,
+          gender: 'female',
+          tripId: 'test-trip',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          version: 1,
+          isDeleted: false,
+          settings: {},
+        },
+        {
+          id: 'person2',
+          name: 'Bob',
+          age: 30,
+          gender: 'male',
+          tripId: 'test-trip',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          version: 1,
+          isDeleted: false,
+          settings: {},
+        },
       ];
 
       const items: PackingListItem[] = [
@@ -412,7 +430,18 @@ describe('Packing List Selectors', () => {
       ];
 
       const people: Person[] = [
-        { id: 'person1', name: 'Alice', age: 25, gender: 'female' },
+        {
+          id: 'person1',
+          name: 'Alice',
+          age: 25,
+          gender: 'female',
+          tripId: 'test-trip',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          version: 1,
+          isDeleted: false,
+          settings: {},
+        },
       ];
 
       const state = createMockState(items, people);

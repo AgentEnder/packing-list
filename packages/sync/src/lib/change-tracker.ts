@@ -257,7 +257,8 @@ export class ChangeTracker {
   async trackDefaultItemRuleChange(
     operation: 'create' | 'update' | 'delete',
     rule: DefaultItemRule,
-    userId: string
+    userId: string,
+    tripId: string
   ): Promise<void> {
     if (this.shouldSkipTracking(userId)) {
       return;
@@ -269,6 +270,7 @@ export class ChangeTracker {
       operation,
       data: rule,
       userId,
+      tripId,
       version: 1,
     };
 

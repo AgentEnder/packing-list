@@ -1,32 +1,32 @@
 import { describe, it, expect } from 'vitest';
 import { calculatePackingListHandler } from '../calculate-packing-list.js';
-import type {
-  DefaultItemRule,
-  Day,
-  LegacyPerson as Person,
-} from '@packing-list/model';
-import { createTestTripState } from '../../__tests__/test-helpers.js';
+import type { DefaultItemRule, Day } from '@packing-list/model';
+import {
+  createTestTripState,
+  createTestPerson,
+} from '../../__tests__/test-helpers.js';
 
 describe('calculatePackingListHandler', () => {
   it('should calculate items for multiple people and days', () => {
-    const people: Person[] = [
-      {
+    const people = [
+      createTestPerson({
         id: 'person1',
         name: 'Person 1',
         age: 30,
         gender: 'male',
-      },
-      {
+      }),
+      createTestPerson({
         id: 'person2',
         name: 'Person 2',
         age: 25,
         gender: 'female',
-      },
+      }),
     ];
 
     const rules: DefaultItemRule[] = [
       {
         id: 'swimsuit',
+        originalRuleId: 'swimsuit',
         name: 'Swimsuit',
         calculation: {
           baseQuantity: 1,
@@ -43,6 +43,7 @@ describe('calculatePackingListHandler', () => {
       },
       {
         id: 'jacket',
+        originalRuleId: 'jacket',
         name: 'Jacket',
         calculation: {
           baseQuantity: 1,
@@ -59,6 +60,7 @@ describe('calculatePackingListHandler', () => {
       },
       {
         id: 'toothbrush',
+        originalRuleId: 'toothbrush',
         name: 'Toothbrush',
         calculation: {
           baseQuantity: 1,
@@ -89,7 +91,7 @@ describe('calculatePackingListHandler', () => {
     const tripId = testState.trips.selectedTripId!;
 
     // Update with test data - set defaultItemRules in the trip data
-    testState.trips.byId[tripId].defaultItemRules = rules;
+    testState.trips.byId[tripId].trip.defaultItemRules = rules;
     testState.trips.byId[tripId].trip.days = days;
     testState.trips.byId[tripId].people = people;
 
@@ -128,24 +130,25 @@ describe('calculatePackingListHandler', () => {
   });
 
   it('should handle age-based conditions', () => {
-    const people: Person[] = [
-      {
+    const people = [
+      createTestPerson({
         id: 'adult1',
         name: 'Adult 1',
         age: 30,
         gender: 'male',
-      },
-      {
+      }),
+      createTestPerson({
         id: 'child1',
         name: 'Child 1',
         age: 2,
         gender: 'female',
-      },
+      }),
     ];
 
     const rules: DefaultItemRule[] = [
       {
         id: 'diapers',
+        originalRuleId: 'diapers',
         name: 'Diapers',
         calculation: {
           baseQuantity: 5,
@@ -163,6 +166,7 @@ describe('calculatePackingListHandler', () => {
       },
       {
         id: 'phone',
+        originalRuleId: 'phone',
         name: 'Phone Charger',
         calculation: {
           baseQuantity: 1,
@@ -200,7 +204,7 @@ describe('calculatePackingListHandler', () => {
     const tripId = testState.trips.selectedTripId!;
 
     // Update with test data - set defaultItemRules in the trip data
-    testState.trips.byId[tripId].defaultItemRules = rules;
+    testState.trips.byId[tripId].trip.defaultItemRules = rules;
     testState.trips.byId[tripId].trip.days = days;
     testState.trips.byId[tripId].people = people;
 
@@ -232,13 +236,13 @@ describe('calculatePackingListHandler', () => {
   });
 
   it('should handle complex day patterns', () => {
-    const people: Person[] = [
-      {
+    const people = [
+      createTestPerson({
         id: 'person1',
         name: 'Person 1',
         age: 30,
         gender: 'male',
-      },
+      }),
     ];
 
     const days: Day[] = Array.from({ length: 7 }, (_, i) => ({
@@ -252,6 +256,7 @@ describe('calculatePackingListHandler', () => {
     const rules: DefaultItemRule[] = [
       {
         id: 'laundry',
+        originalRuleId: 'laundry',
         name: 'Laundry Detergent',
         calculation: {
           baseQuantity: 1,
@@ -263,6 +268,7 @@ describe('calculatePackingListHandler', () => {
       },
       {
         id: 'socks',
+        originalRuleId: 'socks',
         name: 'Socks',
         calculation: {
           baseQuantity: 1,
@@ -280,7 +286,7 @@ describe('calculatePackingListHandler', () => {
     const tripId = testState.trips.selectedTripId!;
 
     // Update with test data - set defaultItemRules in the trip data
-    testState.trips.byId[tripId].defaultItemRules = rules;
+    testState.trips.byId[tripId].trip.defaultItemRules = rules;
     testState.trips.byId[tripId].trip.days = days;
     testState.trips.byId[tripId].people = people;
 

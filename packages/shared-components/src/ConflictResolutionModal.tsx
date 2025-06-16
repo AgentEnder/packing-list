@@ -46,6 +46,47 @@ export const ConflictResolutionModal: React.FC<
   const localData = conflict.localVersion as ConflictData;
   const serverData = conflict.serverVersion as ConflictData;
 
+  // Helper function to get nested values from an object using dot notation
+  const getNestedValue = (
+    obj: Record<string, unknown>,
+    path: string
+  ): unknown => {
+    return path.split('.').reduce((current: unknown, key) => {
+      if (current && typeof current === 'object' && key in current) {
+        return (current as { [key: string]: unknown })[key];
+      }
+      return undefined;
+    }, obj);
+  };
+
+  // Helper function to set nested values in an object using dot notation
+  const setNestedValue = (
+    obj: Record<string, unknown>,
+    path: string,
+    value: unknown
+  ): void => {
+    const keys = path.split('.');
+    const lastKey = keys.pop();
+
+    if (!lastKey) {
+      return;
+    }
+
+    let current = obj;
+    for (const key of keys) {
+      if (
+        !(key in current) ||
+        typeof current[key] !== 'object' ||
+        current[key] === null
+      ) {
+        current[key] = {};
+      }
+      current = current[key] as Record<string, unknown>;
+    }
+
+    current[lastKey] = value;
+  };
+
   const isTimestampField = (key: string): boolean => {
     const timestampFields = [
       'timestamp',
@@ -78,35 +119,87 @@ export const ConflictResolutionModal: React.FC<
     );
   };
 
-  // Analyze field conflicts - filter out system-managed fields for selection
+  // Analyze field conflicts - use enhanced conflict details for granular selection
   const fieldAnalysis = useMemo(() => {
-    const allKeys = new Set([
-      ...Object.keys(localData),
-      ...Object.keys(serverData),
-    ]);
+    // If we have enhanced conflict details, use them for granular field selection
+    if (conflict.conflictDetails) {
+      const fields: FieldChoice[] = [];
 
-    const fields: FieldChoice[] = Array.from(allKeys).map((key) => {
-      const localValue = localData[key];
-      const serverValue = serverData[key];
-      const isConflicted =
-        JSON.stringify(localValue) !== JSON.stringify(serverValue);
+      // Add each specific conflict path as a selectable field
+      conflict.conflictDetails.conflicts.forEach((conflictItem) => {
+        const path = conflictItem.path;
 
-      // Default to server value for conflicts, local for non-conflicts
-      const defaultSource: 'local' | 'server' = isConflicted
-        ? 'server'
-        : 'local';
-      const defaultValue = defaultSource === 'local' ? localValue : serverValue;
+        // Default to server value for conflicts
+        const defaultSource: 'local' | 'server' = 'server';
+        const defaultValue = conflictItem.serverValue;
 
-      return {
-        key,
-        value: defaultValue,
-        source: defaultSource,
-        isConflicted,
-      };
-    });
+        fields.push({
+          key: path, // Use the full path as the key (e.g., "days.1.items.0.packed")
+          value: defaultValue,
+          source: defaultSource,
+          isConflicted: true, // All items from conflict details are conflicted
+        });
+      });
 
-    return fields;
-  }, [localData, serverData]);
+      // Also add top-level fields that aren't conflicted for completeness
+      const conflictedTopLevelKeys = new Set(
+        conflict.conflictDetails.conflicts.map((c) => c.path.split('.')[0])
+      );
+
+      const allTopLevelKeys = new Set([
+        ...Object.keys(localData),
+        ...Object.keys(serverData),
+      ]);
+
+      allTopLevelKeys.forEach((key) => {
+        if (!conflictedTopLevelKeys.has(key)) {
+          const localValue = localData[key];
+          const serverValue = serverData[key];
+          const isConflicted =
+            JSON.stringify(localValue) !== JSON.stringify(serverValue);
+
+          // Include both conflicted and non-conflicted top-level fields
+          fields.push({
+            key,
+            value: isConflicted ? serverValue : localValue,
+            source: isConflicted ? 'server' : 'local',
+            isConflicted,
+          });
+        }
+      });
+
+      return fields;
+    } else {
+      // Fall back to simple top-level field analysis
+      const allKeys = new Set([
+        ...Object.keys(localData),
+        ...Object.keys(serverData),
+      ]);
+
+      const fields: FieldChoice[] = Array.from(allKeys).map((key) => {
+        const localValue = localData[key];
+        const serverValue = serverData[key];
+        const isConflicted =
+          JSON.stringify(localValue) !== JSON.stringify(serverValue);
+
+        // Default to server value for conflicts, local for non-conflicts
+        const defaultSource: 'local' | 'server' = isConflicted
+          ? 'server'
+          : 'local';
+        const defaultValue =
+          defaultSource === 'local' ? localValue : serverValue;
+
+        return {
+          key,
+          value: defaultValue,
+          source: defaultSource,
+          isConflicted,
+        };
+      });
+
+      return fields;
+    }
+  }, [localData, serverData, conflict]);
 
   // Get user-editable fields (exclude system-managed ones)
   const editableFields = useMemo(() => {
@@ -138,7 +231,13 @@ export const ConflictResolutionModal: React.FC<
       // Apply user field choices on top of the smart merge
       fieldChoices.forEach((choice) => {
         if (!isSystemManagedField(choice.key)) {
-          result[choice.key] = choice.value;
+          if (choice.key.includes('.')) {
+            // This is a nested path - use helper function to set nested value
+            setNestedValue(result, choice.key, choice.value);
+          } else {
+            // Top-level field
+            result[choice.key] = choice.value;
+          }
         }
       });
 
@@ -317,7 +416,31 @@ export const ConflictResolutionModal: React.FC<
       const newChoices = new Map(prev);
       const currentChoice = newChoices.get(key);
       if (currentChoice) {
-        const newValue = source === 'local' ? localData[key] : serverData[key];
+        // For nested paths, we need to get the value from the conflict details
+        let newValue: unknown;
+
+        if (conflict.conflictDetails && key.includes('.')) {
+          // This is a nested path - find the corresponding conflict item
+          const conflictItem = conflict.conflictDetails.conflicts.find(
+            (c) => c.path === key
+          );
+          if (conflictItem) {
+            newValue =
+              source === 'local'
+                ? conflictItem.localValue
+                : conflictItem.serverValue;
+          } else {
+            // Fallback to extracting from the data objects
+            newValue =
+              source === 'local'
+                ? getNestedValue(localData, key)
+                : getNestedValue(serverData, key);
+          }
+        } else {
+          // Top-level field
+          newValue = source === 'local' ? localData[key] : serverData[key];
+        }
+
         const updatedChoice = {
           ...currentChoice,
           value: newValue,
@@ -601,8 +724,29 @@ export const ConflictResolutionModal: React.FC<
 
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {editableFields.map((choice) => {
-                const localValue = localData[choice.key];
-                const serverValue = serverData[choice.key];
+                // Get the actual values for this field (handling nested paths)
+                let localValue: unknown;
+                let serverValue: unknown;
+
+                if (conflict.conflictDetails && choice.key.includes('.')) {
+                  // For nested paths, get values from conflict details
+                  const conflictItem = conflict.conflictDetails.conflicts.find(
+                    (c) => c.path === choice.key
+                  );
+                  if (conflictItem) {
+                    localValue = conflictItem.localValue;
+                    serverValue = conflictItem.serverValue;
+                  } else {
+                    // Fallback to extracting from data objects
+                    localValue = getNestedValue(localData, choice.key);
+                    serverValue = getNestedValue(serverData, choice.key);
+                  }
+                } else {
+                  // Top-level field
+                  localValue = localData[choice.key];
+                  serverValue = serverData[choice.key];
+                }
+
                 const isIdentical =
                   JSON.stringify(localValue) === JSON.stringify(serverValue);
                 const currentChoice = getCurrentChoice(choice.key) || choice;
@@ -624,6 +768,11 @@ export const ConflictResolutionModal: React.FC<
                         {choice.isConflicted && (
                           <span className="px-2 py-1 text-xs bg-yellow-200 text-yellow-800 rounded">
                             Conflicted
+                          </span>
+                        )}
+                        {choice.key.includes('.') && (
+                          <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
+                            Nested
                           </span>
                         )}
                       </div>

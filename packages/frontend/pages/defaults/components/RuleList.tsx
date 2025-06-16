@@ -1,8 +1,4 @@
-import {
-  DefaultItemRule,
-  LegacyPerson as Person,
-  Day,
-} from '@packing-list/model';
+import { DefaultItemRule, Person, Day } from '@packing-list/model';
 import { RuleCard } from './RuleCard';
 
 type RuleListProps = {

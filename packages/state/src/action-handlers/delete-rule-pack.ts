@@ -1,27 +1,24 @@
 import { StoreType } from '../store.js';
-import { ActionHandler } from '../actions.js';
 import { RulePacksStorage } from '@packing-list/offline-storage';
-import { getChangeTracker } from '@packing-list/sync';
 
 export type DeleteRulePackAction = {
   type: 'DELETE_RULE_PACK';
-  payload: {
-    id: string;
-  };
+  payload: { id: string };
 };
 
-export const deleteRulePackHandler: ActionHandler<DeleteRulePackAction> = (
+export const deleteRulePackHandler = (
   state: StoreType,
   action: DeleteRulePackAction
 ): StoreType => {
-  const userId = state.auth.user?.id || 'local-user';
-  RulePacksStorage.deleteRulePack(action.payload.id).catch(console.error);
-  const pack = state.rulePacks.find((p) => p.id === action.payload.id);
-  if (pack) {
-    getChangeTracker()
-      .trackRulePackChange('delete', pack, userId)
-      .catch(console.error);
+  const packToDelete = state.rulePacks.find(
+    (pack) => pack.id === action.payload.id
+  );
+
+  if (!packToDelete) {
+    return state; // Pack not found, nothing to delete
   }
+
+  RulePacksStorage.deleteRulePack(action.payload.id).catch(console.error);
 
   return {
     ...state,

@@ -5,26 +5,27 @@ export type ConditionValue = string | number | boolean;
 
 export type Operator = '==' | '>' | '<' | '>=' | '<=';
 
-export type Condition = {
+export type BaseCondition = {
   type: 'person' | 'day';
-  field: string;
   operator: Operator;
-  value: ConditionValue;
   notes?: string;
 };
 
-export type PersonCondition = Condition & {
-  type: 'person';
-  field: keyof {
-    [K in keyof Person as Person[K] extends ConditionValue
-      ? K
-      : never]: Person[K];
+type PersonFields = keyof Pick<Person, 'age' | 'gender'>;
+
+export type PersonCondition<T extends PersonFields = PersonFields> =
+  BaseCondition & {
+    type: 'person';
+    field: T;
+    value: Person[T];
   };
+
+type DayFields = keyof Pick<Day, 'expectedClimate'>;
+
+export type DayCondition<T extends DayFields = DayFields> = BaseCondition & {
+  type: 'day';
+  field: T;
+  value: Day[T];
 };
 
-export type DayCondition = Condition & {
-  type: 'day';
-  field: keyof {
-    [K in keyof Day as Day[K] extends ConditionValue ? K : never]: Day[K];
-  };
-};
+export type Condition = PersonCondition | DayCondition;

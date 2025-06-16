@@ -5,6 +5,7 @@ import { CategorySelector } from '../../../components/CategorySelector';
 import { ConditionsList } from './ConditionsList';
 import { ItemCalculationForm } from './ItemCalculationForm';
 import { useAppDispatch } from '@packing-list/state';
+import { uuid } from '@packing-list/shared-utils';
 
 const DEFAULT_CALCULATION: Calculation = {
   baseQuantity: 1,
@@ -39,6 +40,7 @@ export const RuleFormModal = ({
     subcategoryId: rule?.subcategoryId,
     notes: rule?.notes,
     conditions: rule?.conditions,
+    originalRuleId: rule?.originalRuleId || '',
   }));
 
   const [showDiscardModal, setShowDiscardModal] = useState(false);
@@ -54,6 +56,7 @@ export const RuleFormModal = ({
         subcategoryId: rule?.subcategoryId,
         notes: rule?.notes,
         conditions: rule?.conditions,
+        originalRuleId: rule?.originalRuleId || '',
       });
     }
   }, [rule, isOpen]);
@@ -69,11 +72,13 @@ export const RuleFormModal = ({
           payload: formRule,
         });
       } else {
+        const id = uuid();
         dispatch({
           type: 'CREATE_ITEM_RULE',
           payload: {
             ...formRule,
-            id: crypto.randomUUID(),
+            id,
+            originalRuleId: id,
           },
         });
       }
@@ -89,6 +94,7 @@ export const RuleFormModal = ({
       name: '',
       calculation: DEFAULT_CALCULATION,
       categoryId: '',
+      originalRuleId: '',
     });
     setShowDiscardModal(false);
     onClose();

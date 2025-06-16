@@ -1,4 +1,5 @@
 import { Day } from './Day.js';
+import { DefaultItemRule } from './DefaultItemRule.js';
 import { TripEvent } from './TripEvent.js';
 
 export type Trip = {
@@ -8,6 +9,7 @@ export type Trip = {
   description?: string;
   days: Day[];
   tripEvents?: TripEvent[];
+  defaultItemRules: DefaultItemRule[];
 
   // Metadata
   createdAt: string;

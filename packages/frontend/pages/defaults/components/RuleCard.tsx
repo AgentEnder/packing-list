@@ -2,7 +2,7 @@ import {
   DefaultItemRule,
   Day,
   getAllCategories,
-  LegacyPerson as Person,
+  Person,
 } from '@packing-list/model';
 import {
   calculateRuleTotal,
@@ -96,7 +96,7 @@ export const RuleCard = ({ rule, people, days }: RuleCardProps) => {
 
   const packBadges = rule.packIds
     ? rulePacks
-        .filter((pack) => rule.packIds?.includes(pack.id))
+        .filter((pack) => rule.packIds?.some((ref) => ref.packId === pack.id))
         .map((pack) => {
           const IconComponent = pack.icon
             ? (Icons as unknown as Record<string, LucideIcon>)[pack.icon]
@@ -128,17 +128,23 @@ export const RuleCard = ({ rule, people, days }: RuleCardProps) => {
     : 0;
 
   const showMath = (() => {
-    // Check if base calculation will have visible parts
-    const baseHasParts =
+    // Always show math for detailed calculations if we have people/days
+    if (peopleCount === 0 || daysCount === 0) {
+      return false;
+    }
+
+    // Show math if base calculation uses multipliers (per person/day with counts > 1)
+    const baseShowsMath =
       (perPerson && peopleCount > 1) || (perDay && daysCount > 1);
 
-    // Check if extra calculation will have visible parts
-    const extraHasParts =
+    // Show math if extra calculation uses multipliers
+    const extraShowsMath =
       extraItems &&
       ((extraItems.perPerson && peopleCount > 1) ||
         (extraItems.perDay && daysCount > 1));
 
-    return (baseHasParts || extraHasParts) && peopleCount > 0 && daysCount > 0;
+    // Show math if either base or extra calculations have multipliers
+    return baseShowsMath || extraShowsMath;
   })();
 
   return (

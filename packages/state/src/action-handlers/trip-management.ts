@@ -1,8 +1,7 @@
-import type { StoreType, TripData } from '../store.js';
-import { createEmptyTripData, initialState } from '../store.js';
-import type { TripSummary, Trip } from '@packing-list/model';
+import { StoreType, TripData } from '../store.js';
 import { TripStorage } from '@packing-list/offline-storage';
-import { getChangeTracker } from '@packing-list/sync';
+import { Trip, TripSummary } from '@packing-list/model';
+import { createEmptyTripData, initialState } from '../store.js';
 
 // Action types
 export interface CreateTripAction {
@@ -64,13 +63,7 @@ export function createTripHandler(
   };
 
   // Create empty trip data
-  const newTripData: TripData = {
-    ...createEmptyTripData(tripId),
-    trip: {
-      id: tripId,
-      days: [],
-    },
-  };
+  const newTripData: TripData = createEmptyTripData(tripId);
 
   // Build trip model for persistence
   const userId = state.auth.user?.id || 'local-user';
@@ -93,6 +86,7 @@ export function createTripHandler(
     settings: { defaultTimeZone: 'UTC', packingViewMode: 'by-day' },
     version: 1,
     isDeleted: false,
+    defaultItemRules: [],
   };
 
   console.log('🔧 [CREATE_TRIP] Trip model to save:', {
@@ -101,7 +95,7 @@ export function createTripHandler(
     title: tripModel.title,
   });
 
-  // Persist trip and track change asynchronously
+  // Persist trip asynchronously
   TripStorage.saveTrip(tripModel)
     .then(() => {
       console.log(
@@ -115,10 +109,6 @@ export function createTripHandler(
         error
       );
     });
-
-  getChangeTracker()
-    .trackTripChange('create', tripModel, userId)
-    .catch(console.error);
 
   return {
     ...state,
@@ -140,26 +130,23 @@ export function createTripHandler(
 
 export function selectTripHandler(
   state: StoreType,
-  action: SelectTripAction
+  action: { type: 'SELECT_TRIP'; payload: { tripId: string } }
 ): StoreType {
-  const { tripId } = action.payload;
-
   return {
     ...state,
     trips: {
       ...state.trips,
-      selectedTripId: tripId,
+      selectedTripId: action.payload.tripId,
     },
   };
 }
 
-export const deleteTripHandler = (
+export function deleteTripHandler(
   state: StoreType,
   action: DeleteTripAction
-): StoreType => {
+): StoreType {
   const { tripId } = action.payload;
 
-  const userId = state.auth.user?.id || 'local-user';
   const existingTrip = state.trips.byId[tripId]?.trip;
 
   // Remove from summaries
@@ -180,20 +167,9 @@ export const deleteTripHandler = (
       updatedSummaries.length > 0 ? updatedSummaries[0].tripId : null;
   }
 
-  // Persist deletion and track change asynchronously
+  // Persist deletion asynchronously
   if (existingTrip) {
     TripStorage.deleteTrip(tripId).catch(console.error);
-    getChangeTracker()
-      .trackTripChange(
-        'delete',
-        {
-          ...(existingTrip as Trip),
-          isDeleted: true,
-          updatedAt: new Date().toISOString(),
-        },
-        userId
-      )
-      .catch(console.error);
   }
 
   return {
@@ -204,12 +180,12 @@ export const deleteTripHandler = (
       byId: remainingTrips,
     },
   };
-};
+}
 
-export const updateTripSummaryHandler = (
+export function updateTripSummaryHandler(
   state: StoreType,
   action: UpdateTripSummaryAction
-): StoreType => {
+): StoreType {
   const { tripId, title, description } = action.payload;
 
   // Update trip summary
@@ -224,8 +200,7 @@ export const updateTripSummaryHandler = (
       : summary
   );
 
-  // Persist update and track change asynchronously
-  const userId = state.auth.user?.id || 'local-user';
+  // Persist update asynchronously
   const tripData = state.trips.byId[tripId];
   if (tripData) {
     const updatedTrip: Trip = {
@@ -235,9 +210,6 @@ export const updateTripSummaryHandler = (
       updatedAt: new Date().toISOString(),
     };
     TripStorage.saveTrip(updatedTrip).catch(console.error);
-    getChangeTracker()
-      .trackTripChange('update', updatedTrip, userId)
-      .catch(console.error);
   }
 
   return {
@@ -247,4 +219,4 @@ export const updateTripSummaryHandler = (
       summaries: updatedSummaries,
     },
   };
-};
+}

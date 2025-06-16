@@ -1,11 +1,11 @@
 import {
   DefaultItemRule,
   PackingListViewState,
-  LegacyPerson as Person,
+  Person,
   TripEvent,
   SyncConflict,
 } from '@packing-list/model';
-import { StoreType } from './store.js';
+import { StoreType, TripData } from './store.js';
 import { enumerateTripDays } from './action-handlers/calculate-days.js';
 import { calculateDefaultItems } from './action-handlers/calculate-default-items.js';
 import { calculatePackingListHandler } from './action-handlers/calculate-packing-list.js';
@@ -57,6 +57,7 @@ const tripEvents: TripEvent[] = [
 const defaultItemRules: DefaultItemRule[] = [
   {
     id: 'underwear-rule',
+    originalRuleId: 'underwear-rule',
     name: 'Underwear',
     calculation: {
       baseQuantity: 1,
@@ -81,6 +82,7 @@ const defaultItemRules: DefaultItemRule[] = [
   },
   {
     id: 'socks-rule',
+    originalRuleId: 'socks-rule',
     name: 'Socks',
     calculation: {
       baseQuantity: 1,
@@ -98,6 +100,7 @@ const defaultItemRules: DefaultItemRule[] = [
   },
   {
     id: 'tshirt-rule',
+    originalRuleId: 'tshirt-rule',
     name: 'T-Shirts',
     calculation: {
       baseQuantity: 1,
@@ -115,6 +118,7 @@ const defaultItemRules: DefaultItemRule[] = [
   },
   {
     id: 'jeans-rule',
+    originalRuleId: 'jeans-rule',
     name: 'Jeans/Pants',
     calculation: {
       baseQuantity: 1,
@@ -138,6 +142,7 @@ const defaultItemRules: DefaultItemRule[] = [
   },
   {
     id: 'pajamas-rule',
+    originalRuleId: 'pajamas-rule',
     name: 'Pajamas',
     calculation: {
       baseQuantity: 1,
@@ -156,6 +161,7 @@ const defaultItemRules: DefaultItemRule[] = [
   },
   {
     id: 'swimsuit-rule',
+    originalRuleId: 'swimsuit-rule',
     name: 'Swimsuit',
     calculation: {
       baseQuantity: 1,
@@ -176,6 +182,7 @@ const defaultItemRules: DefaultItemRule[] = [
   },
   {
     id: 'jacket-rule',
+    originalRuleId: 'jacket-rule',
     name: 'Warm Jacket',
     calculation: {
       baseQuantity: 1,
@@ -198,6 +205,7 @@ const defaultItemRules: DefaultItemRule[] = [
   },
   {
     id: 'toothbrush-rule',
+    originalRuleId: 'toothbrush-rule',
     name: 'Toothbrush',
     calculation: {
       baseQuantity: 1,
@@ -209,6 +217,7 @@ const defaultItemRules: DefaultItemRule[] = [
   },
   {
     id: 'toothpaste-rule',
+    originalRuleId: 'toothpaste-rule',
     name: 'Toothpaste',
     calculation: {
       baseQuantity: 1,
@@ -220,6 +229,7 @@ const defaultItemRules: DefaultItemRule[] = [
   },
   {
     id: 'shampoo-rule',
+    originalRuleId: 'shampoo-rule',
     name: 'Travel Shampoo',
     calculation: {
       baseQuantity: 1,
@@ -235,6 +245,7 @@ const defaultItemRules: DefaultItemRule[] = [
   },
   {
     id: 'laundry-rule',
+    originalRuleId: 'laundry-rule',
     name: 'Travel Laundry Detergent',
     calculation: {
       baseQuantity: 1,
@@ -250,6 +261,7 @@ const defaultItemRules: DefaultItemRule[] = [
   },
   {
     id: 'diaper-rule',
+    originalRuleId: 'diaper-rule',
     name: 'Diapers',
     calculation: {
       baseQuantity: 6,
@@ -276,6 +288,7 @@ const defaultItemRules: DefaultItemRule[] = [
   },
   {
     id: 'charger-rule',
+    originalRuleId: 'charger-rule',
     name: 'Phone Charger',
     calculation: {
       baseQuantity: 1,
@@ -297,7 +310,7 @@ const defaultItemRules: DefaultItemRule[] = [
     ],
     categoryId: 'electronics',
   },
-];
+] as DefaultItemRule[];
 
 const people: Person[] = [
   {
@@ -305,24 +318,48 @@ const people: Person[] = [
     name: 'Sarah Johnson',
     age: 42,
     gender: 'female',
+    tripId: 'demo-trip',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    version: 1,
+    isDeleted: false,
+    settings: {},
   },
   {
     id: 'demo-person-2',
     name: 'Mike Johnson',
     age: 45,
     gender: 'male',
+    tripId: 'demo-trip',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    version: 1,
+    isDeleted: false,
+    settings: {},
   },
   {
     id: 'demo-person-3',
     name: 'Emma Johnson',
     age: 12,
     gender: 'female',
+    tripId: 'demo-trip',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    version: 1,
+    isDeleted: false,
+    settings: {},
   },
   {
     id: 'demo-person-4',
     name: 'Alex Johnson',
     age: 3,
     gender: 'male',
+    tripId: 'demo-trip',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    version: 1,
+    isDeleted: false,
+    settings: {},
   },
 ];
 
@@ -381,14 +418,26 @@ export const CREATE_DEMO_DATA: () => Partial<StoreType> = () => {
   ];
 
   // Create the trip data structure
-  const tripData = {
+  const tripData: TripData = {
     trip: {
       id: tripId,
       days: enumerateTripDays(tripEvents),
       tripEvents,
+      userId: 'demo-user',
+      title: 'Demo Trip: Houston & Miami',
+      description:
+        'A sample multi-city trip to demonstrate the packing list functionality',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      settings: {
+        defaultTimeZone: 'America/New_York',
+        packingViewMode: 'by-day',
+      },
+      version: 1,
+      isDeleted: false,
+      defaultItemRules,
     },
     people,
-    defaultItemRules,
     ruleOverrides: [],
     packingListView,
     calculated: {

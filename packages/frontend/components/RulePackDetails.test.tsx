@@ -28,14 +28,16 @@ describe('RulePackDetails Component', () => {
       calculation: { baseQuantity: 1, perDay: false, perPerson: true },
       categoryId: 'beach',
       notes: 'Essential for beach trips',
-      packIds: ['pack1'],
+      packIds: [{ packId: 'pack1', ruleId: 'rule1' }],
+      originalRuleId: 'rule1',
     },
     {
       id: 'rule2',
       name: 'Sunscreen',
       calculation: { baseQuantity: 1, perDay: false, perPerson: false },
       categoryId: 'beach',
-      packIds: ['pack1'],
+      packIds: [{ packId: 'pack1', ruleId: 'rule2' }],
+      originalRuleId: 'rule2',
     },
   ];
 
@@ -48,11 +50,13 @@ describe('RulePackDetails Component', () => {
         id: 'rule1',
         name: 'Beach Towel',
         calculation: { baseQuantity: 1, perDay: false, perPerson: true },
+        originalRuleId: 'rule1',
       },
       {
         id: 'rule2',
         name: 'Sunscreen',
         calculation: { baseQuantity: 1, perDay: false, perPerson: false },
+        originalRuleId: 'rule2',
       },
     ],
     author: { id: 'author1', name: 'Beach Expert' },
@@ -272,11 +276,13 @@ describe('RulePackDetails Component', () => {
           id: 'rule1',
           name: 'Beach Towel',
           calculation: { baseQuantity: 1, perDay: false, perPerson: true },
+          originalRuleId: 'rule1',
         },
         {
           id: 'missing-rule',
           name: 'Missing Rule',
           calculation: { baseQuantity: 1, perDay: false, perPerson: false },
+          originalRuleId: 'missing-rule',
         },
       ],
     };

@@ -70,8 +70,20 @@ export function calculateNumPeopleMeetingCondition(
   return people.filter((person) =>
     conditions.every((condition) => {
       if (condition.type === 'person') {
+        const value = person[condition.field as keyof Person];
+        // Only compare simple values that match CompareValue type
+        if (
+          value === undefined ||
+          value === null ||
+          typeof value === 'object'
+        ) {
+          return false;
+        }
+        if (condition.value === undefined) {
+          return false;
+        }
         return compare(
-          person[condition.field as keyof Person],
+          value as CompareValue,
           condition.operator,
           condition.value
         );
@@ -88,11 +100,11 @@ export function calculateNumDaysMeetingCondition(
   return days.filter((day) =>
     conditions.every((condition) => {
       if (condition.type === 'day') {
-        return compare(
-          day[condition.field as keyof Day],
-          condition.operator,
-          condition.value
-        );
+        const value = day[condition.field as keyof Day];
+        if (condition.value === undefined) {
+          return false;
+        }
+        return compare(value, condition.operator, condition.value);
       }
       return true;
     })
@@ -115,13 +127,28 @@ export const calculateRuleTotal = (
       if (condition.type === 'person') {
         // Filter out people that don't meet the condition
         for (const person of people) {
+          if (condition.value === undefined) {
+            peopleCount--;
+            continue;
+          }
+          const value = person[condition.field as keyof Person];
+          // Only compare simple values that match CompareValue type
           if (
-            !compare(
-              person[condition.field as keyof Person],
-              condition.operator,
-              condition.value
-            )
+            value !== undefined &&
+            value !== null &&
+            typeof value !== 'object'
           ) {
+            if (
+              !compare(
+                value as CompareValue,
+                condition.operator,
+                condition.value
+              )
+            ) {
+              peopleCount--;
+            }
+          } else {
+            // If field is not comparable, consider it as not meeting the condition
             peopleCount--;
           }
         }

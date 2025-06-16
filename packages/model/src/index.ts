@@ -19,5 +19,4 @@ export * from './lib/TripSummary.js';
 export * from './lib/TripItem.js';
 export * from './lib/TripRule.js';
 
-// Legacy types for backward compatibility during Phase 1
-export * from './lib/LegacyTypes.js';
+// Legacy types removed - using proper Person and Trip types instead

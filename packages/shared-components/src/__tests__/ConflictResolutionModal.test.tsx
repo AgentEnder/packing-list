@@ -1,5 +1,4 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ConflictResolutionModal } from '../ConflictResolutionModal.js';
@@ -630,7 +629,7 @@ describe('ConflictResolutionModal', () => {
       );
 
       // The timestamp should be recent (within last few seconds)
-      const call = mockOnResolve.mock.calls[0][1] as any;
+      const call = mockOnResolve.mock.calls[0][1];
       const timeDiff = Date.now() - call.timestamp;
       expect(timeDiff).toBeLessThan(5000); // Within 5 seconds
     });
@@ -727,6 +726,164 @@ describe('ConflictResolutionModal', () => {
       await user.click(screen.getByText('Next'));
 
       expect(screen.getByText('Field Selection')).toBeInTheDocument();
+    });
+  });
+
+  describe('Nested Field Selection', () => {
+    it('should allow selecting individual nested field values', async () => {
+      const user = userEvent.setup();
+      const conflict = createEnhancedNestedConflict();
+
+      render(
+        <ConflictResolutionModal
+          isOpen={true}
+          onClose={mockOnCancel}
+          conflict={conflict}
+          onResolve={mockOnResolve}
+          onCancel={mockOnCancel}
+        />
+      );
+
+      // Navigate to merge step
+      await user.click(screen.getByDisplayValue('manual'));
+      await user.click(screen.getByText('Next'));
+
+      // Should show the nested field with full path
+      expect(screen.getByText('days.1.items.0.packed')).toBeInTheDocument();
+
+      // Should show "Nested" badge
+      expect(screen.getByText('Nested')).toBeInTheDocument();
+
+      // Should show conflicted badge
+      expect(screen.getByText('Conflicted')).toBeInTheDocument();
+
+      // Should show local value (false) and server value (true)
+      const localRadio = screen.getByDisplayValue('local');
+      const serverRadio = screen.getByDisplayValue('server');
+
+      expect(localRadio).toBeInTheDocument();
+      expect(serverRadio).toBeInTheDocument();
+      expect(serverRadio).toBeChecked(); // Server should be selected by default
+
+      // Should show the actual values
+      expect(screen.getByText('false')).toBeInTheDocument(); // Local value
+      expect(screen.getByText('true')).toBeInTheDocument(); // Server value
+
+      // Select local value instead
+      await user.click(localRadio);
+      expect(localRadio).toBeChecked();
+
+      // Navigate to preview
+      await user.click(screen.getByText('Next'));
+
+      // Should show final merged object
+      expect(screen.getByText('Final Merged Object')).toBeInTheDocument();
+
+      // Apply the merge
+      await user.click(screen.getByText('Apply Merge'));
+
+      // Should call onResolve with manual strategy and merged data
+      expect(mockOnResolve).toHaveBeenCalledWith('manual', expect.any(Object));
+
+      // The merged object should have the nested field set to the local value (false)
+      const resolveCall = mockOnResolve.mock.calls[0];
+      const mergedData = resolveCall[1];
+      expect(mergedData.days[1].items[0].packed).toBe(false);
+    });
+
+    it('should handle multiple nested conflicts independently', async () => {
+      const user = userEvent.setup();
+
+      // Create a conflict with multiple nested field conflicts
+      const multiNestedConflict: SyncConflict = {
+        ...createEnhancedNestedConflict(),
+        conflictDetails: {
+          conflicts: [
+            {
+              path: 'days.0.items.0.packed',
+              localValue: false,
+              serverValue: true,
+              type: 'modified',
+            },
+            {
+              path: 'days.1.items.0.packed',
+              localValue: false,
+              serverValue: true,
+              type: 'modified',
+            },
+          ],
+          mergedObject: {
+            id: 'trip-456',
+            title: 'European Adventure',
+            settings: { timezone: 'Europe/Paris' },
+            days: [
+              {
+                date: '2024-03-01',
+                location: 'Paris',
+                items: [
+                  { name: 'Passport', packed: false }, // Default to local
+                  { name: 'Camera', packed: true },
+                ],
+              },
+              {
+                date: '2024-03-02',
+                location: 'London',
+                items: [
+                  { name: 'Umbrella', packed: false }, // Default to local
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      render(
+        <ConflictResolutionModal
+          isOpen={true}
+          onClose={mockOnCancel}
+          conflict={multiNestedConflict}
+          onResolve={mockOnResolve}
+          onCancel={mockOnCancel}
+        />
+      );
+
+      // Navigate to merge step
+      await user.click(screen.getByDisplayValue('manual'));
+      await user.click(screen.getByText('Next'));
+
+      // Should show both nested conflicts
+      expect(screen.getByText('days.0.items.0.packed')).toBeInTheDocument();
+      expect(screen.getByText('days.1.items.0.packed')).toBeInTheDocument();
+
+      // Should show multiple "Nested" badges
+      expect(screen.getAllByText('Nested')).toHaveLength(2);
+
+      // Get all radio buttons
+      const localRadios = screen.getAllByDisplayValue('local');
+      const serverRadios = screen.getAllByDisplayValue('server');
+
+      // Should have 2 local and 2 server radios for the nested fields
+      expect(localRadios.length).toBeGreaterThanOrEqual(2);
+      expect(serverRadios.length).toBeGreaterThanOrEqual(2);
+
+      // Select different values for each nested field
+      await user.click(localRadios[0]); // First nested field: local
+      await user.click(serverRadios[1]); // Second nested field: server
+
+      // Navigate to preview and apply
+      await user.click(screen.getByText('Next'));
+      await user.click(screen.getByText('Apply Merge'));
+
+      // Should call onResolve with the correct nested values
+      expect(mockOnResolve).toHaveBeenCalledWith('manual', expect.any(Object));
+
+      const resolveCall = mockOnResolve.mock.calls[0];
+      const mergedData = resolveCall[1];
+
+      // First nested field should be local value (false)
+      expect(mergedData.days[0].items[0].packed).toBe(false);
+      // Second nested field should be server value (true)
+      expect(mergedData.days[1].items[0].packed).toBe(true);
     });
   });
 });

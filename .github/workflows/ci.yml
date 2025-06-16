@@ -121,7 +121,7 @@ jobs:
 
       - name: Run Checks
         run: |
-          pnpm nx affected -t lint,test,build --parallel=3
+          pnpm nx affected -t lint,test,build,typecheck --parallel=3
           pnpm test:e2e
         env:
           CI: true

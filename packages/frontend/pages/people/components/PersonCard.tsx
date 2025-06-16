@@ -1,4 +1,4 @@
-import { LegacyPerson as Person } from '@packing-list/model';
+import { Person } from '@packing-list/model';
 import { useState } from 'react';
 import { PersonForm } from './PersonForm';
 

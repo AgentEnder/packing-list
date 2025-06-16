@@ -44,6 +44,7 @@ export type Database = {
           is_deleted: boolean | null
           name: string
           notes: string | null
+          original_rule_id: string | null
           pack_ids: Json | null
           rule_id: string
           subcategory_id: string | null
@@ -60,6 +61,7 @@ export type Database = {
           is_deleted?: boolean | null
           name: string
           notes?: string | null
+          original_rule_id?: string | null
           pack_ids?: Json | null
           rule_id: string
           subcategory_id?: string | null
@@ -76,6 +78,7 @@ export type Database = {
           is_deleted?: boolean | null
           name?: string
           notes?: string | null
+          original_rule_id?: string | null
           pack_ids?: Json | null
           rule_id?: string
           subcategory_id?: string | null
@@ -183,6 +186,7 @@ export type Database = {
           rule_id: string
           trip_id: string
           updated_at: string | null
+          user_id: string
           version: number | null
         }
         Insert: {
@@ -192,6 +196,7 @@ export type Database = {
           rule_id: string
           trip_id: string
           updated_at?: string | null
+          user_id: string
           version?: number | null
         }
         Update: {
@@ -201,6 +206,7 @@ export type Database = {
           rule_id?: string
           trip_id?: string
           updated_at?: string | null
+          user_id?: string
           version?: number | null
         }
         Relationships: [
@@ -447,22 +453,6 @@ export type Database = {
           p_provider?: string
         }
         Returns: string
-      }
-      get_user_rule_packs: {
-        Args: { user_uuid?: string }
-        Returns: {
-          pack_id: string
-          name: string
-          description: string
-          author: Json
-          metadata: Json
-          stats: Json
-          primary_category_id: string
-          icon: string
-          color: string
-          created_at: string
-          updated_at: string
-        }[]
       }
       get_user_trips_summary: {
         Args: { user_uuid?: string }

@@ -362,6 +362,7 @@ describe('Sync State Reducers', () => {
         },
         version: 1,
         isDeleted: false,
+        defaultItemRules: [],
       };
 
       it('should handle new trip creation', () => {

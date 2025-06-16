@@ -78,6 +78,7 @@ export function mapDatabaseTripToTrip(row: DatabaseTripRow): Trip {
       : { defaultTimeZone: 'UTC', packingViewMode: 'by-day' },
     version: row.version,
     isDeleted: row.is_deleted,
+    defaultItemRules: [],
   };
 }
 

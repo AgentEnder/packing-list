@@ -55,6 +55,7 @@ export async function initializeDatabase(): Promise<IDBPDatabase<OfflineDB>> {
     return dbInstance;
   }
 
+  console.log('[OfflineDB] Opening database');
   dbInstance = await openDB<OfflineDB>(DB_NAME, DB_VERSION, {
     upgrade(db) {
       console.log('[OfflineDB] Initializing database schema...');
