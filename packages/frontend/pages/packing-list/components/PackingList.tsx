@@ -47,15 +47,12 @@ export const PackingList: React.FC = () => {
     const totalCount = allGroups.reduce((s, i) => s + i.totalCount, 0);
     const packedCount = allGroups.reduce((s, i) => s + i.packedCount, 0);
     const allPacked = totalCount > 0 && totalCount === packedCount;
-    const prefersReduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!prefersReduced && allPacked && !prevAllPacked.current) {
+    if (allPacked && !prevAllPacked.current) {
       const rect = containerRef.current?.getBoundingClientRect();
       const payload = rect
         ? {
             x: rect.left + rect.width / 2,
-            y: rect.top + window.scrollY,
+            y: rect.top + (typeof window !== 'undefined' ? window.scrollY : 0),
             w: rect.width,
             h: rect.height,
           }

@@ -134,19 +134,12 @@ export function TripDayRow({
   const rowRef = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
-    const prefersReduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (
-      !prefersReduced &&
-      packingProgress === 100 &&
-      prevProgress.current < 100
-    ) {
+    if (packingProgress === 100 && prevProgress.current < 100) {
       const rect = rowRef.current?.getBoundingClientRect();
       const payload = rect
         ? {
             x: rect.left + rect.width / 2,
-            y: rect.top + window.scrollY,
+            y: rect.top + (typeof window !== 'undefined' ? window.scrollY : 0),
             w: rect.width,
             h: rect.height,
           }

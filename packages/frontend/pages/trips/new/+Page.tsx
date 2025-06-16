@@ -193,18 +193,13 @@ export default function NewTripPage() {
       // 4. Reset wizard to first step for new trip
       dispatch({ type: 'RESET_WIZARD' });
 
-      const prefersReduced =
-        typeof window !== 'undefined' &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (!prefersReduced) {
-        const source = {
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
-          w: 0,
-          h: 0,
-        };
-        dispatch(actions.triggerConfettiBurst(source));
-      }
+      const source = {
+        x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0,
+        y: typeof window !== 'undefined' ? window.innerHeight / 2 : 0,
+        w: 0,
+        h: 0,
+      };
+      dispatch(actions.triggerConfettiBurst(source));
 
       // Navigate to full-page wizard
       await navigate(`/trips/${tripId}/wizard`);
@@ -226,18 +221,13 @@ export default function NewTripPage() {
         },
       });
 
-      const prefersReduced =
-        typeof window !== 'undefined' &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (!prefersReduced) {
-        const source = {
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
-          w: 0,
-          h: 0,
-        };
-        dispatch(actions.triggerConfettiBurst(source));
-      }
+      const source = {
+        x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0,
+        y: typeof window !== 'undefined' ? window.innerHeight / 2 : 0,
+        w: 0,
+        h: 0,
+      };
+      dispatch(actions.triggerConfettiBurst(source));
 
       // Navigate to the new trip
       await navigate('/');
