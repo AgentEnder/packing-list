@@ -82,45 +82,106 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
       const changeTracker = getChangeTracker();
       const now = new Date().toISOString();
 
-      // Track different types of changes using deep diffs
-      trackTripChanges(
-        prevState,
-        nextState,
-        tripId,
-        userId,
-        now,
-        changeTracker
-      );
-      trackPersonChanges(
-        prevState,
-        nextState,
-        tripId,
-        userId,
-        now,
-        changeTracker
-      );
-      trackRuleChanges(
-        prevState,
-        nextState,
-        tripId,
-        userId,
-        now,
-        changeTracker
-      );
-      trackRulePackChanges(
-        prevState,
-        nextState,
-        tripId,
-        userId,
-        now,
-        changeTracker
-      );
+      // Handle specific actions that need optimized tracking
+      if ((action as { type: string }).type === 'TOGGLE_ITEM_PACKED') {
+        trackPackingStatusChange(
+          prevState,
+          nextState,
+          tripId,
+          userId,
+          changeTracker,
+          action as { type: string; payload: { itemId: string } }
+        );
+      } else {
+        // Track different types of changes using deep diffs
+        trackTripChanges(
+          prevState,
+          nextState,
+          tripId,
+          userId,
+          now,
+          changeTracker
+        );
+        trackPersonChanges(
+          prevState,
+          nextState,
+          tripId,
+          userId,
+          now,
+          changeTracker
+        );
+        trackRuleChanges(
+          prevState,
+          nextState,
+          tripId,
+          userId,
+          now,
+          changeTracker
+        );
+        trackRulePackChanges(
+          prevState,
+          nextState,
+          tripId,
+          userId,
+          now,
+          changeTracker
+        );
+      }
     } catch (error) {
       console.error('🚨 [SYNC_MIDDLEWARE] Error tracking changes:', error);
     }
 
     return result;
   };
+
+/**
+ * Track optimized packing status changes for TOGGLE_ITEM_PACKED actions
+ */
+function trackPackingStatusChange(
+  prevState: StoreType,
+  nextState: StoreType,
+  tripId: string,
+  userId: string,
+  changeTracker: ChangeTracker,
+  action: { type: string; payload: { itemId: string } }
+): void {
+  const { itemId } = action.payload;
+
+  const prevItems =
+    prevState.trips.byId[tripId]?.calculated.packingListItems || [];
+  const nextItems =
+    nextState.trips.byId[tripId]?.calculated.packingListItems || [];
+
+  const prevItem = prevItems.find((item) => item.id === itemId);
+  const nextItem = nextItems.find((item) => item.id === itemId);
+
+  if (!nextItem) {
+    console.warn(
+      `⚠️ [SYNC_MIDDLEWARE] Item not found for packing toggle: ${itemId}`
+    );
+    return;
+  }
+
+  const previousStatus = prevItem?.isPacked || false;
+  const newStatus = nextItem.isPacked;
+
+  console.log(
+    `📦 [SYNC_MIDDLEWARE] Packing status changed: ${itemId} (${previousStatus} → ${newStatus})`
+  );
+
+  // Use optimized packing status tracking
+  changeTracker
+    .trackPackingStatusChange(itemId, newStatus, userId, tripId, {
+      previousStatus,
+      timestamp: Date.now(),
+    })
+    .catch((error) => {
+      console.error(
+        '❌ [SYNC_MIDDLEWARE] Failed to track packing status change:',
+        error
+      );
+    });
+}
 
 /**
  * Track changes to trip data

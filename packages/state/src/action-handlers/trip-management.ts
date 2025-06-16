@@ -89,6 +89,16 @@ export function createTripHandler(
     defaultItemRules: [],
   };
 
+  // Update the trip data with the correct title and description
+  newTripData.trip = {
+    ...newTripData.trip,
+    title,
+    description: description || '',
+    userId,
+    createdAt: newTripSummary.createdAt,
+    updatedAt: newTripSummary.updatedAt,
+  };
+
   console.log('🔧 [CREATE_TRIP] Trip model to save:', {
     id: tripModel.id,
     userId: tripModel.userId,
