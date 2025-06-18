@@ -331,9 +331,30 @@ export const upsertSyncedItem = (
   const packingListItem = mapItem(syncedItem);
 
   // Update or add item in the packing list
-  const existingItemIndex = tripData.calculated.packingListItems.findIndex(
+  // First try to find by ID (for items that were previously synced)
+  let existingItemIndex = tripData.calculated.packingListItems.findIndex(
     (item) => item.id === syncedItem.id
   );
+
+  // If not found by ID, try to match by logical properties
+  // (for items that were calculated locally but match stored items)
+  if (existingItemIndex === -1) {
+    existingItemIndex = tripData.calculated.packingListItems.findIndex(
+      (item) =>
+        item.ruleId === 'imported' && // Only match items that came from IndexedDB
+        item.itemName === packingListItem.itemName &&
+        item.dayIndex === packingListItem.dayIndex &&
+        item.personId === packingListItem.personId &&
+        item.quantity === packingListItem.quantity
+    );
+
+    if (existingItemIndex >= 0) {
+      console.log(
+        `🔄 [SYNC REDUCER] Found existing item by logical match: ${packingListItem.itemName} (${tripData.calculated.packingListItems[existingItemIndex].id} → ${syncedItem.id})`
+      );
+    }
+  }
+
   const updatedItems = [...tripData.calculated.packingListItems];
 
   if (existingItemIndex >= 0) {
