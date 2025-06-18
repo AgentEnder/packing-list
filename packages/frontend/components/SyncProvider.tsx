@@ -6,10 +6,7 @@ import React, {
   useCallback,
 } from 'react';
 import { useAppSelector, useAppDispatch } from '@packing-list/state';
-import {
-  reloadFromIndexedDB,
-  createEntityCallbacks,
-} from '@packing-list/state';
+import { createEntityCallbacks } from '@packing-list/state';
 import type { SyncState } from '@packing-list/model';
 import {
   getSyncService,
@@ -119,22 +116,11 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
           return;
         }
 
-        // Create a function to handle IndexedDB reload
-        const handleReloadFromIndexedDB = (payload: {
-          syncedCount: number;
-          isInitialSync: boolean;
-          userId: string;
-        }) => {
-          console.log('🔄 [SYNC PROVIDER] Dispatching reload thunk:', payload);
-          dispatchRef.current(reloadFromIndexedDB(payload));
-        };
-
         // Create entity callbacks for sync integration
         const entityCallbacks = createEntityCallbacks(dispatchRef.current);
 
         // Pass Redux dispatch and current user ID to sync service options
         syncServiceRef.current = getSyncService({
-          reloadFromIndexedDB: handleReloadFromIndexedDB,
           userId: userId,
           demoMode: isDemoMode,
           callbacks: {

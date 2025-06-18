@@ -61,11 +61,6 @@ export interface SyncOptions {
   supabaseAnonKey?: string;
   autoSyncInterval?: number; // milliseconds
   demoMode?: boolean; // Disable active syncing, only show demo conflicts
-  reloadFromIndexedDB?: (payload: {
-    syncedCount: number;
-    isInitialSync: boolean;
-    userId: string;
-  }) => void;
   userId?: string; // Current user ID for data filtering
   callbacks?: {
     onTripUpsert?: (trip: Trip) => void;
@@ -1384,15 +1379,6 @@ export class SyncService {
 
     // Populate rule pack rules after all data is synced
     await this.populateRulePackRules();
-
-    // Only reload state from IndexedDB during the initial hydration
-    if (syncedCount > 0 && isInitialSync && this.options.reloadFromIndexedDB) {
-      this.options.reloadFromIndexedDB({
-        syncedCount,
-        isInitialSync,
-        userId: this.options.userId || 'unknown',
-      });
-    }
   }
 
   // @ts-expect-error - TODO: figure out where this was meant to be used

@@ -12,6 +12,8 @@ import {
   RulePacksStorage,
   TripRuleStorage,
 } from '@packing-list/offline-storage';
+import { enableSyncMode, disableSyncMode } from '@packing-list/sync';
+import type { AllActions } from '../actions.js';
 
 /**
  * Deep equality check for objects
@@ -44,6 +46,86 @@ function deepEqual(obj1: unknown, obj2: unknown): boolean {
 }
 
 /**
+ * Reload trip data from IndexedDB and populate Redux state
+ * This is triggered on @@init to ensure state is hydrated from offline storage
+ */
+async function reloadFromIndexedDB(
+  dispatch: (action: AllActions) => void,
+  userId: string
+): Promise<void> {
+  console.log(
+    `🔄 [SYNC_MIDDLEWARE] Starting IndexedDB reload for user: ${userId}`
+  );
+
+  try {
+    // Enable sync mode to prevent change tracking during reload
+    enableSyncMode();
+
+    try {
+      // Get trips for the current user
+      const trips = await TripStorage.getUserTrips(userId);
+      console.log(
+        `📋 [SYNC_MIDDLEWARE] Loaded ${trips.length} trips from IndexedDB`
+      );
+
+      // Use UPSERT_SYNCED_TRIP to properly populate tripsById with full TripData objects
+      for (const trip of trips) {
+        console.log(
+          `🔄 [SYNC_MIDDLEWARE] Upserting trip: ${trip.title} (${trip.id})`
+        );
+        dispatch({
+          type: 'UPSERT_SYNCED_TRIP',
+          payload: trip,
+        });
+
+        // Also load related people and items for each trip
+        try {
+          const people = await PersonStorage.getTripPeople(trip.id);
+          const items = await ItemStorage.getTripItems(trip.id);
+
+          console.log(
+            `👥 [SYNC_MIDDLEWARE] Loading ${people.length} people for trip ${trip.id}`
+          );
+          for (const person of people) {
+            dispatch({
+              type: 'UPSERT_SYNCED_PERSON',
+              payload: person,
+            });
+          }
+
+          console.log(
+            `📦 [SYNC_MIDDLEWARE] Loading ${items.length} items for trip ${trip.id}`
+          );
+          for (const item of items) {
+            dispatch({
+              type: 'UPSERT_SYNCED_ITEM',
+              payload: item,
+            });
+          }
+        } catch (relationError) {
+          console.error(
+            `❌ [SYNC_MIDDLEWARE] Failed to load people/items for trip ${trip.id}:`,
+            relationError
+          );
+        }
+      }
+
+      console.log(
+        `✅ [SYNC_MIDDLEWARE] Successfully loaded ${trips.length} trips into Redux state`
+      );
+    } finally {
+      // Always disable sync mode, even if an error occurred
+      disableSyncMode();
+    }
+  } catch (error) {
+    console.error(
+      '❌ [SYNC_MIDDLEWARE] Failed to reload from IndexedDB:',
+      error
+    );
+  }
+}
+
+/**
  * Redux middleware that automatically tracks sync changes using deep diffs.
  * This approach is more robust than action-based tracking as it detects actual state changes.
  */
@@ -54,6 +136,30 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
 
     // Execute the action
     const result = next(action);
+
+    // Handle @@init action to reload from IndexedDB
+    if ((action as UnknownAction).type === '@@init') {
+      const nextState = store.getState();
+      const userId = nextState.auth.user?.id;
+
+      if (userId && userId !== 'local-user') {
+        console.log(
+          '🔄 [SYNC_MIDDLEWARE] Detected @@init action, triggering IndexedDB reload'
+        );
+        // Trigger reload asynchronously to avoid blocking the action
+        reloadFromIndexedDB(
+          store.dispatch as (action: AllActions) => void,
+          userId
+        ).catch((error) => {
+          console.error('❌ [SYNC_MIDDLEWARE] IndexedDB reload failed:', error);
+        });
+      } else {
+        console.log(
+          '⏭️ [SYNC_MIDDLEWARE] Skipping IndexedDB reload: no authenticated user'
+        );
+      }
+      return result;
+    }
 
     if (
       (action as UnknownAction).type.includes('upsert') ||
