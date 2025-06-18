@@ -4,8 +4,7 @@ import {
   Day,
   Person,
 } from '@packing-list/model';
-import type { RuleOverride, TripItem } from '@packing-list/model';
-import { ItemStorage } from '@packing-list/offline-storage';
+import type { RuleOverride } from '@packing-list/model';
 import { StoreType } from '../store.js';
 import {
   calculateRuleHash,
@@ -682,26 +681,6 @@ export const calculatePackingListHandler = (state: StoreType): StoreType => {
   // Preserve packed status and save to storage
   const existingItems = selectedTripData.calculated.packingListItems;
   const updatedItems = preservePackedStatus(packingListItems, existingItems);
-
-  // Save to storage
-  updatedItems.forEach((item) => {
-    const tripItem: TripItem = {
-      id: item.id,
-      tripId: selectedTripId,
-      name: item.name,
-      category: item.categoryId,
-      quantity: item.quantity,
-      packed: item.isPacked,
-      notes: item.notes,
-      personId: item.personId,
-      dayIndex: item.dayIndex,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      version: 1,
-      isDeleted: false,
-    };
-    ItemStorage.saveItem(tripItem).catch(console.error);
-  });
 
   // Update state
   return {

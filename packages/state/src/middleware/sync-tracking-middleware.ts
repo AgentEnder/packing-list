@@ -1,7 +1,22 @@
 import { Middleware, UnknownAction } from '@reduxjs/toolkit';
 import { getChangeTracker, ChangeTracker } from '@packing-list/sync';
 import type { StoreType } from '../store.js';
-import type { Trip, Person } from '@packing-list/model';
+import type {
+  Trip,
+  Person,
+  TripItem,
+  DefaultItemRule,
+  RulePack,
+  TripRule,
+} from '@packing-list/model';
+import {
+  TripStorage,
+  PersonStorage,
+  ItemStorage,
+  DefaultItemRulesStorage,
+  RulePacksStorage,
+  TripRuleStorage,
+} from '@packing-list/offline-storage';
 
 /**
  * Deep equality check for objects
@@ -181,6 +196,22 @@ function trackPackingStatusChange(
         error
       );
     });
+  const tripItem: TripItem = {
+    id: itemId,
+    tripId,
+    name: nextItem.name,
+    category: nextItem.categoryId,
+    quantity: nextItem.quantity,
+    packed: newStatus,
+    notes: nextItem.notes,
+    personId: nextItem.personId,
+    dayIndex: nextItem.dayIndex,
+    createdAt: nextItem.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    version: nextItem.version || 1,
+    isDeleted: false,
+  };
+  ItemStorage.saveItem(tripItem).catch(console.error);
 }
 
 /**
@@ -228,6 +259,7 @@ function trackTripChanges(
     };
 
     changeTracker.trackTripChange('create', modernTrip, userId);
+    TripStorage.saveTrip(modernTrip).catch(console.error);
     return;
   }
 
@@ -259,6 +291,7 @@ function trackTripChanges(
     };
 
     changeTracker.trackTripChange('update', trip, userId);
+    TripStorage.saveTrip(trip).catch(console.error);
   }
 }
 
@@ -301,6 +334,7 @@ function trackPersonChanges(
       };
 
       changeTracker.trackPersonChange('create', person, userId, tripId);
+      PersonStorage.savePerson(person).catch(console.error);
     } else if (!deepEqual(prevPerson, nextPerson)) {
       console.log(`👤 [SYNC_MIDDLEWARE] Person updated: ${nextPerson.id}`);
       const person: Person = {
@@ -322,6 +356,7 @@ function trackPersonChanges(
       };
 
       changeTracker.trackPersonChange('update', person, userId, tripId);
+      PersonStorage.savePerson(person).catch(console.error);
     }
   }
 
@@ -350,6 +385,7 @@ function trackPersonChanges(
       };
 
       changeTracker.trackPersonChange('delete', modernPerson, userId, tripId);
+      PersonStorage.deletePerson(prevPerson.id).catch(console.error);
     }
   }
 }
@@ -375,9 +411,21 @@ function trackRuleChanges(
     if (!prevRule) {
       console.log(`📋 [SYNC_MIDDLEWARE] New rule detected: ${rule.id}`);
       changeTracker.trackDefaultItemRuleChange('create', rule, userId, tripId);
+      DefaultItemRulesStorage.saveDefaultItemRule(rule).catch(console.error);
+      const tripRule: TripRule = {
+        id: `${tripId}-${rule.id}`,
+        tripId,
+        ruleId: rule.id,
+        createdAt: now,
+        updatedAt: now,
+        version: 1,
+        isDeleted: false,
+      };
+      TripRuleStorage.saveTripRule(tripRule).catch(console.error);
     } else if (!deepEqual(prevRule, rule)) {
       console.log(`📋 [SYNC_MIDDLEWARE] Rule updated: ${rule.id}`);
       changeTracker.trackDefaultItemRuleChange('update', rule, userId, tripId);
+      DefaultItemRulesStorage.saveDefaultItemRule(rule).catch(console.error);
     }
   }
 
@@ -393,6 +441,10 @@ function trackRuleChanges(
         userId,
         tripId
       );
+      DefaultItemRulesStorage.deleteDefaultItemRule(prevRule.id).catch(
+        console.error
+      );
+      TripRuleStorage.deleteTripRule(tripId, prevRule.id).catch(console.error);
     }
   }
 }
@@ -418,9 +470,11 @@ function trackRulePackChanges(
     if (!prevPack) {
       console.log(`📦 [SYNC_MIDDLEWARE] New rule pack detected: ${pack.id}`);
       changeTracker.trackRulePackChange('create', pack, userId);
+      RulePacksStorage.saveRulePack(pack).catch(console.error);
     } else if (!deepEqual(prevPack, pack)) {
       console.log(`📦 [SYNC_MIDDLEWARE] Rule pack updated: ${pack.id}`);
       changeTracker.trackRulePackChange('update', pack, userId);
+      RulePacksStorage.saveRulePack(pack).catch(console.error);
     }
   }
 
@@ -431,6 +485,7 @@ function trackRulePackChanges(
     if (!stillExists) {
       console.log(`📦 [SYNC_MIDDLEWARE] Rule pack removed: ${prevPack.id}`);
       changeTracker.trackRulePackChange('delete', prevPack, userId);
+      RulePacksStorage.deleteRulePack(prevPack.id).catch(console.error);
     }
   }
 }

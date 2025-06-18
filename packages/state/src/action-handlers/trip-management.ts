@@ -1,5 +1,4 @@
 import { StoreType, TripData } from '../store.js';
-import { TripStorage } from '@packing-list/offline-storage';
 import { Trip, TripSummary } from '@packing-list/model';
 import { createEmptyTripData, initialState } from '../store.js';
 
@@ -106,19 +105,6 @@ export function createTripHandler(
   });
 
   // Persist trip asynchronously
-  TripStorage.saveTrip(tripModel)
-    .then(() => {
-      console.log(
-        '✅ [CREATE_TRIP] Trip saved successfully to IndexedDB:',
-        tripModel.id
-      );
-    })
-    .catch((error) => {
-      console.error(
-        '❌ [CREATE_TRIP] Failed to save trip to IndexedDB:',
-        error
-      );
-    });
 
   return {
     ...state,
@@ -177,11 +163,6 @@ export function deleteTripHandler(
       updatedSummaries.length > 0 ? updatedSummaries[0].tripId : null;
   }
 
-  // Persist deletion asynchronously
-  if (existingTrip) {
-    TripStorage.deleteTrip(tripId).catch(console.error);
-  }
-
   return {
     ...state,
     trips: {
@@ -209,18 +190,6 @@ export function updateTripSummaryHandler(
         }
       : summary
   );
-
-  // Persist update asynchronously
-  const tripData = state.trips.byId[tripId];
-  if (tripData) {
-    const updatedTrip: Trip = {
-      ...(tripData.trip as Trip),
-      title,
-      description: description || '',
-      updatedAt: new Date().toISOString(),
-    };
-    TripStorage.saveTrip(updatedTrip).catch(console.error);
-  }
 
   return {
     ...state,

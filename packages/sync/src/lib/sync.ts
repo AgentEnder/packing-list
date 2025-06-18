@@ -62,7 +62,6 @@ export interface SyncOptions {
   supabaseAnonKey?: string;
   autoSyncInterval?: number; // milliseconds
   demoMode?: boolean; // Disable active syncing, only show demo conflicts
-  dispatch?: Dispatch; // Redux dispatch function for integration
   reloadFromIndexedDB?: (payload: {
     syncedCount: number;
     isInitialSync: boolean;
@@ -70,6 +69,10 @@ export interface SyncOptions {
   }) => void;
   userId?: string; // Current user ID for data filtering
   callbacks?: {
+    onTripUpsert?: (trip: Trip) => void;
+    onPersonUpsert?: (person: Person) => void;
+    onItemUpsert?: (item: TripItem) => void;
+    onRulePackUpsert?: (pack: RulePack) => void;
     onTripRuleUpsert?: (tripRule: TripRule) => void;
   };
 }
@@ -1151,6 +1154,7 @@ export class SyncService {
               defaultItemRules: existingTrip?.defaultItemRules || [],
             };
             await TripStorage.saveTrip(tripToSave);
+            this.options.callbacks?.onTripUpsert?.(tripToSave as Trip);
             syncedCount++;
           }
         );
@@ -1181,6 +1185,7 @@ export class SyncService {
           mappedPerson,
           async (serverPerson) => {
             await PersonStorage.savePerson(serverPerson as Person);
+            this.options.callbacks?.onPersonUpsert?.(serverPerson as Person);
             syncedCount++;
           }
         );
@@ -1211,6 +1216,7 @@ export class SyncService {
           mappedItem,
           async (serverItem) => {
             await ItemStorage.saveItem(serverItem as TripItem);
+            this.options.callbacks?.onItemUpsert?.(serverItem as TripItem);
             syncedCount++;
           }
         );
@@ -1363,6 +1369,7 @@ export class SyncService {
           async (serverPack) => {
             // First save the rule pack with empty rules array
             await RulePacksStorage.saveRulePack(serverPack as RulePack);
+            this.options.callbacks?.onRulePackUpsert?.(serverPack as RulePack);
             syncedCount++;
           }
         );
@@ -1378,9 +1385,8 @@ export class SyncService {
     // Populate rule pack rules after all data is synced
     await this.populateRulePackRules();
 
-    // Always call the callback when data is synced (not just initial sync)
-    // This ensures Redux state gets updated whenever sync pulls data
-    if (syncedCount > 0 && this.options.reloadFromIndexedDB) {
+    // Only reload state from IndexedDB during the initial hydration
+    if (syncedCount > 0 && isInitialSync && this.options.reloadFromIndexedDB) {
       this.options.reloadFromIndexedDB({
         syncedCount,
         isInitialSync,

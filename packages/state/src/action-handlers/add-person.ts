@@ -1,7 +1,6 @@
 import { Person } from '@packing-list/model';
 import { StoreType } from '../store.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
-import { PersonStorage } from '@packing-list/offline-storage';
 
 export type AddPersonAction = {
   type: 'ADD_PERSON';
@@ -45,8 +44,6 @@ export const addPersonHandler = (
       },
     },
   };
-
-  PersonStorage.savePerson(action.payload).catch(console.error);
 
   // Recalculate packing list with new person
   return calculatePackingListHandler(stateWithNewPerson);

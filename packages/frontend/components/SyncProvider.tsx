@@ -134,11 +134,14 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
 
         // Pass Redux dispatch and current user ID to sync service options
         syncServiceRef.current = getSyncService({
-          dispatch: dispatchRef.current,
           reloadFromIndexedDB: handleReloadFromIndexedDB,
           userId: userId,
           demoMode: isDemoMode,
           callbacks: {
+            onTripUpsert: entityCallbacks.onTripUpsert,
+            onPersonUpsert: entityCallbacks.onPersonUpsert,
+            onItemUpsert: entityCallbacks.onItemUpsert,
+            onRulePackUpsert: entityCallbacks.onRulePackUpsert,
             onTripRuleUpsert: entityCallbacks.onTripRuleUpsert,
           },
         });
@@ -255,7 +258,6 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
 
       // Get the sync service and force sync
       const syncService = getSyncService({
-        dispatch: dispatchRef.current,
         demoMode: isDemoMode,
       });
       await syncService.forceSync();

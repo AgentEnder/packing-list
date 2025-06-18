@@ -1,6 +1,5 @@
 import { TripEvent } from '@packing-list/model';
 import { StoreType } from '../store.js';
-import { TripStorage } from '@packing-list/offline-storage';
 import { enumerateTripDays } from './calculate-days.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
 
@@ -47,10 +46,6 @@ export const updateTripEventsHandler = (
       },
     },
   };
-
-  // Save to storage - create a minimal trip model for storage
-
-  TripStorage.saveTrip(updatedTrip).catch(console.error);
 
   // Recalculate packing list with the new days
   return calculatePackingListHandler(updatedState);

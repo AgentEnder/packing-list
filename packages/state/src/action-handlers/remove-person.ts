@@ -1,6 +1,5 @@
 import { StoreType } from '../store.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
-import { PersonStorage } from '@packing-list/offline-storage';
 
 export type RemovePersonAction = {
   type: 'REMOVE_PERSON';
@@ -47,8 +46,6 @@ export const removePersonHandler = (
       },
     },
   };
-
-  PersonStorage.deletePerson(action.payload.id).catch(console.error);
 
   // Recalculate packing list without the removed person
   return calculatePackingListHandler(stateWithRemovedPerson);

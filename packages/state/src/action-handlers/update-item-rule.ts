@@ -2,7 +2,6 @@ import type { DefaultItemRule } from '@packing-list/model';
 import type { StoreType } from '../store.js';
 import { calculateDefaultItems } from './calculate-default-items.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
-import { DefaultItemRulesStorage } from '@packing-list/offline-storage';
 
 export type UpdateItemRuleAction = {
   type: 'UPDATE_ITEM_RULE';
@@ -45,10 +44,6 @@ export const updateItemRuleHandler = (
       },
     },
   };
-
-  DefaultItemRulesStorage.saveDefaultItemRule(action.payload).catch(
-    console.error
-  );
 
   // Then recalculate default items
   const stateWithDefaultItems = calculateDefaultItems(stateWithUpdatedRule);
