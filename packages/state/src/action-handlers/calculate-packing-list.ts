@@ -615,13 +615,33 @@ function preservePackedStatus(
   existingItems: PackingListItem[]
 ): PackingListItem[] {
   return newItems.map((item) => {
-    const existing = existingItems.find(
+    // First try to match by ruleId and ruleHash (for calculated items)
+    let existing = existingItems.find(
       (e) =>
         e.ruleId === item.ruleId &&
         e.ruleHash === item.ruleHash &&
         e.dayIndex === item.dayIndex &&
         e.personId === item.personId
     );
+
+    // If no match found and existing item has 'imported' ruleId (from IndexedDB),
+    // try matching by name, dayIndex, personId, and quantity
+    if (!existing) {
+      existing = existingItems.find(
+        (e) =>
+          e.ruleId === 'imported' && // Only match stored items from IndexedDB
+          e.itemName === item.itemName &&
+          e.dayIndex === item.dayIndex &&
+          e.personId === item.personId &&
+          e.quantity === item.quantity
+      );
+
+      if (existing) {
+        console.log(
+          `🔄 [PRESERVE_PACKED] Matched stored item by name: ${item.itemName} (${existing.id} → ${item.id})`
+        );
+      }
+    }
 
     return existing ? { ...item, isPacked: existing.isPacked } : item;
   });
