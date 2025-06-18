@@ -175,13 +175,13 @@ export default function LayoutDefault({
         console.log('🔧 [LAYOUT] Hydrating data for user:', userId);
 
         // Load offline state data
-        const offlineState = await loadOfflineState(userId);
+        // const offlineState = await loadOfflineState(userId);
 
-        // Dispatch the HYDRATE_OFFLINE action with the loaded data
-        dispatch({
-          type: 'HYDRATE_OFFLINE',
-          payload: offlineState,
-        });
+        // // Dispatch the HYDRATE_OFFLINE action with the loaded data
+        // dispatch({
+        //   type: 'HYDRATE_OFFLINE',
+        //   payload: offlineState,
+        // });
 
         console.log('✅ [LAYOUT] Data hydration completed for user:', userId);
       } catch (error) {

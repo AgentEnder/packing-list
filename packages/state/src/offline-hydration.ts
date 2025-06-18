@@ -6,14 +6,16 @@ import {
 } from '@packing-list/offline-storage';
 import type { TripItem, PackingListItem } from '@packing-list/model';
 import { createEmptyTripData, type StoreType, type TripData } from './store.js';
+import { calculatePackingListHandler } from './action-handlers/calculate-packing-list.js';
 
 function mapItem(item: TripItem): PackingListItem {
   return {
     id: item.id,
     name: item.name,
     itemName: item.name,
-    ruleId: 'imported',
-    ruleHash: '',
+    // Use actual rule information if available, fallback to 'imported' for legacy items
+    ruleId: item.ruleId || 'imported',
+    ruleHash: item.ruleHash || '',
     isPacked: item.packed,
     isOverridden: false,
     dayIndex: item.dayIndex,
@@ -124,11 +126,19 @@ export async function loadOfflineState(
         // The Trip type now includes all necessary fields for proper data management
         data.trip = { ...trip, defaultItemRules };
         data.people = people;
-        data.calculated.packingListItems = items.map(mapItem);
         data.lastSynced = trip.lastSyncedAt;
+
+        // Load stored items with preserved rule information
+        // The normal Redux flow will calculate the packing list and preserve packed status
+        data.calculated.packingListItems = items.map(mapItem);
         base.trips.byId[trip.id] = data;
 
-        console.log(`✅ [HYDRATION] Trip ${trip.id} ready for Redux state`);
+        console.log(
+          `✅ [HYDRATION] Trip ${trip.id} ready for Redux state with ${
+            data.calculated.packingListItems.filter((item) => item.isPacked)
+              .length
+          } packed items`
+        );
       } catch (tripError) {
         console.error(
           `❌ [HYDRATION] Error loading trip ${summary.tripId}:`,

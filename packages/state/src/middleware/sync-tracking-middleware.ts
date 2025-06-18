@@ -47,7 +47,7 @@ function deepEqual(obj1: unknown, obj2: unknown): boolean {
 
 /**
  * Reload trip data from IndexedDB and populate Redux state
- * This is triggered on @@init to ensure state is hydrated from offline storage
+ * This is triggered on auth completion to ensure state is hydrated from offline storage
  */
 async function reloadFromIndexedDB(
   dispatch: (action: AllActions) => void,
@@ -62,78 +62,24 @@ async function reloadFromIndexedDB(
     enableSyncMode();
 
     try {
-      // Get trips for the current user
-      const trips = await TripStorage.getUserTrips(userId);
+      // Load offline state using the existing loadOfflineState function
+      const { loadOfflineState } = await import('../offline-hydration.js');
+      const offlineState = await loadOfflineState(userId);
+
       console.log(
-        `📋 [SYNC_MIDDLEWARE] Loaded ${trips.length} trips from IndexedDB`
+        `✅ [SYNC_MIDDLEWARE] Successfully loaded offline state for ${
+          Object.keys(offlineState.trips.byId).length
+        } trips`
       );
 
-      // Use UPSERT_SYNCED_TRIP to properly populate tripsById with full TripData objects
-      for (const trip of trips) {
-        console.log(
-          `🔄 [SYNC_MIDDLEWARE] Upserting trip: ${trip.title} (${trip.id})`
-        );
-        dispatch({
-          type: 'UPSERT_SYNCED_TRIP',
-          payload: trip,
-        });
-
-        // Load trip rule associations FIRST to populate packing list
-        try {
-          const tripRules = await TripRuleStorage.getTripRulesWithDetails(
-            trip.id
-          );
-          console.log(
-            `📋 [SYNC_MIDDLEWARE] Loading ${tripRules.length} rules for trip ${trip.id}`
-          );
-
-          for (const rule of tripRules) {
-            dispatch({
-              type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE',
-              payload: { rule, tripId: trip.id },
-            });
-          }
-        } catch (rulesError) {
-          console.error(
-            `❌ [SYNC_MIDDLEWARE] Failed to load rules for trip ${trip.id}:`,
-            rulesError
-          );
-        }
-
-        // THEN load people and items after rules are loaded and packing list is calculated
-        try {
-          const people = await PersonStorage.getTripPeople(trip.id);
-          const items = await ItemStorage.getTripItems(trip.id);
-
-          console.log(
-            `👥 [SYNC_MIDDLEWARE] Loading ${people.length} people for trip ${trip.id}`
-          );
-          for (const person of people) {
-            dispatch({
-              type: 'UPSERT_SYNCED_PERSON',
-              payload: person,
-            });
-          }
-
-          console.log(
-            `📦 [SYNC_MIDDLEWARE] Loading ${items.length} items for trip ${trip.id} (after rules loaded)`
-          );
-          for (const item of items) {
-            dispatch({
-              type: 'UPSERT_SYNCED_ITEM',
-              payload: item,
-            });
-          }
-        } catch (relationError) {
-          console.error(
-            `❌ [SYNC_MIDDLEWARE] Failed to load people/items for trip ${trip.id}:`,
-            relationError
-          );
-        }
-      }
+      // Dispatch single HYDRATE_OFFLINE action with complete state
+      dispatch({
+        type: 'HYDRATE_OFFLINE',
+        payload: offlineState,
+      });
 
       console.log(
-        `✅ [SYNC_MIDDLEWARE] Successfully loaded ${trips.length} trips into Redux state`
+        `🔄 [SYNC_MIDDLEWARE] Successfully hydrated Redux state from IndexedDB`
       );
     } finally {
       // Always disable sync mode, even if an error occurred
