@@ -648,7 +648,9 @@ function preservePackedStatus(
 }
 
 // Main handler function
-export const calculatePackingListHandler = (state: StoreType): StoreType => {
+export const calculatePackingListHandler = <T extends Pick<StoreType, 'trips'>>(
+  state: T
+): T => {
   const selectedTripId = state.trips.selectedTripId;
 
   if (!selectedTripId || !state.trips.byId[selectedTripId]) {

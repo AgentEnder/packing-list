@@ -128,15 +128,77 @@ export async function loadOfflineState(
         data.people = people;
         data.lastSynced = trip.lastSyncedAt;
 
-        // Load stored items with preserved rule information
-        // The normal Redux flow will calculate the packing list and preserve packed status
-        data.calculated.packingListItems = items.map(mapItem);
-        base.trips.byId[trip.id] = data;
+        // Create a temporary state with this trip to calculate packing list
+        const tempState: Pick<StoreType, 'trips'> = {
+          trips: {
+            summaries: [],
+            selectedTripId: trip.id,
+            byId: { [trip.id]: data },
+          },
+        };
+
+        // Calculate the packing list with all rules and people loaded
+        console.log(
+          `🔄 [HYDRATION] Calculating packing list for trip ${trip.id}`
+        );
+        const calculatedState = calculatePackingListHandler(tempState);
+        const calculatedTripData = calculatedState.trips.byId[trip.id];
+
+        if (!calculatedTripData) {
+          console.error(
+            `❌ [HYDRATION] Failed to calculate packing list for trip ${trip.id}`
+          );
+          base.trips.byId[trip.id] = data;
+          continue;
+        }
+
+        // Now preserve packed status from stored items by matching against calculated items
+        const storedItems = items.map(mapItem);
+        console.log(
+          `📦 [HYDRATION] Preserving packed status for ${storedItems.length} stored items against ${calculatedTripData.calculated.packingListItems.length} calculated items`
+        );
+
+        // Use the same matching logic as preservePackedStatus
+        const finalItems = calculatedTripData.calculated.packingListItems.map(
+          (calculatedItem: PackingListItem) => {
+            // First try to match by ruleId and ruleHash (for items with rule information)
+            let storedItem = storedItems.find(
+              (stored) =>
+                stored.ruleId === calculatedItem.ruleId &&
+                stored.ruleHash === calculatedItem.ruleHash &&
+                stored.dayIndex === calculatedItem.dayIndex &&
+                stored.personId === calculatedItem.personId
+            );
+
+            // If no match found by rule info, try matching by logical properties
+            if (!storedItem) {
+              storedItem = storedItems.find(
+                (stored) =>
+                  stored.itemName === calculatedItem.itemName &&
+                  stored.dayIndex === calculatedItem.dayIndex &&
+                  stored.personId === calculatedItem.personId &&
+                  stored.quantity === calculatedItem.quantity
+              );
+            }
+
+            // Preserve packed status if we found a match
+            if (storedItem) {
+              console.log(
+                `🔄 [HYDRATION] Preserved packed status for ${calculatedItem.itemName}: ${storedItem.isPacked}`
+              );
+              return { ...calculatedItem, isPacked: storedItem.isPacked };
+            }
+
+            return calculatedItem;
+          }
+        );
+
+        calculatedTripData.calculated.packingListItems = finalItems;
+        base.trips.byId[trip.id] = calculatedTripData;
 
         console.log(
           `✅ [HYDRATION] Trip ${trip.id} ready for Redux state with ${
-            data.calculated.packingListItems.filter((item) => item.isPacked)
-              .length
+            finalItems.filter((item) => item.isPacked).length
           } packed items`
         );
       } catch (tripError) {

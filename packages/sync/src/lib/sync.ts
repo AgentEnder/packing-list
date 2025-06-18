@@ -118,23 +118,59 @@ function fromJson<T>(json: Json): T {
 
 // Type guard functions for discriminated union changes
 function isPackingStatusChange(change: Change): change is PackingStatusChange {
-  return (
+  const result =
     change.entityType === 'item' &&
     typeof change.data === 'object' &&
     change.data !== null &&
     '_packingStatusOnly' in change.data &&
-    change.data._packingStatusOnly === true
-  );
+    change.data._packingStatusOnly === true;
+
+  if (change.entityType === 'item') {
+    console.log(
+      `🔍 [SYNC] Checking if item change is packing status: ${result}`,
+      {
+        entityType: change.entityType,
+        hasPackingStatusFlag:
+          change.data &&
+          typeof change.data === 'object' &&
+          '_packingStatusOnly' in change.data,
+        flagValue:
+          change.data && typeof change.data === 'object'
+            ? (change.data as any)._packingStatusOnly
+            : 'N/A',
+      }
+    );
+  }
+
+  return result;
 }
 
 function isBulkPackingChange(change: Change): change is BulkPackingChange {
-  return (
+  const result =
     change.entityType === 'item' &&
     typeof change.data === 'object' &&
     change.data !== null &&
     'bulkPackingUpdate' in change.data &&
-    change.data.bulkPackingUpdate === true
-  );
+    change.data.bulkPackingUpdate === true;
+
+  if (change.entityType === 'item') {
+    console.log(
+      `🔍 [SYNC] Checking if item change is bulk packing: ${result}`,
+      {
+        entityType: change.entityType,
+        hasBulkFlag:
+          change.data &&
+          typeof change.data === 'object' &&
+          'bulkPackingUpdate' in change.data,
+        flagValue:
+          change.data && typeof change.data === 'object'
+            ? (change.data as any).bulkPackingUpdate
+            : 'N/A',
+      }
+    );
+  }
+
+  return result;
 }
 
 // Helper function to validate required fields for different operations
@@ -342,9 +378,22 @@ export class SyncService {
     } as Change; // Type assertion needed due to discriminated union complexity
 
     await db.put('syncChanges', fullChange);
-    console.log(
-      `[SyncService] Tracked change: ${fullChange.operation} ${fullChange.entityType}:${fullChange.entityId}`
-    );
+
+    // Enhanced logging for item changes
+    if (change.entityType === 'item') {
+      console.log(
+        `📝 [SYNC] Tracked item change: ${fullChange.operation} ${fullChange.entityType}:${fullChange.entityId}`,
+        {
+          data: fullChange.data,
+          userId: fullChange.userId,
+          tripId: fullChange.tripId,
+        }
+      );
+    } else {
+      console.log(
+        `[SyncService] Tracked change: ${fullChange.operation} ${fullChange.entityType}:${fullChange.entityId}`
+      );
+    }
 
     this.notifySubscribers();
 
@@ -709,18 +758,29 @@ export class SyncService {
   private async pushItemChange(
     change: ItemChange | PackingStatusChange | BulkPackingChange
   ): Promise<void> {
+    console.log(
+      `🔄 [SYNC] Processing item change: ${change.operation} ${change.entityType}:${change.entityId}`
+    );
+    console.log(
+      `🔄 [SYNC] Change data structure:`,
+      JSON.stringify(change.data, null, 2)
+    );
+
     // Handle bulk packing updates
     if (isBulkPackingChange(change)) {
+      console.log(`🔄 [SYNC] Detected bulk packing change`);
       await this.pushBulkPackingUpdate(change);
       return;
     }
 
     // Handle individual packing status changes
     if (isPackingStatusChange(change)) {
+      console.log(`🔄 [SYNC] Detected individual packing status change`);
       await this.pushPackingStatusUpdate(change);
       return;
     }
 
+    console.log(`🔄 [SYNC] Processing as regular item change`);
     // Handle regular item changes
     const table = 'trip_items';
     const data = change.data;
@@ -788,15 +848,74 @@ export class SyncService {
     change: PackingStatusChange
   ): Promise<void> {
     const data = change.data;
-    const { error } = await supabase
+    console.log(
+      `📦 [SYNC] Pushing packing status update for item ${change.entityId}: packed=${data.packed}`
+    );
+
+    // First try to update the existing item
+    const { data: updateResult, error: updateError } = await supabase
       .from('trip_items')
       .update({
         packed: data.packed,
         updated_at: data.updatedAt || new Date().toISOString(),
       })
-      .eq('id', change.entityId);
+      .eq('id', change.entityId)
+      .select();
 
-    if (error) throw error;
+    if (updateError) {
+      console.error(`❌ [SYNC] Failed to update packing status:`, updateError);
+      throw updateError;
+    }
+
+    // If no rows were updated, the item doesn't exist - we need to create it
+    if (!updateResult || updateResult.length === 0) {
+      console.log(
+        `🆕 [SYNC] Item ${change.entityId} doesn't exist remotely, creating it`
+      );
+
+      // Get all items for the trip from local storage to find the specific item
+      const tripItems = await ItemStorage.getTripItems(change.tripId);
+      const localItem = tripItems.find((item) => item.id === change.entityId);
+
+      if (!localItem) {
+        console.error(
+          `❌ [SYNC] Cannot find item ${change.entityId} in local storage for trip ${change.tripId}`
+        );
+        throw new Error(`Item ${change.entityId} not found in local storage`);
+      }
+
+      // Create the item with the packing status
+      const { error: createError } = await supabase.from('trip_items').insert({
+        id: change.entityId,
+        trip_id: change.tripId,
+        name: localItem.name,
+        category: localItem.category,
+        quantity: localItem.quantity || 1,
+        packed: data.packed, // Use the packed status from the change
+        notes: localItem.notes,
+        person_id: localItem.personId,
+        day_index: localItem.dayIndex,
+        rule_id: localItem.ruleId,
+        rule_hash: localItem.ruleHash,
+        version: change.version || 1,
+      });
+
+      if (createError) {
+        console.error(
+          `❌ [SYNC] Failed to create item with packing status:`,
+          createError
+        );
+        throw createError;
+      }
+
+      console.log(
+        `✅ [SYNC] Created item ${change.entityId} with packing status: ${data.packed}`
+      );
+    } else {
+      console.log(
+        `✅ [SYNC] Updated packing status for existing item ${change.entityId}: ${data.packed}`
+      );
+    }
   }
 
   private async pushBulkPackingUpdate(
@@ -805,30 +924,99 @@ export class SyncService {
     const data = change.data;
     const updates = data.changes;
 
+    console.log(
+      `📦 [SYNC] Pushing bulk packing update for ${updates.length} items`
+    );
+
+    // Get all local items for the trip once, since we might need to create missing ones
+    const tripItems = await ItemStorage.getTripItems(change.tripId);
+    const itemsMap = new Map(tripItems.map((item) => [item.id, item]));
+
     // Process bulk updates in batches for better performance
     const batchSize = 50;
+    let successCount = 0;
+    let errorCount = 0;
+    let createdCount = 0;
+
     for (let i = 0; i < updates.length; i += batchSize) {
       const batch = updates.slice(i, i + batchSize);
 
       // Use upsert with conflict resolution for each item
       for (const update of batch) {
-        const { error } = await supabase
-          .from('trip_items')
-          .update({
-            packed: update.packed,
-            updated_at: data.updatedAt || new Date().toISOString(),
-          })
-          .eq('id', update.itemId);
+        try {
+          // First try to update the existing item
+          const { data: updateResult, error: updateError } = await supabase
+            .from('trip_items')
+            .update({
+              packed: update.packed,
+              updated_at: data.updatedAt || new Date().toISOString(),
+            })
+            .eq('id', update.itemId)
+            .select();
 
-        if (error) {
+          if (updateError) {
+            console.error(
+              `❌ [SYNC] Failed to update item ${update.itemId}:`,
+              updateError
+            );
+            errorCount++;
+            continue;
+          }
+
+          // If no rows were updated, the item doesn't exist - create it
+          if (!updateResult || updateResult.length === 0) {
+            const localItem = itemsMap.get(update.itemId);
+            if (!localItem) {
+              console.error(
+                `❌ [SYNC] Cannot find item ${update.itemId} in local storage`
+              );
+              errorCount++;
+              continue;
+            }
+
+            // Create the item with the packing status
+            const { error: createError } = await supabase
+              .from('trip_items')
+              .insert({
+                id: update.itemId,
+                trip_id: change.tripId,
+                name: localItem.name,
+                category: localItem.category,
+                quantity: localItem.quantity || 1,
+                packed: update.packed,
+                notes: localItem.notes,
+                person_id: localItem.personId,
+                day_index: localItem.dayIndex,
+                rule_id: localItem.ruleId,
+                rule_hash: localItem.ruleHash,
+                version: change.version || 1,
+              });
+
+            if (createError) {
+              console.error(
+                `❌ [SYNC] Failed to create item ${update.itemId}:`,
+                createError
+              );
+              errorCount++;
+            } else {
+              createdCount++;
+            }
+          } else {
+            successCount++;
+          }
+        } catch (error) {
           console.error(
-            `[SyncService] Failed to update item ${update.itemId}:`,
+            `❌ [SYNC] Unexpected error processing item ${update.itemId}:`,
             error
           );
-          // Continue with other items rather than failing the whole batch
+          errorCount++;
         }
       }
     }
+
+    console.log(
+      `✅ [SYNC] Bulk packing update completed: ${successCount} updated, ${createdCount} created, ${errorCount} errors`
+    );
   }
 
   private async pushRuleOverrideChange(

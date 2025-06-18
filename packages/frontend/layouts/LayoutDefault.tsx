@@ -4,13 +4,14 @@ import React, { useState, useEffect, useRef } from 'react';
 // import logoUrl from '../assets/logo.svg';
 import { Link } from '../components/Link';
 import { DemoBanner } from '../components/DemoBanner';
+import { DevModeBannerContainer } from '../components/DevModeBannerContainer';
 import { ToastContainer } from '../components/Toast';
 import { ConfettiBurst } from '../components/ConfettiBurst';
 import { TripSelector } from '../components/TripSelector';
 import { SyncProvider } from '../components/SyncProvider';
 import { SyncStatus } from '../components/SyncStatus';
 import { useConflictBanner } from '../hooks/useConflictBanner';
-import { useAppDispatch, loadOfflineState } from '@packing-list/state';
+import { useAppDispatch } from '@packing-list/state';
 import {
   useAuth,
   useLoginModal,
@@ -397,6 +398,7 @@ export default function LayoutDefault({
         </div>
 
         {/* Banner Components - Order matters for priority */}
+        <DevModeBannerContainer />
         <OfflineBannerContainer />
         <DemoBanner />
         <ConflictBannerContainer />
