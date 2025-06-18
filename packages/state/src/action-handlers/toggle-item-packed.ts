@@ -1,5 +1,4 @@
 import { StoreType } from '../store.js';
-import { ItemStorage } from '@packing-list/offline-storage';
 import type { TripItem } from '@packing-list/model';
 
 export type ToggleItemPackedAction = {
@@ -33,33 +32,8 @@ export const toggleItemPackedHandler = (
   const toggledItem = updatedItems.find((item) => item.id === itemId);
   if (toggledItem) {
     console.log(
-      `📦 [TOGGLE_ITEM_PACKED] Saving packed status: ${toggledItem.name} (${toggledItem.id}) -> ${toggledItem.isPacked}`
+      `📦 [TOGGLE_ITEM_PACKED] Toggled packed status: ${toggledItem.name} (${toggledItem.id}) -> ${toggledItem.isPacked}`
     );
-
-    // Convert PackingListItem to TripItem and save to IndexedDB
-    const tripItem: TripItem = {
-      id: toggledItem.id,
-      tripId: selectedTripId,
-      name: toggledItem.name,
-      category: toggledItem.categoryId,
-      quantity: toggledItem.quantity,
-      packed: toggledItem.isPacked,
-      notes: toggledItem.notes,
-      personId: toggledItem.personId,
-      dayIndex: toggledItem.dayIndex,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      version: 1,
-      isDeleted: false,
-    };
-
-    // Save to IndexedDB asynchronously
-    ItemStorage.saveItem(tripItem).catch((error) => {
-      console.error(
-        `❌ [TOGGLE_ITEM_PACKED] Failed to save item ${itemId}:`,
-        error
-      );
-    });
   }
 
   const updatedTripData = {

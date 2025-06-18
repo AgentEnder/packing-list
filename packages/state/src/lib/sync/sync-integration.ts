@@ -119,6 +119,18 @@ export const createEntityCallbacks = (
   dispatch: (action: AllActions) => void
 ) => {
   return {
+    onTripUpsert: (trip: Trip) => {
+      dispatch({ type: 'UPSERT_SYNCED_TRIP', payload: trip });
+    },
+    onPersonUpsert: (person: Person) => {
+      dispatch({ type: 'UPSERT_SYNCED_PERSON', payload: person });
+    },
+    onItemUpsert: (item: TripItem) => {
+      dispatch({ type: 'UPSERT_SYNCED_ITEM', payload: item });
+    },
+    onRulePackUpsert: (pack: RulePack) => {
+      dispatch({ type: 'UPSERT_SYNCED_RULE_PACK', payload: pack });
+    },
     onTripRuleUpsert: (tripRule: TripRule) => {
       console.log(
         `🔗 [SYNC INTEGRATION] Associating rule ${tripRule.ruleId} with trip ${tripRule.tripId}`
