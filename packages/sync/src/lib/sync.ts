@@ -945,18 +945,8 @@ export class SyncService {
         });
         if (createError) throw createError;
 
-        // Create trip association if tripId is provided
-        if (change.tripId) {
-          const { error: tripRuleError } = await supabase
-            .from('trip_default_item_rules')
-            .insert({
-              user_id: change.userId,
-              trip_id: change.tripId,
-              rule_id: data.id,
-              version: change.version,
-            });
-          if (tripRuleError) throw tripRuleError;
-        }
+        // Note: Trip rule associations are now tracked separately via TripRuleChange
+        // This prevents duplicate creation and 409 Conflict errors
 
         break;
       }
@@ -989,19 +979,7 @@ export class SyncService {
           .eq('rule_id', data.id);
         if (updateError) throw updateError;
 
-        // Update trip association version if tripId is provided
-        if (change.tripId) {
-          const { error: tripRuleUpdateError } = await supabase
-            .from('trip_default_item_rules')
-            .update({
-              version: change.version,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('user_id', change.userId)
-            .eq('trip_id', change.tripId)
-            .eq('rule_id', data.id);
-          if (tripRuleUpdateError) throw tripRuleUpdateError;
-        }
+        // Note: Trip rule association updates are now handled separately via TripRuleChange
         break;
       }
 
@@ -1013,19 +991,7 @@ export class SyncService {
           .eq('rule_id', data.id);
         if (deleteError) throw deleteError;
 
-        // Remove trip association if tripId is provided
-        if (change.tripId) {
-          const { error: tripRuleDeleteError } = await supabase
-            .from('trip_default_item_rules')
-            .update({
-              is_deleted: true,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('user_id', change.userId)
-            .eq('trip_id', change.tripId)
-            .eq('rule_id', data.id);
-          if (tripRuleDeleteError) throw tripRuleDeleteError;
-        }
+        // Note: Trip rule association deletions are now handled separately via TripRuleChange
         break;
       }
     }
