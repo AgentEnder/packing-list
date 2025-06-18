@@ -346,22 +346,57 @@ function trackPackingStatusChange(
         error
       );
     });
-  const tripItem: TripItem = {
-    id: itemId,
-    tripId,
-    name: nextItem.name,
-    category: nextItem.categoryId,
-    quantity: nextItem.quantity,
-    packed: newStatus,
-    notes: nextItem.notes,
-    personId: nextItem.personId,
-    dayIndex: nextItem.dayIndex,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    version: 1,
-    isDeleted: false,
-  };
-  ItemStorage.saveItem(tripItem).catch(console.error);
+
+  // Get existing item from IndexedDB to preserve data and increment version
+  ItemStorage.getTripItems(tripId)
+    .then((existingItems) => {
+      const existingItem = existingItems.find((item) => item.id === itemId);
+
+      if (existingItem) {
+        // Update existing item with new packed status
+        const updatedItem: TripItem = {
+          ...existingItem,
+          packed: newStatus,
+          updatedAt: new Date().toISOString(),
+          version: existingItem.version + 1,
+        };
+
+        console.log(
+          `💾 [SYNC_MIDDLEWARE] Updating existing item in IndexedDB: ${itemId} (version ${existingItem.version} → ${updatedItem.version})`
+        );
+
+        return ItemStorage.saveItem(updatedItem);
+      } else {
+        // Create new item if it doesn't exist in IndexedDB
+        const newItem: TripItem = {
+          id: itemId,
+          tripId,
+          name: nextItem.name,
+          category: nextItem.categoryId,
+          quantity: nextItem.quantity,
+          packed: newStatus,
+          notes: nextItem.notes,
+          personId: nextItem.personId,
+          dayIndex: nextItem.dayIndex,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          version: 1,
+          isDeleted: false,
+        };
+
+        console.log(
+          `➕ [SYNC_MIDDLEWARE] Creating new item in IndexedDB: ${itemId}`
+        );
+
+        return ItemStorage.saveItem(newItem);
+      }
+    })
+    .catch((error) => {
+      console.error(
+        '❌ [SYNC_MIDDLEWARE] Failed to save item to IndexedDB:',
+        error
+      );
+    });
 }
 
 /**
