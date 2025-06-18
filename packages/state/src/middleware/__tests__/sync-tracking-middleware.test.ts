@@ -144,10 +144,10 @@ describe('syncTrackingMiddleware', () => {
         },
       });
 
-      // Should log that it detected a rule change
+      // Should log that it detected rule changes (now batched)
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining(
-          '📋 [SYNC_MIDDLEWARE] New rule detected: rule-1'
+          '📋 [SYNC_MIDDLEWARE] 1 new rules detected, checking for existing TripRule associations'
         )
       );
     });
