@@ -1,5 +1,7 @@
 import { initialState, StoreType } from './store.js';
 import type { SyncActions } from '@packing-list/sync-state';
+import { uuid } from '@packing-list/shared-utils';
+import { DefaultItemRule } from '@packing-list/model';
 import {
   addPersonHandler,
   AddPersonAction,
@@ -450,4 +452,55 @@ export const actions = {
     type: 'TRIGGER_CONFETTI_BURST',
     payload,
   }),
+  addPerson: (payload: {
+    name: string;
+    age: number;
+    gender?: string;
+  }): AddPersonAction => {
+    const now = new Date().toISOString();
+    return {
+      type: 'ADD_PERSON',
+      payload: {
+        id: uuid(),
+        name: payload.name,
+        age: payload.age,
+        gender: payload.gender as
+          | 'male'
+          | 'female'
+          | 'other'
+          | 'prefer-not-to-say'
+          | undefined,
+        settings: {},
+        createdAt: now,
+        updatedAt: now,
+        version: 1,
+        isDeleted: false,
+        tripId: '', // Will be set by the handler from selected trip
+      },
+    };
+  },
+  createTrip: (payload: {
+    title: string;
+    description?: string;
+  }): CreateTripAction => {
+    return {
+      type: 'CREATE_TRIP',
+      payload: {
+        tripId: uuid(),
+        title: payload.title,
+        description: payload.description,
+      },
+    };
+  },
+  createItemRule: (
+    payload: Omit<DefaultItemRule, 'id'>
+  ): CreateItemRuleAction => {
+    return {
+      type: 'CREATE_ITEM_RULE',
+      payload: {
+        id: uuid(),
+        ...payload,
+      },
+    };
+  },
 };

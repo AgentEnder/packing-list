@@ -29,9 +29,15 @@ export const addPersonHandler = (
     return state; // Person already exists, no need to add
   }
 
+  // Set the tripId on the person since action creator uses placeholder
+  const personWithTripId = {
+    ...action.payload,
+    tripId: selectedTripId,
+  };
+
   const updatedTripData = {
     ...selectedTripData,
-    people: [...selectedTripData.people, action.payload],
+    people: [...selectedTripData.people, personWithTripId],
   };
 
   const stateWithNewPerson = {

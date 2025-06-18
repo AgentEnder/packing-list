@@ -1,7 +1,7 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import type { Person } from '@packing-list/model';
 import { useAppDispatch } from '@packing-list/state';
-import { uuid } from '@packing-list/shared-utils';
+import { actions } from '@packing-list/state';
 
 const genders = ['male', 'female', 'other'];
 
@@ -49,15 +49,13 @@ export const PersonForm = ({ person, onCancel }: PersonFormProps) => {
         },
       });
     } else {
-      dispatch({
-        type: 'ADD_PERSON',
-        payload: {
-          id: uuid(),
+      dispatch(
+        actions.addPerson({
           name: form.name,
           age: Number(form.age),
           gender: form.gender,
-        },
-      });
+        })
+      );
     }
     onCancel();
   };
