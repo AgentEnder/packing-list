@@ -431,6 +431,8 @@ function trackRuleChanges(
         isDeleted: false,
       };
       TripRuleStorage.saveTripRule(tripRule).catch(console.error);
+      // Track the trip-rule association for sync
+      changeTracker.trackTripRuleChange('create', tripRule, userId, tripId);
     } else if (!deepEqual(prevRule, rule)) {
       console.log(`📋 [SYNC_MIDDLEWARE] Rule updated: ${rule.id}`);
       changeTracker.trackDefaultItemRuleChange('update', rule, userId, tripId);
@@ -454,6 +456,22 @@ function trackRuleChanges(
         console.error
       );
       TripRuleStorage.deleteTripRule(tripId, prevRule.id).catch(console.error);
+      // Track the trip-rule association deletion for sync
+      const deletedTripRule: TripRule = {
+        id: `${tripId}-${prevRule.id}`,
+        tripId,
+        ruleId: prevRule.id,
+        createdAt: now,
+        updatedAt: now,
+        version: 1,
+        isDeleted: true,
+      };
+      changeTracker.trackTripRuleChange(
+        'delete',
+        deletedTripRule,
+        userId,
+        tripId
+      );
     }
   }
 }
