@@ -527,18 +527,49 @@ function trackRuleChanges(
       console.log(`📋 [SYNC_MIDDLEWARE] New rule detected: ${rule.id}`);
       changeTracker.trackDefaultItemRuleChange('create', rule, userId, tripId);
       DefaultItemRulesStorage.saveDefaultItemRule(rule).catch(console.error);
-      const tripRule: TripRule = {
-        id: uuid(),
-        tripId,
-        ruleId: rule.id,
-        createdAt: now,
-        updatedAt: now,
-        version: 1,
-        isDeleted: false,
-      };
-      TripRuleStorage.saveTripRule(tripRule).catch(console.error);
-      // Track the trip-rule association for sync
-      changeTracker.trackTripRuleChange('create', tripRule, userId, tripId);
+
+      // Check if TripRule association already exists before creating a new one
+      TripRuleStorage.getTripRules(tripId)
+        .then((existingTripRules) => {
+          const existingAssociation = existingTripRules.find(
+            (tr) => tr.ruleId === rule.id && !tr.isDeleted
+          );
+
+          if (!existingAssociation) {
+            // Create new TripRule association only if it doesn't exist
+            const tripRule: TripRule = {
+              id: uuid(),
+              tripId,
+              ruleId: rule.id,
+              createdAt: now,
+              updatedAt: now,
+              version: 1,
+              isDeleted: false,
+            };
+
+            TripRuleStorage.saveTripRule(tripRule).catch(console.error);
+            // Track the trip-rule association for sync
+            changeTracker.trackTripRuleChange(
+              'create',
+              tripRule,
+              userId,
+              tripId
+            );
+            console.log(
+              `🔗 [SYNC_MIDDLEWARE] Created new TripRule association: ${tripRule.id} (trip: ${tripId}, rule: ${rule.id})`
+            );
+          } else {
+            console.log(
+              `⏭️ [SYNC_MIDDLEWARE] TripRule association already exists: ${existingAssociation.id} (trip: ${tripId}, rule: ${rule.id})`
+            );
+          }
+        })
+        .catch((error) => {
+          console.error(
+            `❌ [SYNC_MIDDLEWARE] Failed to check existing TripRule associations:`,
+            error
+          );
+        });
     } else if (!deepEqual(prevRule, rule)) {
       console.log(`📋 [SYNC_MIDDLEWARE] Rule updated: ${rule.id}`);
       changeTracker.trackDefaultItemRuleChange('update', rule, userId, tripId);
@@ -584,6 +615,7 @@ function trackRuleChanges(
               tripId
             );
           }
+          throw new Error('Trip rule not found before deletion.');
         })
         .catch(console.error);
     }
