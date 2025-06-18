@@ -2,7 +2,6 @@ import { DefaultItemRule } from '@packing-list/model';
 import { StoreType } from '../store.js';
 import { calculateDefaultItems } from './calculate-default-items.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
-import type { TripRule } from '@packing-list/model';
 
 export type CreateItemRuleAction = {
   type: 'CREATE_ITEM_RULE';

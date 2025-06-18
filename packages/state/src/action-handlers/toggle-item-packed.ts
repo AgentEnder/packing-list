@@ -1,5 +1,4 @@
 import { StoreType } from '../store.js';
-import type { TripItem } from '@packing-list/model';
 
 export type ToggleItemPackedAction = {
   type: 'TOGGLE_ITEM_PACKED';

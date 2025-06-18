@@ -95,7 +95,14 @@ describe('Push Operations - Real SyncService', () => {
         title: 'Summer Vacation',
         description: 'A fun summer trip',
         days: [{ date: '2024-07-01', activities: ['beach'] }],
-        tripEvents: [{ type: 'departure', time: '10:00' }],
+        tripEvents: [
+          {
+            id: 'event-123',
+            type: 'leave_home',
+            date: '2024-07-01',
+            notes: 'Departure at 10:00 AM',
+          },
+        ],
         settings: { notifications: true },
       });
 
@@ -110,7 +117,14 @@ describe('Push Operations - Real SyncService', () => {
         title: 'Summer Vacation',
         description: 'A fun summer trip',
         days: [{ date: '2024-07-01', activities: ['beach'] }],
-        trip_events: [{ type: 'departure', time: '10:00' }],
+        trip_events: [
+          {
+            id: 'event-123',
+            type: 'leave_home',
+            date: '2024-07-01',
+            notes: 'Departure at 10:00 AM',
+          },
+        ],
         settings: { notifications: true },
         version: 1,
       });

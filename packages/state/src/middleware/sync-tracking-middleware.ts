@@ -1,14 +1,9 @@
-import { Middleware, UnknownAction } from '@reduxjs/toolkit';
+import type { Middleware } from '@reduxjs/toolkit';
+import { UnknownAction } from '@reduxjs/toolkit';
+import { uuid } from '@packing-list/shared-utils';
+import type { Trip, Person, TripItem, TripRule } from '@packing-list/model';
+import { StoreType } from '../store.js';
 import { getChangeTracker, ChangeTracker } from '@packing-list/sync';
-import type { StoreType } from '../store.js';
-import type {
-  Trip,
-  Person,
-  TripItem,
-  DefaultItemRule,
-  RulePack,
-  TripRule,
-} from '@packing-list/model';
 import {
   TripStorage,
   PersonStorage,
@@ -206,9 +201,9 @@ function trackPackingStatusChange(
     notes: nextItem.notes,
     personId: nextItem.personId,
     dayIndex: nextItem.dayIndex,
-    createdAt: nextItem.createdAt || new Date().toISOString(),
+    createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    version: nextItem.version || 1,
+    version: 1,
     isDeleted: false,
   };
   ItemStorage.saveItem(tripItem).catch(console.error);
@@ -239,13 +234,20 @@ function trackTripChanges(
   if (isActuallyNewTrip) {
     // New trip created - convert to full Trip type
     console.log(`🧳 [SYNC_MIDDLEWARE] New trip detected: ${tripId}`);
+
+    // Ensure all trip events have IDs
+    const tripEventsWithIds = (nextTrip.tripEvents || []).map((event) => ({
+      ...event,
+      id: event.id || uuid(), // Generate ID if missing
+    }));
+
     const modernTrip: Trip = {
       id: nextTrip.id,
       userId,
       title: nextTrip.title || 'New Trip', // Use existing title if available
       description: nextTrip.description,
       days: nextTrip.days,
-      tripEvents: nextTrip.tripEvents || [],
+      tripEvents: tripEventsWithIds,
       createdAt: nextTrip.createdAt || now,
       updatedAt: now,
       lastSyncedAt: nextTrip.lastSyncedAt,
@@ -267,6 +269,13 @@ function trackTripChanges(
   // (not when only trip data like rules or people change)
   if (prevTrip && !deepEqual(prevTrip, nextTrip)) {
     console.log(`🧳 [SYNC_MIDDLEWARE] Trip updated: ${tripId}`);
+
+    // Ensure all trip events have IDs
+    const tripEventsWithIds = (nextTrip.tripEvents || []).map((event) => ({
+      ...event,
+      id: event.id || uuid(), // Generate ID if missing
+    }));
+
     const trip: Trip = {
       id: nextTrip.id,
       userId,
@@ -276,7 +285,7 @@ function trackTripChanges(
           ? nextTrip.description
           : prevTrip.description,
       days: nextTrip.days,
-      tripEvents: nextTrip.tripEvents || [],
+      tripEvents: tripEventsWithIds,
       createdAt: prevTrip.createdAt || nextTrip.createdAt || now,
       updatedAt: now,
       lastSyncedAt: nextTrip.lastSyncedAt,

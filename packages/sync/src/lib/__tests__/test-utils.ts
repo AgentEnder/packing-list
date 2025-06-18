@@ -24,7 +24,17 @@ interface TripChangeOptions extends BaseChangeOptions {
   title?: string;
   description?: string;
   days?: Array<{ date: string; activities: string[] }>;
-  tripEvents?: Array<{ type: string; time: string }>;
+  tripEvents?: Array<{
+    id?: string;
+    type:
+      | 'leave_home'
+      | 'arrive_destination'
+      | 'leave_destination'
+      | 'arrive_home';
+    date: string;
+    location?: string;
+    notes?: string;
+  }>;
   settings?: Record<string, unknown>;
 }
 
@@ -42,6 +52,14 @@ export function createTripChange(options: TripChangeOptions = {}): TripChange {
     settings = {},
   } = options;
 
+  // Ensure trip events have IDs
+  const tripEventsWithIds = tripEvents.map((event) => ({
+    ...event,
+    id:
+      event.id ||
+      `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+  }));
+
   return {
     entityType: 'trip',
     operation,
@@ -55,7 +73,7 @@ export function createTripChange(options: TripChangeOptions = {}): TripChange {
         title,
         description,
         days,
-        tripEvents,
+        tripEvents: tripEventsWithIds,
         settings,
       }),
     },

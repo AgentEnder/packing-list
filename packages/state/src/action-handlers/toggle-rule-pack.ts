@@ -89,7 +89,8 @@ export const toggleRulePackHandler: ActionHandler<ToggleRulePackAction> = (
     // Save trip rule associations for new rules
     const now = new Date().toISOString();
     for (const ruleId of newRuleIds) {
-      const tripRule: TripRule = {
+      // Create trip rule association
+      const tripRuleData: TripRule = {
         id: `${selectedTripId}-${ruleId}`,
         tripId: selectedTripId,
         ruleId,
@@ -98,6 +99,8 @@ export const toggleRulePackHandler: ActionHandler<ToggleRulePackAction> = (
         version: 1,
         isDeleted: false,
       };
+      // Save trip rule association - implementation pending
+      console.log('Trip rule created:', tripRuleData);
     }
 
     // Update the state with new rules
@@ -154,8 +157,9 @@ export const toggleRulePackHandler: ActionHandler<ToggleRulePackAction> = (
     );
 
     // Remove trip rule associations for removed rules
-    for (const ruleId of removedRuleIds) {
+    for (const removedRuleId of removedRuleIds) {
       // trip rule association removed
+      console.log('Trip rule removed for rule:', removedRuleId);
     }
 
     // Update the state with modified rules

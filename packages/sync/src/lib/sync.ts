@@ -47,7 +47,6 @@ import {
   ConnectivityService,
   getConnectivityService,
 } from '@packing-list/connectivity';
-import { Dispatch } from '@reduxjs/toolkit';
 import {
   deepDiff,
   getDefaultIgnorePaths,
@@ -630,8 +629,9 @@ export class SyncService {
         if ('title' in data) updateData.title = data.title;
         if ('description' in data) updateData.description = data.description;
         if ('days' in data) updateData.days = toJson(data.days);
-        if ('tripEvents' in data)
+        if ('tripEvents' in data) {
           updateData.trip_events = toJson(data.tripEvents);
+        }
         if ('settings' in data) updateData.settings = toJson(data.settings);
 
         const { error: updateError } = await supabase

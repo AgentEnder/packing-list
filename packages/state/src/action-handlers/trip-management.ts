@@ -143,8 +143,6 @@ export function deleteTripHandler(
 ): StoreType {
   const { tripId } = action.payload;
 
-  const existingTrip = state.trips.byId[tripId]?.trip;
-
   // Remove from summaries
   const updatedSummaries = state.trips.summaries.filter(
     (summary) => summary.tripId !== tripId
