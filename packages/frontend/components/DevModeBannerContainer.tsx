@@ -1,7 +1,10 @@
 import React from 'react';
 import { DevModeBanner } from './DevModeBanner';
+import { getTimeSinceLastBuild } from '../utils/buildTime';
 
 export const DevModeBannerContainer: React.FC = () => {
+  const [timeSinceBuild, setTimeSinceBuild] = React.useState<string>('');
+
   // Check if we're in development mode
   const isDevMode = React.useMemo(() => {
     // Check various dev mode indicators
@@ -33,5 +36,33 @@ export const DevModeBannerContainer: React.FC = () => {
     return isDev;
   }, []);
 
-  return <DevModeBanner isVisible={isDevMode} />;
+  // Update time since build periodically
+  React.useEffect(() => {
+    if (!isDevMode) return;
+
+    const updateTimeSinceBuild = () => {
+      const time = getTimeSinceLastBuild();
+      console.log('🛠️ [DEV BANNER CONTAINER] Updating time since build:', time);
+      setTimeSinceBuild(time);
+    };
+
+    // Initial update
+    updateTimeSinceBuild();
+
+    // Update every 1 second for live updates
+    const interval = setInterval(updateTimeSinceBuild, 1000);
+
+    console.log(
+      '🛠️ [DEV BANNER CONTAINER] Started live update timer (1s interval)'
+    );
+
+    return () => {
+      console.log('🛠️ [DEV BANNER CONTAINER] Clearing live update timer');
+      clearInterval(interval);
+    };
+  }, [isDevMode]);
+
+  return (
+    <DevModeBanner isVisible={isDevMode} timeSinceBuild={timeSinceBuild} />
+  );
 };

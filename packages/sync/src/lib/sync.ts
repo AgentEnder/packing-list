@@ -135,8 +135,10 @@ function isPackingStatusChange(change: Change): change is PackingStatusChange {
           typeof change.data === 'object' &&
           '_packingStatusOnly' in change.data,
         flagValue:
-          change.data && typeof change.data === 'object'
-            ? (change.data as any)._packingStatusOnly
+          change.data &&
+          typeof change.data === 'object' &&
+          '_packingStatusOnly' in change.data
+            ? change.data._packingStatusOnly
             : 'N/A',
       }
     );
@@ -163,8 +165,10 @@ function isBulkPackingChange(change: Change): change is BulkPackingChange {
           typeof change.data === 'object' &&
           'bulkPackingUpdate' in change.data,
         flagValue:
-          change.data && typeof change.data === 'object'
-            ? (change.data as any).bulkPackingUpdate
+          change.data &&
+          typeof change.data === 'object' &&
+          'bulkPackingUpdate' in change.data
+            ? change.data.bulkPackingUpdate
             : 'N/A',
       }
     );
