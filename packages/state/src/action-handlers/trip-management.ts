@@ -1,5 +1,6 @@
 import { StoreType, TripData } from '../store.js';
 import { Trip, TripSummary } from '@packing-list/model';
+import { uuid } from '@packing-list/shared-utils';
 import { createEmptyTripData, initialState } from '../store.js';
 
 // Action types
@@ -34,6 +35,21 @@ export interface UpdateTripSummaryAction {
     description?: string;
   };
 }
+
+// Action creator
+export const createTrip = (payload: {
+  title: string;
+  description?: string;
+}): CreateTripAction => {
+  return {
+    type: 'CREATE_TRIP',
+    payload: {
+      tripId: uuid(),
+      title: payload.title,
+      description: payload.description,
+    },
+  };
+};
 
 // Action handlers
 export function createTripHandler(

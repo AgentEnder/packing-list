@@ -1,10 +1,40 @@
 import { Person } from '@packing-list/model';
+import { uuid } from '@packing-list/shared-utils';
 import { StoreType } from '../store.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
 
 export type AddPersonAction = {
   type: 'ADD_PERSON';
   payload: Person;
+};
+
+// Action creator
+export const addPerson = (payload: {
+  name: string;
+  age: number;
+  gender?: string;
+}): AddPersonAction => {
+  const now = new Date().toISOString();
+  return {
+    type: 'ADD_PERSON',
+    payload: {
+      id: uuid(),
+      name: payload.name,
+      age: payload.age,
+      gender: payload.gender as
+        | 'male'
+        | 'female'
+        | 'other'
+        | 'prefer-not-to-say'
+        | undefined,
+      settings: {},
+      createdAt: now,
+      updatedAt: now,
+      version: 1,
+      isDeleted: false,
+      tripId: '', // Will be set by the handler from selected trip
+    },
+  };
 };
 
 export const addPersonHandler = (

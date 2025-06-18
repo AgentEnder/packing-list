@@ -1,4 +1,5 @@
 import { DefaultItemRule } from '@packing-list/model';
+import { uuid } from '@packing-list/shared-utils';
 import { StoreType } from '../store.js';
 import { calculateDefaultItems } from './calculate-default-items.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
@@ -6,6 +7,19 @@ import { calculatePackingListHandler } from './calculate-packing-list.js';
 export type CreateItemRuleAction = {
   type: 'CREATE_ITEM_RULE';
   payload: DefaultItemRule;
+};
+
+// Action creator
+export const createItemRule = (
+  payload: Omit<DefaultItemRule, 'id'>
+): CreateItemRuleAction => {
+  return {
+    type: 'CREATE_ITEM_RULE',
+    payload: {
+      id: uuid(),
+      ...payload,
+    },
+  };
 };
 
 export const createItemRuleHandler = (
