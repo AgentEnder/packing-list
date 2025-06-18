@@ -3,7 +3,9 @@
  */
 export function getTimeSinceLastBuild(): string {
   try {
-    const buildTimeString = import.meta.env.VITE_BUILD_TIME;
+    const buildTimeString = '%BUILD_TIME%'.includes('%')
+      ? import.meta.env.VITE_BUILD_TIME
+      : '%BUILD_TIME%';
 
     if (!buildTimeString) {
       console.warn('🛠️ [BUILD TIME] VITE_BUILD_TIME not available');

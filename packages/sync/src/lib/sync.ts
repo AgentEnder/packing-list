@@ -52,6 +52,7 @@ import {
   getDefaultIgnorePaths,
   type DeepDiffResult,
 } from './deep-diff-utils.js';
+import { validateAndFixRuleHash } from './rule-hash-validator.js';
 
 // Type definitions for special sync data formats - these are now moved to the model package
 // but kept here temporarily for any remaining references
@@ -1363,10 +1364,14 @@ export class SyncService {
         }
 
         const mappedItem = mapDatabaseItemToTripItem(itemRow);
+
+        // Validate and fix rule hash for items with ruleId
+        const validatedItem = await validateAndFixRuleHash(mappedItem);
+
         await this.applyServerChange(
           'item',
-          mappedItem.id,
-          mappedItem,
+          validatedItem.id,
+          validatedItem,
           async (serverItem) => {
             await ItemStorage.saveItem(serverItem as TripItem);
             this.options.callbacks?.onItemUpsert?.(serverItem as TripItem);

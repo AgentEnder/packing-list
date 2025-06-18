@@ -11,15 +11,6 @@ export const DevModeBanner: React.FC<DevModeBannerProps> = ({
   isVisible,
   timeSinceBuild,
 }) => {
-  React.useEffect(() => {
-    console.log(
-      '🛠️ [DEV BANNER] Banner visibility changed:',
-      isVisible,
-      'Time since build:',
-      timeSinceBuild
-    );
-  }, [isVisible, timeSinceBuild]);
-
   return (
     <Banner
       id="dev-mode"

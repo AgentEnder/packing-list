@@ -6,7 +6,9 @@ export type CalculateDefaultItemsAction = {
   type: 'CALCULATE_DEFAULT_ITEMS';
 };
 
-export const calculateDefaultItems = (state: StoreType): StoreType => {
+export const calculateDefaultItems = <T extends Pick<StoreType, 'trips'>>(
+  state: T
+): T => {
   const selectedTripId = state.trips.selectedTripId;
 
   // Early return if no trip is selected

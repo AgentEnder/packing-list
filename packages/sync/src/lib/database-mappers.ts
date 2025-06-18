@@ -51,6 +51,8 @@ interface DatabaseItemRow {
   notes?: string;
   person_id?: string;
   day_index?: number;
+  rule_id?: string;
+  rule_hash?: string;
   created_at: string;
   updated_at: string;
   version: number;
@@ -119,6 +121,8 @@ export function mapDatabaseItemToTripItem(row: DatabaseItemRow): TripItem {
     notes: row.notes,
     personId: row.person_id,
     dayIndex: row.day_index,
+    ruleId: row.rule_id,
+    ruleHash: row.rule_hash,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     version: row.version,

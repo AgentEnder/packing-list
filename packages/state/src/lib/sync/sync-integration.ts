@@ -36,11 +36,18 @@ interface PackingListItem {
 }
 
 // Helper function to map TripItem to PackingListItem format
-function mapItem(item: TripItem): PackingListItem {
+function mapItem(
+  item: TripItem,
+  rulesMap: Map<string, DefaultItemRule>
+): PackingListItem {
+  // Look up the rule to get the correct itemName
+  const rule = rulesMap.get(item.ruleId || '');
+  const itemName = rule ? rule.name : item.name; // Fallback to item.name for legacy items
+
   return {
     id: item.id,
     name: item.name,
-    itemName: item.name,
+    itemName: itemName,
     // Use actual rule information if available, fallback to 'imported' for legacy items
     ruleId: item.ruleId || 'imported',
     ruleHash: item.ruleHash || '',
@@ -328,87 +335,97 @@ export const upsertSyncedItem = (
     return state;
   }
 
-  // Convert TripItem to PackingListItem format
-  const packingListItem = mapItem(syncedItem);
-
-  // Update or add item in the packing list
-  // First try to find by ID (for items that were previously synced)
-  let existingItemIndex = tripData.calculated.packingListItems.findIndex(
-    (item) => item.id === syncedItem.id
+  // Instead of manipulating the calculated items directly,
+  // we need to trigger a recalculation and then preserve packed status
+  console.log(
+    `🔄 [SYNC REDUCER] Triggering recalculation for trip ${syncedItem.tripId} after item sync`
   );
 
-  // If not found by ID, try to match by rule information first, then by logical properties
-  if (existingItemIndex === -1) {
-    // First try to match by ruleId and ruleHash if available
-    if (packingListItem.ruleId && packingListItem.ruleId !== 'imported') {
-      existingItemIndex = tripData.calculated.packingListItems.findIndex(
-        (item) =>
-          item.ruleId === packingListItem.ruleId &&
-          item.ruleHash === packingListItem.ruleHash &&
-          item.dayIndex === packingListItem.dayIndex &&
-          item.personId === packingListItem.personId
-      );
+  // Temporarily set the selected trip to trigger calculations
+  const tempState = {
+    ...state,
+    trips: {
+      ...state.trips,
+      selectedTripId: syncedItem.tripId,
+    },
+  };
 
-      if (existingItemIndex >= 0) {
-        console.log(
-          `🔄 [SYNC REDUCER] Found existing item by rule match: ${packingListItem.itemName} (rule: ${packingListItem.ruleId}, ${tripData.calculated.packingListItems[existingItemIndex].id} → ${syncedItem.id})`
-        );
-      }
-    }
+  // Calculate default items first
+  const stateWithDefaultItems = calculateDefaultItems(tempState);
 
-    // Fallback to logical properties match for legacy items
-    if (existingItemIndex === -1) {
-      existingItemIndex = tripData.calculated.packingListItems.findIndex(
-        (item) =>
-          item.ruleId === 'imported' && // Only match legacy items from IndexedDB
-          item.itemName === packingListItem.itemName &&
-          item.dayIndex === packingListItem.dayIndex &&
-          item.personId === packingListItem.personId &&
-          item.quantity === packingListItem.quantity
-      );
+  // Then calculate packing list
+  const stateWithPackingList = calculatePackingListHandler(
+    stateWithDefaultItems
+  );
 
-      if (existingItemIndex >= 0) {
-        console.log(
-          `🔄 [SYNC REDUCER] Found existing item by legacy logical match: ${packingListItem.itemName} (${tripData.calculated.packingListItems[existingItemIndex].id} → ${syncedItem.id})`
-        );
-      }
-    }
-  }
-
-  const updatedItems = [...tripData.calculated.packingListItems];
-
-  if (existingItemIndex >= 0) {
-    // Preserve local packed status and other UI state when merging
-    const existingItem = updatedItems[existingItemIndex];
-    updatedItems[existingItemIndex] = {
-      ...packingListItem,
-      // Preserve critical local UI state
-      isPacked: existingItem.isPacked, // Keep local packed status
-      isOverridden: existingItem.isOverridden, // Keep override state
-      // Preserve other local state that might exist
-      ruleId: existingItem.ruleId,
-      ruleHash: existingItem.ruleHash,
-      isExtra: existingItem.isExtra,
-    };
-    console.log(
-      `🔄 [SYNC REDUCER] Updated existing item: ${syncedItem.id} (preserved local packed status: ${existingItem.isPacked})`
+  // Get the recalculated trip data
+  const recalculatedTripData =
+    stateWithPackingList.trips.byId[syncedItem.tripId];
+  if (!recalculatedTripData) {
+    console.error(
+      `❌ [SYNC REDUCER] Failed to recalculate trip data for ${syncedItem.tripId}`
     );
-  } else {
-    updatedItems.push(packingListItem);
-    console.log(`➕ [SYNC REDUCER] Added new item: ${syncedItem.id}`);
+    return state;
   }
 
+  // Create rules map for efficient lookup when mapping synced item
+  const rulesMap = new Map(
+    tripData.trip.defaultItemRules.map((rule) => [rule.id, rule])
+  );
+
+  // Convert synced item to PackingListItem format for matching
+  const syncedPackingListItem = mapItem(syncedItem, rulesMap);
+
+  // Now preserve packed status from the synced item by matching against calculated items
+  const finalItems = recalculatedTripData.calculated.packingListItems.map(
+    (calculatedItem) => {
+      // Try to match this calculated item with the synced item
+      let isMatch = false;
+
+      // First try to match by ruleId and ruleHash (for items with rule information)
+      if (
+        syncedPackingListItem.ruleId === calculatedItem.ruleId &&
+        syncedPackingListItem.ruleHash === calculatedItem.ruleHash &&
+        syncedPackingListItem.dayIndex === calculatedItem.dayIndex &&
+        syncedPackingListItem.personId === calculatedItem.personId
+      ) {
+        isMatch = true;
+      }
+
+      // If no match found by rule info, try matching by logical properties
+      if (!isMatch) {
+        isMatch =
+          syncedPackingListItem.itemName === calculatedItem.itemName &&
+          syncedPackingListItem.dayIndex === calculatedItem.dayIndex &&
+          syncedPackingListItem.personId === calculatedItem.personId &&
+          syncedPackingListItem.quantity === calculatedItem.quantity;
+      }
+
+      // Preserve packed status if we found a match
+      if (isMatch) {
+        console.log(
+          `🔄 [SYNC REDUCER] Preserved packed status for ${calculatedItem.itemName}: ${syncedPackingListItem.isPacked}`
+        );
+        return { ...calculatedItem, isPacked: syncedPackingListItem.isPacked };
+      }
+
+      return calculatedItem;
+    }
+  );
+
+  // Return state with recalculated items and preserved packed status, restoring original selectedTripId
   return {
     ...state,
     trips: {
       ...state.trips,
+      selectedTripId: state.trips.selectedTripId, // Restore original selected trip
       byId: {
         ...state.trips.byId,
         [syncedItem.tripId]: {
-          ...tripData,
+          ...recalculatedTripData,
           calculated: {
-            ...tripData.calculated,
-            packingListItems: updatedItems,
+            ...recalculatedTripData.calculated,
+            packingListItems: finalItems,
           },
         },
       },

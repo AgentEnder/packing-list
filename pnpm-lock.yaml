@@ -371,6 +371,9 @@ importers:
       '@packing-list/offline-storage':
         specifier: workspace:*
         version: link:../offline-storage
+      '@packing-list/shared-utils':
+        specifier: workspace:*
+        version: link:../shared-utils
       '@packing-list/supabase':
         specifier: workspace:*
         version: link:../supabase

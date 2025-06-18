@@ -4,15 +4,27 @@ import {
   ItemStorage,
   TripRuleStorage,
 } from '@packing-list/offline-storage';
-import type { TripItem, PackingListItem } from '@packing-list/model';
+import type {
+  TripItem,
+  PackingListItem,
+  DefaultItemRule,
+} from '@packing-list/model';
 import { createEmptyTripData, type StoreType, type TripData } from './store.js';
 import { calculatePackingListHandler } from './action-handlers/calculate-packing-list.js';
+import { calculateDefaultItems } from './action-handlers/calculate-default-items.js';
 
-function mapItem(item: TripItem): PackingListItem {
+function mapItem(
+  item: TripItem,
+  rulesMap: Map<string, DefaultItemRule>
+): PackingListItem {
+  // Look up the rule to get the correct itemName
+  const rule = rulesMap.get(item.ruleId || '');
+  const itemName = rule ? rule.name : item.name; // Fallback to item.name for legacy items
+
   return {
     id: item.id,
     name: item.name,
-    itemName: item.name,
+    itemName: itemName,
     // Use actual rule information if available, fallback to 'imported' for legacy items
     ruleId: item.ruleId || 'imported',
     ruleHash: item.ruleHash || '',
@@ -141,7 +153,9 @@ export async function loadOfflineState(
         console.log(
           `🔄 [HYDRATION] Calculating packing list for trip ${trip.id}`
         );
-        const calculatedState = calculatePackingListHandler(tempState);
+        const calculatedState = calculatePackingListHandler(
+          calculateDefaultItems(tempState)
+        );
         const calculatedTripData = calculatedState.trips.byId[trip.id];
 
         if (!calculatedTripData) {
@@ -153,7 +167,10 @@ export async function loadOfflineState(
         }
 
         // Now preserve packed status from stored items by matching against calculated items
-        const storedItems = items.map(mapItem);
+        const rulesMap = new Map(
+          defaultItemRules.map((rule) => [rule.id, rule])
+        );
+        const storedItems = items.map((item) => mapItem(item, rulesMap));
         console.log(
           `📦 [HYDRATION] Preserving packed status for ${storedItems.length} stored items against ${calculatedTripData.calculated.packingListItems.length} calculated items`
         );

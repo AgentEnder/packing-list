@@ -23,16 +23,6 @@ export const DevModeBannerContainer: React.FC = () => {
           window.location.hostname === '127.0.0.1' ||
           window.location.hostname.includes('local')));
 
-    console.log('🛠️ [DEV BANNER CONTAINER] Development mode detection:', {
-      'import.meta.env.MODE': import.meta.env.MODE,
-      'import.meta.env.DEV': import.meta.env.DEV,
-      'process.env.NODE_ENV': process.env.NODE_ENV,
-      'import.meta.hot': !!import.meta.hot,
-      hostname:
-        typeof window !== 'undefined' ? window.location.hostname : 'SSR',
-      isDevMode: isDev,
-    });
-
     return isDev;
   }, []);
 
@@ -42,7 +32,6 @@ export const DevModeBannerContainer: React.FC = () => {
 
     const updateTimeSinceBuild = () => {
       const time = getTimeSinceLastBuild();
-      console.log('🛠️ [DEV BANNER CONTAINER] Updating time since build:', time);
       setTimeSinceBuild(time);
     };
 
@@ -52,12 +41,7 @@ export const DevModeBannerContainer: React.FC = () => {
     // Update every 1 second for live updates
     const interval = setInterval(updateTimeSinceBuild, 1000);
 
-    console.log(
-      '🛠️ [DEV BANNER CONTAINER] Started live update timer (1s interval)'
-    );
-
     return () => {
-      console.log('🛠️ [DEV BANNER CONTAINER] Clearing live update timer');
       clearInterval(interval);
     };
   }, [isDevMode]);

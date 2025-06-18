@@ -23,7 +23,8 @@
     "@packing-list/auth-state": "workspace:*",
     "@packing-list/auth": "workspace:*",
     "@packing-list/supabase": "workspace:*",
-    "@packing-list/connectivity": "workspace:*"
+    "@packing-list/connectivity": "workspace:*",
+    "@packing-list/shared-utils": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^18.16.9",

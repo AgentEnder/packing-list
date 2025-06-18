@@ -125,6 +125,9 @@ function apiAndServiceWorkerPlugin(): Plugin {
         console.warn('⚠️ Build: Could not move service worker to root:', error);
       }
     },
+    transform(code) {
+      return code.replaceAll('%BUILD_TIME%', new Date().toISOString());
+    },
   };
 }
 
