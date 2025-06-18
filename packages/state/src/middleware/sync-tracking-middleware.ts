@@ -159,14 +159,14 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
     // Execute the action
     const result = next(action);
 
-    // Handle @@init action to reload from IndexedDB
-    if ((action as UnknownAction).type === '@@init') {
+    // Handle auth initialization completion to reload from IndexedDB
+    if ((action as UnknownAction).type === 'auth/initializeAuth/fulfilled') {
       const nextState = store.getState();
       const userId = nextState.auth.user?.id;
 
-      if (userId && userId !== 'local-user') {
+      if (userId && userId !== 'local-user' && userId !== 'local-shared-user') {
         console.log(
-          '🔄 [SYNC_MIDDLEWARE] Detected @@init action, triggering IndexedDB reload'
+          '🔄 [SYNC_MIDDLEWARE] Detected auth initialization, triggering IndexedDB reload'
         );
         // Trigger reload asynchronously to avoid blocking the action
         reloadFromIndexedDB(
@@ -177,8 +177,35 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
         });
       } else {
         console.log(
-          '⏭️ [SYNC_MIDDLEWARE] Skipping IndexedDB reload: no authenticated user'
+          '⏭️ [SYNC_MIDDLEWARE] Skipping IndexedDB reload: local/shared user or no user'
         );
+      }
+      return result;
+    }
+
+    // Handle sign-in completion to reload from IndexedDB
+    if (
+      (action as UnknownAction).type === 'auth/signInWithPassword/fulfilled' ||
+      (action as UnknownAction).type ===
+        'auth/signInWithGooglePopup/fulfilled' ||
+      (action as UnknownAction).type === 'auth/switchToOnlineMode/fulfilled'
+    ) {
+      const nextState = store.getState();
+      const userId = nextState.auth.user?.id;
+
+      if (userId && userId !== 'local-user' && userId !== 'local-shared-user') {
+        console.log(
+          `🔄 [SYNC_MIDDLEWARE] Detected auth change (${
+            (action as UnknownAction).type
+          }), triggering IndexedDB reload`
+        );
+        // Trigger reload asynchronously to avoid blocking the action
+        reloadFromIndexedDB(
+          store.dispatch as (action: AllActions) => void,
+          userId
+        ).catch((error) => {
+          console.error('❌ [SYNC_MIDDLEWARE] IndexedDB reload failed:', error);
+        });
       }
       return result;
     }

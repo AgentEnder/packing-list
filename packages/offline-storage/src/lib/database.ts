@@ -69,6 +69,7 @@ export async function initializeDatabase(): Promise<IDBPDatabase<OfflineDB>> {
             theme: 'system',
             defaultTripDuration: 7,
             autoSyncEnabled: true,
+            serviceWorkerEnabled: false, // Disabled by default, can be enabled in settings
           },
           'preferences'
         );

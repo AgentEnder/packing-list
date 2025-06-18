@@ -3,5 +3,6 @@ export type UserPreferences = {
   theme: 'light' | 'dark' | 'system';
   defaultTripDuration: number;
   autoSyncEnabled: boolean;
+  serviceWorkerEnabled: boolean;
   // Additional global user preferences can be added here
 };
