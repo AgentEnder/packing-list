@@ -146,12 +146,8 @@ export function useAuth() {
   // Track if user is remotely authenticated (signed in with Google)
   const isRemotelyAuthenticated = useMemo(() => {
     if (isServer || isOfflineMode) return false;
-    try {
-      return authService.isRemotelyAuthenticated();
-    } catch {
-      return false;
-    }
-  }, [isOfflineMode]);
+    return user?.type === 'remote';
+  }, [isOfflineMode, user]);
 
   // Initialize auth on mount and set up subscriptions (client-side only)
   useEffect(() => {
