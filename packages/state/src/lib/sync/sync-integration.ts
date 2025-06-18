@@ -41,8 +41,9 @@ function mapItem(item: TripItem): PackingListItem {
     id: item.id,
     name: item.name,
     itemName: item.name,
-    ruleId: 'imported',
-    ruleHash: '',
+    // Use actual rule information if available, fallback to 'imported' for legacy items
+    ruleId: item.ruleId || 'imported',
+    ruleHash: item.ruleHash || '',
     isPacked: item.packed,
     isOverridden: false,
     dayIndex: item.dayIndex,
@@ -336,22 +337,41 @@ export const upsertSyncedItem = (
     (item) => item.id === syncedItem.id
   );
 
-  // If not found by ID, try to match by logical properties
-  // (for items that were calculated locally but match stored items)
+  // If not found by ID, try to match by rule information first, then by logical properties
   if (existingItemIndex === -1) {
-    existingItemIndex = tripData.calculated.packingListItems.findIndex(
-      (item) =>
-        item.ruleId === 'imported' && // Only match items that came from IndexedDB
-        item.itemName === packingListItem.itemName &&
-        item.dayIndex === packingListItem.dayIndex &&
-        item.personId === packingListItem.personId &&
-        item.quantity === packingListItem.quantity
-    );
-
-    if (existingItemIndex >= 0) {
-      console.log(
-        `🔄 [SYNC REDUCER] Found existing item by logical match: ${packingListItem.itemName} (${tripData.calculated.packingListItems[existingItemIndex].id} → ${syncedItem.id})`
+    // First try to match by ruleId and ruleHash if available
+    if (packingListItem.ruleId && packingListItem.ruleId !== 'imported') {
+      existingItemIndex = tripData.calculated.packingListItems.findIndex(
+        (item) =>
+          item.ruleId === packingListItem.ruleId &&
+          item.ruleHash === packingListItem.ruleHash &&
+          item.dayIndex === packingListItem.dayIndex &&
+          item.personId === packingListItem.personId
       );
+
+      if (existingItemIndex >= 0) {
+        console.log(
+          `🔄 [SYNC REDUCER] Found existing item by rule match: ${packingListItem.itemName} (rule: ${packingListItem.ruleId}, ${tripData.calculated.packingListItems[existingItemIndex].id} → ${syncedItem.id})`
+        );
+      }
+    }
+
+    // Fallback to logical properties match for legacy items
+    if (existingItemIndex === -1) {
+      existingItemIndex = tripData.calculated.packingListItems.findIndex(
+        (item) =>
+          item.ruleId === 'imported' && // Only match legacy items from IndexedDB
+          item.itemName === packingListItem.itemName &&
+          item.dayIndex === packingListItem.dayIndex &&
+          item.personId === packingListItem.personId &&
+          item.quantity === packingListItem.quantity
+      );
+
+      if (existingItemIndex >= 0) {
+        console.log(
+          `🔄 [SYNC REDUCER] Found existing item by legacy logical match: ${packingListItem.itemName} (${tripData.calculated.packingListItems[existingItemIndex].id} → ${syncedItem.id})`
+        );
+      }
     }
   }
 

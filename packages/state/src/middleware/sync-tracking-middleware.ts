@@ -378,6 +378,9 @@ function trackPackingStatusChange(
           notes: nextItem.notes,
           personId: nextItem.personId,
           dayIndex: nextItem.dayIndex,
+          // Preserve rule information for proper matching during hydration
+          ruleId: nextItem.ruleId,
+          ruleHash: nextItem.ruleHash,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           version: 1,
