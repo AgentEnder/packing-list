@@ -108,6 +108,28 @@ async function reloadFromIndexedDB(
             relationError
           );
         }
+
+        // Load and apply trip rule associations
+        try {
+          const tripRules = await TripRuleStorage.getTripRulesWithDetails(
+            trip.id
+          );
+          console.log(
+            `📋 [SYNC_MIDDLEWARE] Loading ${tripRules.length} rules for trip ${trip.id}`
+          );
+
+          for (const rule of tripRules) {
+            dispatch({
+              type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE',
+              payload: { rule, tripId: trip.id },
+            });
+          }
+        } catch (rulesError) {
+          console.error(
+            `❌ [SYNC_MIDDLEWARE] Failed to load rules for trip ${trip.id}:`,
+            rulesError
+          );
+        }
       }
 
       console.log(
