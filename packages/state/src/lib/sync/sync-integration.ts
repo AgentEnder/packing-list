@@ -13,6 +13,7 @@ import { DefaultItemRulesStorage } from '@packing-list/offline-storage';
 import { createEmptyTripData } from '../../store.js';
 import { calculateDefaultItems } from '../../action-handlers/calculate-default-items.js';
 import { calculatePackingListHandler } from '../../action-handlers/calculate-packing-list.js';
+import { TripRuleStorage } from '@packing-list/offline-storage';
 
 interface PackingListItem {
   id: string;
@@ -136,8 +137,16 @@ export const createEntityCallbacks = (
         `🔗 [SYNC INTEGRATION] Associating rule ${tripRule.ruleId} with trip ${tripRule.tripId}`
       );
 
-      // Fetch the rule and then apply it
-      DefaultItemRulesStorage.getDefaultItemRule(tripRule.ruleId)
+      // Save the TripRule association to IndexedDB first
+      TripRuleStorage.saveTripRule(tripRule)
+        .then(() => {
+          console.log(
+            `💾 [SYNC INTEGRATION] Saved TripRule association: ${tripRule.id}`
+          );
+
+          // Fetch the rule and then apply it to the trip
+          return DefaultItemRulesStorage.getDefaultItemRule(tripRule.ruleId);
+        })
         .then((rule) => {
           if (rule) {
             applySyncedRuleToTrip(dispatch, {
@@ -466,24 +475,9 @@ const applySyncedRuleToTrip = (
     `📋 [SYNC INTEGRATION] Applying synced rule: ${rule.name} (${rule.id}) to trip ${tripId}`
   );
 
-  // Check if the trip exists in the store
-  const state = (
-    dispatch as unknown as { getState?: () => StoreType }
-  ).getState?.();
-  const trip = state?.trips?.byId?.[tripId];
-
-  if (!trip) {
-    console.log(
-      `⏳ [SYNC INTEGRATION] Trip not loaded yet, queuing rule: ${tripId}`
-    );
-    // Queue the rule for later processing when trips are loaded
-    pendingTripRules.push({ rule, tripId });
-    return;
-  }
-
-  console.log(
-    `✅ [SYNC INTEGRATION] Trip found, applying rule to trip ${tripId}`
-  );
+  // Always dispatch the action - the reducer will handle checking if the trip exists
+  // If the trip doesn't exist yet, the reducer will warn and skip the update
+  console.log(`✅ [SYNC INTEGRATION] Dispatching rule to trip ${tripId}`);
 
   // Dispatch the action to update the rule in the specific trip
   dispatch({
