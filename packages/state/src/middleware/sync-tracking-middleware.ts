@@ -3,7 +3,12 @@ import { UnknownAction } from '@reduxjs/toolkit';
 import { uuid } from '@packing-list/shared-utils';
 import type { Trip, Person, TripItem, TripRule } from '@packing-list/model';
 import { StoreType } from '../store.js';
-import { getChangeTracker, ChangeTracker } from '@packing-list/sync';
+import {
+  getChangeTracker,
+  ChangeTracker,
+  enableSyncMode,
+  disableSyncMode,
+} from '../lib/sync/sync-service.js';
 import {
   TripStorage,
   PersonStorage,
@@ -12,7 +17,6 @@ import {
   RulePacksStorage,
   TripRuleStorage,
 } from '@packing-list/offline-storage';
-import { enableSyncMode, disableSyncMode } from '@packing-list/sync';
 import type { AllActions } from '../actions.js';
 
 /**

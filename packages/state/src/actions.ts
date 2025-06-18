@@ -1,5 +1,5 @@
 import { initialState, StoreType } from './store.js';
-import type { SyncActions } from '@packing-list/sync-state';
+import type { SyncActions } from './lib/sync/types.js';
 import {
   addPersonHandler,
   AddPersonAction,
@@ -156,6 +156,7 @@ import {
   upsertSyncedItem,
   upsertSyncedDefaultItemRule,
   upsertSyncedRulePack,
+  processPendingTripItemsHandler,
   type SyncIntegrationActions,
 } from './lib/sync/sync-integration.js';
 
@@ -289,6 +290,7 @@ export const Mutations: {
   UPSERT_SYNCED_ITEM: upsertSyncedItem,
   UPSERT_SYNCED_DEFAULT_ITEM_RULE: upsertSyncedDefaultItemRule,
   UPSERT_SYNCED_RULE_PACK: upsertSyncedRulePack,
+  PROCESS_PENDING_TRIP_ITEMS: processPendingTripItemsHandler,
   SYNC_UPDATE_TRIP_SUMMARIES: (
     state: StoreType,
     action: {

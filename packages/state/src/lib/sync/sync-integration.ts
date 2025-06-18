@@ -7,7 +7,7 @@ import type {
   RulePack,
   TripRule,
 } from '@packing-list/model';
-import type { EntityExistence } from '@packing-list/sync-state';
+import type { EntityExistence } from './types.js';
 import type { AllActions } from '../../actions.js';
 import { DefaultItemRulesStorage } from '@packing-list/offline-storage';
 import { createEmptyTripData } from '../../store.js';
@@ -69,6 +69,9 @@ function mapItem(
 // Queue for trip rules that couldn't be applied because trips weren't loaded
 let pendingTripRules: Array<{ rule: DefaultItemRule; tripId: string }> = [];
 
+// Queue for items that can't be processed until rules are loaded
+let pendingItems: Array<TripItem> = [];
+
 /**
  * Process any pending trip rules that were queued while trips were loading
  */
@@ -92,6 +95,42 @@ export const processPendingTripRules = (
       `📋 [SYNC INTEGRATION] Processing queued rule: ${rule.name} (${rule.id}) for trip ${tripId}`
     );
     applySyncedRuleToTrip(dispatch, { rule, tripId });
+  }
+};
+
+/**
+ * Process any pending items that were queued while rules were loading
+ */
+export const processPendingItems = (dispatch: (action: AllActions) => void) => {
+  if (pendingItems.length === 0) {
+    return;
+  }
+
+  console.log(
+    `📦 [SYNC INTEGRATION] Processing ${pendingItems.length} pending items after rules are loaded`
+  );
+
+  const itemsToProcess = [...pendingItems];
+  pendingItems = []; // Clear the queue
+
+  // Group items by trip for efficient processing
+  const itemsByTrip = new Map<string, TripItem[]>();
+  for (const item of itemsToProcess) {
+    if (!itemsByTrip.has(item.tripId)) {
+      itemsByTrip.set(item.tripId, []);
+    }
+    itemsByTrip.get(item.tripId)!.push(item);
+  }
+
+  // Process each trip's items together
+  for (const [tripId, tripItems] of itemsByTrip) {
+    console.log(
+      `📦 [SYNC INTEGRATION] Processing ${tripItems.length} items for trip ${tripId}`
+    );
+    dispatch({
+      type: 'PROCESS_PENDING_TRIP_ITEMS',
+      payload: { tripId, items: tripItems },
+    });
   }
 };
 
@@ -135,7 +174,12 @@ export const createEntityCallbacks = (
       dispatch({ type: 'UPSERT_SYNCED_PERSON', payload: person });
     },
     onItemUpsert: (item: TripItem) => {
-      dispatch({ type: 'UPSERT_SYNCED_ITEM', payload: item });
+      // Queue items instead of processing immediately
+      // Items will be processed after rules are loaded
+      console.log(
+        `📦 [SYNC INTEGRATION] Queueing item for later processing: ${item.name} (${item.id})`
+      );
+      pendingItems.push(item);
     },
     onRulePackUpsert: (pack: RulePack) => {
       dispatch({ type: 'UPSERT_SYNCED_RULE_PACK', payload: pack });
@@ -183,7 +227,11 @@ export type SyncIntegrationActions =
       type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE';
       payload: { rule: DefaultItemRule; tripId: string };
     }
-  | { type: 'UPSERT_SYNCED_RULE_PACK'; payload: RulePack };
+  | { type: 'UPSERT_SYNCED_RULE_PACK'; payload: RulePack }
+  | {
+      type: 'PROCESS_PENDING_TRIP_ITEMS';
+      payload: { tripId: string; items: TripItem[] };
+    };
 
 /**
  * Redux reducers for sync integration
@@ -551,6 +599,13 @@ const applySyncedRuleToTrip = (
     type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE',
     payload: { rule, tripId },
   });
+
+  // After applying the rule, check if there are pending items for this trip
+  // and process them if the trip now has sufficient rules
+  console.log(
+    `🔄 [SYNC INTEGRATION] Checking for pending items after rule application`
+  );
+  processPendingItems(dispatch);
 };
 
 export const upsertSyncedRulePack = (
@@ -566,4 +621,132 @@ export const upsertSyncedRulePack = (
     packs.push(pack);
   }
   return { ...state, rulePacks: packs };
+};
+
+/**
+ * Process pending items for a specific trip (batch processing)
+ * This is called after all rules have been loaded for a trip
+ */
+export const processPendingTripItemsHandler = (
+  state: StoreType,
+  action: {
+    type: 'PROCESS_PENDING_TRIP_ITEMS';
+    payload: { tripId: string; items: TripItem[] };
+  }
+): StoreType => {
+  const { tripId, items } = action.payload;
+
+  console.log(
+    `📦 [SYNC REDUCER] Processing ${items.length} pending items for trip ${tripId}`
+  );
+
+  const tripData = state.trips.byId[tripId];
+  if (!tripData) {
+    console.warn(
+      `⚠️ [SYNC REDUCER] Trip not found for pending items: ${tripId}`
+    );
+    return state;
+  }
+
+  // Trigger recalculation with all rules loaded
+  console.log(
+    `🔄 [SYNC REDUCER] Triggering recalculation for trip ${tripId} with ${tripData.trip.defaultItemRules.length} rules`
+  );
+
+  // Temporarily set the selected trip to trigger calculations
+  const tempState = {
+    ...state,
+    trips: {
+      ...state.trips,
+      selectedTripId: tripId,
+    },
+  };
+
+  // Calculate default items first
+  const stateWithDefaultItems = calculateDefaultItems(tempState);
+
+  // Then calculate packing list
+  const stateWithPackingList = calculatePackingListHandler(
+    stateWithDefaultItems
+  );
+
+  // Get the recalculated trip data
+  const recalculatedTripData = stateWithPackingList.trips.byId[tripId];
+  if (!recalculatedTripData) {
+    console.error(
+      `❌ [SYNC REDUCER] Failed to recalculate trip data for ${tripId}`
+    );
+    return state;
+  }
+
+  // Create rules map for efficient lookup when mapping synced items
+  const rulesMap = new Map(
+    tripData.trip.defaultItemRules.map((rule) => [rule.id, rule])
+  );
+
+  // Convert all synced items to PackingListItem format for matching
+  const syncedPackingListItems = items.map((item) => mapItem(item, rulesMap));
+
+  // Now preserve packed status from all synced items by matching against calculated items
+  const finalItems = recalculatedTripData.calculated.packingListItems.map(
+    (calculatedItem) => {
+      // Find matching synced item
+      const matchingSyncedItem = syncedPackingListItems.find((syncedItem) => {
+        // First try to match by ruleId and ruleHash (for items with rule information)
+        if (
+          syncedItem.ruleId === calculatedItem.ruleId &&
+          syncedItem.ruleHash === calculatedItem.ruleHash &&
+          syncedItem.dayIndex === calculatedItem.dayIndex &&
+          syncedItem.personId === calculatedItem.personId
+        ) {
+          return true;
+        }
+
+        // If no match found by rule info, try matching by logical properties
+        return (
+          syncedItem.itemName === calculatedItem.itemName &&
+          syncedItem.dayIndex === calculatedItem.dayIndex &&
+          syncedItem.personId === calculatedItem.personId &&
+          syncedItem.quantity === calculatedItem.quantity
+        );
+      });
+
+      // Preserve packed status if we found a match
+      if (matchingSyncedItem) {
+        console.log(
+          `🔄 [SYNC REDUCER] Preserved packed status for ${calculatedItem.itemName}: ${matchingSyncedItem.isPacked}`
+        );
+        return { ...calculatedItem, isPacked: matchingSyncedItem.isPacked };
+      }
+
+      return calculatedItem;
+    }
+  );
+
+  console.log(
+    `✅ [SYNC REDUCER] Processed ${
+      items.length
+    } pending items for trip ${tripId}, preserved ${
+      finalItems.filter((item) => item.isPacked).length
+    } packed items`
+  );
+
+  // Return state with recalculated items and preserved packed status, restoring original selectedTripId
+  return {
+    ...state,
+    trips: {
+      ...state.trips,
+      selectedTripId: state.trips.selectedTripId, // Restore original selected trip
+      byId: {
+        ...state.trips.byId,
+        [tripId]: {
+          ...recalculatedTripData,
+          calculated: {
+            ...recalculatedTripData.calculated,
+            packingListItems: finalItems,
+          },
+        },
+      },
+    },
+  };
 };

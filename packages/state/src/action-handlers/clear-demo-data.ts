@@ -1,6 +1,6 @@
 import { ConflictsStorage } from '@packing-list/offline-storage';
 import type { StoreType } from '../store.js';
-import { resetSyncService } from '@packing-list/sync';
+import { resetSyncService } from '../lib/sync/sync-service.js';
 
 export type ClearDemoDataAction = {
   type: 'CLEAR_DEMO_DATA';

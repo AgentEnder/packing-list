@@ -12,7 +12,6 @@
     "@packing-list/shared-components": "workspace:*",
     "@packing-list/shared-utils": "workspace:*",
     "@packing-list/state": "workspace:*",
-    "@packing-list/sync": "workspace:*",
     "react-confetti": "^6.4.0"
   },
   "nx": {
