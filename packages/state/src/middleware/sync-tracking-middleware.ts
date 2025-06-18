@@ -78,38 +78,7 @@ async function reloadFromIndexedDB(
           payload: trip,
         });
 
-        // Also load related people and items for each trip
-        try {
-          const people = await PersonStorage.getTripPeople(trip.id);
-          const items = await ItemStorage.getTripItems(trip.id);
-
-          console.log(
-            `👥 [SYNC_MIDDLEWARE] Loading ${people.length} people for trip ${trip.id}`
-          );
-          for (const person of people) {
-            dispatch({
-              type: 'UPSERT_SYNCED_PERSON',
-              payload: person,
-            });
-          }
-
-          console.log(
-            `📦 [SYNC_MIDDLEWARE] Loading ${items.length} items for trip ${trip.id}`
-          );
-          for (const item of items) {
-            dispatch({
-              type: 'UPSERT_SYNCED_ITEM',
-              payload: item,
-            });
-          }
-        } catch (relationError) {
-          console.error(
-            `❌ [SYNC_MIDDLEWARE] Failed to load people/items for trip ${trip.id}:`,
-            relationError
-          );
-        }
-
-        // Load and apply trip rule associations
+        // Load trip rule associations FIRST to populate packing list
         try {
           const tripRules = await TripRuleStorage.getTripRulesWithDetails(
             trip.id
@@ -128,6 +97,37 @@ async function reloadFromIndexedDB(
           console.error(
             `❌ [SYNC_MIDDLEWARE] Failed to load rules for trip ${trip.id}:`,
             rulesError
+          );
+        }
+
+        // THEN load people and items after rules are loaded and packing list is calculated
+        try {
+          const people = await PersonStorage.getTripPeople(trip.id);
+          const items = await ItemStorage.getTripItems(trip.id);
+
+          console.log(
+            `👥 [SYNC_MIDDLEWARE] Loading ${people.length} people for trip ${trip.id}`
+          );
+          for (const person of people) {
+            dispatch({
+              type: 'UPSERT_SYNCED_PERSON',
+              payload: person,
+            });
+          }
+
+          console.log(
+            `📦 [SYNC_MIDDLEWARE] Loading ${items.length} items for trip ${trip.id} (after rules loaded)`
+          );
+          for (const item of items) {
+            dispatch({
+              type: 'UPSERT_SYNCED_ITEM',
+              payload: item,
+            });
+          }
+        } catch (relationError) {
+          console.error(
+            `❌ [SYNC_MIDDLEWARE] Failed to load people/items for trip ${trip.id}:`,
+            relationError
           );
         }
       }
