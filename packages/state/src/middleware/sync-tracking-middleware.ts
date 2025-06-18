@@ -525,7 +525,6 @@ function trackRuleChanges(
 
     if (!prevRule) {
       console.log(`📋 [SYNC_MIDDLEWARE] New rule detected: ${rule.id}`);
-      changeTracker.trackDefaultItemRuleChange('create', rule, userId, tripId);
       DefaultItemRulesStorage.saveDefaultItemRule(rule).catch(console.error);
 
       // Check if TripRule association already exists before creating a new one
@@ -548,7 +547,14 @@ function trackRuleChanges(
             };
 
             TripRuleStorage.saveTripRule(tripRule).catch(console.error);
-            // Track the trip-rule association for sync
+
+            // Only track sync changes if we actually created new records
+            changeTracker.trackDefaultItemRuleChange(
+              'create',
+              rule,
+              userId,
+              tripId
+            );
             changeTracker.trackTripRuleChange(
               'create',
               tripRule,
