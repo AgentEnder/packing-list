@@ -337,12 +337,21 @@ export const upsertSyncedItem = (
   const updatedItems = [...tripData.calculated.packingListItems];
 
   if (existingItemIndex >= 0) {
-    // Preserve any local UI state when merging
+    // Preserve local packed status and other UI state when merging
+    const existingItem = updatedItems[existingItemIndex];
     updatedItems[existingItemIndex] = {
-      ...updatedItems[existingItemIndex],
       ...packingListItem,
+      // Preserve critical local UI state
+      isPacked: existingItem.isPacked, // Keep local packed status
+      isOverridden: existingItem.isOverridden, // Keep override state
+      // Preserve other local state that might exist
+      ruleId: existingItem.ruleId,
+      ruleHash: existingItem.ruleHash,
+      isExtra: existingItem.isExtra,
     };
-    console.log(`🔄 [SYNC REDUCER] Updated existing item: ${syncedItem.id}`);
+    console.log(
+      `🔄 [SYNC REDUCER] Updated existing item: ${syncedItem.id} (preserved local packed status: ${existingItem.isPacked})`
+    );
   } else {
     updatedItems.push(packingListItem);
     console.log(`➕ [SYNC REDUCER] Added new item: ${syncedItem.id}`);
