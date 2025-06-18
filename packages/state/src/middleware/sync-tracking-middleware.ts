@@ -422,7 +422,7 @@ function trackRuleChanges(
       changeTracker.trackDefaultItemRuleChange('create', rule, userId, tripId);
       DefaultItemRulesStorage.saveDefaultItemRule(rule).catch(console.error);
       const tripRule: TripRule = {
-        id: `${tripId}-${rule.id}`,
+        id: uuid(),
         tripId,
         ruleId: rule.id,
         createdAt: now,
@@ -456,22 +456,30 @@ function trackRuleChanges(
         console.error
       );
       TripRuleStorage.deleteTripRule(tripId, prevRule.id).catch(console.error);
-      // Track the trip-rule association deletion for sync
-      const deletedTripRule: TripRule = {
-        id: `${tripId}-${prevRule.id}`,
-        tripId,
-        ruleId: prevRule.id,
-        createdAt: now,
-        updatedAt: now,
-        version: 1,
-        isDeleted: true,
-      };
-      changeTracker.trackTripRuleChange(
-        'delete',
-        deletedTripRule,
-        userId,
-        tripId
-      );
+
+      // Get the existing TripRule record for tracking deletion
+      TripRuleStorage.getTripRules(tripId)
+        .then((tripRules) => {
+          const existingTripRule = tripRules.find(
+            (rule) => rule.ruleId === prevRule.id && !rule.isDeleted
+          );
+          if (existingTripRule) {
+            // Track the existing trip-rule association deletion for sync
+            const deletedTripRule: TripRule = {
+              ...existingTripRule,
+              isDeleted: true,
+              updatedAt: now,
+              version: existingTripRule.version + 1,
+            };
+            return changeTracker.trackTripRuleChange(
+              'delete',
+              deletedTripRule,
+              userId,
+              tripId
+            );
+          }
+        })
+        .catch(console.error);
     }
   }
 }
