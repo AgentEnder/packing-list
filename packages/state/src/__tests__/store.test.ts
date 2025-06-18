@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vitest } from 'vitest';
 import { createStore, initialState } from '../store.js';
 import { Person } from '@packing-list/model';
 import { UnknownAction } from '@reduxjs/toolkit';
@@ -102,5 +102,34 @@ describe('store', () => {
     store.dispatch({ type: 'NON_EXISTENT_ACTION' } as UnknownAction);
 
     expect(store.getState()).toEqual(initialStateSnapshot);
+  });
+
+  it('should update confetti source when triggering burst', () => {
+    // Mock window object to simulate browser environment where motion is allowed
+    const mockMatchMedia = vitest.fn(() => ({
+      matches: false, // User does NOT prefer reduced motion
+    }));
+
+    Object.defineProperty(globalThis, 'window', {
+      value: {
+        matchMedia: mockMatchMedia,
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    const store = createStore({});
+
+    store.dispatch({
+      type: 'TRIGGER_CONFETTI_BURST',
+      payload: { x: 10, y: 20, w: 5, h: 5 },
+    });
+
+    const state = store.getState();
+    expect(state.ui.confetti.burstId).toBe(1);
+    expect(state.ui.confetti.source).toEqual({ x: 10, y: 20, w: 5, h: 5 });
+
+    // Cleanup
+    delete (globalThis as Record<string, unknown>).window;
   });
 });

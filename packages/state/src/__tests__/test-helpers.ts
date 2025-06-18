@@ -57,6 +57,7 @@ export function createTestTripState(options: {
       tripWizard: {
         currentStep: 0,
       },
+      confetti: { burstId: 0, source: null },
     },
     auth: {
       user: options.userId

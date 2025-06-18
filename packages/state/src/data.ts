@@ -497,6 +497,10 @@ export const CREATE_DEMO_DATA: () => Partial<StoreType> = () => {
       tripWizard: {
         currentStep: 0,
       },
+      confetti: {
+        burstId: 0,
+        source: null,
+      },
     },
     auth: {
       user: null,

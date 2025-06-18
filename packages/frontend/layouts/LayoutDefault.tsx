@@ -5,6 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from '../components/Link';
 import { DemoBanner } from '../components/DemoBanner';
 import { ToastContainer } from '../components/Toast';
+import { ConfettiBurst } from '../components/ConfettiBurst';
 import { TripSelector } from '../components/TripSelector';
 import { SyncProvider } from '../components/SyncProvider';
 import { SyncStatus } from '../components/SyncStatus';
@@ -281,6 +282,7 @@ export default function LayoutDefault({
 
             {/* Toast Container */}
             <ToastContainer />
+            <ConfettiBurst />
           </div>
 
           {/* Sidebar */}

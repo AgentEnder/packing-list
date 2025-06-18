@@ -213,6 +213,14 @@ export default function NewTripPage() {
         },
       });
 
+      const source = {
+        x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0,
+        y: typeof window !== 'undefined' ? window.innerHeight / 2 : 0,
+        w: 0,
+        h: 0,
+      };
+      dispatch(actions.triggerConfettiBurst(source));
+
       // Navigate to the new trip
       await navigate('/');
     } catch (error) {

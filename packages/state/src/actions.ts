@@ -96,6 +96,10 @@ import {
   CloseLoginModalAction,
 } from './action-handlers/login-modal.js';
 import {
+  TriggerConfettiBurstAction,
+  triggerConfettiBurstHandler,
+} from './action-handlers/trigger-confetti-burst.js';
+import {
   hydrateOfflineHandler,
   HydrateOfflineAction,
 } from './action-handlers/hydrate-offline.js';
@@ -204,6 +208,7 @@ export type AllActions =
   | HydrateOfflineAction
   | SyncActions
   | SyncIntegrationActions
+  | TriggerConfettiBurstAction
   | {
       type: 'RELOAD_FROM_INDEXEDDB';
       payload: { syncedCount: number; isInitialSync: boolean };
@@ -268,6 +273,7 @@ export const Mutations: {
   RESET_FLOW: resetFlowHandler,
   SET_WIZARD_STEP: setWizardStepHandler,
   RESET_WIZARD: resetWizardHandler,
+  TRIGGER_CONFETTI_BURST: triggerConfettiBurstHandler,
   HYDRATE_OFFLINE: hydrateOfflineHandler,
   SET_SYNC_STATE: setSyncStateHandler,
   SET_SYNC_INITIALIZED: setSyncInitializedHandler,
@@ -437,4 +443,11 @@ export const actions = {
   resetWizard,
   reloadFromIndexedDB,
   clearDemoData: clearDemoDataThunk,
+  triggerConfettiBurst: (payload?: {
+    x: number;
+    y: number;
+  }): TriggerConfettiBurstAction => ({
+    type: 'TRIGGER_CONFETTI_BURST',
+    payload,
+  }),
 };

@@ -1,6 +1,8 @@
 import { ChevronDown, ChevronRight, Plane } from 'lucide-react';
 import { PackingListItem, TripEvent } from '@packing-list/model';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useAppDispatch, actions } from '@packing-list/state';
+import { useMousePosition } from '@packing-list/shared-utils';
 
 interface TripDayRowProps {
   index: number;
@@ -128,9 +130,24 @@ export function TripDayRow({
   const [isExpanded, setIsExpanded] = useState(false);
   const packingProgress = calculatePackingProgress(packingListItems);
   const paddedIndex = dayLabel.toString().padStart(2, '0');
+  const dispatch = useAppDispatch();
+  const prevProgress = useRef(packingProgress);
+  const rowRef = useRef<HTMLLIElement>(null);
+
+  const { x, y } = useMousePosition();
+
+  useEffect(() => {
+    if (packingProgress === 100 && prevProgress.current < 100) {
+      dispatch(actions.triggerConfettiBurst({ x, y }));
+    }
+    prevProgress.current = packingProgress;
+  }, [packingProgress, dispatch]);
 
   return (
-    <li className={`flex flex-col ${isTravel ? 'bg-base-200/50' : ''}`}>
+    <li
+      ref={rowRef}
+      className={`flex flex-col ${isTravel ? 'bg-base-200/50' : ''}`}
+    >
       <div
         className="flex items-start sm:items-center gap-2 sm:gap-4 p-2 sm:p-4 cursor-pointer hover:bg-base-200/50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}

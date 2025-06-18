@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useAppSelector, useAppDispatch } from '@packing-list/state';
+import React, { useState, useEffect, useRef } from 'react';
+import { useAppSelector, useAppDispatch, actions } from '@packing-list/state';
 import { PackingListViewState } from '@packing-list/model';
 import { RuleOverrideDialog } from './RuleOverrideDialog';
 import { PackItemsDialog } from './PackItemsDialog';
@@ -26,6 +26,7 @@ import { PrintButton } from './PrintButton';
 import { getAllCategories } from '@packing-list/model';
 import { format } from 'date-fns';
 import { PageHeader } from '../../../components/PageHeader';
+import { useMousePosition } from '@packing-list/shared-utils';
 
 export const PackingList: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -36,6 +37,26 @@ export const PackingList: React.FC = () => {
   const people = useAppSelector(selectPeople);
   const defaultItemRules = useAppSelector(selectDefaultItemRules);
   const categories = getAllCategories();
+  const prevAllPacked = useRef<boolean | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { x, y } = useMousePosition();
+
+  useEffect(() => {
+    const allGroups = [
+      ...groupedItems.flatMap((g) => g.items),
+      ...groupedGeneralItems,
+    ];
+    const totalCount = allGroups.reduce((s, i) => s + i.totalCount, 0);
+    const packedCount = allGroups.reduce((s, i) => s + i.packedCount, 0);
+    const allPacked = totalCount > 0 && totalCount === packedCount;
+
+    // Only trigger confetti if this is a transition from not-all-packed to all-packed
+    // (not on initial mount when prevAllPacked is null)
+    if (allPacked && prevAllPacked.current === false) {
+      dispatch(actions.triggerConfettiBurst({ x, y }));
+    }
+    prevAllPacked.current = allPacked;
+  }, [groupedItems, groupedGeneralItems, dispatch, x, y]);
 
   const [selectedItem, setSelectedItem] = useState<GroupedItem | null>(null);
   const [isOverrideDialogOpen, setIsOverrideDialogOpen] = useState(false);
@@ -104,9 +125,9 @@ export const PackingList: React.FC = () => {
         className="card bg-base-100 shadow-sm overflow-visible"
         data-testid="packing-item"
       >
-        <div className="relative flex items-center gap-1.5 p-1.5 overflow-visible rounded-lg">
+        <div className="relative flex items-center h-full gap-1.5 p-1.5 overflow-visible rounded-lg">
           <div
-            className="absolute inset-0 bg-success/30 transition-all duration-300 ease-in-out z-0"
+            className="absolute inset-0 bg-success/30 h-full transition-all duration-300 ease-in-out z-0 rounded-lg"
             style={{ width: `${progress}%` }}
           />
           <div className="relative z-10 flex items-center gap-1.5 min-w-0 flex-1 hover:z-15">
@@ -210,13 +231,13 @@ export const PackingList: React.FC = () => {
   const hasAnyItems =
     groupedItems.some((group) => group.items.length > 0) ||
     groupedGeneralItems.length > 0;
-  const hasTrip = trip?.days.length > 0;
+  const hasTrip = trip?.days.length;
   const hasPeople = people.length > 0;
   const hasRules = defaultItemRules.length > 0;
 
   // If we have no items, show the empty state
   return (
-    <div className="container mx-auto p-4">
+    <div ref={containerRef} className="container mx-auto p-4">
       <div className="flex flex-col gap-3 mb-4">
         <PageHeader title="Packing List" actions={<PrintButton />} />
 
