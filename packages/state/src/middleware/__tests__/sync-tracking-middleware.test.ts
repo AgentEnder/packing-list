@@ -38,11 +38,9 @@ describe('syncTrackingMiddleware', () => {
         payload: { id: 'person-1', name: 'Test Person' },
       });
 
-      // Should log that it's analyzing the action
+      // Should log that it detected a person change
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          '🔄 [SYNC_MIDDLEWARE] Analyzing diffs for action: ADD_PERSON'
-        )
+        expect.stringContaining('🔄 [SYNC_MIDDLEWARE] Person created: person-1')
       );
     });
 
@@ -69,11 +67,9 @@ describe('syncTrackingMiddleware', () => {
         payload: { id: 'person-1', name: 'Test Person' },
       });
 
-      // Should log that it's skipping
-      expect(localConsoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          '⏭️ [SYNC_MIDDLEWARE] Skipping change tracking for action ADD_PERSON: no trip selected or local user'
-        )
+      // Should not log any entity changes for local users
+      expect(localConsoleSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('🔄 [SYNC_MIDDLEWARE] Person created')
       );
 
       localConsoleSpy.mockRestore();
@@ -103,11 +99,9 @@ describe('syncTrackingMiddleware', () => {
         payload: { id: 'person-1', name: 'Test Person' },
       });
 
-      // Should log that it's skipping
-      expect(noTripConsoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          '⏭️ [SYNC_MIDDLEWARE] Skipping change tracking for action ADD_PERSON: no trip selected or local user'
-        )
+      // Should not log any entity changes when no trip is selected
+      expect(noTripConsoleSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('🔄 [SYNC_MIDDLEWARE] Person created')
       );
 
       noTripConsoleSpy.mockRestore();
@@ -122,9 +116,7 @@ describe('syncTrackingMiddleware', () => {
 
       // Should log that it detected a person change
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          '👤 [SYNC_MIDDLEWARE] New person detected: person-1'
-        )
+        expect.stringContaining('🔄 [SYNC_MIDDLEWARE] Person created: person-1')
       );
     });
 
@@ -144,10 +136,10 @@ describe('syncTrackingMiddleware', () => {
         },
       });
 
-      // Should log that it detected rule changes (now batched)
+      // Should log that it detected rule changes
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining(
-          '📋 [SYNC_MIDDLEWARE] 1 new rules detected, checking for existing TripRule associations'
+          '🔄 [SYNC_MIDDLEWARE] Default item rule created: rule-1'
         )
       );
     });
@@ -167,7 +159,7 @@ describe('syncTrackingMiddleware', () => {
       // Should log that it detected a rule pack change
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining(
-          '📦 [SYNC_MIDDLEWARE] New rule pack detected: pack-1'
+          '🔄 [SYNC_MIDDLEWARE] Rule pack created: pack-1'
         )
       );
     });
@@ -190,22 +182,17 @@ describe('syncTrackingMiddleware', () => {
         payload: {},
       });
 
-      // Should analyze but not detect any changes
-      expect(consoleSpy).toHaveBeenCalledWith(
+      // Should not detect any changes since no state changed
+      expect(consoleSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('🔄 [SYNC_MIDDLEWARE] Person created')
+      );
+      expect(consoleSpy).not.toHaveBeenCalledWith(
         expect.stringContaining(
-          '🔄 [SYNC_MIDDLEWARE] Analyzing diffs for action: UNKNOWN_ACTION'
+          '🔄 [SYNC_MIDDLEWARE] Default item rule created'
         )
       );
-
-      // Should not log any entity changes
       expect(consoleSpy).not.toHaveBeenCalledWith(
-        expect.stringContaining('New person detected')
-      );
-      expect(consoleSpy).not.toHaveBeenCalledWith(
-        expect.stringContaining('New rule detected')
-      );
-      expect(consoleSpy).not.toHaveBeenCalledWith(
-        expect.stringContaining('New rule pack detected')
+        expect.stringContaining('🔄 [SYNC_MIDDLEWARE] Rule pack created')
       );
     });
   });

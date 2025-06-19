@@ -100,7 +100,10 @@ export const processPendingItems = (dispatch: (action: AllActions) => void) => {
     if (!itemsByTrip.has(item.tripId)) {
       itemsByTrip.set(item.tripId, []);
     }
-    itemsByTrip.get(item.tripId)!.push(item);
+    const tripItems = itemsByTrip.get(item.tripId);
+    if (tripItems) {
+      tripItems.push(item);
+    }
   }
 
   // Process each trip's items together
