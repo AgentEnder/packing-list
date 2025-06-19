@@ -4,12 +4,12 @@ import {
   ConflictList,
   ConflictResolutionModal,
 } from '@packing-list/shared-components';
-import { useSyncContext } from './SyncProvider.js';
+import { useAppSelector } from '@packing-list/state';
 import type { SyncConflict } from '@packing-list/model';
 import { useAppDispatch } from '@packing-list/state';
 
 export const SyncStatus: React.FC = () => {
-  const { syncState } = useSyncContext();
+  const syncState = useAppSelector((state) => state.sync);
   const dispatch = useAppDispatch();
   const [showConflicts, setShowConflicts] = useState(false);
   const [selectedConflict, setSelectedConflict] = useState<SyncConflict | null>(
@@ -17,7 +17,7 @@ export const SyncStatus: React.FC = () => {
   );
 
   const handleStatusClick = () => {
-    if (syncState.conflicts.length > 0) {
+    if (syncState.syncState.conflicts.length > 0) {
       setShowConflicts(true);
     }
   };
@@ -64,7 +64,10 @@ export const SyncStatus: React.FC = () => {
 
   return (
     <>
-      <SyncStatusIndicator syncState={syncState} onClick={handleStatusClick} />
+      <SyncStatusIndicator
+        syncState={syncState.syncState}
+        onClick={handleStatusClick}
+      />
 
       {/* Conflicts List Modal */}
       {showConflicts && (
@@ -81,7 +84,7 @@ export const SyncStatus: React.FC = () => {
             </div>
 
             <ConflictList
-              conflicts={syncState.conflicts}
+              conflicts={syncState.syncState.conflicts}
               onResolveConflict={handleResolveConflict}
               onResolveAll={handleResolveAll}
             />

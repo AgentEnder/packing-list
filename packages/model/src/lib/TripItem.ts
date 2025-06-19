@@ -6,7 +6,7 @@ export type TripItem = {
   quantity: number;
   packed: boolean;
   notes?: string;
-  personId?: string;
+  personId?: string | null;
   dayIndex?: number; // Which day this item is for (0-based index)
 
   // Rule tracking - essential for matching items during hydration

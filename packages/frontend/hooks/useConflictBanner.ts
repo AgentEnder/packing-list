@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useSyncContext } from '../components/SyncProvider.js';
+import { useAppSelector } from '@packing-list/state';
 import { navigate } from 'vike/client/router';
 
 export const useConflictBanner = () => {
@@ -7,8 +7,7 @@ export const useConflictBanner = () => {
   let syncState, hasSyncContext;
 
   try {
-    const context = useSyncContext();
-    syncState = context.syncState;
+    syncState = useAppSelector((state) => state.sync.syncState);
     hasSyncContext = true;
   } catch (error) {
     console.warn(

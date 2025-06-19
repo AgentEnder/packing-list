@@ -1,32 +1,30 @@
 import type { Middleware } from '@reduxjs/toolkit';
 import { UnknownAction } from '@reduxjs/toolkit';
 import { uuid } from '@packing-list/shared-utils';
-import type { Trip, Person, TripItem, TripRule } from '@packing-list/model';
+import type { Trip, Person, Change } from '@packing-list/model';
 import { StoreType } from '../store.js';
 import {
-  getChangeTracker,
-  ChangeTracker,
-  enableSyncMode,
-  disableSyncMode,
-} from '../lib/sync/sync-service.js';
+  syncFromServer,
+  pushChangeToServer,
+  setSyncOnlineStatus,
+} from '../lib/sync/actions.js';
 import {
   TripStorage,
   PersonStorage,
   ItemStorage,
   DefaultItemRulesStorage,
   RulePacksStorage,
-  TripRuleStorage,
+  getDatabase,
 } from '@packing-list/offline-storage';
 import type { AllActions } from '../actions.js';
+import { isLocalUser } from '../lib/sync/utils.js';
 
 /**
  * Deep equality check for objects
  */
 function deepEqual(obj1: unknown, obj2: unknown): boolean {
   if (obj1 === obj2) return true;
-
   if (obj1 == null || obj2 == null) return obj1 === obj2;
-
   if (typeof obj1 !== 'object' || typeof obj2 !== 'object') return false;
 
   const keys1 = Object.keys(obj1 as Record<string, unknown>);
@@ -45,13 +43,11 @@ function deepEqual(obj1: unknown, obj2: unknown): boolean {
       return false;
     }
   }
-
   return true;
 }
 
 /**
  * Reload trip data from IndexedDB and populate Redux state
- * This is triggered on auth completion to ensure state is hydrated from offline storage
  */
 async function reloadFromIndexedDB(
   dispatch: (action: AllActions) => void,
@@ -62,33 +58,23 @@ async function reloadFromIndexedDB(
   );
 
   try {
-    // Enable sync mode to prevent change tracking during reload
-    enableSyncMode();
+    const { loadOfflineState } = await import('../offline-hydration.js');
+    const offlineState = await loadOfflineState(userId);
 
-    try {
-      // Load offline state using the existing loadOfflineState function
-      const { loadOfflineState } = await import('../offline-hydration.js');
-      const offlineState = await loadOfflineState(userId);
+    console.log(
+      `✅ [SYNC_MIDDLEWARE] Successfully loaded offline state for ${
+        Object.keys(offlineState.trips.byId).length
+      } trips`
+    );
 
-      console.log(
-        `✅ [SYNC_MIDDLEWARE] Successfully loaded offline state for ${
-          Object.keys(offlineState.trips.byId).length
-        } trips`
-      );
+    dispatch({
+      type: 'HYDRATE_OFFLINE',
+      payload: offlineState,
+    });
 
-      // Dispatch single HYDRATE_OFFLINE action with complete state
-      dispatch({
-        type: 'HYDRATE_OFFLINE',
-        payload: offlineState,
-      });
-
-      console.log(
-        `🔄 [SYNC_MIDDLEWARE] Successfully hydrated Redux state from IndexedDB`
-      );
-    } finally {
-      // Always disable sync mode, even if an error occurred
-      disableSyncMode();
-    }
+    console.log(
+      `🔄 [SYNC_MIDDLEWARE] Successfully hydrated Redux state from IndexedDB`
+    );
   } catch (error) {
     console.error(
       '❌ [SYNC_MIDDLEWARE] Failed to reload from IndexedDB:',
@@ -98,149 +84,166 @@ async function reloadFromIndexedDB(
 }
 
 /**
- * Redux middleware that automatically tracks sync changes using deep diffs.
- * This approach is more robust than action-based tracking as it detects actual state changes.
+ * Start sync service and perform initial sync
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function startSyncService(dispatch: any, userId: string): Promise<void> {
+  if (isLocalUser(userId)) {
+    console.log('🔄 [SYNC_MIDDLEWARE] Skipping sync for local user');
+    return;
+  }
+
+  try {
+    console.log('🔄 [SYNC_MIDDLEWARE] Starting sync service...');
+
+    // Set online status
+    dispatch(setSyncOnlineStatus(true));
+
+    // Get last sync timestamp
+    const db = await getDatabase();
+    const lastSyncTimestamp = await db.get('syncMetadata', 'lastSyncTimestamp');
+    const since = lastSyncTimestamp
+      ? new Date(lastSyncTimestamp).toISOString()
+      : undefined;
+
+    // Perform comprehensive sync
+    await dispatch(syncFromServer({ userId, since }));
+
+    console.log('✅ [SYNC_MIDDLEWARE] Sync service started successfully');
+  } catch (error) {
+    console.error('❌ [SYNC_MIDDLEWARE] Failed to start sync service:', error);
+  }
+}
+
+/**
+ * Track and push a change to the server
+ */
+async function trackAndPushChange(
+  change: Omit<Change, 'id' | 'timestamp' | 'synced'>,
+  userId: string
+): Promise<void> {
+  if (isLocalUser(userId)) {
+    console.log('🔄 [SYNC_MIDDLEWARE] Skipping change tracking for local user');
+    return;
+  }
+
+  const changeId = uuid();
+  const changeWithId: Change = {
+    ...change,
+    id: changeId,
+    timestamp: Date.now(),
+    synced: false,
+  } as Change;
+
+  console.log(
+    `🔄 [SYNC_MIDDLEWARE] Tracking and pushing change: ${change.operation} ${change.entityType}:${change.entityId}`
+  );
+
+  try {
+    // Store change in IndexedDB for persistence
+    const db = await getDatabase();
+    try {
+      await db.add('changes', changeWithId);
+    } catch {
+      console.warn('🔄 [SYNC_MIDDLEWARE] Changes table not available yet');
+    }
+
+    // Push to server immediately
+    await pushChangeToServer(changeWithId);
+
+    // Mark as synced
+    try {
+      await db.put('changes', { ...changeWithId, synced: true });
+    } catch {
+      console.warn('🔄 [SYNC_MIDDLEWARE] Could not mark change as synced');
+    }
+
+    console.log(
+      `✅ [SYNC_MIDDLEWARE] Successfully pushed change: ${change.entityType}:${change.entityId}`
+    );
+  } catch (error) {
+    console.error(
+      `❌ [SYNC_MIDDLEWARE] Failed to push change: ${change.entityType}:${change.entityId}`,
+      error
+    );
+    // Change remains unsynced in IndexedDB for retry later
+  }
+}
+
+/**
+ * Redux middleware that automatically tracks sync changes and handles sync operations.
  */
 export const syncTrackingMiddleware: Middleware<object, StoreType> =
   (store) => (next) => (action) => {
-    // Get the state before the action
     const prevState = store.getState();
-
-    // Execute the action
     const result = next(action);
+    const nextState = store.getState();
 
-    // Handle auth initialization completion to reload from IndexedDB
-    if ((action as UnknownAction).type === 'auth/initializeAuth/fulfilled') {
-      const nextState = store.getState();
+    // Handle auth initialization and sign-in to reload from IndexedDB and start sync
+    const authActions = [
+      'auth/initializeAuth/fulfilled',
+      'auth/signInWithPassword/fulfilled',
+      'auth/signInWithGooglePopup/fulfilled',
+      'auth/switchToOnlineMode/fulfilled',
+    ];
+
+    if (authActions.includes((action as UnknownAction).type)) {
       const userId = nextState.auth.user?.id;
-
-      if (userId && userId !== 'local-user' && userId !== 'local-shared-user') {
-        console.log(
-          '🔄 [SYNC_MIDDLEWARE] Detected auth initialization, triggering IndexedDB reload'
-        );
-        // Trigger reload asynchronously to avoid blocking the action
-        reloadFromIndexedDB(
-          store.dispatch as (action: AllActions) => void,
-          userId
-        ).catch((error) => {
-          console.error('❌ [SYNC_MIDDLEWARE] IndexedDB reload failed:', error);
-        });
-      } else {
-        console.log(
-          '⏭️ [SYNC_MIDDLEWARE] Skipping IndexedDB reload: local/shared user or no user'
-        );
-      }
-      return result;
-    }
-
-    // Handle sign-in completion to reload from IndexedDB
-    if (
-      (action as UnknownAction).type === 'auth/signInWithPassword/fulfilled' ||
-      (action as UnknownAction).type ===
-        'auth/signInWithGooglePopup/fulfilled' ||
-      (action as UnknownAction).type === 'auth/switchToOnlineMode/fulfilled'
-    ) {
-      const nextState = store.getState();
-      const userId = nextState.auth.user?.id;
-
       if (userId && userId !== 'local-user' && userId !== 'local-shared-user') {
         console.log(
           `🔄 [SYNC_MIDDLEWARE] Detected auth change (${
             (action as UnknownAction).type
-          }), triggering IndexedDB reload`
+          }), triggering IndexedDB reload and sync service start`
         );
-        // Trigger reload asynchronously to avoid blocking the action
+
+        // Load from IndexedDB first
         reloadFromIndexedDB(
           store.dispatch as (action: AllActions) => void,
           userId
-        ).catch((error) => {
-          console.error('❌ [SYNC_MIDDLEWARE] IndexedDB reload failed:', error);
-        });
+        )
+          .then(async () => {
+            // Then start the sync service
+            await startSyncService(store.dispatch, userId);
+          })
+          .catch((error) => {
+            console.error(
+              '❌ [SYNC_MIDDLEWARE] IndexedDB reload failed:',
+              error
+            );
+          });
       }
       return result;
     }
 
+    // Skip tracking for certain actions
+    const skipActions = ['upsert', 'SELECT_TRIP', 'HYDRATE_OFFLINE', 'sync/'];
     if (
-      (action as UnknownAction).type.includes('upsert') ||
-      (action as UnknownAction).type === 'SELECT_TRIP' ||
-      (action as UnknownAction).type === 'HYDRATE_OFFLINE'
+      skipActions.some((skip) => (action as UnknownAction).type.includes(skip))
     ) {
-      console.log('Skipping action', (action as UnknownAction).type);
       return result;
     }
 
-    // Get the state after the action
-    const nextState = store.getState();
-
-    // Log all actions for debugging
-    console.log(
-      `🔄 [SYNC_MIDDLEWARE] Analyzing diffs for action: ${
-        (action as { type: string }).type
-      }`
-    );
-
-    // Check if we should skip tracking
+    // Check if we should track changes
     const userId = nextState.auth.user?.id;
     const tripId = nextState.trips.selectedTripId;
 
     if (!userId || !tripId || userId === 'local-user') {
-      console.log(
-        `⏭️ [SYNC_MIDDLEWARE] Skipping change tracking for action ${
-          (action as { type: string }).type
-        }: no trip selected or local user`
-      );
       return result;
     }
 
     try {
-      // Get change tracker
-      const changeTracker = getChangeTracker();
-      const now = new Date().toISOString();
-
-      // Handle specific actions that need optimized tracking
+      // Handle optimized packing status changes
       if ((action as { type: string }).type === 'TOGGLE_ITEM_PACKED') {
-        trackPackingStatusChange(
+        handlePackingStatusChange(
           prevState,
           nextState,
           tripId,
           userId,
-          changeTracker,
           action as { type: string; payload: { itemId: string } }
         );
       } else {
-        // Track different types of changes using deep diffs
-        trackTripChanges(
-          prevState,
-          nextState,
-          tripId,
-          userId,
-          now,
-          changeTracker
-        );
-        trackPersonChanges(
-          prevState,
-          nextState,
-          tripId,
-          userId,
-          now,
-          changeTracker
-        );
-        trackRuleChanges(
-          prevState,
-          nextState,
-          tripId,
-          userId,
-          now,
-          changeTracker
-        );
-        trackRulePackChanges(
-          prevState,
-          nextState,
-          tripId,
-          userId,
-          now,
-          changeTracker
-        );
+        // Track all other changes using deep diffs
+        trackAllChanges(prevState, nextState, tripId, userId);
       }
     } catch (error) {
       console.error('🚨 [SYNC_MIDDLEWARE] Error tracking changes:', error);
@@ -250,14 +253,13 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
   };
 
 /**
- * Track optimized packing status changes for TOGGLE_ITEM_PACKED actions
+ * Handle optimized packing status changes
  */
-function trackPackingStatusChange(
+function handlePackingStatusChange(
   prevState: StoreType,
   nextState: StoreType,
   tripId: string,
   userId: string,
-  changeTracker: ChangeTracker,
   action: { type: string; payload: { itemId: string } }
 ): void {
   const { itemId } = action.payload;
@@ -270,86 +272,98 @@ function trackPackingStatusChange(
   const prevItem = prevItems.find((item) => item.id === itemId);
   const nextItem = nextItems.find((item) => item.id === itemId);
 
-  if (!nextItem) {
+  if (!prevItem || !nextItem) {
     console.warn(
-      `⚠️ [SYNC_MIDDLEWARE] Item not found for packing toggle: ${itemId}`
+      `🚨 [SYNC_MIDDLEWARE] Could not find item ${itemId} for packing status change`
     );
     return;
   }
 
-  const previousStatus = prevItem?.isPacked || false;
-  const newStatus = nextItem.isPacked;
+  if (prevItem.isPacked !== nextItem.isPacked) {
+    console.log(
+      `🔄 [SYNC_MIDDLEWARE] Packing status changed for item ${itemId}: ${prevItem.isPacked} -> ${nextItem.isPacked}`
+    );
 
-  console.log(
-    `📦 [SYNC_MIDDLEWARE] Packing status changed: ${itemId} (${previousStatus} → ${newStatus})`
-  );
+    // Update item in storage with new packing status
+    updateItemInStorage(itemId, tripId, nextItem, nextItem.isPacked);
 
-  // Use optimized packing status tracking
-  changeTracker
-    .trackPackingStatusChange(itemId, newStatus, userId, tripId, {
-      previousStatus,
-      timestamp: Date.now(),
-    })
-    .catch((error) => {
-      console.error(
-        '❌ [SYNC_MIDDLEWARE] Failed to track packing status change:',
-        error
-      );
-    });
+    // Track the packing status change
+    const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+      entityType: 'item',
+      entityId: itemId,
+      operation: 'update',
+      userId,
+      tripId,
+      version: 1,
+      data: {
+        id: itemId,
+        packed: nextItem.isPacked,
+        updatedAt: new Date().toISOString(),
+        _packingStatusOnly: true,
+        _previousStatus: prevItem.isPacked,
+      },
+    };
 
-  // Get existing item from IndexedDB to preserve data and increment version
-  ItemStorage.getTripItems(tripId)
-    .then((existingItems) => {
-      const existingItem = existingItems.find((item) => item.id === itemId);
+    trackAndPushChange(change, userId);
+  }
+}
 
-      if (existingItem) {
-        // Update existing item with new packed status
-        const updatedItem: TripItem = {
-          ...existingItem,
-          packed: newStatus,
-          updatedAt: new Date().toISOString(),
-          version: existingItem.version + 1,
-        };
+/**
+ * Update item in IndexedDB storage with optimized packing status
+ */
+function updateItemInStorage(
+  itemId: string,
+  tripId: string,
+  nextItem: {
+    name: string;
+    category?: string;
+    quantity: number;
+    notes?: string;
+    personId?: string | null;
+    dayIndex?: number;
+    ruleId?: string;
+    ruleHash?: string;
+  },
+  newStatus: boolean
+): void {
+  ItemStorage.saveItem({
+    id: itemId,
+    tripId,
+    name: nextItem.name,
+    category: nextItem.category,
+    quantity: nextItem.quantity,
+    notes: nextItem.notes,
+    personId: nextItem.personId,
+    dayIndex: nextItem.dayIndex,
+    ruleId: nextItem.ruleId,
+    ruleHash: nextItem.ruleHash,
+    packed: newStatus,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    version: 1,
+    isDeleted: false,
+  }).catch((error) => {
+    console.error(
+      `🚨 [SYNC_MIDDLEWARE] Failed to update item ${itemId} in storage:`,
+      error
+    );
+  });
+}
 
-        console.log(
-          `💾 [SYNC_MIDDLEWARE] Updating existing item in IndexedDB: ${itemId} (version ${existingItem.version} → ${updatedItem.version})`
-        );
-
-        return ItemStorage.saveItem(updatedItem);
-      } else {
-        // Create new item if it doesn't exist in IndexedDB
-        const newItem: TripItem = {
-          id: itemId,
-          tripId,
-          name: nextItem.name,
-          category: nextItem.categoryId,
-          quantity: nextItem.quantity,
-          packed: newStatus,
-          notes: nextItem.notes,
-          personId: nextItem.personId,
-          dayIndex: nextItem.dayIndex,
-          // Preserve rule information for proper matching during hydration
-          ruleId: nextItem.ruleId,
-          ruleHash: nextItem.ruleHash,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          version: 1,
-          isDeleted: false,
-        };
-
-        console.log(
-          `➕ [SYNC_MIDDLEWARE] Creating new item in IndexedDB: ${itemId}`
-        );
-
-        return ItemStorage.saveItem(newItem);
-      }
-    })
-    .catch((error) => {
-      console.error(
-        '❌ [SYNC_MIDDLEWARE] Failed to save item to IndexedDB:',
-        error
-      );
-    });
+/**
+ * Track all changes using deep diffs
+ */
+function trackAllChanges(
+  prevState: StoreType,
+  nextState: StoreType,
+  tripId: string,
+  userId: string
+): void {
+  // Track changes in different entity types
+  trackTripChanges(prevState, nextState, tripId, userId);
+  trackPersonChanges(prevState, nextState, tripId, userId);
+  trackRuleChanges(prevState, nextState, tripId, userId);
+  trackRulePackChanges(prevState, nextState, tripId, userId);
 }
 
 /**
@@ -359,104 +373,98 @@ function trackTripChanges(
   prevState: StoreType,
   nextState: StoreType,
   tripId: string,
-  userId: string,
-  now: string,
-  changeTracker: ChangeTracker
+  userId: string
 ): void {
-  const prevTripData = prevState.trips.byId[tripId];
-  const nextTripData = nextState.trips.byId[tripId];
+  const prevTrip = prevState.trips.byId[tripId];
+  const nextTrip = nextState.trips.byId[tripId];
 
-  const prevTrip = prevTripData?.trip;
-  const nextTrip = nextTripData?.trip;
+  if (!prevTrip && nextTrip) {
+    // Trip created
+    console.log(`🔄 [SYNC_MIDDLEWARE] Trip created: ${tripId}`);
 
-  if (!nextTrip) return;
-
-  // Check if this is truly a new trip by checking if there was any trip data before
-  const isActuallyNewTrip = !prevTripData;
-
-  if (isActuallyNewTrip) {
-    // New trip created - convert to full Trip type
-    console.log(`🧳 [SYNC_MIDDLEWARE] New trip detected: ${tripId}`);
-
-    // Ensure all trip events have IDs
-    const tripEventsWithIds = (nextTrip.tripEvents || []).map((event) => ({
-      ...event,
-      id: event.id || uuid(), // Generate ID if missing
-    }));
-
-    const modernTrip: Trip = {
-      id: nextTrip.id,
+    const tripData: Trip = {
+      id: tripId,
       userId,
-      title: nextTrip.title || 'New Trip', // Use existing title if available
-      description: nextTrip.description,
-      days: nextTrip.days,
-      tripEvents: tripEventsWithIds,
-      createdAt: nextTrip.createdAt || now,
-      updatedAt: now,
-      lastSyncedAt: nextTrip.lastSyncedAt,
-      settings: nextTrip.settings || {
-        defaultTimeZone: 'UTC',
-        packingViewMode: 'by-day',
-      },
-      version: nextTrip.version || 1,
+      title: nextTrip.trip.title,
+      description: nextTrip.trip.description,
+      days: nextTrip.trip.days,
+      tripEvents: nextTrip.trip.tripEvents,
+      settings: nextTrip.trip.settings,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      version: 1,
       isDeleted: false,
-      defaultItemRules: nextTrip.defaultItemRules || [],
+      defaultItemRules: [],
     };
 
-    changeTracker.trackTripChange('create', modernTrip, userId);
-    TripStorage.saveTrip(modernTrip).catch(console.error);
-    return;
-  }
+    // Save to storage
+    TripStorage.saveTrip(tripData).catch((error) => {
+      console.error(
+        `🚨 [SYNC_MIDDLEWARE] Failed to save trip ${tripId}:`,
+        error
+      );
+    });
 
-  // Only track trip updates if the trip object itself has changed
-  // (not when only trip data like rules or people change)
-  if (prevTrip && !deepEqual(prevTrip, nextTrip)) {
-    console.log(`🧳 [SYNC_MIDDLEWARE] Trip updated: ${tripId}`);
-
-    // Ensure all trip events have IDs
-    const tripEventsWithIds = (nextTrip.tripEvents || []).map((event) => ({
-      ...event,
-      id: event.id || uuid(), // Generate ID if missing
-    }));
-
-    const trip: Trip = {
-      id: nextTrip.id,
+    // Track change
+    const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+      entityType: 'trip',
+      entityId: tripId,
+      operation: 'create',
       userId,
-      title: nextTrip.title || prevTrip.title || 'Updated Trip',
-      description:
-        nextTrip.description !== undefined
-          ? nextTrip.description
-          : prevTrip.description,
-      days: nextTrip.days,
-      tripEvents: tripEventsWithIds,
-      createdAt: prevTrip.createdAt || nextTrip.createdAt || now,
-      updatedAt: now,
-      lastSyncedAt: nextTrip.lastSyncedAt,
-      settings: nextTrip.settings ||
-        prevTrip.settings || {
-          defaultTimeZone: 'UTC',
-          packingViewMode: 'by-day',
-        },
-      version: (prevTrip.version || 0) + 1,
-      isDeleted: false,
-      defaultItemRules: nextTrip.defaultItemRules || [],
+      version: 1,
+      data: tripData,
     };
 
-    changeTracker.trackTripChange('update', trip, userId);
-    TripStorage.saveTrip(trip).catch(console.error);
+    trackAndPushChange(change, userId);
+  } else if (prevTrip && nextTrip && !deepEqual(prevTrip.trip, nextTrip.trip)) {
+    // Trip updated
+    console.log(`🔄 [SYNC_MIDDLEWARE] Trip updated: ${tripId}`);
+
+    const tripData: Trip = {
+      id: tripId,
+      userId,
+      title: nextTrip.trip.title,
+      description: nextTrip.trip.description,
+      days: nextTrip.trip.days,
+      tripEvents: nextTrip.trip.tripEvents,
+      settings: nextTrip.trip.settings,
+      createdAt: prevTrip.trip.createdAt,
+      updatedAt: new Date().toISOString(),
+      version: (prevTrip.trip.version || 1) + 1,
+      isDeleted: false,
+      defaultItemRules: [],
+    };
+
+    // Save to storage
+    TripStorage.saveTrip(tripData).catch((error) => {
+      console.error(
+        `🚨 [SYNC_MIDDLEWARE] Failed to save trip ${tripId}:`,
+        error
+      );
+    });
+
+    // Track change
+    const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+      entityType: 'trip',
+      entityId: tripId,
+      operation: 'update',
+      userId,
+      version: tripData.version,
+      data: tripData,
+    };
+
+    trackAndPushChange(change, userId);
   }
 }
 
 /**
- * Track changes to people data
+ * Track changes to people
  */
 function trackPersonChanges(
   prevState: StoreType,
   nextState: StoreType,
   tripId: string,
-  userId: string,
-  now: string,
-  changeTracker: ChangeTracker
+  userId: string
 ): void {
   const prevPeople = prevState.trips.byId[tripId]?.people || [];
   const nextPeople = nextState.trips.byId[tripId]?.people || [];
@@ -466,250 +474,214 @@ function trackPersonChanges(
     const prevPerson = prevPeople.find((p) => p.id === nextPerson.id);
 
     if (!prevPerson) {
-      console.log(`👤 [SYNC_MIDDLEWARE] New person detected: ${nextPerson.id}`);
-      const person: Person = {
-        id: nextPerson.id,
-        tripId,
-        name: nextPerson.name,
-        age: nextPerson.age,
-        gender: nextPerson.gender as
-          | 'male'
-          | 'female'
-          | 'other'
-          | 'prefer-not-to-say'
-          | undefined,
-        settings: {},
-        createdAt: now,
-        updatedAt: now,
+      // Person created
+      console.log(`🔄 [SYNC_MIDDLEWARE] Person created: ${nextPerson.id}`);
+
+      const personData: Person = {
+        ...nextPerson,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         version: 1,
         isDeleted: false,
       };
 
-      changeTracker.trackPersonChange('create', person, userId, tripId);
-      PersonStorage.savePerson(person).catch(console.error);
-    } else if (!deepEqual(prevPerson, nextPerson)) {
-      console.log(`👤 [SYNC_MIDDLEWARE] Person updated: ${nextPerson.id}`);
-      const person: Person = {
-        id: nextPerson.id,
+      // Save to storage
+      PersonStorage.savePerson(personData).catch((error) => {
+        console.error(
+          `🚨 [SYNC_MIDDLEWARE] Failed to save person ${nextPerson.id}:`,
+          error
+        );
+      });
+
+      // Track change
+      const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+        entityType: 'person',
+        entityId: nextPerson.id,
+        operation: 'create',
+        userId,
         tripId,
-        name: nextPerson.name,
-        age: nextPerson.age,
-        gender: nextPerson.gender as
-          | 'male'
-          | 'female'
-          | 'other'
-          | 'prefer-not-to-say'
-          | undefined,
-        settings: {},
-        createdAt: prevPerson.createdAt || now,
-        updatedAt: now,
-        version: (prevPerson.version || 0) + 1,
-        isDeleted: false,
+        version: 1,
+        data: personData,
       };
 
-      changeTracker.trackPersonChange('update', person, userId, tripId);
-      PersonStorage.savePerson(person).catch(console.error);
+      trackAndPushChange(change, userId);
+    } else if (!deepEqual(prevPerson, nextPerson)) {
+      // Person updated
+      console.log(`🔄 [SYNC_MIDDLEWARE] Person updated: ${nextPerson.id}`);
+
+      const personData: Person = {
+        ...nextPerson,
+        updatedAt: new Date().toISOString(),
+        version: (prevPerson.version || 1) + 1,
+      };
+
+      // Save to storage
+      PersonStorage.savePerson(personData).catch((error) => {
+        console.error(
+          `🚨 [SYNC_MIDDLEWARE] Failed to save person ${nextPerson.id}:`,
+          error
+        );
+      });
+
+      // Track change
+      const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+        entityType: 'person',
+        entityId: nextPerson.id,
+        operation: 'update',
+        userId,
+        tripId,
+        version: personData.version,
+        data: personData,
+      };
+
+      trackAndPushChange(change, userId);
     }
   }
 
-  // Check for removed people
+  // Check for deleted people
   for (const prevPerson of prevPeople) {
-    const stillExists = nextPeople.find((p) => p.id === prevPerson.id);
+    const nextPerson = nextPeople.find((p) => p.id === prevPerson.id);
 
-    if (!stillExists) {
-      console.log(`👤 [SYNC_MIDDLEWARE] Person removed: ${prevPerson.id}`);
-      const modernPerson: Person = {
-        id: prevPerson.id,
+    if (!nextPerson) {
+      // Person deleted
+      console.log(`🔄 [SYNC_MIDDLEWARE] Person deleted: ${prevPerson.id}`);
+
+      // Mark as deleted in storage
+      PersonStorage.deletePerson(prevPerson.id).catch((error) => {
+        console.error(
+          `🚨 [SYNC_MIDDLEWARE] Failed to delete person ${prevPerson.id}:`,
+          error
+        );
+      });
+
+      // Track change
+      const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+        entityType: 'person',
+        entityId: prevPerson.id,
+        operation: 'delete',
+        userId,
         tripId,
-        name: prevPerson.name,
-        age: prevPerson.age,
-        gender: prevPerson.gender as
-          | 'male'
-          | 'female'
-          | 'other'
-          | 'prefer-not-to-say'
-          | undefined,
-        settings: {},
-        createdAt: prevPerson.createdAt || now,
-        updatedAt: now,
-        version: (prevPerson.version || 0) + 1,
-        isDeleted: true,
+        version: (prevPerson.version || 1) + 1,
+        data: {
+          ...prevPerson,
+          isDeleted: true,
+          updatedAt: new Date().toISOString(),
+        },
       };
 
-      changeTracker.trackPersonChange('delete', modernPerson, userId, tripId);
-      PersonStorage.deletePerson(prevPerson.id).catch(console.error);
+      trackAndPushChange(change, userId);
     }
   }
 }
 
 /**
- * Track changes to default item rules
+ * Track changes to rules
  */
 function trackRuleChanges(
   prevState: StoreType,
   nextState: StoreType,
   tripId: string,
-  userId: string,
-  now: string,
-  changeTracker: ChangeTracker
+  userId: string
 ): void {
+  // Track default item rules - these are stored at the trip level
   const prevRules = prevState.trips.byId[tripId]?.trip?.defaultItemRules || [];
   const nextRules = nextState.trips.byId[tripId]?.trip?.defaultItemRules || [];
 
-  // Find all new rules first
-  const newRules = nextRules.filter(
-    (rule) => !prevRules.find((r) => r.id === rule.id)
-  );
-
-  if (newRules.length > 0) {
-    console.log(
-      `📋 [SYNC_MIDDLEWARE] ${newRules.length} new rules detected, checking for existing TripRule associations`
+  // Check for new or updated rules
+  for (const nextRule of nextRules) {
+    const prevRule = prevRules.find(
+      (r: { id: string }) => r.id === nextRule.id
     );
 
-    // Batch check for existing TripRule associations to avoid race conditions
-    TripRuleStorage.getTripRules(tripId)
-      .then((existingTripRules) => {
-        const newTripRules: TripRule[] = [];
-        const rulesToTrack: typeof newRules = [];
+    if (!prevRule) {
+      // Rule created
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] Default item rule created: ${nextRule.id}`
+      );
 
-        // Process each new rule
-        for (const rule of newRules) {
-          const existingAssociation = existingTripRules.find(
-            (tr) => tr.ruleId === rule.id && !tr.isDeleted
-          );
-
-          if (!existingAssociation) {
-            // Create new TripRule association
-            const tripRule: TripRule = {
-              id: uuid(),
-              tripId,
-              ruleId: rule.id,
-              createdAt: now,
-              updatedAt: now,
-              version: 1,
-              isDeleted: false,
-            };
-
-            newTripRules.push(tripRule);
-            rulesToTrack.push(rule);
-            console.log(
-              `🔗 [SYNC_MIDDLEWARE] Will create TripRule association: ${tripRule.id} (trip: ${tripId}, rule: ${rule.id})`
-            );
-          } else {
-            console.log(
-              `⏭️ [SYNC_MIDDLEWARE] TripRule association already exists: ${existingAssociation.id} (trip: ${tripId}, rule: ${rule.id})`
-            );
-          }
-        }
-
-        // Save all new TripRules and track sync changes atomically
-        if (newTripRules.length > 0) {
-          console.log(
-            `💾 [SYNC_MIDDLEWARE] Saving ${newTripRules.length} new TripRule associations`
-          );
-
-          // Save all rules and TripRules
-          const savePromises = [
-            ...rulesToTrack.map((rule) =>
-              DefaultItemRulesStorage.saveDefaultItemRule(rule)
-            ),
-            ...newTripRules.map((tripRule) =>
-              TripRuleStorage.saveTripRule(tripRule)
-            ),
-          ];
-
-          Promise.all(savePromises)
-            .then(() => {
-              // Only track sync changes after successful saves
-              console.log(
-                `🔄 [SYNC_MIDDLEWARE] Tracking sync changes for ${rulesToTrack.length} rules and ${newTripRules.length} TripRule associations`
-              );
-
-              // Track all changes
-              for (const rule of rulesToTrack) {
-                changeTracker.trackDefaultItemRuleChange(
-                  'create',
-                  rule,
-                  userId,
-                  tripId
-                );
-              }
-              for (const tripRule of newTripRules) {
-                changeTracker.trackTripRuleChange(
-                  'create',
-                  tripRule,
-                  userId,
-                  tripId
-                );
-              }
-            })
-            .catch((error) => {
-              console.error(
-                `❌ [SYNC_MIDDLEWARE] Failed to save rules/TripRules:`,
-                error
-              );
-            });
-        }
-      })
-      .catch((error) => {
+      // Save to storage
+      DefaultItemRulesStorage.saveDefaultItemRule(nextRule).catch((error) => {
         console.error(
-          `❌ [SYNC_MIDDLEWARE] Failed to check existing TripRule associations:`,
+          `🚨 [SYNC_MIDDLEWARE] Failed to save rule ${nextRule.id}:`,
           error
         );
       });
-  }
 
-  // Check for updated rules
-  for (const rule of nextRules) {
-    const prevRule = prevRules.find((r) => r.id === rule.id);
-    if (prevRule && !deepEqual(prevRule, rule)) {
-      console.log(`📋 [SYNC_MIDDLEWARE] Rule updated: ${rule.id}`);
-      changeTracker.trackDefaultItemRuleChange('update', rule, userId, tripId);
-      DefaultItemRulesStorage.saveDefaultItemRule(rule).catch(console.error);
+      // Track change
+      const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+        entityType: 'default_item_rule',
+        entityId: nextRule.id,
+        operation: 'create',
+        userId,
+        tripId,
+        version: 1,
+        data: nextRule,
+      };
+
+      trackAndPushChange(change, userId);
+    } else if (!deepEqual(prevRule, nextRule)) {
+      // Rule updated
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] Default item rule updated: ${nextRule.id}`
+      );
+
+      // Save to storage
+      DefaultItemRulesStorage.saveDefaultItemRule(nextRule).catch((error) => {
+        console.error(
+          `🚨 [SYNC_MIDDLEWARE] Failed to save rule ${nextRule.id}:`,
+          error
+        );
+      });
+
+      // Track change
+      const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+        entityType: 'default_item_rule',
+        entityId: nextRule.id,
+        operation: 'update',
+        userId,
+        tripId,
+        version: 1,
+        data: nextRule,
+      };
+
+      trackAndPushChange(change, userId);
     }
   }
 
-  // Check for removed rules
+  // Check for deleted rules
   for (const prevRule of prevRules) {
-    const stillExists = nextRules.find((r) => r.id === prevRule.id);
+    const nextRule = nextRules.find(
+      (r: { id: string }) => r.id === prevRule.id
+    );
 
-    if (!stillExists) {
-      console.log(`📋 [SYNC_MIDDLEWARE] Rule removed: ${prevRule.id}`);
-      changeTracker.trackDefaultItemRuleChange(
-        'delete',
-        prevRule,
-        userId,
-        tripId
+    if (!nextRule) {
+      // Rule deleted
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] Default item rule deleted: ${prevRule.id}`
       );
+
+      // Mark as deleted in storage
       DefaultItemRulesStorage.deleteDefaultItemRule(prevRule.id).catch(
-        console.error
-      );
-      TripRuleStorage.deleteTripRule(tripId, prevRule.id).catch(console.error);
-
-      // Get the existing TripRule record for tracking deletion
-      TripRuleStorage.getTripRules(tripId)
-        .then((tripRules) => {
-          const existingTripRule = tripRules.find(
-            (rule) => rule.ruleId === prevRule.id && !rule.isDeleted
+        (error) => {
+          console.error(
+            `🚨 [SYNC_MIDDLEWARE] Failed to delete rule ${prevRule.id}:`,
+            error
           );
-          if (existingTripRule) {
-            // Track the existing trip-rule association deletion for sync
-            const deletedTripRule: TripRule = {
-              ...existingTripRule,
-              isDeleted: true,
-              updatedAt: now,
-              version: existingTripRule.version + 1,
-            };
-            return changeTracker.trackTripRuleChange(
-              'delete',
-              deletedTripRule,
-              userId,
-              tripId
-            );
-          }
-          throw new Error('Trip rule not found before deletion.');
-        })
-        .catch(console.error);
+        }
+      );
+
+      // Track change
+      const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+        entityType: 'default_item_rule',
+        entityId: prevRule.id,
+        operation: 'delete',
+        userId,
+        tripId,
+        version: 1,
+        data: { ...prevRule, isDeleted: true },
+      };
+
+      trackAndPushChange(change, userId);
     }
   }
 }
@@ -721,36 +693,91 @@ function trackRulePackChanges(
   prevState: StoreType,
   nextState: StoreType,
   tripId: string,
-  userId: string,
-  now: string,
-  changeTracker: ChangeTracker
+  userId: string
 ): void {
   const prevPacks = prevState.rulePacks || [];
   const nextPacks = nextState.rulePacks || [];
 
-  // Check for new packs
-  for (const pack of nextPacks) {
-    const prevPack = prevPacks.find((p) => p.id === pack.id);
+  // Check for new or updated packs
+  for (const nextPack of nextPacks) {
+    const prevPack = prevPacks.find((p) => p.id === nextPack.id);
 
     if (!prevPack) {
-      console.log(`📦 [SYNC_MIDDLEWARE] New rule pack detected: ${pack.id}`);
-      changeTracker.trackRulePackChange('create', pack, userId);
-      RulePacksStorage.saveRulePack(pack).catch(console.error);
-    } else if (!deepEqual(prevPack, pack)) {
-      console.log(`📦 [SYNC_MIDDLEWARE] Rule pack updated: ${pack.id}`);
-      changeTracker.trackRulePackChange('update', pack, userId);
-      RulePacksStorage.saveRulePack(pack).catch(console.error);
+      // Pack created
+      console.log(`🔄 [SYNC_MIDDLEWARE] Rule pack created: ${nextPack.id}`);
+
+      // Save to storage
+      RulePacksStorage.saveRulePack(nextPack).catch((error) => {
+        console.error(
+          `🚨 [SYNC_MIDDLEWARE] Failed to save rule pack ${nextPack.id}:`,
+          error
+        );
+      });
+
+      // Track change
+      const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+        entityType: 'rule_pack',
+        entityId: nextPack.id,
+        operation: 'create',
+        userId,
+        version: 1,
+        data: nextPack,
+      };
+
+      trackAndPushChange(change, userId);
+    } else if (!deepEqual(prevPack, nextPack)) {
+      // Pack updated
+      console.log(`🔄 [SYNC_MIDDLEWARE] Rule pack updated: ${nextPack.id}`);
+
+      // Save to storage
+      RulePacksStorage.saveRulePack(nextPack).catch((error) => {
+        console.error(
+          `🚨 [SYNC_MIDDLEWARE] Failed to save rule pack ${nextPack.id}:`,
+          error
+        );
+      });
+
+      // Track change
+      const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+        entityType: 'rule_pack',
+        entityId: nextPack.id,
+        operation: 'update',
+        userId,
+        version: 1,
+        data: nextPack,
+      };
+
+      trackAndPushChange(change, userId);
     }
   }
 
-  // Check for removed packs
+  // Check for deleted packs
   for (const prevPack of prevPacks) {
-    const stillExists = nextPacks.find((p) => p.id === prevPack.id);
+    const nextPack = nextPacks.find((p) => p.id === prevPack.id);
 
-    if (!stillExists) {
-      console.log(`📦 [SYNC_MIDDLEWARE] Rule pack removed: ${prevPack.id}`);
-      changeTracker.trackRulePackChange('delete', prevPack, userId);
-      RulePacksStorage.deleteRulePack(prevPack.id).catch(console.error);
+    if (!nextPack) {
+      // Pack deleted
+      console.log(`🔄 [SYNC_MIDDLEWARE] Rule pack deleted: ${prevPack.id}`);
+
+      // Mark as deleted in storage
+      RulePacksStorage.deleteRulePack(prevPack.id).catch((error) => {
+        console.error(
+          `🚨 [SYNC_MIDDLEWARE] Failed to delete rule pack ${prevPack.id}:`,
+          error
+        );
+      });
+
+      // Track change
+      const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+        entityType: 'rule_pack',
+        entityId: prevPack.id,
+        operation: 'delete',
+        userId,
+        version: 1,
+        data: { ...prevPack, isDeleted: true },
+      };
+
+      trackAndPushChange(change, userId);
     }
   }
 }

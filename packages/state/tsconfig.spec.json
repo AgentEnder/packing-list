@@ -9,7 +9,8 @@
       "vite/client",
       "node",
       "@testing-library/jest-dom"
-    ]
+    ],
+    "tsBuildInfoFile": "dist/tsconfig.spec.tsbuildinfo"
   },
   "include": [
     "vite.config.ts",

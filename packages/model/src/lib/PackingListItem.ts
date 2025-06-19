@@ -8,7 +8,7 @@ export type PackingListItem = {
   isOverridden: boolean;
   // Each item can be associated with at most one day and one person
   dayIndex?: number; // Optional - if not set, this is a general item
-  personId?: string; // Optional - if not set, this is a general item
+  personId?: string | null; // Optional - if not set, this is a general item
   personName?: string; // Name of the person this item is for (if personId is set)
   notes?: string; // Optional notes from the rule
   // Additional metadata for multi-day ranges

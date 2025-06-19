@@ -160,6 +160,28 @@ import {
   type SyncIntegrationActions,
 } from './lib/sync/sync-integration.js';
 
+// Import sync actions and thunks
+import {
+  syncFromServer,
+  pullTripsFromServer,
+  pullPeopleFromServer,
+  pullItemsFromServer,
+  pullDefaultItemRulesFromServer,
+  pullTripRulesFromServer,
+  setSyncState,
+  setSyncInitialized,
+  addSyncConflict,
+  removeSyncConflict,
+  clearSyncConflicts,
+  setSyncConflicts,
+  setSyncOnlineStatus,
+  setSyncSyncingStatus,
+  updateLastSyncTimestamp,
+  setSyncPendingChanges,
+  setSyncError,
+  resetSyncState,
+} from './lib/sync/actions.js';
+
 export type ActionHandler<T extends AllActions> = (
   state: StoreType,
   action: T
@@ -340,4 +362,24 @@ export const actions = {
   addPerson,
   createTrip,
   createItemRule,
+
+  // Sync actions and thunks
+  syncFromServer,
+  pullTripsFromServer,
+  pullPeopleFromServer,
+  pullItemsFromServer,
+  pullDefaultItemRulesFromServer,
+  pullTripRulesFromServer,
+  setSyncState,
+  setSyncInitialized,
+  addSyncConflict,
+  removeSyncConflict,
+  clearSyncConflicts,
+  setSyncConflicts,
+  setSyncOnlineStatus,
+  setSyncSyncingStatus,
+  updateLastSyncTimestamp,
+  setSyncPendingChanges,
+  setSyncError,
+  resetSyncState,
 };

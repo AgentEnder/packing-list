@@ -6,6 +6,7 @@ import type {
   DefaultItemRule,
   RulePack,
   TripRule,
+  PackingListItem,
 } from '@packing-list/model';
 import type { EntityExistence } from './types.js';
 import type { AllActions } from '../../actions.js';
@@ -14,26 +15,6 @@ import { createEmptyTripData } from '../../store.js';
 import { calculateDefaultItems } from '../../action-handlers/calculate-default-items.js';
 import { calculatePackingListHandler } from '../../action-handlers/calculate-packing-list.js';
 import { TripRuleStorage } from '@packing-list/offline-storage';
-
-interface PackingListItem {
-  id: string;
-  name: string;
-  itemName: string;
-  ruleId: string;
-  ruleHash: string;
-  isPacked: boolean;
-  isOverridden: boolean;
-  dayIndex?: number;
-  personId?: string;
-  personName?: string;
-  notes?: string;
-  dayStart?: number;
-  dayEnd?: number;
-  isExtra: boolean;
-  quantity: number;
-  categoryId?: string;
-  subcategoryId?: string;
-}
 
 // Helper function to map TripItem to PackingListItem format
 function mapItem(
