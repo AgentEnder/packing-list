@@ -19,6 +19,13 @@ import {
 } from '@packing-list/offline-storage';
 import type { AllActions } from '../actions.js';
 import { isLocalUser } from '../lib/sync/utils.js';
+import { processSyncedEntities } from '../lib/sync/sync-integration.js';
+
+/**
+ * Track ongoing sync operations to prevent duplicate sync calls
+ */
+let isSyncInProgress = false;
+let pendingSyncUserId: string | null = null;
 
 /**
  * Deep equality check for objects
@@ -85,7 +92,7 @@ async function reloadFromIndexedDB(
 }
 
 /**
- * Start sync service and perform initial sync
+ * Start sync service and perform initial sync with debouncing
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function startSyncService(dispatch: any, userId: string): Promise<void> {
@@ -94,8 +101,28 @@ async function startSyncService(dispatch: any, userId: string): Promise<void> {
     return;
   }
 
+  // Check if sync is already in progress
+  if (isSyncInProgress) {
+    console.log(
+      `🔄 [SYNC_MIDDLEWARE] Sync already in progress for user ${pendingSyncUserId}, skipping duplicate sync for ${userId}`
+    );
+    return;
+  }
+
+  // Check if this is the same user as a pending sync
+  if (pendingSyncUserId === userId) {
+    console.log(
+      `🔄 [SYNC_MIDDLEWARE] Sync already pending for user ${userId}, skipping duplicate`
+    );
+    return;
+  }
+
   try {
     console.log('🔄 [SYNC_MIDDLEWARE] Starting sync service...');
+
+    // Mark sync as in progress
+    isSyncInProgress = true;
+    pendingSyncUserId = userId;
 
     // Set online status
     dispatch(setSyncOnlineStatus(true));
@@ -107,12 +134,20 @@ async function startSyncService(dispatch: any, userId: string): Promise<void> {
       ? new Date(lastSyncTimestamp).toISOString()
       : undefined;
 
-    // Perform comprehensive sync
-    await dispatch(syncFromServer({ userId, since }));
+    try {
+      // Perform comprehensive sync
+      await dispatch(syncFromServer({ userId, since }));
+    } catch {
+      console.error('❌ [SYNC_MIDDLEWARE] Failed to perform sync');
+    }
 
     console.log('✅ [SYNC_MIDDLEWARE] Sync service started successfully');
   } catch (error) {
     console.error('❌ [SYNC_MIDDLEWARE] Failed to start sync service:', error);
+  } finally {
+    // Reset sync tracking
+    isSyncInProgress = false;
+    pendingSyncUserId = null;
   }
 }
 
@@ -194,30 +229,70 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
         console.log(
           `🔄 [SYNC_MIDDLEWARE] Detected auth change (${
             (action as UnknownAction).type
-          }), triggering IndexedDB reload and sync service start`
+          }), scheduling IndexedDB reload and sync service start`
         );
 
-        // Load from IndexedDB first
-        reloadFromIndexedDB(
-          store.dispatch as (action: AllActions) => void,
-          userId
-        )
-          .then(async () => {
-            // Then start the sync service
-            await startSyncService(store.dispatch, userId);
-          })
-          .catch((error) => {
-            console.error(
-              '❌ [SYNC_MIDDLEWARE] IndexedDB reload failed:',
-              error
-            );
-          });
+        // Add a small delay to let auth state settle and prevent rapid-fire sync calls
+        setTimeout(() => {
+          // Load from IndexedDB first
+          reloadFromIndexedDB(
+            store.dispatch as (action: AllActions) => void,
+            userId
+          )
+            .then(async () => {
+              // Then start the sync service
+              await startSyncService(store.dispatch, userId);
+            })
+            .catch((error) => {
+              console.error(
+                '❌ [SYNC_MIDDLEWARE] IndexedDB reload failed:',
+                error
+              );
+            });
+        }, 100); // 100ms delay to let auth state settle
       }
       return result;
     }
 
+    // Handle sync completion to process pending items
+    if ((action as UnknownAction).type === 'sync/syncFromServer/fulfilled') {
+      console.log(
+        '🔄 [SYNC_MIDDLEWARE] Sync completed, processing pending items'
+      );
+      try {
+        processSyncedEntities(store.dispatch as (action: AllActions) => void);
+      } catch (error) {
+        console.error(
+          '❌ [SYNC_MIDDLEWARE] Failed to process pending items:',
+          error
+        );
+      } finally {
+        // Reset sync tracking on completion (success or failure)
+        isSyncInProgress = false;
+        pendingSyncUserId = null;
+        console.log(
+          '🔄 [SYNC_MIDDLEWARE] Sync tracking reset - ready for next sync'
+        );
+      }
+      return result;
+    }
+
+    // Handle sync failure to reset tracking
+    if ((action as UnknownAction).type === 'sync/syncFromServer/rejected') {
+      console.log('❌ [SYNC_MIDDLEWARE] Sync failed, resetting sync tracking');
+      isSyncInProgress = false;
+      pendingSyncUserId = null;
+      return result;
+    }
+
     // Skip tracking for certain actions
-    const skipActions = ['upsert', 'SELECT_TRIP', 'HYDRATE_OFFLINE', 'sync/'];
+    const skipActions = [
+      'UPSERT',
+      'SELECT_TRIP',
+      'HYDRATE_OFFLINE',
+      'sync/',
+      'PROCESS_SYNCED_TRIP_ITEMS',
+    ];
     if (
       skipActions.some((skip) => (action as UnknownAction).type.includes(skip))
     ) {
@@ -243,8 +318,14 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
           action as { type: string; payload: { itemId: string } }
         );
       } else {
-        // Track all other changes using deep diffs
-        trackAllChanges(prevState, nextState, tripId, userId);
+        // Track all other changes using deep diffs - with action context
+        trackAllChanges(
+          prevState,
+          nextState,
+          tripId,
+          userId,
+          action as { type: string }
+        );
       }
     } catch (error) {
       console.error('🚨 [SYNC_MIDDLEWARE] Error tracking changes:', error);
@@ -370,14 +451,38 @@ function trackAllChanges(
   prevState: StoreType,
   nextState: StoreType,
   tripId: string,
-  userId: string
+  userId: string,
+  action?: { type: string }
 ): void {
   // Track changes in different entity types
   trackTripChanges(prevState, nextState, tripId, userId);
   trackPersonChanges(prevState, nextState, tripId, userId);
   trackRuleChanges(prevState, nextState, tripId, userId);
-  trackTripRuleChanges(prevState, nextState, tripId, userId);
-  trackRulePackChanges(prevState, nextState, tripId, userId);
+
+  // Only track trip rule changes for actual rule operations to prevent false deletions
+  // Skip trip rule tracking for recalculation and sync operations
+  const tripRuleActions = [
+    'TOGGLE_RULE_PACK',
+    'CREATE_DEFAULT_ITEM_RULE',
+    'UPDATE_DEFAULT_ITEM_RULE',
+    'DELETE_DEFAULT_ITEM_RULE',
+    'APPLY_RULE_PACK',
+    'REMOVE_RULE_PACK',
+  ];
+  if (action && tripRuleActions.includes(action.type)) {
+    trackTripRuleChanges(prevState, nextState, tripId, userId);
+  }
+
+  // Only track rule pack changes for actual rule pack operations
+  // Skip rule pack tracking for TOGGLE_RULE_PACK to prevent false deletions
+  const rulePackActions = [
+    'CREATE_RULE_PACK',
+    'UPDATE_RULE_PACK',
+    'DELETE_RULE_PACK',
+  ];
+  if (action && rulePackActions.includes(action.type)) {
+    trackRulePackChanges(prevState, nextState, tripId, userId);
+  }
 }
 
 /**
@@ -757,42 +862,51 @@ function trackTripRuleChanges(
   }
 
   // Check for deleted rules (need to remove trip-rule associations)
-  for (const prevRule of prevRules) {
-    const nextRule = nextRules.find((r) => r.id === prevRule.id);
+  // Only process deletions if we have a meaningful comparison (both arrays have content or intentional empty state)
+  if (prevRules.length > 0 && nextRules.length >= 0) {
+    for (const prevRule of prevRules) {
+      const nextRule = nextRules.find((r) => r.id === prevRule.id);
 
-    if (!nextRule) {
-      // Rule removed from trip - delete trip-rule association
-      console.log(
-        `🔄 [SYNC_MIDDLEWARE] Trip rule association deleted: trip ${tripId} -> rule ${prevRule.id}`
-      );
-
-      // Mark as deleted in storage
-      TripRuleStorage.deleteTripRule(tripId, prevRule.id).catch((error) => {
-        console.error(
-          `🚨 [SYNC_MIDDLEWARE] Failed to delete trip rule ${tripId}-${prevRule.id}:`,
-          error
+      if (!nextRule) {
+        // Rule removed from trip - delete trip-rule association
+        console.log(
+          `🔄 [SYNC_MIDDLEWARE] Trip rule association deleted: trip ${tripId} -> rule ${prevRule.id}`
         );
-      });
 
-      // Track change
-      const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
-        entityType: 'trip_rule',
-        entityId: `${tripId}-${prevRule.id}`,
-        operation: 'delete',
-        userId,
-        tripId,
-        version: 1,
-        data: {
-          id: `${tripId}-${prevRule.id}`,
+        // Mark as deleted in storage
+        TripRuleStorage.deleteTripRule(tripId, prevRule.id).catch((error) => {
+          console.error(
+            `🚨 [SYNC_MIDDLEWARE] Failed to delete trip rule ${tripId}-${prevRule.id}:`,
+            error
+          );
+        });
+
+        // Track change
+        const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+          entityType: 'trip_rule',
+          entityId: `${tripId}-${prevRule.id}`,
+          operation: 'delete',
+          userId,
           tripId,
-          ruleId: prevRule.id,
-          isDeleted: true,
-          updatedAt: new Date().toISOString(),
-        },
-      };
+          version: 1,
+          data: {
+            id: `${tripId}-${prevRule.id}`,
+            tripId,
+            ruleId: prevRule.id,
+            isDeleted: true,
+            updatedAt: new Date().toISOString(),
+          },
+        };
 
-      trackAndPushChange(change, userId);
+        trackAndPushChange(change, userId);
+      }
     }
+  } else if (prevRules.length > 0 && nextRules.length === 0) {
+    // If we went from having rules to no rules, this might be a state reset
+    // Log this but don't automatically delete - require explicit action
+    console.warn(
+      `⚠️ [SYNC_MIDDLEWARE] Trip rules went from ${prevRules.length} to 0 - possible state reset, not tracking deletions`
+    );
   }
 }
 
@@ -807,6 +921,10 @@ function trackRulePackChanges(
 ): void {
   const prevPacks = prevState.rulePacks || [];
   const nextPacks = nextState.rulePacks || [];
+
+  console.log(
+    `🔄 [SYNC_MIDDLEWARE] Tracking rule pack changes: ${prevPacks.length} -> ${nextPacks.length}`
+  );
 
   // Check for new or updated packs
   for (const nextPack of nextPacks) {
@@ -861,33 +979,47 @@ function trackRulePackChanges(
     }
   }
 
-  // Check for deleted packs
+  // Check for deleted packs - be more careful here
   for (const prevPack of prevPacks) {
     const nextPack = nextPacks.find((p) => p.id === prevPack.id);
 
     if (!nextPack) {
-      // Pack deleted
-      console.log(`🔄 [SYNC_MIDDLEWARE] Rule pack deleted: ${prevPack.id}`);
+      // Pack deleted - add additional safety checks
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] Rule pack potentially deleted: ${prevPack.id}`
+      );
 
-      // Mark as deleted in storage
-      RulePacksStorage.deleteRulePack(prevPack.id).catch((error) => {
-        console.error(
-          `🚨 [SYNC_MIDDLEWARE] Failed to delete rule pack ${prevPack.id}:`,
-          error
+      // Double-check that this is a real deletion and not a false positive
+      // by verifying the pack is actually supposed to be deleted
+      if (prevPack && !prevPack.metadata?.isBuiltIn) {
+        console.log(
+          `🔄 [SYNC_MIDDLEWARE] Confirming rule pack deletion: ${prevPack.id}`
         );
-      });
 
-      // Track change
-      const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
-        entityType: 'rule_pack',
-        entityId: prevPack.id,
-        operation: 'delete',
-        userId,
-        version: 1,
-        data: { ...prevPack, isDeleted: true },
-      };
+        // Mark as deleted in storage
+        RulePacksStorage.deleteRulePack(prevPack.id).catch((error) => {
+          console.error(
+            `🚨 [SYNC_MIDDLEWARE] Failed to delete rule pack ${prevPack.id}:`,
+            error
+          );
+        });
 
-      trackAndPushChange(change, userId);
+        // Track change
+        const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+          entityType: 'rule_pack',
+          entityId: prevPack.id,
+          operation: 'delete',
+          userId,
+          version: 1,
+          data: { ...prevPack, isDeleted: true },
+        };
+
+        trackAndPushChange(change, userId);
+      } else {
+        console.log(
+          `🔄 [SYNC_MIDDLEWARE] Skipping deletion of built-in rule pack: ${prevPack.id}`
+        );
+      }
     }
   }
 }

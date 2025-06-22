@@ -172,8 +172,63 @@ export class AuthService {
       }
 
       if (session?.user) {
-        // We have a remote session, create/load the associated local user
-        await this.handleRemoteUserSignIn(session.user as RemoteUser, session);
+        // We have a cached session, but we need to validate it's still valid on the server
+        // This is important after database resets where local storage has stale tokens
+        console.log(
+          '🔧 [AUTH SERVICE] Found cached session, validating with server...'
+        );
+
+        try {
+          // Try to make an authenticated request to validate the session
+          const { error: userError } = await supabase.auth.getUser();
+
+          if (userError) {
+            // Session is invalid (e.g., after database reset)
+            console.log(
+              '🔧 [AUTH SERVICE] Cached session is invalid:',
+              userError.message
+            );
+            console.log(
+              '🔧 [AUTH SERVICE] Clearing invalid session and switching to shared account...'
+            );
+
+            // Clear the invalid session
+            await supabase.auth.signOut();
+
+            // Switch to shared local account
+            await this.switchToSharedLocalAccount();
+            return;
+          }
+
+          // Session is valid, proceed with remote user sign-in
+          console.log('🔧 [AUTH SERVICE] Session validated successfully');
+          await this.handleRemoteUserSignIn(
+            session.user as RemoteUser,
+            session
+          );
+        } catch (validationError) {
+          // Network error or other issue during validation
+          console.log(
+            '🔧 [AUTH SERVICE] Session validation failed:',
+            validationError
+          );
+          console.log(
+            '🔧 [AUTH SERVICE] Clearing session due to validation failure...'
+          );
+
+          // Clear the session and fall back to shared account
+          try {
+            await supabase.auth.signOut();
+          } catch (signOutError) {
+            console.log(
+              '🔧 [AUTH SERVICE] Sign out failed during cleanup:',
+              signOutError
+            );
+          }
+
+          await this.switchToSharedLocalAccount();
+          return;
+        }
       } else {
         // No remote session, stay with local user
         this.updateState({

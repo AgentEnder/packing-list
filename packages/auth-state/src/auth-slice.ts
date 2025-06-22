@@ -16,6 +16,7 @@ import {
 } from '@packing-list/connectivity';
 
 import 'immer';
+import { AuthError } from '@supabase/supabase-js';
 
 // Create service instances
 const localAuthService = new LocalAuthService();
@@ -270,18 +271,21 @@ export const initializeAuth = createAsyncThunk(
 
       return result;
     } else {
-      // Start with remote auth state
+      // Wait for auth service to complete initialization (including session validation)
+      console.log('🔧 [AUTH SLICE] Waiting for auth service initialization...');
+      await authService.waitForInitialization();
+
+      // Get remote auth state after initialization is complete
       const remoteState = authService.getState();
 
       // Check if current user has an offline passcode
       let hasOfflinePasscode = false;
-      if (remoteState.user) {
+      if (remoteState.user && !remoteState.user.isShared) {
         hasOfflinePasscode = await localAuthService.hasPasscode(
           remoteState.user.id
         );
       }
 
-      // FOO
       const result = {
         user: remoteState.user,
         session: remoteState.session,
@@ -298,6 +302,9 @@ export const initializeAuth = createAsyncThunk(
         {
           hasUser: !!result.user,
           userEmail: result.user?.email,
+          userType: result.user?.type,
+          isShared: result.user?.isShared,
+          isRemoteAuthenticated: remoteState.isRemoteAuthenticated,
           loading: result.loading,
           isOfflineMode: result.isOfflineMode,
         }
@@ -585,6 +592,86 @@ export const signOut = createAsyncThunk(
       console.log('🔄 [AUTH SLICE] Starting remote sign-out');
       const result = await authService.signOut();
       if (result.error) {
+        console.log('🔄 [AUTH SLICE] Sign-out error:', result.error);
+
+        // Check if this is a session-related error (e.g., after database reset)
+        const errorMessage =
+          typeof result.error === 'string'
+            ? result.error
+            : result.error &&
+              typeof result.error === 'object' &&
+              'message' in result.error
+            ? (result.error as { message: string }).message
+            : String(result.error);
+        const isSessionError =
+          errorMessage.includes('session') ||
+          errorMessage.includes('Session') ||
+          errorMessage.includes('Auth session missing') ||
+          errorMessage.includes('403') ||
+          errorMessage.includes('Forbidden');
+
+        if (isSessionError) {
+          console.log(
+            '🔄 [AUTH SLICE] Session error detected, forcing local sign-out and switching to shared account'
+          );
+
+          // Clear any stale remote session data and force switch to shared account
+          try {
+            // Clear any local auth state first
+            await localAuthService.signOut();
+
+            // Switch to shared account
+            const sharedResult = await localAuthService.signInWithoutPassword(
+              'shared@local.device',
+              true
+            );
+
+            if (sharedResult.error) {
+              console.error(
+                '🔄 [AUTH SLICE] Failed to switch to shared account after session error:',
+                sharedResult.error
+              );
+              // Even if shared account switch fails, return a cleared state
+              return {
+                user: null,
+                session: null,
+                loading: false,
+                error: null,
+                offlineAccounts: await localAuthService.getLocalUsers(),
+              };
+            }
+
+            // Get the shared account state
+            const localState = localAuthService.getState();
+            return {
+              user: localState.user
+                ? transformLocalUserToAuthUser(localState.user)
+                : null,
+              session: null,
+              loading: false,
+              error: null,
+              offlineAccounts: await localAuthService.getLocalUsers(),
+            };
+          } catch (fallbackError) {
+            console.error(
+              '🔄 [AUTH SLICE] Fallback sign-out failed:',
+              fallbackError
+            );
+            // Return a cleared state even if fallback fails
+            return {
+              user: null,
+              session: null,
+              loading: false,
+              error: null,
+              offlineAccounts: await localAuthService.getLocalUsers(),
+            };
+          }
+        }
+
+        // For other errors, reject as before
+        if (result.error instanceof AuthError) {
+          console.log('🔄 [AUTH SLICE] Sign-out error is an AuthError');
+        }
         return rejectWithValue(result.error);
       }
 

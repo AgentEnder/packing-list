@@ -168,11 +168,12 @@ export const pullTripsFromServer = createAsyncThunk(
           await TripStorage.saveTrip(resolvedTrip);
           upsertedTrips.push(resolvedTrip);
 
-          // Dispatch upsert action
-          dispatch({
-            type: 'UPSERT_SYNCED_TRIP',
-            payload: resolvedTrip,
-          });
+          // Use entity callback to handle bulk sync mode
+          const { createEntityCallbacks } = await import(
+            '../sync/sync-integration.js'
+          );
+          const entityCallbacks = createEntityCallbacks(dispatch);
+          entityCallbacks.onTripUpsert(resolvedTrip);
         } else {
           // Real conflict detected
           const conflict: SyncConflict = {
@@ -192,11 +193,12 @@ export const pullTripsFromServer = createAsyncThunk(
         await TripStorage.saveTrip(tripData);
         upsertedTrips.push(tripData);
 
-        // Dispatch upsert action
-        dispatch({
-          type: 'UPSERT_SYNCED_TRIP',
-          payload: tripData,
-        });
+        // Use entity callback to handle bulk sync mode
+        const { createEntityCallbacks } = await import(
+          '../sync/sync-integration.js'
+        );
+        const entityCallbacks = createEntityCallbacks(dispatch);
+        entityCallbacks.onTripUpsert(tripData);
       }
     }
 
@@ -284,11 +286,12 @@ export const pullPeopleFromServer = createAsyncThunk(
           await PersonStorage.savePerson(resolvedPerson);
           upsertedPeople.push(resolvedPerson);
 
-          // Dispatch upsert action
-          dispatch({
-            type: 'UPSERT_SYNCED_PERSON',
-            payload: resolvedPerson,
-          });
+          // Use entity callback to handle bulk sync mode
+          const { createEntityCallbacks } = await import(
+            '../sync/sync-integration.js'
+          );
+          const entityCallbacks = createEntityCallbacks(dispatch);
+          entityCallbacks.onPersonUpsert(resolvedPerson);
         } else {
           // Real conflict detected
           const conflict: SyncConflict = {
@@ -308,11 +311,12 @@ export const pullPeopleFromServer = createAsyncThunk(
         await PersonStorage.savePerson(personData);
         upsertedPeople.push(personData);
 
-        // Dispatch upsert action
-        dispatch({
-          type: 'UPSERT_SYNCED_PERSON',
-          payload: personData,
-        });
+        // Use entity callback to handle bulk sync mode
+        const { createEntityCallbacks } = await import(
+          '../sync/sync-integration.js'
+        );
+        const entityCallbacks = createEntityCallbacks(dispatch);
+        entityCallbacks.onPersonUpsert(personData);
       }
     }
 
@@ -372,8 +376,12 @@ export const pullItemsFromServer = createAsyncThunk(
         category: serverItem.category || undefined,
         quantity: serverItem.quantity || 1,
         notes: serverItem.notes || undefined,
-        personId: serverItem.person_id || undefined,
-        dayIndex: serverItem.day_index || undefined,
+        personId:
+          serverItem.person_id !== null ? serverItem.person_id : undefined,
+        dayIndex:
+          serverItem.day_index !== null && serverItem.day_index !== undefined
+            ? serverItem.day_index
+            : undefined,
         ruleId: serverItem.rule_id || undefined,
         ruleHash: serverItem.rule_hash || undefined,
         packed: serverItem.packed || false,
@@ -398,11 +406,12 @@ export const pullItemsFromServer = createAsyncThunk(
           await ItemStorage.saveItem(resolvedItem);
           upsertedItems.push(resolvedItem);
 
-          // Dispatch upsert action
-          dispatch({
-            type: 'UPSERT_SYNCED_ITEM',
-            payload: resolvedItem,
-          });
+          // Use entity callback to handle bulk sync mode
+          const { createEntityCallbacks } = await import(
+            '../sync/sync-integration.js'
+          );
+          const entityCallbacks = createEntityCallbacks(dispatch);
+          entityCallbacks.onItemUpsert(resolvedItem);
         } else {
           // Real conflict detected
           const conflict: SyncConflict = {
@@ -422,11 +431,12 @@ export const pullItemsFromServer = createAsyncThunk(
         await ItemStorage.saveItem(itemData);
         upsertedItems.push(itemData);
 
-        // Dispatch upsert action
-        dispatch({
-          type: 'UPSERT_SYNCED_ITEM',
-          payload: itemData,
-        });
+        // Use entity callback to handle bulk sync mode
+        const { createEntityCallbacks } = await import(
+          '../sync/sync-integration.js'
+        );
+        const entityCallbacks = createEntityCallbacks(dispatch);
+        entityCallbacks.onItemUpsert(itemData);
       }
     }
 
@@ -563,12 +573,16 @@ export const pullDefaultItemRulesFromServer = createAsyncThunk(
           await DefaultItemRulesStorage.saveDefaultItemRule(resolvedRule);
           upsertedRules.push(resolvedRule);
 
-          // Dispatch upsert action for each trip that uses this rule
+          // Use entity callback to handle bulk sync mode for each trip that uses this rule
+          const { createEntityCallbacks } = await import(
+            '../sync/sync-integration.js'
+          );
+          const entityCallbacks = createEntityCallbacks(dispatch);
           const associatedTripIds = ruleToTripsMap.get(serverRule.id) || [];
           for (const tripId of associatedTripIds) {
-            dispatch({
-              type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE',
-              payload: { rule: resolvedRule, tripId },
+            entityCallbacks.onDefaultItemRuleUpsert({
+              rule: resolvedRule,
+              tripId,
             });
           }
         } else {
@@ -592,13 +606,14 @@ export const pullDefaultItemRulesFromServer = createAsyncThunk(
         await DefaultItemRulesStorage.saveDefaultItemRule(ruleData);
         upsertedRules.push(ruleData);
 
-        // Dispatch upsert action for each trip that uses this rule
+        // Use entity callback to handle bulk sync mode for each trip that uses this rule
+        const { createEntityCallbacks } = await import(
+          '../sync/sync-integration.js'
+        );
+        const entityCallbacks = createEntityCallbacks(dispatch);
         const associatedTripIds = ruleToTripsMap.get(serverRule.id) || [];
         for (const tripId of associatedTripIds) {
-          dispatch({
-            type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE',
-            payload: { rule: ruleData, tripId },
-          });
+          entityCallbacks.onDefaultItemRuleUpsert({ rule: ruleData, tripId });
         }
       }
     }
@@ -657,7 +672,7 @@ export const pullTripRulesFromServer = createAsyncThunk(
 
     for (const serverTripRule of tripRules || []) {
       const tripRuleData: TripRule = {
-        id: `${serverTripRule.trip_id}:${serverTripRule.rule_id}`,
+        id: `${serverTripRule.trip_id}-${serverTripRule.rule_id}`,
         tripId: serverTripRule.trip_id,
         ruleId: serverTripRule.rule_id,
         createdAt: serverTripRule.created_at || new Date().toISOString(),
@@ -686,11 +701,12 @@ export const pullTripRulesFromServer = createAsyncThunk(
           await TripRuleStorage.saveTripRule(resolvedTripRule);
           upsertedTripRules.push(resolvedTripRule);
 
-          // Dispatch upsert action
-          dispatch({
-            type: 'UPSERT_SYNCED_TRIP_RULE',
-            payload: resolvedTripRule,
-          });
+          // Use entity callback to handle bulk sync mode
+          const { createEntityCallbacks } = await import(
+            '../sync/sync-integration.js'
+          );
+          const entityCallbacks = createEntityCallbacks(dispatch);
+          entityCallbacks.onTripRuleUpsert(resolvedTripRule);
         } else {
           // Real conflict detected
           const conflict: SyncConflict = {
@@ -698,7 +714,7 @@ export const pullTripRulesFromServer = createAsyncThunk(
               serverTripRule.rule_id
             }-${Date.now()}`,
             entityType: 'trip_rule',
-            entityId: `${serverTripRule.trip_id}:${serverTripRule.rule_id}`,
+            entityId: `${serverTripRule.trip_id}-${serverTripRule.rule_id}`,
             localVersion: localTripRule,
             serverVersion: tripRuleData,
             conflictType: 'update_conflict',
@@ -706,7 +722,7 @@ export const pullTripRulesFromServer = createAsyncThunk(
           };
           conflicts.push(conflict);
           console.log(
-            `⚠️ [SYNC] Trip rule conflict detected: ${serverTripRule.trip_id}:${serverTripRule.rule_id}`
+            `⚠️ [SYNC] Trip rule conflict detected: ${serverTripRule.trip_id}-${serverTripRule.rule_id}`
           );
         }
       } else {
@@ -714,11 +730,12 @@ export const pullTripRulesFromServer = createAsyncThunk(
         await TripRuleStorage.saveTripRule(tripRuleData);
         upsertedTripRules.push(tripRuleData);
 
-        // Dispatch upsert action
-        dispatch({
-          type: 'UPSERT_SYNCED_TRIP_RULE',
-          payload: tripRuleData,
-        });
+        // Use entity callback to handle bulk sync mode
+        const { createEntityCallbacks } = await import(
+          '../sync/sync-integration.js'
+        );
+        const entityCallbacks = createEntityCallbacks(dispatch);
+        entityCallbacks.onTripRuleUpsert(tripRuleData);
       }
     }
 
@@ -966,8 +983,8 @@ async function pushItemChange(change: Change): Promise<void> {
         category: itemData.category,
         quantity: itemData.quantity || 1,
         notes: itemData.notes,
-        person_id: itemData.personId,
-        day_index: itemData.dayIndex,
+        person_id: itemData.personId !== undefined ? itemData.personId : null,
+        day_index: itemData.dayIndex !== undefined ? itemData.dayIndex : null,
         rule_id: itemData.ruleId,
         rule_hash: itemData.ruleHash,
         packed: itemData.packed,
@@ -1025,8 +1042,8 @@ async function pushItemChange(change: Change): Promise<void> {
         category: itemData.category,
         quantity: itemData.quantity,
         notes: itemData.notes,
-        person_id: itemData.personId,
-        day_index: itemData.dayIndex,
+        person_id: itemData.personId !== undefined ? itemData.personId : null,
+        day_index: itemData.dayIndex !== undefined ? itemData.dayIndex : null,
         rule_id: itemData.ruleId,
         rule_hash: itemData.ruleHash,
         packed: itemData.packed,

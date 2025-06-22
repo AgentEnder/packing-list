@@ -133,10 +133,7 @@ export default function LayoutDefault({
 }: {
   children: React.ReactNode;
 }) {
-  const dispatch = useAppDispatch();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const initRef = useRef(false);
 
   // Auth and login modal
   const {
@@ -167,35 +164,11 @@ export default function LayoutDefault({
     }
   }, [isRemotelyAuthenticated, closeLoginModal]);
 
-  useEffect(() => {
-    const hydrateData = async () => {
-      console.log('🔧 [LAYOUT] Starting data hydration...');
-      try {
-        // Use the actual user ID, fallback to 'local-user' for shared accounts
-        const userId = user?.id || 'local-user';
-        console.log('🔧 [LAYOUT] Hydrating data for user:', userId);
-
-        console.log('✅ [LAYOUT] Data hydration completed for user:', userId);
-      } catch (error) {
-        console.error('❌ [LAYOUT] Data hydration failed:', error);
-      } finally {
-        // Only set initialized on the first hydration
-        if (!initRef.current) {
-          setIsInitialized(true);
-          initRef.current = true;
-        }
-      }
-    };
-
-    hydrateData();
-  }, [dispatch, user?.id]); // Re-hydrate when user ID changes
-
   // Show loading state during initialization - simplified condition
-  if (!isInitialized || authLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="loading loading-spinner loading-lg"></div>
-        {!isInitialized ? 'Initializing...' : null}
         {authLoading ? 'Auth Loading...' : null}
       </div>
     );

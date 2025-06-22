@@ -151,12 +151,8 @@ import {
   mergeSyncedItemHandler,
 } from './lib/sync/sync-handlers.js';
 import {
-  upsertSyncedTrip,
-  upsertSyncedPerson,
-  upsertSyncedItem,
-  upsertSyncedDefaultItemRule,
-  upsertSyncedRulePack,
-  processPendingTripItemsHandler,
+  processSyncedTripItemsHandler,
+  bulkUpsertSyncedEntitiesHandler,
   type SyncIntegrationActions,
 } from './lib/sync/sync-integration.js';
 
@@ -307,12 +303,8 @@ export const Mutations: {
   MERGE_SYNCED_PERSON: mergeSyncedPersonHandler,
   MERGE_SYNCED_ITEM: mergeSyncedItemHandler,
   TRACK_SYNC_CHANGE: (state: StoreType) => state, // Placeholder - no-op for now
-  UPSERT_SYNCED_TRIP: upsertSyncedTrip,
-  UPSERT_SYNCED_PERSON: upsertSyncedPerson,
-  UPSERT_SYNCED_ITEM: upsertSyncedItem,
-  UPSERT_SYNCED_DEFAULT_ITEM_RULE: upsertSyncedDefaultItemRule,
-  UPSERT_SYNCED_RULE_PACK: upsertSyncedRulePack,
-  PROCESS_PENDING_TRIP_ITEMS: processPendingTripItemsHandler,
+  PROCESS_SYNCED_TRIP_ITEMS: processSyncedTripItemsHandler,
+  BULK_UPSERT_SYNCED_ENTITIES: bulkUpsertSyncedEntitiesHandler,
   SYNC_UPDATE_TRIP_SUMMARIES: (
     state: StoreType,
     action: {
