@@ -263,19 +263,57 @@ export const pullItemsFromServer = createAsyncThunk(
 
 export const pullDefaultItemRulesFromServer = createAsyncThunk(
   'sync/pullDefaultItemRules',
-  async (params: { userId: string; since?: string }, { dispatch }) => {
-    console.log('🔄 [SYNC] Pulling default item rules from server...');
+  async (
+    params: { tripIds: string[]; since?: string; userId: string },
+    { dispatch }
+  ) => {
+    console.log(
+      `🔄 [SYNC] Pulling default item rules from server for ${params.tripIds.length} trips...`
+    );
 
     if (!isSupabaseAvailable() || isLocalUser(params.userId)) {
       console.log('🔄 [SYNC] Skipping rules pull - offline mode or local user');
       return { rules: [], conflicts: [] };
     }
 
+    if (params.tripIds.length === 0) {
+      console.log('🔄 [SYNC] No trips to pull default item rules for');
+      return { rules: [], conflicts: [] };
+    }
+
     const since = params.since || new Date(0).toISOString();
+
+    // Get rules that are associated with the trips via trip_default_item_rules
+    const { data: tripRuleAssociations, error: tripRulesError } = await supabase
+      .from('trip_default_item_rules')
+      .select('rule_id')
+      .in('trip_id', params.tripIds)
+      .gt('updated_at', since);
+
+    if (tripRulesError) {
+      console.error(
+        '❌ [SYNC] Error pulling trip rule associations:',
+        tripRulesError
+      );
+      throw new Error(
+        `Failed to pull trip rule associations: ${tripRulesError.message}`
+      );
+    }
+
+    const ruleIds = [
+      ...new Set(tripRuleAssociations?.map((tr) => tr.rule_id) || []),
+    ];
+
+    if (ruleIds.length === 0) {
+      console.log('🔄 [SYNC] No rule associations found for trips');
+      return { rules: [], conflicts: [] };
+    }
+
+    // Now get the actual rules
     const { data: rules, error } = await supabase
       .from('default_item_rules')
       .select('*')
-      .eq('user_id', params.userId)
+      .in('id', ruleIds)
       .gt('updated_at', since)
       .order('updated_at', { ascending: true });
 
@@ -354,8 +392,13 @@ export const pullDefaultItemRulesFromServer = createAsyncThunk(
 
 export const pullTripRulesFromServer = createAsyncThunk(
   'sync/pullTripRules',
-  async (params: { userId: string; since?: string }, { dispatch }) => {
-    console.log('🔄 [SYNC] Pulling trip rules from server...');
+  async (
+    params: { tripIds: string[]; since?: string; userId: string },
+    { dispatch }
+  ) => {
+    console.log(
+      `🔄 [SYNC] Pulling trip rules from server for ${params.tripIds.length} trips...`
+    );
 
     if (!isSupabaseAvailable() || isLocalUser(params.userId)) {
       console.log(
@@ -364,11 +407,16 @@ export const pullTripRulesFromServer = createAsyncThunk(
       return { tripRules: [], conflicts: [] };
     }
 
+    if (params.tripIds.length === 0) {
+      console.log('🔄 [SYNC] No trips to pull trip rules for');
+      return { tripRules: [], conflicts: [] };
+    }
+
     const since = params.since || new Date(0).toISOString();
     const { data: tripRules, error } = await supabase
       .from('trip_default_item_rules')
       .select('*')
-      .eq('user_id', params.userId)
+      .in('trip_id', params.tripIds)
       .gt('updated_at', since)
       .order('updated_at', { ascending: true });
 
@@ -467,8 +515,8 @@ export const syncFromServer = createAsyncThunk(
         await Promise.all([
           dispatch(pullPeopleFromServer({ ...params, tripIds })),
           dispatch(pullItemsFromServer({ ...params, tripIds })),
-          dispatch(pullDefaultItemRulesFromServer(params)),
-          dispatch(pullTripRulesFromServer(params)),
+          dispatch(pullDefaultItemRulesFromServer({ ...params, tripIds })),
+          dispatch(pullTripRulesFromServer({ ...params, tripIds })),
         ]);
 
       // Update last sync timestamp
