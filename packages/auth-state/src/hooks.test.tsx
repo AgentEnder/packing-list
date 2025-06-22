@@ -22,6 +22,7 @@ vi.mock('@packing-list/auth', () => {
   const mockAuthService = {
     subscribe: vi.fn(() => vi.fn()),
     isRemotelyAuthenticated: vi.fn(() => false),
+    signOut: vi.fn(async () => ({})),
     getState: vi.fn(() => ({
       user: null,
       session: null,
@@ -32,6 +33,11 @@ vi.mock('@packing-list/auth', () => {
 
   const mockLocalAuthService = {
     subscribe: vi.fn(() => vi.fn()),
+    signOut: vi.fn(async () => ({})),
+    signInWithoutPassword: vi.fn(async () => ({
+      user: { id: 'local-shared-user' },
+    })),
+    getLocalUsers: vi.fn(async () => []),
     getState: vi.fn(() => ({
       user: null,
       session: null,
@@ -109,7 +115,8 @@ const createMockAuthState = (
 
 // Wrapper component for tests
 const createWrapper = (store: ReturnType<typeof createTestStore>) => {
-  const TestWrapper = ({ children }: { children: React.ReactNode }) => (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Couldn't get ts to be happy here.
+  const TestWrapper: React.FC<{ children: any }> = ({ children }) => (
     <Provider store={store}>{children}</Provider>
   );
   return TestWrapper;
