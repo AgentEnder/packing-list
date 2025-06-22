@@ -20,6 +20,55 @@ import {
   TripRuleStorage,
 } from '@packing-list/offline-storage';
 import { isLocalUser } from './utils.js';
+import type { StoreType } from '../../store.js';
+
+/**
+ * Check if a conflict is timestamp-only (no meaningful data differences)
+ * If so, return the server version with updated timestamp, otherwise return null
+ */
+function resolveTimestampOnlyConflict<T extends Record<string, unknown>>(
+  local: T,
+  server: T
+): T | null {
+  // Create copies without timestamp fields for comparison
+  const timestampFields = [
+    'updatedAt',
+    'updated_at',
+    'lastModified',
+    'last_modified',
+    'timestamp',
+  ];
+
+  const localWithoutTimestamps = { ...local };
+  const serverWithoutTimestamps = { ...server };
+
+  // Remove timestamp fields from both objects
+  timestampFields.forEach((field) => {
+    delete localWithoutTimestamps[field];
+    delete serverWithoutTimestamps[field];
+  });
+
+  // If the objects are identical without timestamps, it's a timestamp-only conflict
+  if (
+    JSON.stringify(localWithoutTimestamps) ===
+    JSON.stringify(serverWithoutTimestamps)
+  ) {
+    console.log(
+      '🔄 [SYNC] Timestamp-only conflict detected - auto-resolving with server timestamp'
+    );
+    // Return the local data with the server's timestamp
+    return {
+      ...local,
+      ...Object.fromEntries(
+        timestampFields
+          .filter((field) => field in server)
+          .map((field) => [field, server[field]])
+      ),
+    } as T;
+  }
+
+  return null;
+}
 
 // Async thunks for pulling data from server
 export const pullTripsFromServer = createAsyncThunk(
@@ -74,18 +123,33 @@ export const pullTripsFromServer = createAsyncThunk(
       const localTrip = await TripStorage.getTrip(serverTrip.id);
 
       if (localTrip && localTrip.updatedAt !== tripData.updatedAt) {
-        // Conflict detected
-        const conflict: SyncConflict = {
-          id: `trip-${serverTrip.id}-${Date.now()}`,
-          entityType: 'trip',
-          entityId: serverTrip.id,
-          localVersion: localTrip,
-          serverVersion: tripData,
-          conflictType: 'update_conflict',
-          timestamp: Date.now(),
-        };
-        conflicts.push(conflict);
-        console.log(`⚠️ [SYNC] Trip conflict detected: ${serverTrip.id}`);
+        // Check if this is a timestamp-only conflict
+        const resolvedTrip = resolveTimestampOnlyConflict(localTrip, tripData);
+
+        if (resolvedTrip) {
+          // Auto-resolve timestamp-only conflict
+          await TripStorage.saveTrip(resolvedTrip);
+          upsertedTrips.push(resolvedTrip);
+
+          // Dispatch upsert action
+          dispatch({
+            type: 'UPSERT_SYNCED_TRIP',
+            payload: resolvedTrip,
+          });
+        } else {
+          // Real conflict detected
+          const conflict: SyncConflict = {
+            id: `trip-${serverTrip.id}-${Date.now()}`,
+            entityType: 'trip',
+            entityId: serverTrip.id,
+            localVersion: localTrip,
+            serverVersion: tripData,
+            conflictType: 'update_conflict',
+            timestamp: Date.now(),
+          };
+          conflicts.push(conflict);
+          console.log(`⚠️ [SYNC] Trip conflict detected: ${serverTrip.id}`);
+        }
       } else {
         // No conflict, apply server data
         await TripStorage.saveTrip(tripData);
@@ -162,21 +226,61 @@ export const pullPeopleFromServer = createAsyncThunk(
         isDeleted: serverPerson.is_deleted || false,
       };
 
-      // Check for conflicts - skip for now since PersonStorage doesn't have getPerson method
-      // TODO: Add individual person lookup method to PersonStorage
-      console.log(
-        `🔄 [SYNC] Processing person ${serverPerson.id} (conflict detection skipped)`
+      // Check for conflicts by getting all people for the trip and finding this one
+      const existingPeople = await PersonStorage.getTripPeople(
+        serverPerson.trip_id
+      );
+      const localPerson = existingPeople.find(
+        (p: Person) => p.id === serverPerson.id
       );
 
-      // Apply server data
-      await PersonStorage.savePerson(personData);
-      upsertedPeople.push(personData);
+      if (localPerson && localPerson.updatedAt !== personData.updatedAt) {
+        // Check if this is a timestamp-only conflict
+        const resolvedPerson = resolveTimestampOnlyConflict(
+          localPerson,
+          personData
+        );
 
-      // Dispatch upsert action
-      dispatch({
-        type: 'UPSERT_SYNCED_PERSON',
-        payload: personData,
-      });
+        if (resolvedPerson) {
+          // Auto-resolve timestamp-only conflict
+          await PersonStorage.savePerson(resolvedPerson);
+          upsertedPeople.push(resolvedPerson);
+
+          // Dispatch upsert action
+          dispatch({
+            type: 'UPSERT_SYNCED_PERSON',
+            payload: resolvedPerson,
+          });
+        } else {
+          // Real conflict detected
+          const conflict: SyncConflict = {
+            id: `person-${serverPerson.id}-${Date.now()}`,
+            entityType: 'person',
+            entityId: serverPerson.id,
+            localVersion: localPerson,
+            serverVersion: personData,
+            conflictType: 'update_conflict',
+            timestamp: Date.now(),
+          };
+          conflicts.push(conflict);
+          console.log(`⚠️ [SYNC] Person conflict detected: ${serverPerson.id}`);
+        }
+      } else {
+        // No conflict, apply server data
+        await PersonStorage.savePerson(personData);
+        upsertedPeople.push(personData);
+
+        // Dispatch upsert action
+        dispatch({
+          type: 'UPSERT_SYNCED_PERSON',
+          payload: personData,
+        });
+      }
+    }
+
+    // Store conflicts
+    if (conflicts.length > 0) {
+      dispatch(setSyncConflicts(conflicts));
     }
 
     return { people: upsertedPeople, conflicts };
@@ -240,21 +344,56 @@ export const pullItemsFromServer = createAsyncThunk(
         isDeleted: serverItem.is_deleted || false,
       };
 
-      // Check for conflicts - skip for now since ItemStorage doesn't have getItem method
-      // TODO: Add individual item lookup method to ItemStorage
-      console.log(
-        `🔄 [SYNC] Processing item ${serverItem.id} (conflict detection skipped)`
+      // Check for conflicts by getting all items for the trip and finding this one
+      const existingItems = await ItemStorage.getTripItems(serverItem.trip_id);
+      const localItem = existingItems.find(
+        (i: TripItem) => i.id === serverItem.id
       );
 
-      // Apply server data
-      await ItemStorage.saveItem(itemData);
-      upsertedItems.push(itemData);
+      if (localItem && localItem.updatedAt !== itemData.updatedAt) {
+        // Check if this is a timestamp-only conflict
+        const resolvedItem = resolveTimestampOnlyConflict(localItem, itemData);
 
-      // Dispatch upsert action
-      dispatch({
-        type: 'UPSERT_SYNCED_ITEM',
-        payload: itemData,
-      });
+        if (resolvedItem) {
+          // Auto-resolve timestamp-only conflict
+          await ItemStorage.saveItem(resolvedItem);
+          upsertedItems.push(resolvedItem);
+
+          // Dispatch upsert action
+          dispatch({
+            type: 'UPSERT_SYNCED_ITEM',
+            payload: resolvedItem,
+          });
+        } else {
+          // Real conflict detected
+          const conflict: SyncConflict = {
+            id: `item-${serverItem.id}-${Date.now()}`,
+            entityType: 'item',
+            entityId: serverItem.id,
+            localVersion: localItem,
+            serverVersion: itemData,
+            conflictType: 'update_conflict',
+            timestamp: Date.now(),
+          };
+          conflicts.push(conflict);
+          console.log(`⚠️ [SYNC] Item conflict detected: ${serverItem.id}`);
+        }
+      } else {
+        // No conflict, apply server data
+        await ItemStorage.saveItem(itemData);
+        upsertedItems.push(itemData);
+
+        // Dispatch upsert action
+        dispatch({
+          type: 'UPSERT_SYNCED_ITEM',
+          payload: itemData,
+        });
+      }
+    }
+
+    // Store conflicts
+    if (conflicts.length > 0) {
+      dispatch(setSyncConflicts(conflicts));
     }
 
     return { items: upsertedItems, conflicts };
@@ -452,22 +591,40 @@ export const pullTripRulesFromServer = createAsyncThunk(
       );
 
       if (localTripRule && localTripRule.updatedAt !== tripRuleData.updatedAt) {
-        // Conflict detected
-        const conflict: SyncConflict = {
-          id: `trip-rule-${serverTripRule.trip_id}-${
-            serverTripRule.rule_id
-          }-${Date.now()}`,
-          entityType: 'trip_rule',
-          entityId: `${serverTripRule.trip_id}:${serverTripRule.rule_id}`,
-          localVersion: localTripRule,
-          serverVersion: tripRuleData,
-          conflictType: 'update_conflict',
-          timestamp: Date.now(),
-        };
-        conflicts.push(conflict);
-        console.log(
-          `⚠️ [SYNC] Trip rule conflict detected: ${serverTripRule.trip_id}:${serverTripRule.rule_id}`
+        // Check if this is a timestamp-only conflict
+        const resolvedTripRule = resolveTimestampOnlyConflict(
+          localTripRule,
+          tripRuleData
         );
+
+        if (resolvedTripRule) {
+          // Auto-resolve timestamp-only conflict
+          await TripRuleStorage.saveTripRule(resolvedTripRule);
+          upsertedTripRules.push(resolvedTripRule);
+
+          // Dispatch upsert action
+          dispatch({
+            type: 'UPSERT_SYNCED_TRIP_RULE',
+            payload: resolvedTripRule,
+          });
+        } else {
+          // Real conflict detected
+          const conflict: SyncConflict = {
+            id: `trip-rule-${serverTripRule.trip_id}-${
+              serverTripRule.rule_id
+            }-${Date.now()}`,
+            entityType: 'trip_rule',
+            entityId: `${serverTripRule.trip_id}:${serverTripRule.rule_id}`,
+            localVersion: localTripRule,
+            serverVersion: tripRuleData,
+            conflictType: 'update_conflict',
+            timestamp: Date.now(),
+          };
+          conflicts.push(conflict);
+          console.log(
+            `⚠️ [SYNC] Trip rule conflict detected: ${serverTripRule.trip_id}:${serverTripRule.rule_id}`
+          );
+        }
       } else {
         // No conflict, apply server data
         await TripRuleStorage.saveTripRule(tripRuleData);
