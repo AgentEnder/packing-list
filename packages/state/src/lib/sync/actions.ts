@@ -706,52 +706,102 @@ async function pushItemChange(change: Change): Promise<void> {
       throw new Error(`Failed to delete item: ${error.message}`);
     }
   } else {
-    const { error } = await supabase.from('trip_items').upsert({
-      id: itemData.id,
-      trip_id: itemData.tripId,
-      name: itemData.name,
-      category: itemData.category,
-      quantity: itemData.quantity,
-      notes: itemData.notes,
-      person_id: itemData.personId,
-      day_index: itemData.dayIndex,
-      rule_id: itemData.ruleId,
-      rule_hash: itemData.ruleHash,
-      packed: itemData.packed,
-      version: itemData.version,
-      is_deleted: itemData.isDeleted || false,
-      created_at: itemData.createdAt,
-      updated_at: itemData.updatedAt,
-    });
+    // Handle packing status changes (minimal data) vs full item updates
+    const isPackingStatusChange = '_packingStatusOnly' in itemData;
 
-    if (error) {
-      console.error('❌ [SYNC] Error upserting item:', error);
-      console.error('❌ [SYNC] Item data:', itemData);
+    if (isPackingStatusChange) {
+      // For packing status changes, only update the packed field
+      const { error } = await supabase
+        .from('trip_items')
+        .update({
+          packed: itemData.packed,
+          updated_at: itemData.updatedAt || new Date().toISOString(),
+        })
+        .eq('id', change.entityId);
 
-      // Check if this is an RLS policy violation
-      if (
-        error.message.includes('policy') ||
-        error.message.includes('permission')
-      ) {
-        // Try to verify trip ownership
-        const { data: tripData, error: tripError } = await supabase
-          .from('trips')
-          .select('user_id')
-          .eq('id', itemData.tripId)
-          .single();
+      if (error) {
+        console.error('❌ [SYNC] Error updating item packing status:', error);
+        console.error('❌ [SYNC] Item data:', itemData);
+        console.error('❌ [SYNC] Change tripId:', change.tripId);
 
-        console.error('❌ [SYNC] Trip ownership check:', {
-          tripData,
-          tripError,
-          tripOwner: tripData?.user_id,
-        });
+        // Check if this is an RLS policy violation
+        if (
+          (error.message.includes('policy') ||
+            error.message.includes('permission')) &&
+          change.tripId
+        ) {
+          // Try to verify trip ownership using change.tripId
+          const { data: tripData, error: tripError } = await supabase
+            .from('trips')
+            .select('user_id')
+            .eq('id', change.tripId)
+            .single();
+
+          console.error('❌ [SYNC] Trip ownership check:', {
+            tripData,
+            tripError,
+            tripOwner: tripData?.user_id,
+          });
+        }
+
+        throw new Error(
+          `Failed to update item packing status: ${error.message}`
+        );
+      }
+    } else {
+      // Full item upsert - ensure we have a tripId
+      const tripId = itemData.tripId || change.tripId;
+      if (!tripId) {
+        throw new Error('No tripId available for item upsert');
       }
 
-      throw new Error(`Failed to upsert item: ${error.message}`);
+      const { error } = await supabase.from('trip_items').upsert({
+        id: itemData.id,
+        trip_id: tripId,
+        name: itemData.name,
+        category: itemData.category,
+        quantity: itemData.quantity,
+        notes: itemData.notes,
+        person_id: itemData.personId,
+        day_index: itemData.dayIndex,
+        rule_id: itemData.ruleId,
+        rule_hash: itemData.ruleHash,
+        packed: itemData.packed,
+        version: itemData.version,
+        is_deleted: itemData.isDeleted || false,
+        created_at: itemData.createdAt,
+        updated_at: itemData.updatedAt,
+      });
+
+      if (error) {
+        console.error('❌ [SYNC] Error upserting item:', error);
+        console.error('❌ [SYNC] Item data:', itemData);
+
+        // Check if this is an RLS policy violation
+        if (
+          error.message.includes('policy') ||
+          error.message.includes('permission')
+        ) {
+          // Try to verify trip ownership
+          const { data: tripData, error: tripError } = await supabase
+            .from('trips')
+            .select('user_id')
+            .eq('id', tripId)
+            .single();
+
+          console.error('❌ [SYNC] Trip ownership check:', {
+            tripData,
+            tripError,
+            tripOwner: tripData?.user_id,
+          });
+        }
+
+        throw new Error(`Failed to upsert item: ${error.message}`);
+      }
     }
   }
 
-  console.log('✅ [SYNC] Item change pushed successfully:', itemData.id);
+  console.log('✅ [SYNC] Item change pushed successfully:', change.entityId);
 }
 
 async function pushDefaultItemRuleChange(change: Change): Promise<void> {

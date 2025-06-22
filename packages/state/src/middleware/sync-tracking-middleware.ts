@@ -143,7 +143,7 @@ async function trackAndPushChange(
     // Store change in IndexedDB for persistence
     const db = await getDatabase();
     try {
-      await db.add('changes', changeWithId);
+      await db.add('syncChanges', changeWithId);
     } catch {
       console.warn('🔄 [SYNC_MIDDLEWARE] Changes table not available yet');
     }
@@ -153,9 +153,9 @@ async function trackAndPushChange(
 
     // Mark as synced
     try {
-      await db.put('changes', { ...changeWithId, synced: true });
-    } catch {
-      console.warn('🔄 [SYNC_MIDDLEWARE] Could not mark change as synced');
+      await db.put('syncChanges', { ...changeWithId, synced: true });
+    } catch (e) {
+      console.warn('🔄 [SYNC_MIDDLEWARE] Could not mark change as synced', e);
     }
 
     console.log(
