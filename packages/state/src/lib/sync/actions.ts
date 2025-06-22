@@ -553,6 +553,19 @@ export const pushChangeToServer = async (change: Change): Promise<void> => {
     return;
   }
 
+  // Check if we have an authenticated session before attempting to push
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (!user || authError) {
+    console.log('🔄 [SYNC] Skipping server push - no authenticated session:', {
+      hasUser: !!user,
+      authError: authError?.message,
+    });
+    return;
+  }
+
   console.log(
     `🔄 [SYNC] Pushing change: ${change.operation} ${change.entityType}:${change.entityId}`
   );
@@ -626,37 +639,74 @@ async function pushPersonChange(change: Change): Promise<void> {
   const personData = change.data as Person;
 
   if (change.operation === 'delete') {
-    await supabase
+    const { error } = await supabase
       .from('trip_people')
       .update({ is_deleted: true, updated_at: new Date().toISOString() })
       .eq('id', change.entityId);
+
+    if (error) {
+      console.error('❌ [SYNC] Error deleting person:', error);
+      throw new Error(`Failed to delete person: ${error.message}`);
+    }
   } else {
-    await supabase.from('trip_people').upsert({
+    const { error } = await supabase.from('trip_people').upsert({
       id: personData.id,
       trip_id: personData.tripId,
       name: personData.name,
       age: personData.age,
       gender: personData.gender,
       settings: personData.settings as Json,
-      user_id: change.userId,
       version: personData.version,
       is_deleted: personData.isDeleted || false,
       created_at: personData.createdAt,
       updated_at: personData.updatedAt,
     });
+
+    if (error) {
+      console.error('❌ [SYNC] Error upserting person:', error);
+      console.error('❌ [SYNC] Person data:', personData);
+
+      // Check if this is an RLS policy violation
+      if (
+        error.message.includes('policy') ||
+        error.message.includes('permission')
+      ) {
+        // Try to verify trip ownership
+        const { data: tripData, error: tripError } = await supabase
+          .from('trips')
+          .select('user_id')
+          .eq('id', personData.tripId)
+          .single();
+
+        console.error('❌ [SYNC] Trip ownership check:', {
+          tripData,
+          tripError,
+          tripOwner: tripData?.user_id,
+        });
+      }
+
+      throw new Error(`Failed to upsert person: ${error.message}`);
+    }
   }
+
+  console.log('✅ [SYNC] Person change pushed successfully:', personData.id);
 }
 
 async function pushItemChange(change: Change): Promise<void> {
   const itemData = change.data as TripItem;
 
   if (change.operation === 'delete') {
-    await supabase
+    const { error } = await supabase
       .from('trip_items')
       .update({ is_deleted: true, updated_at: new Date().toISOString() })
       .eq('id', change.entityId);
+
+    if (error) {
+      console.error('❌ [SYNC] Error deleting item:', error);
+      throw new Error(`Failed to delete item: ${error.message}`);
+    }
   } else {
-    await supabase.from('trip_items').upsert({
+    const { error } = await supabase.from('trip_items').upsert({
       id: itemData.id,
       trip_id: itemData.tripId,
       name: itemData.name,
@@ -668,13 +718,40 @@ async function pushItemChange(change: Change): Promise<void> {
       rule_id: itemData.ruleId,
       rule_hash: itemData.ruleHash,
       packed: itemData.packed,
-      user_id: change.userId,
       version: itemData.version,
       is_deleted: itemData.isDeleted || false,
       created_at: itemData.createdAt,
       updated_at: itemData.updatedAt,
     });
+
+    if (error) {
+      console.error('❌ [SYNC] Error upserting item:', error);
+      console.error('❌ [SYNC] Item data:', itemData);
+
+      // Check if this is an RLS policy violation
+      if (
+        error.message.includes('policy') ||
+        error.message.includes('permission')
+      ) {
+        // Try to verify trip ownership
+        const { data: tripData, error: tripError } = await supabase
+          .from('trips')
+          .select('user_id')
+          .eq('id', itemData.tripId)
+          .single();
+
+        console.error('❌ [SYNC] Trip ownership check:', {
+          tripData,
+          tripError,
+          tripOwner: tripData?.user_id,
+        });
+      }
+
+      throw new Error(`Failed to upsert item: ${error.message}`);
+    }
   }
+
+  console.log('✅ [SYNC] Item change pushed successfully:', itemData.id);
 }
 
 async function pushDefaultItemRuleChange(change: Change): Promise<void> {
