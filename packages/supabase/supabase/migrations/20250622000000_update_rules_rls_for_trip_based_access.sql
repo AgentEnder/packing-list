@@ -119,13 +119,8 @@ END$$;
 -- Add indexes for better performance with new policies
 -- ============================================================================
 
--- Add index for the new trip-based rule access pattern
-CREATE INDEX IF NOT EXISTS idx_trip_default_item_rules_rule_id 
-  ON public.trip_default_item_rules(rule_id);
-
--- Add composite index for efficient trip-rule lookups
-CREATE INDEX IF NOT EXISTS idx_trip_default_item_rules_trip_rule 
-  ON public.trip_default_item_rules(trip_id, rule_id);
+-- Note: Indexes for trip_default_item_rules are handled in the column type fix migration
+-- (20250622000001_fix_rule_id_column_types.sql)
 
 -- ============================================================================
 -- Update comments
