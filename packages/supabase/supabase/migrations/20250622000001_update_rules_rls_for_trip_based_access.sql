@@ -120,7 +120,7 @@ END$$;
 -- ============================================================================
 
 -- Note: Indexes for trip_default_item_rules are handled in the column type fix migration
--- (20250622000001_fix_rule_id_column_types.sql)
+-- (20250622000000_fix_rule_id_column_types.sql)
 
 -- ============================================================================
 -- Update comments
