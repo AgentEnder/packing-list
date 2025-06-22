@@ -110,8 +110,13 @@ export const pullTripsFromServer = createAsyncThunk(
 
 export const pullPeopleFromServer = createAsyncThunk(
   'sync/pullPeople',
-  async (params: { userId: string; since?: string }, { dispatch }) => {
-    console.log('🔄 [SYNC] Pulling people from server...');
+  async (
+    params: { tripIds: string[]; since?: string; userId: string },
+    { dispatch }
+  ) => {
+    console.log(
+      `🔄 [SYNC] Pulling people from server for ${params.tripIds.length} trips...`
+    );
 
     if (!isSupabaseAvailable() || isLocalUser(params.userId)) {
       console.log(
@@ -120,11 +125,16 @@ export const pullPeopleFromServer = createAsyncThunk(
       return { people: [], conflicts: [] };
     }
 
+    if (params.tripIds.length === 0) {
+      console.log('🔄 [SYNC] No trips to pull people for');
+      return { people: [], conflicts: [] };
+    }
+
     const since = params.since || new Date(0).toISOString();
     const { data: people, error } = await supabase
       .from('trip_people')
       .select('*')
-      .eq('user_id', params.userId)
+      .in('trip_id', params.tripIds)
       .gt('updated_at', since)
       .order('updated_at', { ascending: true });
 
@@ -175,11 +185,21 @@ export const pullPeopleFromServer = createAsyncThunk(
 
 export const pullItemsFromServer = createAsyncThunk(
   'sync/pullItems',
-  async (params: { userId: string; since?: string }, { dispatch }) => {
-    console.log('🔄 [SYNC] Pulling items from server...');
+  async (
+    params: { tripIds: string[]; since?: string; userId: string },
+    { dispatch }
+  ) => {
+    console.log(
+      `🔄 [SYNC] Pulling items from server for ${params.tripIds.length} trips...`
+    );
 
     if (!isSupabaseAvailable() || isLocalUser(params.userId)) {
       console.log('🔄 [SYNC] Skipping items pull - offline mode or local user');
+      return { items: [], conflicts: [] };
+    }
+
+    if (params.tripIds.length === 0) {
+      console.log('🔄 [SYNC] No trips to pull items for');
       return { items: [], conflicts: [] };
     }
 
@@ -187,7 +207,7 @@ export const pullItemsFromServer = createAsyncThunk(
     const { data: items, error } = await supabase
       .from('trip_items')
       .select('*')
-      .eq('user_id', params.userId)
+      .in('trip_id', params.tripIds)
       .gt('updated_at', since)
       .order('updated_at', { ascending: true });
 
@@ -437,20 +457,19 @@ export const syncFromServer = createAsyncThunk(
       // Update sync status
       dispatch(setSyncSyncingStatus(true));
 
-      // Pull all entity types
-      const [
-        tripsResult,
-        peopleResult,
-        itemsResult,
-        rulesResult,
-        tripRulesResult,
-      ] = await Promise.all([
-        dispatch(pullTripsFromServer(params)),
-        dispatch(pullPeopleFromServer(params)),
-        dispatch(pullItemsFromServer(params)),
-        dispatch(pullDefaultItemRulesFromServer(params)),
-        dispatch(pullTripRulesFromServer(params)),
-      ]);
+      // First pull trips to get the trip IDs
+      const tripsResult = await dispatch(pullTripsFromServer(params));
+      const trips = (tripsResult.payload as { trips: Trip[] })?.trips || [];
+      const tripIds = trips.map((trip) => trip.id);
+
+      // Then pull people and items for those specific trips, along with rules
+      const [peopleResult, itemsResult, rulesResult, tripRulesResult] =
+        await Promise.all([
+          dispatch(pullPeopleFromServer({ ...params, tripIds })),
+          dispatch(pullItemsFromServer({ ...params, tripIds })),
+          dispatch(pullDefaultItemRulesFromServer(params)),
+          dispatch(pullTripRulesFromServer(params)),
+        ]);
 
       // Update last sync timestamp
       dispatch(updateLastSyncTimestamp(Date.now()));
@@ -458,7 +477,7 @@ export const syncFromServer = createAsyncThunk(
       console.log('✅ [SYNC] Comprehensive sync completed successfully');
 
       return {
-        trips: (tripsResult.payload as { trips: Trip[] })?.trips || [],
+        trips,
         people: (peopleResult.payload as { people: Person[] })?.people || [],
         items: (itemsResult.payload as { items: TripItem[] })?.items || [],
         rules:
