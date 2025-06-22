@@ -14,6 +14,7 @@ import {
   ItemStorage,
   DefaultItemRulesStorage,
   RulePacksStorage,
+  TripRuleStorage,
   getDatabase,
 } from '@packing-list/offline-storage';
 import type { AllActions } from '../actions.js';
@@ -287,7 +288,7 @@ function handlePackingStatusChange(
     // Update item in storage with new packing status
     updateItemInStorage(itemId, tripId, nextItem, nextItem.isPacked);
 
-    // Track the packing status change
+    // Track the packing status change with full item data
     const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
       entityType: 'item',
       entityId: itemId,
@@ -297,8 +298,20 @@ function handlePackingStatusChange(
       version: 1,
       data: {
         id: itemId,
+        tripId,
+        name: nextItem.name,
+        category: nextItem.categoryId, // Map categoryId to category for TripItem
+        quantity: nextItem.quantity,
+        notes: nextItem.notes,
+        personId: nextItem.personId,
+        dayIndex: nextItem.dayIndex,
+        ruleId: nextItem.ruleId,
+        ruleHash: nextItem.ruleHash,
         packed: nextItem.isPacked,
+        createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        version: 1,
+        isDeleted: false,
         _packingStatusOnly: true,
         _previousStatus: prevItem.isPacked,
       },
@@ -316,7 +329,7 @@ function updateItemInStorage(
   tripId: string,
   nextItem: {
     name: string;
-    category?: string;
+    categoryId?: string;
     quantity: number;
     notes?: string;
     personId?: string | null;
@@ -330,7 +343,7 @@ function updateItemInStorage(
     id: itemId,
     tripId,
     name: nextItem.name,
-    category: nextItem.category,
+    category: nextItem.categoryId, // Map categoryId to category for TripItem
     quantity: nextItem.quantity,
     notes: nextItem.notes,
     personId: nextItem.personId,
@@ -363,6 +376,7 @@ function trackAllChanges(
   trackTripChanges(prevState, nextState, tripId, userId);
   trackPersonChanges(prevState, nextState, tripId, userId);
   trackRuleChanges(prevState, nextState, tripId, userId);
+  trackTripRuleChanges(prevState, nextState, tripId, userId);
   trackRulePackChanges(prevState, nextState, tripId, userId);
 }
 
@@ -679,6 +693,102 @@ function trackRuleChanges(
         tripId,
         version: 1,
         data: { ...prevRule, isDeleted: true },
+      };
+
+      trackAndPushChange(change, userId);
+    }
+  }
+}
+
+/**
+ * Track changes to trip rules (trip-rule associations)
+ */
+function trackTripRuleChanges(
+  prevState: StoreType,
+  nextState: StoreType,
+  tripId: string,
+  userId: string
+): void {
+  const prevRules = prevState.trips.byId[tripId]?.trip?.defaultItemRules || [];
+  const nextRules = nextState.trips.byId[tripId]?.trip?.defaultItemRules || [];
+
+  // Check for new rules (need to create trip-rule associations)
+  for (const nextRule of nextRules) {
+    const prevRule = prevRules.find((r) => r.id === nextRule.id);
+
+    if (!prevRule) {
+      // New rule added to trip - create trip-rule association
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] Trip rule association created: trip ${tripId} -> rule ${nextRule.id}`
+      );
+
+      const now = new Date().toISOString();
+      const tripRuleData = {
+        id: `${tripId}-${nextRule.id}`,
+        tripId,
+        ruleId: nextRule.id,
+        createdAt: now,
+        updatedAt: now,
+        version: 1,
+        isDeleted: false,
+      };
+
+      // Save to storage
+      TripRuleStorage.saveTripRule(tripRuleData).catch((error) => {
+        console.error(
+          `🚨 [SYNC_MIDDLEWARE] Failed to save trip rule ${tripId}-${nextRule.id}:`,
+          error
+        );
+      });
+
+      // Track change
+      const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+        entityType: 'trip_rule',
+        entityId: `${tripId}-${nextRule.id}`,
+        operation: 'create',
+        userId,
+        tripId,
+        version: 1,
+        data: tripRuleData,
+      };
+
+      trackAndPushChange(change, userId);
+    }
+  }
+
+  // Check for deleted rules (need to remove trip-rule associations)
+  for (const prevRule of prevRules) {
+    const nextRule = nextRules.find((r) => r.id === prevRule.id);
+
+    if (!nextRule) {
+      // Rule removed from trip - delete trip-rule association
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] Trip rule association deleted: trip ${tripId} -> rule ${prevRule.id}`
+      );
+
+      // Mark as deleted in storage
+      TripRuleStorage.deleteTripRule(tripId, prevRule.id).catch((error) => {
+        console.error(
+          `🚨 [SYNC_MIDDLEWARE] Failed to delete trip rule ${tripId}-${prevRule.id}:`,
+          error
+        );
+      });
+
+      // Track change
+      const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+        entityType: 'trip_rule',
+        entityId: `${tripId}-${prevRule.id}`,
+        operation: 'delete',
+        userId,
+        tripId,
+        version: 1,
+        data: {
+          id: `${tripId}-${prevRule.id}`,
+          tripId,
+          ruleId: prevRule.id,
+          isDeleted: true,
+          updatedAt: new Date().toISOString(),
+        },
       };
 
       trackAndPushChange(change, userId);

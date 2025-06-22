@@ -20,7 +20,6 @@ import {
   TripRuleStorage,
 } from '@packing-list/offline-storage';
 import { isLocalUser } from './utils.js';
-import type { StoreType } from '../../store.js';
 
 /**
  * Check if a conflict is timestamp-only (no meaningful data differences)
@@ -30,43 +29,80 @@ function resolveTimestampOnlyConflict<T extends Record<string, unknown>>(
   local: T,
   server: T
 ): T | null {
-  // Create copies without timestamp fields for comparison
-  const timestampFields = [
+  // Fields to exclude from comparison (timestamps, versions, etc.)
+  const excludeFields = [
     'updatedAt',
     'updated_at',
+    'createdAt',
+    'created_at',
     'lastModified',
     'last_modified',
     'timestamp',
+    'version',
   ];
 
-  const localWithoutTimestamps = { ...local };
-  const serverWithoutTimestamps = { ...server };
+  // Create copies without excluded fields for comparison
+  const localFiltered = { ...local };
+  const serverFiltered = { ...server };
 
-  // Remove timestamp fields from both objects
-  timestampFields.forEach((field) => {
-    delete localWithoutTimestamps[field];
-    delete serverWithoutTimestamps[field];
+  // Remove excluded fields from both objects
+  excludeFields.forEach((field) => {
+    delete localFiltered[field];
+    delete serverFiltered[field];
   });
 
-  // If the objects are identical without timestamps, it's a timestamp-only conflict
-  if (
-    JSON.stringify(localWithoutTimestamps) ===
-    JSON.stringify(serverWithoutTimestamps)
-  ) {
-    console.log(
-      '🔄 [SYNC] Timestamp-only conflict detected - auto-resolving with server timestamp'
-    );
-    // Return the local data with the server's timestamp
-    return {
-      ...local,
-      ...Object.fromEntries(
-        timestampFields
-          .filter((field) => field in server)
-          .map((field) => [field, server[field]])
-      ),
-    } as T;
+  // Deep comparison function that handles object property order
+  function deepEqual(obj1: unknown, obj2: unknown): boolean {
+    if (obj1 === obj2) return true;
+
+    if (obj1 == null || obj2 == null) return obj1 === obj2;
+
+    if (typeof obj1 !== typeof obj2) return false;
+
+    if (typeof obj1 !== 'object') return obj1 === obj2;
+
+    const keys1 = Object.keys(obj1 as Record<string, unknown>).sort();
+    const keys2 = Object.keys(obj2 as Record<string, unknown>).sort();
+
+    if (keys1.length !== keys2.length) return false;
+
+    for (let i = 0; i < keys1.length; i++) {
+      if (keys1[i] !== keys2[i]) return false;
+
+      const val1 = (obj1 as Record<string, unknown>)[keys1[i]];
+      const val2 = (obj2 as Record<string, unknown>)[keys2[i]];
+
+      if (!deepEqual(val1, val2)) return false;
+    }
+
+    return true;
   }
 
+  // If the objects are identical without excluded fields, it's a timestamp-only conflict
+  if (deepEqual(localFiltered, serverFiltered)) {
+    console.log(
+      '✅ [SYNC] Timestamp-only conflict detected - auto-resolving with server timestamp',
+      {
+        localUpdatedAt: local.updatedAt,
+        serverUpdatedAt: server.updatedAt,
+        entityType: 'id' in local && local.id ? 'entity' : 'unknown',
+        entityId: 'id' in local ? local.id : undefined,
+      }
+    );
+    // Return the server data (which has the newer timestamp)
+    return server;
+  }
+
+  console.log(
+    '❌ [SYNC] Real data conflict detected - requires manual resolution',
+    {
+      entityId: 'id' in local ? local.id : undefined,
+      localUpdatedAt: local.updatedAt,
+      serverUpdatedAt: server.updatedAt,
+      localFiltered,
+      serverFiltered,
+    }
+  );
   return null;
 }
 
@@ -87,6 +123,7 @@ export const pullTripsFromServer = createAsyncThunk(
       .select('*')
       .eq('user_id', params.userId)
       .gt('updated_at', since)
+      .eq('is_deleted', false) // Only fetch non-deleted trips
       .order('updated_at', { ascending: true });
 
     if (error) {
@@ -200,6 +237,7 @@ export const pullPeopleFromServer = createAsyncThunk(
       .select('*')
       .in('trip_id', params.tripIds)
       .gt('updated_at', since)
+      .eq('is_deleted', false) // Only fetch non-deleted people
       .order('updated_at', { ascending: true });
 
     if (error) {
@@ -313,6 +351,7 @@ export const pullItemsFromServer = createAsyncThunk(
       .select('*')
       .in('trip_id', params.tripIds)
       .gt('updated_at', since)
+      .eq('is_deleted', false) // Only fetch non-deleted items
       .order('updated_at', { ascending: true });
 
     if (error) {
@@ -425,9 +464,10 @@ export const pullDefaultItemRulesFromServer = createAsyncThunk(
     // Get rules that are associated with the trips via trip_default_item_rules
     const { data: tripRuleAssociations, error: tripRulesError } = await supabase
       .from('trip_default_item_rules')
-      .select('rule_id')
+      .select('rule_id, trip_id')
       .in('trip_id', params.tripIds)
-      .gt('updated_at', since);
+      .gt('updated_at', since)
+      .eq('is_deleted', false); // Only fetch non-deleted trip rule associations
 
     if (tripRulesError) {
       console.error(
@@ -454,6 +494,7 @@ export const pullDefaultItemRulesFromServer = createAsyncThunk(
       .select('*')
       .in('id', ruleIds)
       .gt('updated_at', since)
+      .eq('is_deleted', false) // Only fetch non-deleted default item rules
       .order('updated_at', { ascending: true });
 
     if (error) {
@@ -468,8 +509,21 @@ export const pullDefaultItemRulesFromServer = createAsyncThunk(
     const conflicts: SyncConflict[] = [];
     const upsertedRules: DefaultItemRule[] = [];
 
+    // Create a map of rule IDs to trip IDs for efficient lookup
+    const ruleToTripsMap = new Map<string, string[]>();
+    for (const association of tripRuleAssociations || []) {
+      const tripIds = ruleToTripsMap.get(association.rule_id) || [];
+      tripIds.push(association.trip_id);
+      ruleToTripsMap.set(association.rule_id, tripIds);
+    }
+
     for (const serverRule of rules || []) {
-      const ruleData: DefaultItemRule = {
+      const ruleData: DefaultItemRule & {
+        updatedAt?: string;
+        createdAt?: string;
+        version?: number;
+        isDeleted?: boolean;
+      } = {
         id: serverRule.id,
         originalRuleId: serverRule.original_rule_id || serverRule.id,
         name: serverRule.name,
@@ -485,6 +539,10 @@ export const pullDefaultItemRulesFromServer = createAsyncThunk(
         subcategoryId: serverRule.subcategory_id || undefined,
         packIds:
           (serverRule.pack_ids as DefaultItemRule['packIds']) || undefined,
+        updatedAt: serverRule.updated_at || new Date().toISOString(),
+        createdAt: serverRule.created_at || new Date().toISOString(),
+        version: serverRule.version || 1,
+        isDeleted: serverRule.is_deleted || false,
       };
 
       // Check for conflicts using available method
@@ -492,31 +550,56 @@ export const pullDefaultItemRulesFromServer = createAsyncThunk(
         serverRule.id
       );
 
-      if (localRule && localRule.calculation !== ruleData.calculation) {
-        // Conflict detected (simplified conflict detection)
-        const conflict: SyncConflict = {
-          id: `rule-${serverRule.id}-${Date.now()}`,
-          entityType: 'default_item_rule',
-          entityId: serverRule.id,
-          localVersion: localRule,
-          serverVersion: ruleData,
-          conflictType: 'update_conflict',
-          timestamp: Date.now(),
-        };
-        conflicts.push(conflict);
-        console.log(
-          `⚠️ [SYNC] Default item rule conflict detected: ${serverRule.id}`
-        );
+      if (
+        localRule &&
+        (localRule as DefaultItemRule & { updatedAt?: string }).updatedAt !==
+          ruleData.updatedAt
+      ) {
+        // Check if this is a timestamp-only conflict
+        const resolvedRule = resolveTimestampOnlyConflict(localRule, ruleData);
+
+        if (resolvedRule) {
+          // Auto-resolve timestamp-only conflict
+          await DefaultItemRulesStorage.saveDefaultItemRule(resolvedRule);
+          upsertedRules.push(resolvedRule);
+
+          // Dispatch upsert action for each trip that uses this rule
+          const associatedTripIds = ruleToTripsMap.get(serverRule.id) || [];
+          for (const tripId of associatedTripIds) {
+            dispatch({
+              type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE',
+              payload: { rule: resolvedRule, tripId },
+            });
+          }
+        } else {
+          // Real conflict detected
+          const conflict: SyncConflict = {
+            id: `rule-${serverRule.id}-${Date.now()}`,
+            entityType: 'default_item_rule',
+            entityId: serverRule.id,
+            localVersion: localRule,
+            serverVersion: ruleData,
+            conflictType: 'update_conflict',
+            timestamp: Date.now(),
+          };
+          conflicts.push(conflict);
+          console.log(
+            `⚠️ [SYNC] Default item rule conflict detected: ${serverRule.id}`
+          );
+        }
       } else {
         // No conflict, apply server data
         await DefaultItemRulesStorage.saveDefaultItemRule(ruleData);
         upsertedRules.push(ruleData);
 
-        // Dispatch upsert action
-        dispatch({
-          type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE',
-          payload: ruleData,
-        });
+        // Dispatch upsert action for each trip that uses this rule
+        const associatedTripIds = ruleToTripsMap.get(serverRule.id) || [];
+        for (const tripId of associatedTripIds) {
+          dispatch({
+            type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE',
+            payload: { rule: ruleData, tripId },
+          });
+        }
       }
     }
 
@@ -557,6 +640,7 @@ export const pullTripRulesFromServer = createAsyncThunk(
       .select('*')
       .in('trip_id', params.tripIds)
       .gt('updated_at', since)
+      .eq('is_deleted', false) // Only fetch non-deleted trip rules
       .order('updated_at', { ascending: true });
 
     if (error) {
@@ -867,17 +951,39 @@ async function pushItemChange(change: Change): Promise<void> {
     const isPackingStatusChange = '_packingStatusOnly' in itemData;
 
     if (isPackingStatusChange) {
-      // For packing status changes, only update the packed field
-      const { error } = await supabase
-        .from('trip_items')
-        .update({
-          packed: itemData.packed,
-          updated_at: itemData.updatedAt || new Date().toISOString(),
-        })
-        .eq('id', change.entityId);
+      // For packing status changes, we need to ensure the item exists first
+      // Use UPSERT to create the item if it doesn't exist, or update if it does
+      const tripId = itemData.tripId || change.tripId;
+      if (!tripId) {
+        throw new Error('No tripId available for packing status change');
+      }
+
+      // Get the full item data from the change data or construct minimal item
+      const fullItemData = {
+        id: change.entityId,
+        trip_id: tripId,
+        name: itemData.name || 'Unknown Item',
+        category: itemData.category,
+        quantity: itemData.quantity || 1,
+        notes: itemData.notes,
+        person_id: itemData.personId,
+        day_index: itemData.dayIndex,
+        rule_id: itemData.ruleId,
+        rule_hash: itemData.ruleHash,
+        packed: itemData.packed,
+        version: itemData.version || 1,
+        is_deleted: false,
+        created_at: itemData.createdAt || new Date().toISOString(),
+        updated_at: itemData.updatedAt || new Date().toISOString(),
+      };
+
+      const { error } = await supabase.from('trip_items').upsert(fullItemData);
 
       if (error) {
-        console.error('❌ [SYNC] Error updating item packing status:', error);
+        console.error(
+          '❌ [SYNC] Error upserting item for packing status:',
+          error
+        );
         console.error('❌ [SYNC] Item data:', itemData);
         console.error('❌ [SYNC] Change tripId:', change.tripId);
 
@@ -902,7 +1008,7 @@ async function pushItemChange(change: Change): Promise<void> {
         }
 
         throw new Error(
-          `Failed to update item packing status: ${error.message}`
+          `Failed to upsert item for packing status: ${error.message}`
         );
       }
     } else {
@@ -971,7 +1077,8 @@ async function pushDefaultItemRuleChange(change: Change): Promise<void> {
       .eq('id', change.entityId);
   } else {
     await supabase.from('default_item_rules').upsert({
-      rule_id: ruleData.id,
+      id: ruleData.id, // Primary key
+      rule_id: ruleData.id, // User-defined identifier
       original_rule_id: ruleData.originalRuleId,
       name: ruleData.name,
       calculation: ruleData.calculation as Json,
