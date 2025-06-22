@@ -211,6 +211,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_trip_default_item_rules_rule_id"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "default_item_rules"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "trip_default_item_rules_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false

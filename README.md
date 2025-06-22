@@ -45,6 +45,7 @@ The app includes comprehensive authentication flows with test users for e2e test
 
 - **Regular User**: `e2e-test@example.com` / `testpassword123`
 - **Admin User**: `e2e-admin@example.com` / `adminpassword123`
+- **Manual Test User**: `manual-test@example.com` / `manualtest123`
 - **Google OAuth**: `e2e-google@example.com` (mocked for testing)
 
 See [Supabase Local Setup Guide](docs/SUPABASE_LOCAL_SETUP.md) for detailed authentication testing documentation.

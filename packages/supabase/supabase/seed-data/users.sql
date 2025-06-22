@@ -1,9 +1,15 @@
 -- ============================================================================
--- Test Users for E2E Testing
+-- Test Users for E2E Testing and Manual Testing
 -- ============================================================================
 
 -- Insert test users into auth.users table
--- These users will be available for e2e testing scenarios
+-- These users will be available for e2e testing scenarios and manual testing
+
+-- Manual Test User (for development/manual testing - safe to use without affecting e2e):
+-- Email: manual-test@example.com
+-- Password: manualtest123
+
+-- E2E Test Users (reserved for automated testing):
 INSERT INTO auth.users (
   instance_id,
   id,
@@ -76,6 +82,24 @@ INSERT INTO auth.users (
   '',
   '',
   ''
+), (
+  '00000000-0000-0000-0000-000000000000',
+  '99999999-9999-9999-9999-999999999999',
+  'authenticated',
+  'authenticated',
+  'manual-test@example.com',
+  crypt('manualtest123', gen_salt('bf')),
+  NOW(),
+  NULL,
+  NOW(),
+  '{"provider": "email", "providers": ["email"]}',
+  '{"name": "Manual Test User", "full_name": "Manual Test User"}',
+  NOW(),
+  NOW(),
+  '',
+  '',
+  '',
+  ''
 );
 
 -- Insert corresponding identities for each user
@@ -135,6 +159,20 @@ INSERT INTO auth.identities (
   NOW(),
   NOW(),
   'google-user-123'
+), (
+  '77777777-7777-7777-7777-777777777777',
+  '99999999-9999-9999-9999-999999999999',
+  jsonb_build_object(
+    'sub', '99999999-9999-9999-9999-999999999999',
+    'email', 'manual-test@example.com',
+    'email_verified', true,
+    'phone_verified', false
+  ),
+  'email',
+  NOW(),
+  NOW(),
+  NOW(),
+  '99999999-9999-9999-9999-999999999999'
 );
 
 -- Function to create a new e2e test user
