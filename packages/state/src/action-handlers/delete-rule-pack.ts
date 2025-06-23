@@ -1,5 +1,4 @@
 import { StoreType } from '../store.js';
-import { RulePacksStorage } from '@packing-list/offline-storage';
 
 export type DeleteRulePackAction = {
   type: 'DELETE_RULE_PACK';
@@ -17,8 +16,6 @@ export const deleteRulePackHandler = (
   if (!packToDelete) {
     return state; // Pack not found, nothing to delete
   }
-
-  RulePacksStorage.deleteRulePack(action.payload.id).catch(console.error);
 
   return {
     ...state,

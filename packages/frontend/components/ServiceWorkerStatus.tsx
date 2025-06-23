@@ -3,9 +3,14 @@ import {
   serviceWorkerManager,
   getServiceWorkerStatus,
   getCurrentVersion,
+  setServiceWorkerEnabled,
+  getServiceWorkerEnabled,
+  registerServiceWorker,
+  unregisterServiceWorker,
   type VersionInfo,
 } from '../utils/serviceWorker.js';
 import { applyBaseUrl } from '@packing-list/shared-utils';
+import { showToast } from './Toast.js';
 
 interface ServiceWorkerStatusProps {
   minimal?: boolean;
@@ -17,6 +22,7 @@ export function ServiceWorkerStatus({
   const [status, setStatus] = useState(getServiceWorkerStatus());
   const [version, setVersion] = useState<VersionInfo | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
 
   useEffect(() => {
     // Get initial version
@@ -45,6 +51,34 @@ export function ServiceWorkerStatus({
       );
     };
   }, []);
+
+  const handleToggleServiceWorker = async () => {
+    setIsToggling(true);
+    try {
+      const currentlyEnabled = getServiceWorkerEnabled();
+      const newState = !currentlyEnabled;
+
+      setServiceWorkerEnabled(newState);
+
+      if (newState) {
+        // Enable: register the service worker
+        await registerServiceWorker();
+        showToast('Service worker enabled and registered');
+      } else {
+        // Disable: unregister the service worker
+        await unregisterServiceWorker();
+        showToast('Service worker disabled and unregistered');
+      }
+
+      // Update status
+      setStatus(getServiceWorkerStatus());
+    } catch (error) {
+      console.error('Failed to toggle service worker:', error);
+      showToast('Failed to toggle service worker');
+    } finally {
+      setIsToggling(false);
+    }
+  };
 
   const handleClearCache = async () => {
     if (confirm('Clear all caches? This will force a full reload.')) {
@@ -106,6 +140,23 @@ export function ServiceWorkerStatus({
           <div className="absolute bottom-12 right-0 bg-base-100 border rounded-lg p-4 shadow-lg min-w-64">
             <div className="text-sm space-y-2">
               <div className="font-semibold">Service Worker Status</div>
+
+              {/* Service Worker Toggle */}
+              <div className="form-control">
+                <label className="label cursor-pointer justify-start gap-2 py-1">
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-xs toggle-primary"
+                    checked={status.isEnabled}
+                    onChange={handleToggleServiceWorker}
+                    disabled={isToggling}
+                  />
+                  <span className="label-text text-xs">
+                    {status.isEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </label>
+              </div>
+
               <div>
                 Mode: {status.isDevelopment ? 'Development' : 'Production'}
               </div>
@@ -144,6 +195,39 @@ export function ServiceWorkerStatus({
     <div className="bg-base-200 p-4 rounded-lg">
       <h3 className="font-semibold mb-3">🔧 Service Worker Debug</h3>
 
+      {/* Service Worker Enable/Disable Toggle */}
+      <div className="mb-4 p-3 bg-base-100 rounded-lg border">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="font-medium">Service Worker</h4>
+            <p className="text-sm opacity-70">
+              {status.isDevelopment
+                ? 'Disabled by default in development mode'
+                : 'Enable offline support and caching'}
+            </p>
+          </div>
+          <div className="form-control">
+            <label className="label cursor-pointer gap-2">
+              <span className="label-text">
+                {status.isEnabled ? 'Enabled' : 'Disabled'}
+              </span>
+              <input
+                type="checkbox"
+                className="toggle toggle-primary"
+                checked={status.isEnabled}
+                onChange={handleToggleServiceWorker}
+                disabled={isToggling}
+              />
+            </label>
+          </div>
+        </div>
+        {!status.isEnabled && (
+          <div className="mt-2 text-xs opacity-60">
+            Enable to use offline features and faster loading
+          </div>
+        )}
+      </div>
+
       {status.isDevelopment && (
         <div className="alert alert-info mb-4">
           <div className="flex items-center gap-2">
@@ -162,6 +246,7 @@ export function ServiceWorkerStatus({
               Mode: {status.isDevelopment ? '🚧 Development' : '🚀 Production'}
             </div>
             <div>Supported: {status.isSupported ? '✅' : '❌'}</div>
+            <div>Enabled: {status.isEnabled ? '✅' : '❌'}</div>
             <div>Registered: {status.isRegistered ? '✅' : '❌'}</div>
             <div>Controlling: {status.isControlling ? '✅' : '❌'}</div>
             <div>Update Available: {status.updateAvailable ? '✅' : '❌'}</div>

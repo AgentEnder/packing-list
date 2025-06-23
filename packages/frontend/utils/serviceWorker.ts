@@ -17,11 +17,60 @@ class ServiceWorkerManager {
   private isDevelopment = import.meta.env.DEV;
 
   /**
+   * Check if service worker should be enabled based on user preference
+   */
+  private isServiceWorkerEnabled(): boolean {
+    try {
+      const preference = localStorage.getItem('serviceWorkerEnabled');
+      if (preference !== null) {
+        // User has explicitly set a preference
+        return preference === 'true';
+      }
+      // Default behavior: disabled in dev, enabled in production
+      return !this.isDevelopment;
+    } catch {
+      // If localStorage is not available, use default behavior
+      return !this.isDevelopment;
+    }
+  }
+
+  /**
+   * Set service worker enabled preference
+   */
+  public setServiceWorkerEnabled(enabled: boolean): void {
+    try {
+      localStorage.setItem('serviceWorkerEnabled', enabled.toString());
+      console.log(
+        `🔧 Service Worker: Preference set to ${
+          enabled ? 'enabled' : 'disabled'
+        }`
+      );
+    } catch (error) {
+      console.warn('⚠️ Service Worker: Could not save preference:', error);
+    }
+  }
+
+  /**
+   * Get current service worker enabled preference
+   */
+  public getServiceWorkerEnabled(): boolean {
+    return this.isServiceWorkerEnabled();
+  }
+
+  /**
    * Initialize service worker and start version checking
    */
   async init(): Promise<void> {
     if (!('serviceWorker' in navigator)) {
       console.warn('🚫 Service Worker: Not supported in this browser');
+      return;
+    }
+
+    // Check if service worker is enabled by user preference
+    if (!this.isServiceWorkerEnabled()) {
+      console.log(
+        `🚫 Service Worker: Disabled by user preference (dev mode: ${this.isDevelopment})`
+      );
       return;
     }
 
@@ -42,7 +91,7 @@ class ServiceWorkerManager {
         serviceWorkerPath,
         {
           scope: '/',
-          type: this.isDevelopment ? 'module' : 'classic',
+          type: 'module',
         }
       );
 
@@ -398,6 +447,7 @@ class ServiceWorkerManager {
     isControlling: boolean;
     updateAvailable: boolean;
     isDevelopment: boolean;
+    isEnabled: boolean;
   } {
     return {
       isSupported: 'serviceWorker' in navigator,
@@ -405,7 +455,28 @@ class ServiceWorkerManager {
       isControlling: !!navigator.serviceWorker.controller,
       updateAvailable: !!this.registration?.waiting,
       isDevelopment: this.isDevelopment,
+      isEnabled: this.isServiceWorkerEnabled(),
     };
+  }
+
+  /**
+   * Unregister service worker
+   */
+  public async unregister(): Promise<void> {
+    if (!('serviceWorker' in navigator)) {
+      return;
+    }
+
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const registration of registrations) {
+        await registration.unregister();
+        console.log('🗑️ Service Worker: Unregistered successfully');
+      }
+      this.registration = null;
+    } catch (error) {
+      console.error('❌ Service Worker: Unregistration failed:', error);
+    }
   }
 }
 
@@ -414,6 +485,11 @@ export const serviceWorkerManager = new ServiceWorkerManager();
 
 // Export utility functions
 export const registerServiceWorker = () => serviceWorkerManager.init();
+export const unregisterServiceWorker = () => serviceWorkerManager.unregister();
+export const setServiceWorkerEnabled = (enabled: boolean) =>
+  serviceWorkerManager.setServiceWorkerEnabled(enabled);
+export const getServiceWorkerEnabled = () =>
+  serviceWorkerManager.getServiceWorkerEnabled();
 export const checkForUpdates = () => serviceWorkerManager.checkForUpdates();
 export const getCurrentVersion = () => serviceWorkerManager.getCurrentVersion();
 export const getServiceWorkerStatus = () => serviceWorkerManager.getStatus();

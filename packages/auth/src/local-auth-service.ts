@@ -283,7 +283,7 @@ export class LocalAuthService {
   async signUp(
     email: string,
     password: string,
-    metadata?: { name?: string }
+    metadata?: { name?: string; id?: string }
   ): Promise<{ user?: LocalAuthUser; error?: string }> {
     try {
       // Check if user already exists
@@ -298,7 +298,7 @@ export class LocalAuthService {
       // Create new user
       const passwordHash = await this.hashPassword(password);
       const user: LocalAuthUser = {
-        id: this.generateId(),
+        id: metadata?.id || this.generateId(),
         email,
         name: metadata?.name,
         password_hash: passwordHash,

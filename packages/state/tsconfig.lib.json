@@ -13,10 +13,7 @@
   "include": ["./src/**/*.ts"],
   "references": [
     {
-      "path": "../sync-state/tsconfig.lib.json"
-    },
-    {
-      "path": "../sync/tsconfig.lib.json"
+      "path": "../supabase/tsconfig.lib.json"
     },
     {
       "path": "../shared-utils/tsconfig.lib.json"
@@ -26,6 +23,9 @@
     },
     {
       "path": "../model/tsconfig.lib.json"
+    },
+    {
+      "path": "../connectivity/tsconfig.lib.json"
     },
     {
       "path": "../auth-state"

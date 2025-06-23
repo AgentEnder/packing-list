@@ -4,8 +4,7 @@ import {
   Day,
   Person,
 } from '@packing-list/model';
-import type { RuleOverride, TripItem } from '@packing-list/model';
-import { ItemStorage } from '@packing-list/offline-storage';
+import type { RuleOverride } from '@packing-list/model';
 import { StoreType } from '../store.js';
 import {
   calculateRuleHash,
@@ -616,7 +615,8 @@ function preservePackedStatus(
   existingItems: PackingListItem[]
 ): PackingListItem[] {
   return newItems.map((item) => {
-    const existing = existingItems.find(
+    // First try to match by ruleId and ruleHash (for calculated items)
+    let existing = existingItems.find(
       (e) =>
         e.ruleId === item.ruleId &&
         e.ruleHash === item.ruleHash &&
@@ -624,12 +624,33 @@ function preservePackedStatus(
         e.personId === item.personId
     );
 
+    // If no match found and existing item has 'imported' ruleId (from IndexedDB),
+    // try matching by name, dayIndex, personId, and quantity
+    if (!existing) {
+      existing = existingItems.find(
+        (e) =>
+          e.ruleId === 'imported' && // Only match stored items from IndexedDB
+          e.itemName === item.itemName &&
+          e.dayIndex === item.dayIndex &&
+          e.personId === item.personId &&
+          e.quantity === item.quantity
+      );
+
+      if (existing) {
+        console.log(
+          `🔄 [PRESERVE_PACKED] Matched stored item by name: ${item.itemName} (${existing.id} → ${item.id})`
+        );
+      }
+    }
+
     return existing ? { ...item, isPacked: existing.isPacked } : item;
   });
 }
 
 // Main handler function
-export const calculatePackingListHandler = (state: StoreType): StoreType => {
+export const calculatePackingListHandler = <T extends Pick<StoreType, 'trips'>>(
+  state: T
+): T => {
   const selectedTripId = state.trips.selectedTripId;
 
   if (!selectedTripId || !state.trips.byId[selectedTripId]) {
@@ -682,26 +703,6 @@ export const calculatePackingListHandler = (state: StoreType): StoreType => {
   // Preserve packed status and save to storage
   const existingItems = selectedTripData.calculated.packingListItems;
   const updatedItems = preservePackedStatus(packingListItems, existingItems);
-
-  // Save to storage
-  updatedItems.forEach((item) => {
-    const tripItem: TripItem = {
-      id: item.id,
-      tripId: selectedTripId,
-      name: item.name,
-      category: item.categoryId,
-      quantity: item.quantity,
-      packed: item.isPacked,
-      notes: item.notes,
-      personId: item.personId,
-      dayIndex: item.dayIndex,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      version: 1,
-      isDeleted: false,
-    };
-    ItemStorage.saveItem(tripItem).catch(console.error);
-  });
 
   // Update state
   return {

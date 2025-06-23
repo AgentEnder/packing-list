@@ -48,7 +48,7 @@
         "packages/state/*",
         "e2e/frontend-e2e/*",
         "packages/offline-storage/*",
-        "packages/sync/*"
+        ""
       ]
     },
     {

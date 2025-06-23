@@ -195,7 +195,9 @@ function createAppReducer(
     if ('type' in action && typeof action.type === 'string') {
       if (
         !action.type.startsWith('@@redux') &&
-        !action.type.startsWith('auth')
+        !action.type.startsWith('auth') &&
+        !action.type.startsWith('sync') &&
+        !action.type.startsWith('UPSERT')
       ) {
         console.warn(`🏪 [STORE] Unknown action: ${action.type}`);
       }

@@ -61,3 +61,13 @@ export interface EntityExistence {
   personExists: (personId: string, tripId: string) => boolean;
   itemExists: (itemId: string, tripId: string) => boolean;
 }
+
+// Sync Service Options
+export interface SyncOptions {
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+  autoSyncInterval?: number; // milliseconds
+  demoMode?: boolean; // Disable active syncing, only show demo conflicts
+  userId?: string; // Current user ID for data filtering
+  callbacks?: EntityCallbacks;
+}

@@ -1,5 +1,5 @@
 import type { StoreType } from '../../store.js';
-import { syncStateReducer } from '@packing-list/sync-state';
+import { syncStateReducer } from './reducers.js';
 import type {
   SyncState,
   SyncConflict,

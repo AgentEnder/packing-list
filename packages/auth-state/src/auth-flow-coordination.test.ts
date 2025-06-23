@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => {
     signOut: vi.fn(),
     getState: vi.fn(),
     getLocalAuthService: vi.fn(),
+    waitForInitialization: vi.fn(),
   };
 
   const mockLocalAuthService = {
@@ -54,7 +55,8 @@ import authReducer, {
 describe('Auth Flow Coordination', () => {
   let store: ReturnType<typeof configureStore<{ auth: AuthState }>>;
 
-  const { mockAuthService, mockLocalAuthService, mockConnectivityService } = mocks;
+  const { mockAuthService, mockLocalAuthService, mockConnectivityService } =
+    mocks;
 
   const mockRemoteUser = {
     id: 'remote-user-123',
@@ -131,6 +133,7 @@ describe('Auth Flow Coordination', () => {
     });
 
     mockAuthService.getLocalAuthService.mockReturnValue(mockLocalAuthService);
+    mockAuthService.waitForInitialization.mockResolvedValue(undefined);
   });
 
   describe('Google OAuth Flow', () => {
@@ -142,7 +145,7 @@ describe('Auth Flow Coordination', () => {
       let authServiceCallCount = 0;
       mockAuthService.getState.mockImplementation(() => {
         authServiceCallCount++;
-        
+
         if (authServiceCallCount >= 3) {
           // After a few calls, auth service is ready with user
           return {
@@ -153,7 +156,7 @@ describe('Auth Flow Coordination', () => {
             isRemoteAuthenticated: true,
           };
         }
-        
+
         // Initially, auth service is still processing
         return {
           user: null,
@@ -192,7 +195,9 @@ describe('Auth Flow Coordination', () => {
       const result = await store.dispatch(action);
 
       expect(result.type).toBe('auth/signInWithGooglePopup/fulfilled');
-      expect((result.payload as { user: typeof mockRemoteUser }).user).toEqual(mockRemoteUser);
+      expect((result.payload as { user: typeof mockRemoteUser }).user).toEqual(
+        mockRemoteUser
+      );
     }, 10000); // Increase timeout for polling test
 
     it('should handle Google sign-in failure', async () => {
@@ -213,13 +218,18 @@ describe('Auth Flow Coordination', () => {
 
     it('should reject Google sign-in in offline mode', async () => {
       // Set store to offline mode
-      store.dispatch({ type: 'auth/updateAuthState', payload: { isOfflineMode: true } });
+      store.dispatch({
+        type: 'auth/updateAuthState',
+        payload: { isOfflineMode: true },
+      });
 
       const action = signInWithGooglePopup();
       const result = await store.dispatch(action);
 
       expect(result.type).toBe('auth/signInWithGooglePopup/rejected');
-      expect(result.payload).toBe('Google sign-in not available in offline mode');
+      expect(result.payload).toBe(
+        'Google sign-in not available in offline mode'
+      );
       expect(mockAuthService.signInWithGooglePopup).not.toHaveBeenCalled();
     });
   });
@@ -233,7 +243,7 @@ describe('Auth Flow Coordination', () => {
       let authServiceCallCount = 0;
       mockAuthService.getState.mockImplementation(() => {
         authServiceCallCount++;
-        
+
         if (authServiceCallCount >= 2) {
           return {
             user: mockRemoteUser,
@@ -243,7 +253,7 @@ describe('Auth Flow Coordination', () => {
             isRemoteAuthenticated: true,
           };
         }
-        
+
         return {
           user: null,
           session: null,
@@ -253,11 +263,17 @@ describe('Auth Flow Coordination', () => {
         };
       });
 
-      const action = signInWithPassword({ email: 'user@example.com', password: 'password123' });
+      const action = signInWithPassword({
+        email: 'user@example.com',
+        password: 'password123',
+      });
       const result = await store.dispatch(action);
 
       expect(result.type).toBe('auth/signInWithPassword/fulfilled');
-      expect(mockAuthService.signInWithEmail).toHaveBeenCalledWith('user@example.com', 'password123');
+      expect(mockAuthService.signInWithEmail).toHaveBeenCalledWith(
+        'user@example.com',
+        'password123'
+      );
       expect(mockLocalAuthService.getLocalUsers).toHaveBeenCalled();
 
       const state = store.getState().auth;
@@ -268,7 +284,10 @@ describe('Auth Flow Coordination', () => {
 
     it('should handle offline email/password sign-in with local auth service', async () => {
       // Set store to offline mode
-      store.dispatch({ type: 'auth/updateAuthState', payload: { isOfflineMode: true } });
+      store.dispatch({
+        type: 'auth/updateAuthState',
+        payload: { isOfflineMode: true },
+      });
 
       // Setup local sign-in success
       mockLocalAuthService.signIn.mockResolvedValue({ error: null });
@@ -284,11 +303,17 @@ describe('Auth Flow Coordination', () => {
         error: null,
       });
 
-      const action = signInWithPassword({ email: 'user@example.com', password: 'password123' });
+      const action = signInWithPassword({
+        email: 'user@example.com',
+        password: 'password123',
+      });
       const result = await store.dispatch(action);
 
       expect(result.type).toBe('auth/signInWithPassword/fulfilled');
-      expect(mockLocalAuthService.signIn).toHaveBeenCalledWith('user@example.com', 'password123');
+      expect(mockLocalAuthService.signIn).toHaveBeenCalledWith(
+        'user@example.com',
+        'password123'
+      );
       expect(mockAuthService.signInWithEmail).not.toHaveBeenCalled();
 
       const state = store.getState().auth;
@@ -309,7 +334,10 @@ describe('Auth Flow Coordination', () => {
         isRemoteAuthenticated: false,
       });
 
-      const action = signInWithPassword({ email: 'user@example.com', password: 'password123' });
+      const action = signInWithPassword({
+        email: 'user@example.com',
+        password: 'password123',
+      });
       const result = await store.dispatch(action);
 
       expect(result.type).toBe('auth/signInWithPassword/fulfilled');
@@ -321,7 +349,10 @@ describe('Auth Flow Coordination', () => {
         error: 'Invalid credentials',
       });
 
-      const action = signInWithPassword({ email: 'wrong@example.com', password: 'wrongpass' });
+      const action = signInWithPassword({
+        email: 'wrong@example.com',
+        password: 'wrongpass',
+      });
       const result = await store.dispatch(action);
 
       expect(result.type).toBe('auth/signInWithPassword/rejected');
@@ -335,7 +366,9 @@ describe('Auth Flow Coordination', () => {
 
   describe('Local Account Flow', () => {
     it('should handle local account sign-in without password', async () => {
-      mockLocalAuthService.signInWithoutPassword.mockResolvedValue({ error: null });
+      mockLocalAuthService.signInWithoutPassword.mockResolvedValue({
+        error: null,
+      });
       mockLocalAuthService.getState.mockReturnValue({
         user: {
           id: 'local-user-123',
@@ -348,11 +381,15 @@ describe('Auth Flow Coordination', () => {
         error: null,
       });
 
-      const action = signInOfflineWithoutPassword({ email: 'user@example.com' });
+      const action = signInOfflineWithoutPassword({
+        email: 'user@example.com',
+      });
       const result = await store.dispatch(action);
 
       expect(result.type).toBe('auth/signInOfflineWithoutPassword/fulfilled');
-      expect(mockLocalAuthService.signInWithoutPassword).toHaveBeenCalledWith('user@example.com');
+      expect(mockLocalAuthService.signInWithoutPassword).toHaveBeenCalledWith(
+        'user@example.com'
+      );
 
       const state = store.getState().auth;
       expect(state.user?.type).toBe('local');
@@ -366,7 +403,9 @@ describe('Auth Flow Coordination', () => {
         error: 'Account not found',
       });
 
-      const action = signInOfflineWithoutPassword({ email: 'nonexistent@example.com' });
+      const action = signInOfflineWithoutPassword({
+        email: 'nonexistent@example.com',
+      });
       const result = await store.dispatch(action);
 
       expect(result.type).toBe('auth/signInOfflineWithoutPassword/rejected');
@@ -410,7 +449,10 @@ describe('Auth Flow Coordination', () => {
 
     it('should handle offline sign-up with local auth service', async () => {
       // Set store to offline mode
-      store.dispatch({ type: 'auth/updateAuthState', payload: { isOfflineMode: true } });
+      store.dispatch({
+        type: 'auth/updateAuthState',
+        payload: { isOfflineMode: true },
+      });
 
       mockLocalAuthService.signUp.mockResolvedValue({ error: null });
       mockLocalAuthService.getState.mockReturnValue({
@@ -466,7 +508,7 @@ describe('Auth Flow Coordination', () => {
       let authServiceCallCount = 0;
       mockAuthService.getState.mockImplementation(() => {
         authServiceCallCount++;
-        
+
         if (authServiceCallCount >= 2) {
           // After sign-out, switched to shared account
           return {
@@ -477,7 +519,7 @@ describe('Auth Flow Coordination', () => {
             isRemoteAuthenticated: false,
           };
         }
-        
+
         // Initially still signed in
         return {
           user: mockRemoteUser,
@@ -495,7 +537,9 @@ describe('Auth Flow Coordination', () => {
       expect(mockAuthService.signOut).toHaveBeenCalledOnce();
 
       // The result should contain the shared user
-      expect((result.payload as { user: typeof mockSharedUser }).user).toEqual(mockSharedUser);
+      expect((result.payload as { user: typeof mockSharedUser }).user).toEqual(
+        mockSharedUser
+      );
     }, 10000); // Increase timeout for polling test
 
     it('should handle offline sign-out switching to shared account', async () => {
@@ -510,7 +554,9 @@ describe('Auth Flow Coordination', () => {
       });
 
       mockLocalAuthService.signOut.mockResolvedValue({ error: null });
-      mockLocalAuthService.signInWithoutPassword.mockResolvedValue({ error: null });
+      mockLocalAuthService.signInWithoutPassword.mockResolvedValue({
+        error: null,
+      });
       mockLocalAuthService.getState.mockReturnValue({
         user: {
           id: 'local-shared-user',
@@ -534,7 +580,9 @@ describe('Auth Flow Coordination', () => {
       );
 
       // The result should contain the shared user
-      expect((result.payload as { user: { email: string } }).user.email).toBe('shared@local.device');
+      expect((result.payload as { user: { email: string } }).user.email).toBe(
+        'shared@local.device'
+      );
     });
 
     it('should handle sign-out failure', async () => {
@@ -579,7 +627,10 @@ describe('Auth Flow Coordination', () => {
       });
 
       // Force offline mode
-      store.dispatch({ type: 'auth/updateAuthState', payload: { forceOfflineMode: true } });
+      store.dispatch({
+        type: 'auth/updateAuthState',
+        payload: { forceOfflineMode: true },
+      });
 
       const action = initializeAuth();
       const result = await store.dispatch(action);
@@ -615,7 +666,10 @@ describe('Auth Flow Coordination', () => {
       });
 
       // Force offline mode
-      store.dispatch({ type: 'auth/updateAuthState', payload: { forceOfflineMode: true } });
+      store.dispatch({
+        type: 'auth/updateAuthState',
+        payload: { forceOfflineMode: true },
+      });
 
       const action = initializeAuth();
       const result = await store.dispatch(action);
@@ -629,7 +683,9 @@ describe('Auth Flow Coordination', () => {
 
     it('should fall back to shared account when no personal account found', async () => {
       // Only shared account available
-      mockLocalAuthService.getLocalUsers.mockResolvedValue([mockLocalAuthUsers[1]]);
+      mockLocalAuthService.getLocalUsers.mockResolvedValue([
+        mockLocalAuthUsers[1],
+      ]);
 
       // Set up auth service state with a remote user
       mockAuthService.getState.mockReturnValue({
@@ -641,24 +697,31 @@ describe('Auth Flow Coordination', () => {
       });
 
       // Force offline mode
-      store.dispatch({ type: 'auth/updateAuthState', payload: { forceOfflineMode: true } });
+      store.dispatch({
+        type: 'auth/updateAuthState',
+        payload: { forceOfflineMode: true },
+      });
 
       const action = initializeAuth();
       const result = await store.dispatch(action);
 
       expect(result.type).toBe('auth/initializeAuth/fulfilled');
       expect(mockAuthService.getLocalAuthService().signOut).toHaveBeenCalled();
-      expect(mockAuthService.getLocalAuthService().signInWithoutPassword).toHaveBeenCalledWith(
-        'shared@local.device',
-        true
-      );
+      expect(
+        mockAuthService.getLocalAuthService().signInWithoutPassword
+      ).toHaveBeenCalledWith('shared@local.device', true);
     });
   });
 
   describe('Error Handling', () => {
     it('should handle connectivity check timeout gracefully', async () => {
       // Simulate connectivity check timeout
-      mockConnectivityService.checkNow.mockRejectedValue(new Error('Connectivity check timeout'));
+      mockConnectivityService.checkNow.mockRejectedValue(
+        new Error('Connectivity check timeout')
+      );
+
+      // Mock auth service waitForInitialization to succeed even when connectivity fails
+      mockAuthService.waitForInitialization.mockResolvedValue(undefined);
 
       const action = initializeAuth();
       const result = await store.dispatch(action);
@@ -738,11 +801,11 @@ describe('Auth Flow Coordination', () => {
 
       // Should succeed without issues
       expect(newSignInResult.type).toBe('auth/signInWithGooglePopup/fulfilled');
-      
+
       const newState = store.getState().auth;
       expect(newState.user).toEqual(mockRemoteUser);
       expect(newState.isAuthenticating).toBe(false);
       expect(newState.error).toBe(null);
     });
   });
-}); 
+});

@@ -9,10 +9,6 @@ import { calculateDefaultItems } from './calculate-default-items.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
 import { ActionHandler } from '../actions.js';
 import { uuid } from '@packing-list/shared-utils';
-import {
-  DefaultItemRulesStorage,
-  TripRuleStorage,
-} from '@packing-list/offline-storage';
 
 export type ToggleRulePackAction = {
   type: 'TOGGLE_RULE_PACK';
@@ -71,9 +67,7 @@ export const toggleRulePackHandler: ActionHandler<ToggleRulePackAction> = (
           };
 
           // Save updated rule to storage
-          DefaultItemRulesStorage.saveDefaultItemRule(
-            defaultItemRules[existingRuleIndex]
-          ).catch(console.error);
+          // rule updated
         }
       } else {
         // Create new user instance of the rule
@@ -88,16 +82,15 @@ export const toggleRulePackHandler: ActionHandler<ToggleRulePackAction> = (
         newRuleIds.push(userRuleInstance.id);
 
         // Save new rule to storage
-        DefaultItemRulesStorage.saveDefaultItemRule(userRuleInstance).catch(
-          console.error
-        );
+        // rule created
       }
     }
 
     // Save trip rule associations for new rules
     const now = new Date().toISOString();
     for (const ruleId of newRuleIds) {
-      const tripRule: TripRule = {
+      // Create trip rule association
+      const tripRuleData: TripRule = {
         id: `${selectedTripId}-${ruleId}`,
         tripId: selectedTripId,
         ruleId,
@@ -106,7 +99,8 @@ export const toggleRulePackHandler: ActionHandler<ToggleRulePackAction> = (
         version: 1,
         isDeleted: false,
       };
-      TripRuleStorage.saveTripRule(tripRule).catch(console.error);
+      // Save trip rule association - implementation pending
+      console.log('Trip rule created:', tripRuleData);
     }
 
     // Update the state with new rules
@@ -156,19 +150,16 @@ export const toggleRulePackHandler: ActionHandler<ToggleRulePackAction> = (
         result.push(updatedRule);
 
         // Save updated rule to storage
-        DefaultItemRulesStorage.saveDefaultItemRule(updatedRule).catch(
-          console.error
-        );
+        // updated rule after removing pack association
         return result;
       },
       [] as typeof selectedTripData.trip.defaultItemRules
     );
 
     // Remove trip rule associations for removed rules
-    for (const ruleId of removedRuleIds) {
-      TripRuleStorage.deleteTripRule(selectedTripId, ruleId).catch(
-        console.error
-      );
+    for (const removedRuleId of removedRuleIds) {
+      // trip rule association removed
+      console.log('Trip rule removed for rule:', removedRuleId);
     }
 
     // Update the state with modified rules

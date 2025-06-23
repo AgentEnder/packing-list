@@ -1,6 +1,6 @@
 import { StoreType, TripData } from '../store.js';
-import { TripStorage } from '@packing-list/offline-storage';
 import { Trip, TripSummary } from '@packing-list/model';
+import { uuid } from '@packing-list/shared-utils';
 import { createEmptyTripData, initialState } from '../store.js';
 
 // Action types
@@ -35,6 +35,21 @@ export interface UpdateTripSummaryAction {
     description?: string;
   };
 }
+
+// Action creator
+export const createTrip = (payload: {
+  title: string;
+  description?: string;
+}): CreateTripAction => {
+  return {
+    type: 'CREATE_TRIP',
+    payload: {
+      tripId: uuid(),
+      title: payload.title,
+      description: payload.description,
+    },
+  };
+};
 
 // Action handlers
 export function createTripHandler(
@@ -106,19 +121,6 @@ export function createTripHandler(
   });
 
   // Persist trip asynchronously
-  TripStorage.saveTrip(tripModel)
-    .then(() => {
-      console.log(
-        '✅ [CREATE_TRIP] Trip saved successfully to IndexedDB:',
-        tripModel.id
-      );
-    })
-    .catch((error) => {
-      console.error(
-        '❌ [CREATE_TRIP] Failed to save trip to IndexedDB:',
-        error
-      );
-    });
 
   return {
     ...state,
@@ -157,8 +159,6 @@ export function deleteTripHandler(
 ): StoreType {
   const { tripId } = action.payload;
 
-  const existingTrip = state.trips.byId[tripId]?.trip;
-
   // Remove from summaries
   const updatedSummaries = state.trips.summaries.filter(
     (summary) => summary.tripId !== tripId
@@ -175,11 +175,6 @@ export function deleteTripHandler(
     // If there are other trips, select the first one, otherwise null
     newSelectedTripId =
       updatedSummaries.length > 0 ? updatedSummaries[0].tripId : null;
-  }
-
-  // Persist deletion asynchronously
-  if (existingTrip) {
-    TripStorage.deleteTrip(tripId).catch(console.error);
   }
 
   return {
@@ -209,18 +204,6 @@ export function updateTripSummaryHandler(
         }
       : summary
   );
-
-  // Persist update asynchronously
-  const tripData = state.trips.byId[tripId];
-  if (tripData) {
-    const updatedTrip: Trip = {
-      ...(tripData.trip as Trip),
-      title,
-      description: description || '',
-      updatedAt: new Date().toISOString(),
-    };
-    TripStorage.saveTrip(updatedTrip).catch(console.error);
-  }
 
   return {
     ...state,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { upsertSyncedDefaultItemRule } from './sync-integration.js';
+import { bulkUpsertSyncedEntitiesHandler } from './sync-integration.js';
 import {
   createTestTripState,
   createTestPerson,
@@ -54,10 +54,10 @@ describe('Sync Integration - Item Recalculation', () => {
       originalRuleId: 'original-rule-1',
     };
 
-    // Sync the rule from server
-    const resultState = upsertSyncedDefaultItemRule(initialState, {
-      type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE',
-      payload: { rule: syncedRule, tripId },
+    // Sync the rule from server using bulk handler
+    const resultState = bulkUpsertSyncedEntitiesHandler(initialState, {
+      type: 'BULK_UPSERT_SYNCED_ENTITIES',
+      payload: { defaultItemRules: [{ rule: syncedRule, tripId }] },
     });
 
     // Verify that items were calculated
@@ -123,10 +123,10 @@ describe('Sync Integration - Item Recalculation', () => {
       originalRuleId: 'original-rule-1',
     };
 
-    // Sync the rule from server
-    const resultState = upsertSyncedDefaultItemRule(initialState, {
-      type: 'UPSERT_SYNCED_DEFAULT_ITEM_RULE',
-      payload: { rule: syncedRule, tripId },
+    // Sync the rule from server using bulk handler
+    const resultState = bulkUpsertSyncedEntitiesHandler(initialState, {
+      type: 'BULK_UPSERT_SYNCED_ENTITIES',
+      payload: { defaultItemRules: [{ rule: syncedRule, tripId }] },
     });
 
     // Verify that items were calculated only for the adult

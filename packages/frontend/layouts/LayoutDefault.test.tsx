@@ -26,6 +26,13 @@ vi.mock('@packing-list/shared-components', () => ({
   ConflictBanner: () => (
     <div data-testid="conflict-banner">Conflict Banner</div>
   ),
+  Banner: ({
+    children,
+    visible,
+  }: {
+    children: React.ReactNode;
+    visible: boolean;
+  }) => (visible ? <div data-testid="banner">{children}</div> : null),
   BannerProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="banner-provider">{children}</div>
   ),
@@ -58,6 +65,12 @@ vi.mock('../components/Link', () => ({
 
 vi.mock('../components/DemoBanner', () => ({
   DemoBanner: () => <div data-testid="demo-banner">Demo Banner</div>,
+}));
+
+vi.mock('../components/DevModeBannerContainer', () => ({
+  DevModeBannerContainer: () => (
+    <div data-testid="dev-mode-banner-container">Dev Mode Banner</div>
+  ),
 }));
 
 vi.mock('../components/Toast', () => ({

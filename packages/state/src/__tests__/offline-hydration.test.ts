@@ -102,7 +102,9 @@ describe('loadOfflineState', () => {
     expect(state.trips.selectedTripId).toBe('t1');
     expect(state.trips.byId['t1']).toBeDefined();
     expect(state.trips.byId['t1'].people).toEqual(people);
-    expect(state.trips.byId['t1'].calculated.packingListItems).toHaveLength(1);
+    // Since no default item rules are provided, no calculated items should be generated
+    // The raw stored items are only used to preserve packed status against calculated items
+    expect(state.trips.byId['t1'].calculated.packingListItems).toHaveLength(0);
   });
 
   it('should preserve trip days when loading from offline state', async () => {

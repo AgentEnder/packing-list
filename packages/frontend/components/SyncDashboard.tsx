@@ -5,7 +5,6 @@ import {
   SyncStatusIndicator,
 } from '@packing-list/shared-components';
 import type { SyncConflict } from '@packing-list/model';
-import { useSyncContext } from './SyncProvider.js';
 import { useAppDispatch } from '@packing-list/state';
 import {
   Activity,
@@ -16,6 +15,7 @@ import {
   CheckCircle,
   Clock,
 } from 'lucide-react';
+import { useAppSelector } from '@packing-list/state';
 
 // Mock conflict data for testing
 const mockConflicts: SyncConflict[] = [
@@ -98,7 +98,7 @@ const mockConflicts: SyncConflict[] = [
 ];
 
 export function SyncDashboard() {
-  const { syncState, forceSync, isInitialized } = useSyncContext();
+  const { syncState, isInitialized } = useAppSelector((state) => state.sync);
   const dispatch = useAppDispatch();
   const [selectedConflict, setSelectedConflict] = useState<SyncConflict | null>(
     null
@@ -278,7 +278,12 @@ export function SyncDashboard() {
           <h2 className="card-title">Sync Controls</h2>
           <div className="flex flex-wrap gap-2">
             {isInitialized && (
-              <button onClick={forceSync} className="btn btn-primary btn-sm">
+              <button
+                onClick={() => {
+                  console.log('NYI');
+                }}
+                className="btn btn-primary btn-sm"
+              >
                 <RefreshCw className="w-4 h-4" />
                 Force Sync
               </button>

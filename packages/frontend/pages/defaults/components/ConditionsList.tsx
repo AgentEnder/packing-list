@@ -61,7 +61,7 @@ export const ConditionsList = ({
       </div>
 
       <div className="space-y-2">
-        {conditions.map((condition, index) => (
+        {conditions?.map((condition, index) => (
           <div
             key={index}
             className="alert flex flex-col items-stretch gap-2"

@@ -1,11 +1,40 @@
 import { Person } from '@packing-list/model';
+import { uuid } from '@packing-list/shared-utils';
 import { StoreType } from '../store.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
-import { PersonStorage } from '@packing-list/offline-storage';
 
 export type AddPersonAction = {
   type: 'ADD_PERSON';
   payload: Person;
+};
+
+// Action creator
+export const addPerson = (payload: {
+  name: string;
+  age: number;
+  gender?: string;
+}): AddPersonAction => {
+  const now = new Date().toISOString();
+  return {
+    type: 'ADD_PERSON',
+    payload: {
+      id: uuid(),
+      name: payload.name,
+      age: payload.age,
+      gender: payload.gender as
+        | 'male'
+        | 'female'
+        | 'other'
+        | 'prefer-not-to-say'
+        | undefined,
+      settings: {},
+      createdAt: now,
+      updatedAt: now,
+      version: 1,
+      isDeleted: false,
+      tripId: '', // Will be set by the handler from selected trip
+    },
+  };
 };
 
 export const addPersonHandler = (
@@ -30,9 +59,15 @@ export const addPersonHandler = (
     return state; // Person already exists, no need to add
   }
 
+  // Set the tripId on the person since action creator uses placeholder
+  const personWithTripId = {
+    ...action.payload,
+    tripId: selectedTripId,
+  };
+
   const updatedTripData = {
     ...selectedTripData,
-    people: [...selectedTripData.people, action.payload],
+    people: [...selectedTripData.people, personWithTripId],
   };
 
   const stateWithNewPerson = {
@@ -45,8 +80,6 @@ export const addPersonHandler = (
       },
     },
   };
-
-  PersonStorage.savePerson(action.payload).catch(console.error);
 
   // Recalculate packing list with new person
   return calculatePackingListHandler(stateWithNewPerson);

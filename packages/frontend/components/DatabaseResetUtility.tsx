@@ -3,7 +3,7 @@ import { useAppDispatch } from '@packing-list/state';
 import { Database, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { ConfirmDialog } from '@packing-list/shared-components';
 import { showToast } from './Toast';
-import { resetSyncService } from '@packing-list/sync';
+import { resetSyncService } from '@packing-list/state';
 
 interface DatabaseResetUtilityProps {
   className?: string;

@@ -1,8 +1,9 @@
 import { initialState, StoreType } from './store.js';
-import type { SyncActions } from '@packing-list/sync-state';
+import type { SyncActions } from './lib/sync/types.js';
 import {
   addPersonHandler,
   AddPersonAction,
+  addPerson,
 } from './action-handlers/add-person.js';
 import {
   removePersonHandler,
@@ -27,6 +28,7 @@ import {
 import {
   createItemRuleHandler,
   CreateItemRuleAction,
+  createItemRule,
 } from './action-handlers/create-item-rule.js';
 import {
   updateItemRuleHandler,
@@ -106,6 +108,7 @@ import {
 import {
   createTripHandler,
   CreateTripAction,
+  createTrip,
   selectTripHandler,
   SelectTripAction,
   deleteTripHandler,
@@ -148,19 +151,32 @@ import {
   mergeSyncedItemHandler,
 } from './lib/sync/sync-handlers.js';
 import {
-  upsertSyncedTrip,
-  upsertSyncedPerson,
-  upsertSyncedItem,
-  upsertSyncedDefaultItemRule,
-  upsertSyncedRulePack,
+  processSyncedTripItemsHandler,
+  bulkUpsertSyncedEntitiesHandler,
   type SyncIntegrationActions,
 } from './lib/sync/sync-integration.js';
+
+// Import sync actions and thunks
 import {
-  TripStorage,
-  PersonStorage,
-  ItemStorage,
-} from '@packing-list/offline-storage';
-import { enableSyncMode, disableSyncMode } from '@packing-list/sync';
+  syncFromServer,
+  pullTripsFromServer,
+  pullPeopleFromServer,
+  pullItemsFromServer,
+  pullDefaultItemRulesFromServer,
+  pullTripRulesFromServer,
+  setSyncState,
+  setSyncInitialized,
+  addSyncConflict,
+  removeSyncConflict,
+  clearSyncConflicts,
+  setSyncConflicts,
+  setSyncOnlineStatus,
+  setSyncSyncingStatus,
+  updateLastSyncTimestamp,
+  setSyncPendingChanges,
+  setSyncError,
+  resetSyncState,
+} from './lib/sync/actions.js';
 
 export type ActionHandler<T extends AllActions> = (
   state: StoreType,
@@ -209,10 +225,6 @@ export type AllActions =
   | SyncActions
   | SyncIntegrationActions
   | TriggerConfettiBurstAction
-  | {
-      type: 'RELOAD_FROM_INDEXEDDB';
-      payload: { syncedCount: number; isInitialSync: boolean };
-    }
   | {
       type: 'SYNC_UPDATE_TRIP_SUMMARIES';
       payload: {
@@ -291,24 +303,8 @@ export const Mutations: {
   MERGE_SYNCED_PERSON: mergeSyncedPersonHandler,
   MERGE_SYNCED_ITEM: mergeSyncedItemHandler,
   TRACK_SYNC_CHANGE: (state: StoreType) => state, // Placeholder - no-op for now
-  UPSERT_SYNCED_TRIP: upsertSyncedTrip,
-  UPSERT_SYNCED_PERSON: upsertSyncedPerson,
-  UPSERT_SYNCED_ITEM: upsertSyncedItem,
-  UPSERT_SYNCED_DEFAULT_ITEM_RULE: upsertSyncedDefaultItemRule,
-  UPSERT_SYNCED_RULE_PACK: upsertSyncedRulePack,
-  RELOAD_FROM_INDEXEDDB: (
-    state: StoreType,
-    action: {
-      type: 'RELOAD_FROM_INDEXEDDB';
-      payload: { syncedCount: number; isInitialSync: boolean };
-    }
-  ) => {
-    // This is just a placeholder - the actual work is done by the thunk
-    console.log(
-      `🔄 [RELOAD] Sync completed: ${action.payload.syncedCount} records synced (initial: ${action.payload.isInitialSync})`
-    );
-    return state;
-  },
+  PROCESS_SYNCED_TRIP_ITEMS: processSyncedTripItemsHandler,
+  BULK_UPSERT_SYNCED_ENTITIES: bulkUpsertSyncedEntitiesHandler,
   SYNC_UPDATE_TRIP_SUMMARIES: (
     state: StoreType,
     action: {
@@ -341,107 +337,12 @@ export const Mutations: {
   },
 };
 
-/**
- * Thunk to reload trip data from IndexedDB after sync
- */
-export const reloadFromIndexedDB = (payload: {
-  syncedCount: number;
-  isInitialSync: boolean;
-  userId: string;
-}) => {
-  return async (dispatch: (action: AllActions) => void) => {
-    console.log(
-      `🔄 [RELOAD_THUNK] Starting reload: ${payload.syncedCount} records synced (initial: ${payload.isInitialSync})`
-    );
-
-    try {
-      // Import storage and sync utilities dynamically to avoid circular dependencies
-
-      // Enable sync mode to prevent change tracking during sync operations
-      enableSyncMode();
-
-      try {
-        // Get trips for the current user
-        const trips = await TripStorage.getUserTrips(payload.userId);
-        console.log(
-          `📋 [RELOAD_THUNK] Loaded ${trips.length} trips from IndexedDB`
-        );
-
-        // First dispatch the placeholder action to trigger any sync state updates
-        dispatch({
-          type: 'RELOAD_FROM_INDEXEDDB',
-          payload: {
-            syncedCount: payload.syncedCount,
-            isInitialSync: payload.isInitialSync,
-          },
-        });
-
-        // Use UPSERT_SYNCED_TRIP to properly populate tripsById with full TripData objects
-        // This ensures that tripsById[tripId] is populated and not undefined
-        for (const trip of trips) {
-          console.log(
-            `🔄 [RELOAD_THUNK] Upserting trip: ${trip.title} (${trip.id})`
-          );
-          dispatch({
-            type: 'UPSERT_SYNCED_TRIP',
-            payload: trip,
-          });
-
-          // Also load related people and items for each trip
-          try {
-            const people = await PersonStorage.getTripPeople(trip.id);
-            const items = await ItemStorage.getTripItems(trip.id);
-
-            console.log(
-              `👥 [RELOAD_THUNK] Loading ${people.length} people for trip ${trip.id}`
-            );
-            for (const person of people) {
-              dispatch({
-                type: 'UPSERT_SYNCED_PERSON',
-                payload: person,
-              });
-            }
-
-            console.log(
-              `📦 [RELOAD_THUNK] Loading ${items.length} items for trip ${trip.id}`
-            );
-            for (const item of items) {
-              dispatch({
-                type: 'UPSERT_SYNCED_ITEM',
-                payload: item,
-              });
-            }
-          } catch (relationError) {
-            console.error(
-              `❌ [RELOAD_THUNK] Failed to load people/items for trip ${trip.id}:`,
-              relationError
-            );
-          }
-        }
-
-        console.log(
-          `✅ [RELOAD_THUNK] Successfully upserted ${trips.length} trips into Redux state (tripsById populated)`
-        );
-      } finally {
-        // Always disable sync mode, even if an error occurred
-        disableSyncMode();
-      }
-    } catch (error) {
-      console.error(
-        '❌ [RELOAD_THUNK] Failed to reload from IndexedDB:',
-        error
-      );
-    }
-  };
-};
-
 export const actions = {
   advanceFlow,
   resetFlow,
   initFlow,
   setWizardStep,
   resetWizard,
-  reloadFromIndexedDB,
   clearDemoData: clearDemoDataThunk,
   triggerConfettiBurst: (payload?: {
     x: number;
@@ -450,4 +351,27 @@ export const actions = {
     type: 'TRIGGER_CONFETTI_BURST',
     payload,
   }),
+  addPerson,
+  createTrip,
+  createItemRule,
+
+  // Sync actions and thunks
+  syncFromServer,
+  pullTripsFromServer,
+  pullPeopleFromServer,
+  pullItemsFromServer,
+  pullDefaultItemRulesFromServer,
+  pullTripRulesFromServer,
+  setSyncState,
+  setSyncInitialized,
+  addSyncConflict,
+  removeSyncConflict,
+  clearSyncConflicts,
+  setSyncConflicts,
+  setSyncOnlineStatus,
+  setSyncSyncingStatus,
+  updateLastSyncTimestamp,
+  setSyncPendingChanges,
+  setSyncError,
+  resetSyncState,
 };

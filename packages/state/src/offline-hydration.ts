@@ -4,16 +4,30 @@ import {
   ItemStorage,
   TripRuleStorage,
 } from '@packing-list/offline-storage';
-import type { TripItem, PackingListItem } from '@packing-list/model';
+import type {
+  TripItem,
+  PackingListItem,
+  DefaultItemRule,
+} from '@packing-list/model';
 import { createEmptyTripData, type StoreType, type TripData } from './store.js';
+import { calculatePackingListHandler } from './action-handlers/calculate-packing-list.js';
+import { calculateDefaultItems } from './action-handlers/calculate-default-items.js';
 
-function mapItem(item: TripItem): PackingListItem {
+function mapItem(
+  item: TripItem,
+  rulesMap: Map<string, DefaultItemRule>
+): PackingListItem {
+  // Look up the rule to get the correct itemName
+  const rule = rulesMap.get(item.ruleId || '');
+  const itemName = rule ? rule.name : item.name; // Fallback to item.name for legacy items
+
   return {
     id: item.id,
     name: item.name,
-    itemName: item.name,
-    ruleId: 'imported',
-    ruleHash: '',
+    itemName: itemName,
+    // Use actual rule information if available, fallback to 'imported' for legacy items
+    ruleId: item.ruleId || 'imported',
+    ruleHash: item.ruleHash || '',
     isPacked: item.packed,
     isOverridden: false,
     dayIndex: item.dayIndex,
@@ -124,11 +138,86 @@ export async function loadOfflineState(
         // The Trip type now includes all necessary fields for proper data management
         data.trip = { ...trip, defaultItemRules };
         data.people = people;
-        data.calculated.packingListItems = items.map(mapItem);
         data.lastSynced = trip.lastSyncedAt;
-        base.trips.byId[trip.id] = data;
 
-        console.log(`✅ [HYDRATION] Trip ${trip.id} ready for Redux state`);
+        // Create a temporary state with this trip to calculate packing list
+        const tempState: Pick<StoreType, 'trips'> = {
+          trips: {
+            summaries: [],
+            selectedTripId: trip.id,
+            byId: { [trip.id]: data },
+          },
+        };
+
+        // Calculate the packing list with all rules and people loaded
+        console.log(
+          `🔄 [HYDRATION] Calculating packing list for trip ${trip.id}`
+        );
+        const calculatedState = calculatePackingListHandler(
+          calculateDefaultItems(tempState)
+        );
+        const calculatedTripData = calculatedState.trips.byId[trip.id];
+
+        if (!calculatedTripData) {
+          console.error(
+            `❌ [HYDRATION] Failed to calculate packing list for trip ${trip.id}`
+          );
+          base.trips.byId[trip.id] = data;
+          continue;
+        }
+
+        // Now preserve packed status from stored items by matching against calculated items
+        const rulesMap = new Map(
+          defaultItemRules.map((rule) => [rule.id, rule])
+        );
+        const storedItems = items.map((item) => mapItem(item, rulesMap));
+        console.log(
+          `📦 [HYDRATION] Preserving packed status for ${storedItems.length} stored items against ${calculatedTripData.calculated.packingListItems.length} calculated items`
+        );
+
+        // Use the same matching logic as preservePackedStatus
+        const finalItems = calculatedTripData.calculated.packingListItems.map(
+          (calculatedItem: PackingListItem) => {
+            // First try to match by ruleId and ruleHash (for items with rule information)
+            let storedItem = storedItems.find(
+              (stored) =>
+                stored.ruleId === calculatedItem.ruleId &&
+                stored.ruleHash === calculatedItem.ruleHash &&
+                stored.dayIndex === calculatedItem.dayIndex &&
+                stored.personId === calculatedItem.personId
+            );
+
+            // If no match found by rule info, try matching by logical properties
+            if (!storedItem) {
+              storedItem = storedItems.find(
+                (stored) =>
+                  stored.itemName === calculatedItem.itemName &&
+                  stored.dayIndex === calculatedItem.dayIndex &&
+                  stored.personId === calculatedItem.personId &&
+                  stored.quantity === calculatedItem.quantity
+              );
+            }
+
+            // Preserve packed status if we found a match
+            if (storedItem) {
+              console.log(
+                `🔄 [HYDRATION] Preserved packed status for ${calculatedItem.itemName}: ${storedItem.isPacked}`
+              );
+              return { ...calculatedItem, isPacked: storedItem.isPacked };
+            }
+
+            return calculatedItem;
+          }
+        );
+
+        calculatedTripData.calculated.packingListItems = finalItems;
+        base.trips.byId[trip.id] = calculatedTripData;
+
+        console.log(
+          `✅ [HYDRATION] Trip ${trip.id} ready for Redux state with ${
+            finalItems.filter((item) => item.isPacked).length
+          } packed items`
+        );
       } catch (tripError) {
         console.error(
           `❌ [HYDRATION] Error loading trip ${summary.tripId}:`,

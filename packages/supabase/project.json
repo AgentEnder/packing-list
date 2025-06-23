@@ -4,6 +4,12 @@
     "start": {
       "command": "node scripts/setup-local-supabase.js"
     },
+    "reset": {
+      "command": "supabase db reset",
+      "options": {
+        "cwd": "{projectRoot}"
+      }
+    },
     "clean": {
       "command": "node scripts/cleanup-supabase.js",
       "options": {

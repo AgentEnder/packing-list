@@ -28,13 +28,7 @@
       "path": "./packages/offline-storage"
     },
     {
-      "path": "./packages/sync"
-    },
-    {
       "path": "./packages/supabase"
-    },
-    {
-      "path": "./packages/sync-state"
     },
     {
       "path": "./packages/connectivity"
