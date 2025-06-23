@@ -90,7 +90,7 @@ class ServiceWorkerManager {
       this.registration = await navigator.serviceWorker.register(
         serviceWorkerPath,
         {
-          scope: '/',
+          scope: (import.meta.env.PUBLIC_ENV__BASE_URL ?? '') + '/',
           type: 'module',
         }
       );
