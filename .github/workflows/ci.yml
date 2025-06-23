@@ -138,6 +138,11 @@ jobs:
           path: e2e/frontend-e2e/test-output/
           retention-days: 7
 
+      - name: Nx Cloud -- Fix CI
+        if: failure()
+        run: |
+          pnpm nx-cloud fix-ci
+
       - name: Deploy
         run: pnpm nx run-many -t deploy
         env:
