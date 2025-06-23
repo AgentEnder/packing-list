@@ -11,7 +11,6 @@ import { TripSelector } from '../components/TripSelector';
 
 import { SyncStatus } from '../components/SyncStatus';
 import { useConflictBanner } from '../hooks/useConflictBanner';
-import { useAppDispatch } from '@packing-list/state';
 import {
   useAuth,
   useLoginModal,
@@ -33,6 +32,7 @@ import {
   LogIn,
 } from 'lucide-react';
 import { RulePackModal } from '../components/RulePackModal';
+import { useAppDispatch, useAppSelector, actions } from '@packing-list/state';
 
 // Component that needs to be inside SyncProvider to access sync state
 const ConflictBannerContainer: React.FC = () => {
@@ -134,6 +134,8 @@ export default function LayoutDefault({
   children: React.ReactNode;
 }) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const dispatch = useAppDispatch();
+  const previousPathRef = useRef<string | null>(null);
 
   // Auth and login modal
   const {
@@ -145,6 +147,28 @@ export default function LayoutDefault({
     authStatus,
   } = useAuth();
   const { openLoginModal, closeLoginModal } = useLoginModal();
+
+  // Get current flow state
+  const flowStepHref = useAppSelector((state) =>
+    state.ui.flow.current !== null
+      ? state.ui.flow.steps[state.ui.flow.current]?.path
+      : null
+  );
+
+  // Flow reset logic - reset flow when path changes or doesn't match current flow
+  const path = typeof window !== 'undefined' ? window.location.pathname : null;
+  useEffect(() => {
+    if (path === previousPathRef.current) {
+      return;
+    }
+
+    if (typeof window !== 'undefined') {
+      if (flowStepHref && path !== flowStepHref) {
+        dispatch(actions.resetFlow(`${path} -> ${flowStepHref}`));
+      }
+    }
+    previousPathRef.current = path;
+  }, [path, flowStepHref, dispatch]);
 
   // Debug auth loading state
   useEffect(() => {

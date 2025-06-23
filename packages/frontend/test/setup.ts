@@ -4,6 +4,7 @@ import { expect, vi } from 'vitest';
 import * as matchers from '@testing-library/jest-dom/matchers';
 import type { TestingLibraryMatchers } from '@testing-library/jest-dom/matchers';
 import { cleanup } from '@testing-library/react';
+import React from 'react';
 
 declare module 'vitest' {
   interface Assertion<T = any>
@@ -11,6 +12,28 @@ declare module 'vitest' {
 }
 
 expect.extend(matchers);
+
+// Mock import.meta.hot for HMR testing
+Object.defineProperty(import.meta, 'hot', {
+  value: {
+    on: vi.fn(),
+    off: vi.fn(),
+  },
+  writable: true,
+});
+
+// Mock lucide-react icons
+vi.mock('lucide-react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('lucide-react')>();
+  return {
+    ...actual,
+    // Add any missing icons that tests need
+    Wifi: (props: any) =>
+      React.createElement('svg', { ...props, 'data-testid': 'wifi-icon' }),
+    WifiOff: (props: any) =>
+      React.createElement('svg', { ...props, 'data-testid': 'wifi-off-icon' }),
+  };
+});
 
 // Mock environment variables for Supabase
 process.env.PUBLIC_ENV__SUPABASE_URL = 'http://localhost:54321';

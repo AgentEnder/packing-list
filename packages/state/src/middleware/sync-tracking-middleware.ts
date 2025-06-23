@@ -158,11 +158,6 @@ async function trackAndPushChange(
   change: Omit<Change, 'id' | 'timestamp' | 'synced'>,
   userId: string
 ): Promise<void> {
-  if (isLocalUser(userId)) {
-    console.log('🔄 [SYNC_MIDDLEWARE] Skipping change tracking for local user');
-    return;
-  }
-
   const changeId = uuid();
   const changeWithId: Change = {
     ...change,
@@ -172,19 +167,36 @@ async function trackAndPushChange(
   } as Change;
 
   console.log(
-    `🔄 [SYNC_MIDDLEWARE] Tracking and pushing change: ${change.operation} ${change.entityType}:${change.entityId}`
+    `🔄 [SYNC_MIDDLEWARE] Tracking change: ${change.operation} ${change.entityType}:${change.entityId} for user: ${userId}`
   );
 
   try {
-    // Store change in IndexedDB for persistence
+    // Store change in IndexedDB for persistence - ALL users need this for offline functionality
     const db = await getDatabase();
     try {
       await db.add('syncChanges', changeWithId);
+      console.log(
+        `💾 [SYNC_MIDDLEWARE] Stored change in IndexedDB: ${change.entityType}:${change.entityId}`
+      );
     } catch {
       console.warn('🔄 [SYNC_MIDDLEWARE] Changes table not available yet');
     }
 
-    // Push to server immediately
+    // Only push to server for non-local users
+    if (isLocalUser(userId)) {
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] Skipping server push for local user: ${userId}`
+      );
+      // Mark as synced since local users don't need server sync
+      try {
+        await db.put('syncChanges', { ...changeWithId, synced: true });
+      } catch (e) {
+        console.warn('🔄 [SYNC_MIDDLEWARE] Could not mark change as synced', e);
+      }
+      return;
+    }
+
+    // Push to server for remote users
     await pushChangeToServer(changeWithId);
 
     // Mark as synced
@@ -199,10 +211,10 @@ async function trackAndPushChange(
     );
   } catch (error) {
     console.error(
-      `❌ [SYNC_MIDDLEWARE] Failed to push change: ${change.entityType}:${change.entityId}`,
+      `❌ [SYNC_MIDDLEWARE] Failed to handle change: ${change.entityType}:${change.entityId}`,
       error
     );
-    // Change remains unsynced in IndexedDB for retry later
+    // Change remains unsynced in IndexedDB for retry later (remote users only)
   }
 }
 
@@ -215,42 +227,41 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
     const result = next(action);
     const nextState = store.getState();
 
-    // Handle auth initialization and sign-in to reload from IndexedDB and start sync
-    const authActions = [
-      'auth/initializeAuth/fulfilled',
-      'auth/signInWithPassword/fulfilled',
-      'auth/signInWithGooglePopup/fulfilled',
-      'auth/switchToOnlineMode/fulfilled',
-    ];
+    // Handle auth changes and sign-in to reload from IndexedDB and start sync
+    const userChanged = prevState.auth.user?.id !== nextState.auth.user?.id;
+    const userId = nextState.auth.user?.id;
 
-    if (authActions.includes((action as UnknownAction).type)) {
-      const userId = nextState.auth.user?.id;
-      if (userId && userId !== 'local-user' && userId !== 'local-shared-user') {
-        console.log(
-          `🔄 [SYNC_MIDDLEWARE] Detected auth change (${
-            (action as UnknownAction).type
-          }), scheduling IndexedDB reload and sync service start`
-        );
+    if (userChanged && userId) {
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] Detected auth change (${
+          (action as UnknownAction).type
+        }), scheduling IndexedDB reload and sync service start`
+      );
 
-        // Add a small delay to let auth state settle and prevent rapid-fire sync calls
-        setTimeout(() => {
-          // Load from IndexedDB first
-          reloadFromIndexedDB(
-            store.dispatch as (action: AllActions) => void,
-            userId
-          )
-            .then(async () => {
-              // Then start the sync service
+      // Add a small delay to let auth state settle and prevent rapid-fire sync calls
+      setTimeout(() => {
+        // Load from IndexedDB first - ALL users need this for offline persistence
+        reloadFromIndexedDB(
+          store.dispatch as (action: AllActions) => void,
+          userId
+        )
+          .then(async () => {
+            // Only start sync service for non-local users
+            if (!isLocalUser(userId)) {
               await startSyncService(store.dispatch, userId);
-            })
-            .catch((error) => {
-              console.error(
-                '❌ [SYNC_MIDDLEWARE] IndexedDB reload failed:',
-                error
+            } else {
+              console.log(
+                `🔄 [SYNC_MIDDLEWARE] Skipping sync service for local user: ${userId}`
               );
-            });
-        }, 100); // 100ms delay to let auth state settle
-      }
+            }
+          })
+          .catch((error) => {
+            console.error(
+              '❌ [SYNC_MIDDLEWARE] IndexedDB reload failed:',
+              error
+            );
+          });
+      }, 100); // 100ms delay to let auth state settle
       return result;
     }
 
@@ -300,10 +311,13 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
     }
 
     // Check if we should track changes
-    const userId = nextState.auth.user?.id;
     const tripId = nextState.trips.selectedTripId;
 
-    if (!userId || !tripId || userId === 'local-user') {
+    if (!userId) {
+      return result;
+    }
+
+    if (!tripId || userId === 'local-user') {
       return result;
     }
 

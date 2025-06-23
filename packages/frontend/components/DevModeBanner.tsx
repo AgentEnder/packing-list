@@ -42,7 +42,7 @@ export const DevModeBanner: React.FC<DevModeBannerProps> = ({ isVisible }) => {
   return (
     <Banner
       id="dev-mode"
-      priority={10} // Higher priority than most banners (lower number = higher priority)
+      priority={15} // Higher priority than most banners (lower number = higher priority)
       visible={isVisible}
       variant="warning"
       className="border-warning-content/20"

@@ -4,8 +4,6 @@ import {
   selectTripDays,
   selectSelectedTripId,
   selectDefaultItemRules,
-  useAppDispatch,
-  actions,
 } from '@packing-list/state';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
@@ -16,25 +14,15 @@ import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
 import { NoTripSelected } from '../../components/NoTripSelected';
 import { RulePackSelector } from '../../components/RulePackSelector';
-import { navigate } from 'vike/client/router';
+import { FlowContinueButton } from '../../components/FlowContinueButton';
 
 export default function DefaultsPage() {
   const selectedTripId = useAppSelector(selectSelectedTripId);
   const defaultItemRules = useAppSelector(selectDefaultItemRules);
   const people = useAppSelector(selectPeople);
   const days = useAppSelector(selectTripDays);
-  const dispatch = useAppDispatch();
-  const flow = useAppSelector((s) => s.ui.flow);
 
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
-
-  const handleContinue = () => {
-    if (flow.current !== null) {
-      dispatch(actions.advanceFlow());
-      const next = flow.steps[flow.current + 1];
-      if (next) navigate(next.path);
-    }
-  };
 
   // If no trip is selected, show the no trip selected state
   if (!selectedTripId) {
@@ -121,16 +109,7 @@ export default function DefaultsPage() {
 
       <RuleList rules={defaultItemRules} people={people} days={days} />
 
-      {flow.current !== null && flow.current < flow.steps.length - 1 && (
-        <div className="mt-6 text-right">
-          <button
-            className="btn btn-primary fixed bottom-6 right-6"
-            onClick={handleContinue}
-          >
-            Continue
-          </button>
-        </div>
-      )}
+      <FlowContinueButton />
 
       {/* Rule Form Modal */}
       <RuleFormModal

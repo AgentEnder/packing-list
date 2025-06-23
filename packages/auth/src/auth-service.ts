@@ -45,6 +45,7 @@ function getSharedLocalUserId(): string {
 
 // Generate a personal local user ID based on remote user ID
 function getPersonalLocalUserId(remoteUserId: string): string {
+  console.trace('getPersonalLocalUserId', remoteUserId);
   return `local-${remoteUserId}`;
 }
 
@@ -278,10 +279,17 @@ export class AuthService {
 
       if (!sharedUser) {
         const sharedUserData = createSharedLocalUser();
+        console.log(
+          '🔧 [AUTH SERVICE] Creating shared local user with deterministic ID:',
+          sharedUserData.id
+        );
         await this.localAuthService.signUp(
           sharedUserData.email, // Use email for signup
           'local-shared-password', // Default password for shared user
-          { name: sharedUserData.name }
+          {
+            name: sharedUserData.name,
+            id: sharedUserData.id, // Use the deterministic ID
+          }
         );
       }
 

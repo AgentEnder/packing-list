@@ -90,6 +90,7 @@ function apiAndServiceWorkerPlugin(): Plugin {
 
         // Find the service worker file in assets
         const assetFiles = readdirSync(assetsDir);
+        console.log('🔍 Build: Asset files:', assetFiles);
         const serviceWorkerFile = assetFiles.find(
           (file) => file.startsWith('service-worker') && file.endsWith('.js')
         );
@@ -101,7 +102,7 @@ function apiAndServiceWorkerPlugin(): Plugin {
           const contents = readFileSync(sourceFile, 'utf-8');
           const contentsWithBaseUrl = contents.replace(
             'import.meta.env.PUBLIC_ENV__BASE_URL',
-            "'" + import.meta.env.PUBLIC_ENV__BASE_URL + "'"
+            "'" + process.env.PUBLIC_ENV__BASE_URL + "'"
           );
           writeFileSync(targetFile, contentsWithBaseUrl);
           console.log('📦 Build: Moved service worker to root:', targetFile);

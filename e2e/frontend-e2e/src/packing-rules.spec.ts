@@ -5,6 +5,34 @@ import { PeoplePage } from './page-objects/PeoplePage.js';
 import { TripPage } from './page-objects/TripPage.js';
 import { TripManager } from './page-objects/trip-manager';
 
+// Helper function to ensure element is properly scrolled into view with margin before screenshot
+async function scrollIntoViewWithMargin(element: any, margin = 100) {
+  // First scroll the element into view
+  await element.scrollIntoViewIfNeeded();
+
+  // Get the element's bounding box
+  const boundingBox = await element.boundingBox();
+  if (!boundingBox) return;
+
+  // Scroll to position the element with margin from viewport edges
+  await element.evaluate((el: Element, marginPx: number) => {
+    const rect = el.getBoundingClientRect();
+    const scrollOptions: ScrollToOptions = {
+      top: window.scrollY + rect.top - marginPx,
+      behavior: 'smooth',
+    };
+
+    // Ensure we don't scroll beyond the document boundaries
+    const maxTop = document.documentElement.scrollHeight - window.innerHeight;
+    scrollOptions.top = Math.max(0, Math.min(scrollOptions.top || 0, maxTop));
+
+    window.scrollTo(scrollOptions);
+  }, margin);
+
+  // Wait a bit for smooth scrolling to complete
+  await element.page().waitForTimeout(200);
+}
+
 test.describe('Packing Rules', () => {
   let packingRulesPage: PackingRulesPage;
   let peoplePage: PeoplePage;
@@ -97,6 +125,7 @@ test.describe('Packing Rules', () => {
       }
 
       await expect(calculationDisplay).toBeVisible();
+      await scrollIntoViewWithMargin(calculationDisplay);
       await expect(calculationDisplay).toHaveScreenshot(
         'simple-calculation-test.png'
       );
@@ -156,6 +185,7 @@ test.describe('Packing Rules', () => {
       );
       const calculation1 = rule1.locator('.text-base-content\\/50');
       await expect(calculation1).toBeVisible();
+      await scrollIntoViewWithMargin(calculation1);
       await expect(calculation1).toHaveScreenshot(
         'calculation-6-per-person-per-day-plus-4-extra-per-person.png'
       );
@@ -180,6 +210,7 @@ test.describe('Packing Rules', () => {
       );
       const calculation2 = rule2.locator('.text-base-content\\/50');
       await expect(calculation2).toBeVisible();
+      await scrollIntoViewWithMargin(calculation2);
       await expect(calculation2).toHaveScreenshot(
         'calculation-1-per-person-every-2-days-plus-1-extra-per-person.png'
       );
@@ -203,6 +234,7 @@ test.describe('Packing Rules', () => {
       );
       const calculation3 = rule3.locator('.text-base-content\\/50');
       await expect(calculation3).toBeVisible();
+      await scrollIntoViewWithMargin(calculation3);
       await expect(calculation3).toHaveScreenshot(
         'calculation-2-per-person-plus-3-extra-per-day.png'
       );
@@ -226,6 +258,7 @@ test.describe('Packing Rules', () => {
       );
       const calculation4 = rule4.locator('.text-base-content\\/50');
       await expect(calculation4).toBeVisible();
+      await scrollIntoViewWithMargin(calculation4);
       await expect(calculation4).toHaveScreenshot(
         'calculation-1-per-day-plus-1-extra.png'
       );
@@ -251,6 +284,7 @@ test.describe('Packing Rules', () => {
       );
       const calculation5 = rule5.locator('.text-base-content\\/50');
       await expect(calculation5).toBeVisible();
+      await scrollIntoViewWithMargin(calculation5);
       await expect(calculation5).toHaveScreenshot(
         'calculation-complex-pattern.png'
       );
@@ -317,6 +351,7 @@ test.describe('Packing Rules', () => {
       );
       const calculation = rule.locator('.text-base-content\\/50');
       await expect(calculation).toBeVisible();
+      await scrollIntoViewWithMargin(calculation);
       await expect(calculation).toHaveScreenshot(
         'calculation-single-person-scenario.png'
       );

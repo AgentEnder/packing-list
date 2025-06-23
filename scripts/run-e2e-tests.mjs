@@ -5,6 +5,7 @@ import { existsSync, renameSync, copyFileSync } from 'fs';
 import { resolve, join } from 'path';
 import { platform } from 'os';
 import { workspaceRoot } from '@nx/devkit';
+import { execaSync } from 'execa';
 
 const ROOT_DIR = workspaceRoot;
 const ENV_FILE = resolve(ROOT_DIR, '.env');
@@ -196,17 +197,24 @@ async function main() {
   let testsSucceeded = false;
 
   try {
-    // Step 0: Reset the database
-    resetDb();
+    if (!process.env.SKIP_E2E_SETUP) {
+      execaSync('nx', ['start', 'supabase'], {
+        stdio: 'inherit',
+        cwd: ROOT_DIR,
+      });
 
-    // Step 1: Kill any process using port 3000
-    await killProcessOnPort3000();
+      // Step 0: Reset the database
+      resetDb();
 
-    // Step 2: Backup original .env
-    backupOriginalEnv();
+      // Step 1: Kill any process using port 3000
+      await killProcessOnPort3000();
 
-    // Step 3: Copy .env.e2e to .env
-    swapToE2eEnv();
+      // Step 2: Backup original .env
+      backupOriginalEnv();
+
+      // Step 3: Copy .env.e2e to .env
+      swapToE2eEnv();
+    }
 
     // Step 4: Run e2e tests
     testsSucceeded = await runE2eTests();

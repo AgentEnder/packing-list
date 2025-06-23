@@ -91,7 +91,7 @@ class ServiceWorkerManager {
         serviceWorkerPath,
         {
           scope: '/',
-          type: this.isDevelopment ? 'module' : 'classic',
+          type: 'module',
         }
       );
 

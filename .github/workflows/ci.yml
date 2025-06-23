@@ -135,7 +135,7 @@ jobs:
         if: failure()
         with:
           name: playwright-report
-          path: e2e/frontend-e2e/playwright-report/
+          path: e2e/frontend-e2e/test-output/
           retention-days: 7
 
       - name: Deploy

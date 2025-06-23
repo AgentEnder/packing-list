@@ -91,7 +91,7 @@ export const BannerProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
-const useBannerContext = () => {
+export const useBannerContext = () => {
   const context = useContext(BannerContext);
   if (!context) {
     throw new Error('Banner must be used within BannerProvider');
