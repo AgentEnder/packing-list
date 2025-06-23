@@ -191,6 +191,22 @@ function resetDb() {
   });
 }
 
+function isCI() {
+  return !!(
+    process.env.CI !== 'false' && // Bypass all checks if CI env is explicitly set to 'false'
+    (process.env.BUILD_ID || // Jenkins, Cloudbees
+      process.env.BUILD_NUMBER || // Jenkins, TeamCity
+      process.env.CI || // Travis CI, CircleCI, Cirrus CI, Gitlab CI, Appveyor, CodeShip, dsari, Cloudflare Pages
+      process.env.CI_APP_ID || // Appflow
+      process.env.CI_BUILD_ID || // Appflow
+      process.env.CI_BUILD_NUMBER || // Appflow
+      process.env.CI_NAME || // Codeship and others
+      process.env.CONTINUOUS_INTEGRATION || // Travis CI, Cirrus CI
+      process.env.RUN_ID || // TaskCluster, dsari
+      false)
+  );
+}
+
 async function main() {
   log('Starting e2e test run with environment swap...');
 
@@ -198,10 +214,13 @@ async function main() {
 
   try {
     if (!process.env.SKIP_E2E_SETUP) {
-      execaSync('nx', ['start', 'supabase'], {
-        stdio: 'inherit',
-        cwd: ROOT_DIR,
-      });
+      // On CI supabase should already be running
+      if (!isCI()) {
+        execaSync('nx', ['start', 'supabase'], {
+          stdio: 'inherit',
+          cwd: ROOT_DIR,
+        });
+      }
 
       // Step 0: Reset the database
       resetDb();
