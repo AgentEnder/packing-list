@@ -50,73 +50,96 @@ const batchManager: BatchManager = {
   rule_pack: [],
 };
 
-// Debounce timeouts for each entity type
-const batchTimeouts: Record<keyof BatchManager, NodeJS.Timeout | null> = {
-  trip: null,
-  person: null,
-  item: null,
-  default_item_rule: null,
-  trip_rule: null,
-  rule_pack: null,
-};
+// Global timeout for processing all batches
+let globalBatchTimeout: NodeJS.Timeout | null = null;
 
 // Debounce delay in milliseconds
-const BATCH_DEBOUNCE_MS = 100;
+const BATCH_DEBOUNCE_MS = 1000;
+
+// Processing order to respect foreign key dependencies
+// 1. trips (parent table)
+// 2. people, items (depend on trips)
+// 3. default_item_rule (needed before trip_rule)
+// 4. trip_rule (depends on trips and default_item_rule)
+// 5. rule_pack (local only, processed last)
+const PROCESSING_ORDER: (keyof BatchManager)[] = [
+  'trip',
+  'person',
+  'item',
+  'default_item_rule',
+  'trip_rule',
+  'rule_pack',
+];
 
 /**
- * Process a batch of changes for a specific entity type
+ * Process all pending batches in dependency order
  */
-async function processBatch(entityType: keyof BatchManager): Promise<void> {
-  const batch = batchManager[entityType];
-  if (batch.length === 0) return;
+async function processAllBatches(): Promise<void> {
+  console.log('📦 [SYNC] Processing all batches in dependency order');
 
-  console.log(
-    `📦 [SYNC] Processing batch of ${batch.length} ${entityType} changes`
-  );
-
-  // Clear the batch and timeout
-  batchManager[entityType] = [];
-  if (batchTimeouts[entityType]) {
-    clearTimeout(batchTimeouts[entityType]);
-    batchTimeouts[entityType] = null;
+  // Clear the global timeout
+  if (globalBatchTimeout) {
+    clearTimeout(globalBatchTimeout);
+    globalBatchTimeout = null;
   }
 
-  try {
-    // Group changes by operation type
-    const createChanges = batch.filter((b) => b.change.operation === 'create');
-    const updateChanges = batch.filter((b) => b.change.operation === 'update');
-    const deleteChanges = batch.filter((b) => b.change.operation === 'delete');
-
-    // Process each operation type
-    if (createChanges.length > 0) {
-      await processBatchOperation(entityType, 'create', createChanges);
-    }
-    if (updateChanges.length > 0) {
-      await processBatchOperation(entityType, 'update', updateChanges);
-    }
-    if (deleteChanges.length > 0) {
-      await processBatchOperation(entityType, 'delete', deleteChanges);
-    }
-
-    // Resolve all promises
-    batch.forEach((b) => b.resolve());
+  // Process each entity type in dependency order
+  for (const entityType of PROCESSING_ORDER) {
+    const batch = batchManager[entityType];
+    if (batch.length === 0) continue;
 
     console.log(
-      `✅ [SYNC] Successfully processed batch of ${batch.length} ${entityType} changes`
-    );
-  } catch (error) {
-    console.error(
-      `❌ [SYNC] Failed to process batch of ${entityType} changes:`,
-      error
+      `📦 [SYNC] Processing batch of ${batch.length} ${entityType} changes`
     );
 
-    // Reject all promises
-    const errorObj =
-      error instanceof Error
-        ? error
-        : new Error(`Batch processing failed for ${entityType}`);
-    batch.forEach((b) => b.reject(errorObj));
+    // Clear the batch for this entity type
+    batchManager[entityType] = [];
+
+    try {
+      // Group changes by operation type
+      const createChanges = batch.filter(
+        (b) => b.change.operation === 'create'
+      );
+      const updateChanges = batch.filter(
+        (b) => b.change.operation === 'update'
+      );
+      const deleteChanges = batch.filter(
+        (b) => b.change.operation === 'delete'
+      );
+
+      // Process each operation type sequentially for this entity
+      if (createChanges.length > 0) {
+        await processBatchOperation(entityType, 'create', createChanges);
+      }
+      if (updateChanges.length > 0) {
+        await processBatchOperation(entityType, 'update', updateChanges);
+      }
+      if (deleteChanges.length > 0) {
+        await processBatchOperation(entityType, 'delete', deleteChanges);
+      }
+
+      // Resolve all promises for this entity type
+      batch.forEach((b) => b.resolve());
+
+      console.log(
+        `✅ [SYNC] Successfully processed batch of ${batch.length} ${entityType} changes`
+      );
+    } catch (error) {
+      console.error(
+        `❌ [SYNC] Failed to process batch of ${entityType} changes:`,
+        error
+      );
+
+      // Reject all promises for this entity type
+      const errorObj =
+        error instanceof Error
+          ? error
+          : new Error(`Batch processing failed for ${entityType}`);
+      batch.forEach((b) => b.reject(errorObj));
+    }
   }
+
+  console.log('✅ [SYNC] All batches processed in correct order');
 }
 
 /**
@@ -761,18 +784,15 @@ export const pushChangeToServer = async (change: Change): Promise<void> => {
       reject,
     });
 
-    // Clear existing timeout for this entity type
-    if (batchTimeouts[entityType]) {
-      clearTimeout(batchTimeouts[entityType]);
+    // Clear existing global timeout
+    if (globalBatchTimeout) {
+      clearTimeout(globalBatchTimeout);
     }
 
-    // Set new timeout to process batch
-    batchTimeouts[entityType] = setTimeout(() => {
-      processBatch(entityType).catch((error) => {
-        console.error(
-          `❌ [SYNC] Batch processing failed for ${entityType}:`,
-          error
-        );
+    // Set new global timeout to process all batches in order
+    globalBatchTimeout = setTimeout(() => {
+      processAllBatches().catch((error: unknown) => {
+        console.error(`❌ [SYNC] Global batch processing failed:`, error);
       });
     }, BATCH_DEBOUNCE_MS);
   });
