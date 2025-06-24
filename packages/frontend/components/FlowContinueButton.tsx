@@ -1,6 +1,7 @@
 import { actions, useAppDispatch, useAppSelector } from '@packing-list/state';
 import { navigate } from 'vike/client/router';
 import { useBannerHeight } from '@packing-list/shared-components';
+import { applyBaseUrl } from '@packing-list/shared-utils';
 
 export function FlowContinueButton() {
   const bannerOffset = useBannerHeight();
@@ -11,7 +12,8 @@ export function FlowContinueButton() {
     if (flow?.current !== null) {
       dispatch(actions.advanceFlow(1));
       const next = flow.steps[flow.current + 1];
-      if (next) navigate(next.path);
+      if (next)
+        navigate(applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, next.path));
     }
   };
 

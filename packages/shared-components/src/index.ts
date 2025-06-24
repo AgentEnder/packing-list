@@ -1,7 +1,12 @@
 export * from './lib/Timeline.js';
 
 // Banner system
-export { Banner, BannerProvider, useBannerHeight } from './Banner.js';
+export {
+  Banner,
+  BannerProvider,
+  useBannerHeight,
+  useBannerContext,
+} from './Banner.js';
 
 // Dialog and Modal components
 export { Modal, ConfirmDialog } from './Dialog.js';

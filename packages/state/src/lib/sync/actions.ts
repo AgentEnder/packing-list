@@ -22,6 +22,153 @@ import {
 import { isLocalUser } from './utils.js';
 
 /**
+ * Batching system for collecting and pushing changes in bulk
+ */
+interface BatchedChange {
+  change: Change;
+  resolve: () => void;
+  reject: (error: Error) => void;
+}
+
+interface BatchManager {
+  trip: BatchedChange[];
+  person: BatchedChange[];
+  item: BatchedChange[];
+  default_item_rule: BatchedChange[];
+  trip_rule: BatchedChange[];
+  rule_pack: BatchedChange[];
+}
+
+// Global batch manager
+const batchManager: BatchManager = {
+  trip: [],
+  person: [],
+  item: [],
+  default_item_rule: [],
+  trip_rule: [],
+  rule_pack: [],
+};
+
+// Debounce timeouts for each entity type
+const batchTimeouts: Record<keyof BatchManager, NodeJS.Timeout | null> = {
+  trip: null,
+  person: null,
+  item: null,
+  default_item_rule: null,
+  trip_rule: null,
+  rule_pack: null,
+};
+
+// Debounce delay in milliseconds
+const BATCH_DEBOUNCE_MS = 100;
+
+/**
+ * Process a batch of changes for a specific entity type
+ */
+async function processBatch(entityType: keyof BatchManager): Promise<void> {
+  const batch = batchManager[entityType];
+  if (batch.length === 0) return;
+
+  console.log(
+    `📦 [SYNC] Processing batch of ${batch.length} ${entityType} changes`
+  );
+
+  // Clear the batch and timeout
+  batchManager[entityType] = [];
+  if (batchTimeouts[entityType]) {
+    clearTimeout(batchTimeouts[entityType]);
+    batchTimeouts[entityType] = null;
+  }
+
+  try {
+    // Group changes by operation type
+    const createChanges = batch.filter((b) => b.change.operation === 'create');
+    const updateChanges = batch.filter((b) => b.change.operation === 'update');
+    const deleteChanges = batch.filter((b) => b.change.operation === 'delete');
+
+    // Process each operation type
+    if (createChanges.length > 0) {
+      await processBatchOperation(entityType, 'create', createChanges);
+    }
+    if (updateChanges.length > 0) {
+      await processBatchOperation(entityType, 'update', updateChanges);
+    }
+    if (deleteChanges.length > 0) {
+      await processBatchOperation(entityType, 'delete', deleteChanges);
+    }
+
+    // Resolve all promises
+    batch.forEach((b) => b.resolve());
+
+    console.log(
+      `✅ [SYNC] Successfully processed batch of ${batch.length} ${entityType} changes`
+    );
+  } catch (error) {
+    console.error(
+      `❌ [SYNC] Failed to process batch of ${entityType} changes:`,
+      error
+    );
+
+    // Reject all promises
+    const errorObj =
+      error instanceof Error
+        ? error
+        : new Error(`Batch processing failed for ${entityType}`);
+    batch.forEach((b) => b.reject(errorObj));
+  }
+}
+
+/**
+ * Process a batch of changes for a specific operation type
+ */
+async function processBatchOperation(
+  entityType: keyof BatchManager,
+  operation: 'create' | 'update' | 'delete',
+  batch: BatchedChange[]
+): Promise<void> {
+  switch (entityType) {
+    case 'trip':
+      await pushTripChangesBatch(
+        batch.map((b) => b.change),
+        operation
+      );
+      break;
+    case 'person':
+      await pushPersonChangesBatch(
+        batch.map((b) => b.change),
+        operation
+      );
+      break;
+    case 'item':
+      await pushItemChangesBatch(
+        batch.map((b) => b.change),
+        operation
+      );
+      break;
+    case 'default_item_rule':
+      await pushDefaultItemRuleChangesBatch(
+        batch.map((b) => b.change),
+        operation
+      );
+      break;
+    case 'trip_rule':
+      await pushTripRuleChangesBatch(
+        batch.map((b) => b.change),
+        operation
+      );
+      break;
+    case 'rule_pack':
+      // Rule packs are not synced to server - they're local only
+      console.log(
+        `🔄 [SYNC] Skipping rule pack batch sync (local only): ${batch.length} changes`
+      );
+      break;
+    default:
+      console.warn(`🔄 [SYNC] Unknown entity type for batch: ${entityType}`);
+  }
+}
+
+/**
  * Check if a conflict is timestamp-only (no meaningful data differences)
  * If so, return the server version with updated timestamp, otherwise return null
  */
@@ -489,9 +636,9 @@ export const pullDefaultItemRulesFromServer = createAsyncThunk(
       );
     }
 
-    const ruleIds = [
-      ...new Set(tripRuleAssociations?.map((tr) => tr.rule_id) || []),
-    ];
+    const ruleIds = Array.from(
+      new Set(tripRuleAssociations?.map((tr) => tr.rule_id) || [])
+    );
 
     if (ruleIds.length === 0) {
       console.log('🔄 [SYNC] No rule associations found for trips');
@@ -537,11 +684,7 @@ export const pullDefaultItemRulesFromServer = createAsyncThunk(
         id: serverRule.id,
         originalRuleId: serverRule.original_rule_id || serverRule.id,
         name: serverRule.name,
-        calculation:
-          (serverRule.calculation as DefaultItemRule['calculation']) || {
-            type: 'fixed',
-            value: 1,
-          },
+        calculation: serverRule.calculation as DefaultItemRule['calculation'],
         conditions:
           (serverRule.conditions as DefaultItemRule['conditions']) || undefined,
         notes: serverRule.notes || undefined,
@@ -804,7 +947,7 @@ export const syncFromServer = createAsyncThunk(
   }
 );
 
-// Push operations (called from middleware)
+// Push operations (called from middleware) - now with batching
 export const pushChangeToServer = async (change: Change): Promise<void> => {
   if (!isSupabaseAvailable() || isLocalUser(change.userId)) {
     console.log('🔄 [SYNC] Skipping push - offline mode or local user');
@@ -825,313 +968,286 @@ export const pushChangeToServer = async (change: Change): Promise<void> => {
   }
 
   console.log(
-    `🔄 [SYNC] Pushing change: ${change.operation} ${change.entityType}:${change.entityId}`
+    `🔄 [SYNC] Batching change: ${change.operation} ${change.entityType}:${change.entityId}`
   );
 
-  try {
-    switch (change.entityType) {
-      case 'trip':
-        await pushTripChange(change);
-        break;
-      case 'person':
-        await pushPersonChange(change);
-        break;
-      case 'item':
-        await pushItemChange(change);
-        break;
-      case 'default_item_rule':
-        await pushDefaultItemRuleChange(change);
-        break;
-      case 'trip_rule':
-        await pushTripRuleChange(change);
-        break;
-      case 'rule_pack':
-        // Rule packs are not synced to server - they're local only
-        console.log(
-          `🔄 [SYNC] Skipping rule pack sync (local only): ${change.entityId}`
-        );
-        break;
-      default:
-        console.warn(`🔄 [SYNC] Unknown entity type: ${change.entityType}`);
+  return new Promise<void>((resolve, reject) => {
+    const entityType = change.entityType as keyof BatchManager;
+
+    // Add change to batch
+    batchManager[entityType].push({
+      change,
+      resolve,
+      reject,
+    });
+
+    // Clear existing timeout for this entity type
+    if (batchTimeouts[entityType]) {
+      clearTimeout(batchTimeouts[entityType]);
     }
 
-    console.log(
-      `✅ [SYNC] Successfully pushed change: ${change.entityType}:${change.entityId}`
-    );
-  } catch (error) {
-    console.error(
-      `❌ [SYNC] Failed to push change: ${change.entityType}:${change.entityId}`,
-      error
-    );
-    throw error;
-  }
+    // Set new timeout to process batch
+    batchTimeouts[entityType] = setTimeout(() => {
+      processBatch(entityType).catch((error) => {
+        console.error(
+          `❌ [SYNC] Batch processing failed for ${entityType}:`,
+          error
+        );
+      });
+    }, BATCH_DEBOUNCE_MS);
+  });
 };
 
-// Individual push functions
-async function pushTripChange(change: Change): Promise<void> {
-  const tripData = change.data as Trip;
+// Batch push functions for bulk operations
+async function pushTripChangesBatch(
+  changes: Change[],
+  operation: 'create' | 'update' | 'delete'
+): Promise<void> {
+  if (changes.length === 0) return;
 
-  if (change.operation === 'delete') {
-    await supabase
+  console.log(`📦 [SYNC] Pushing ${changes.length} trip ${operation} changes`);
+
+  if (operation === 'delete') {
+    const entityIds = changes.map((c) => c.entityId);
+    const { error } = await supabase
       .from('trips')
       .update({ is_deleted: true, updated_at: new Date().toISOString() })
-      .eq('id', change.entityId);
+      .in('id', entityIds);
+
+    if (error) {
+      throw new Error(`Failed to batch delete trips: ${error.message}`);
+    }
   } else {
-    await supabase.from('trips').upsert({
-      id: tripData.id,
-      user_id: tripData.userId,
-      title: tripData.title,
-      description: tripData.description,
-      days: tripData.days as Json,
-      trip_events: tripData.tripEvents as Json,
-      settings: tripData.settings as Json,
-      version: tripData.version,
-      is_deleted: tripData.isDeleted || false,
-      created_at: tripData.createdAt,
-      updated_at: tripData.updatedAt,
+    const tripData = changes.map((change) => {
+      const trip = change.data as Trip;
+      return {
+        id: trip.id,
+        user_id: trip.userId,
+        title: trip.title,
+        description: trip.description,
+        days: trip.days as Json,
+        trip_events: trip.tripEvents as Json,
+        settings: trip.settings as Json,
+        version: trip.version,
+        is_deleted: trip.isDeleted || false,
+        created_at: trip.createdAt,
+        updated_at: trip.updatedAt,
+      };
     });
+
+    const { error } = await supabase.from('trips').upsert(tripData);
+
+    if (error) {
+      throw new Error(`Failed to batch upsert trips: ${error.message}`);
+    }
   }
 }
 
-async function pushPersonChange(change: Change): Promise<void> {
-  const personData = change.data as Person;
+async function pushPersonChangesBatch(
+  changes: Change[],
+  operation: 'create' | 'update' | 'delete'
+): Promise<void> {
+  if (changes.length === 0) return;
 
-  if (change.operation === 'delete') {
+  console.log(
+    `📦 [SYNC] Pushing ${changes.length} person ${operation} changes`
+  );
+
+  if (operation === 'delete') {
+    const entityIds = changes.map((c) => c.entityId);
     const { error } = await supabase
       .from('trip_people')
       .update({ is_deleted: true, updated_at: new Date().toISOString() })
-      .eq('id', change.entityId);
+      .in('id', entityIds);
 
     if (error) {
-      console.error('❌ [SYNC] Error deleting person:', error);
-      throw new Error(`Failed to delete person: ${error.message}`);
+      throw new Error(`Failed to batch delete people: ${error.message}`);
     }
   } else {
-    const { error } = await supabase.from('trip_people').upsert({
-      id: personData.id,
-      trip_id: personData.tripId,
-      name: personData.name,
-      age: personData.age,
-      gender: personData.gender,
-      settings: personData.settings as Json,
-      version: personData.version,
-      is_deleted: personData.isDeleted || false,
-      created_at: personData.createdAt,
-      updated_at: personData.updatedAt,
+    const peopleData = changes.map((change) => {
+      const person = change.data as Person;
+      return {
+        id: person.id,
+        trip_id: person.tripId,
+        name: person.name,
+        age: person.age,
+        gender: person.gender,
+        settings: person.settings as Json,
+        version: person.version,
+        is_deleted: person.isDeleted || false,
+        created_at: person.createdAt,
+        updated_at: person.updatedAt,
+      };
     });
 
+    const { error } = await supabase.from('trip_people').upsert(peopleData);
+
     if (error) {
-      console.error('❌ [SYNC] Error upserting person:', error);
-      console.error('❌ [SYNC] Person data:', personData);
-
-      // Check if this is an RLS policy violation
-      if (
-        error.message.includes('policy') ||
-        error.message.includes('permission')
-      ) {
-        // Try to verify trip ownership
-        const { data: tripData, error: tripError } = await supabase
-          .from('trips')
-          .select('user_id')
-          .eq('id', personData.tripId)
-          .single();
-
-        console.error('❌ [SYNC] Trip ownership check:', {
-          tripData,
-          tripError,
-          tripOwner: tripData?.user_id,
-        });
-      }
-
-      throw new Error(`Failed to upsert person: ${error.message}`);
+      throw new Error(`Failed to batch upsert people: ${error.message}`);
     }
   }
-
-  console.log('✅ [SYNC] Person change pushed successfully:', personData.id);
 }
 
-async function pushItemChange(change: Change): Promise<void> {
-  const itemData = change.data as TripItem;
+async function pushItemChangesBatch(
+  changes: Change[],
+  operation: 'create' | 'update' | 'delete'
+): Promise<void> {
+  if (changes.length === 0) return;
 
-  if (change.operation === 'delete') {
+  console.log(`📦 [SYNC] Pushing ${changes.length} item ${operation} changes`);
+
+  if (operation === 'delete') {
+    const entityIds = changes.map((c) => c.entityId);
     const { error } = await supabase
       .from('trip_items')
       .update({ is_deleted: true, updated_at: new Date().toISOString() })
-      .eq('id', change.entityId);
+      .in('id', entityIds);
 
     if (error) {
-      console.error('❌ [SYNC] Error deleting item:', error);
-      throw new Error(`Failed to delete item: ${error.message}`);
+      throw new Error(`Failed to batch delete items: ${error.message}`);
     }
   } else {
-    // Handle packing status changes (minimal data) vs full item updates
-    const isPackingStatusChange = '_packingStatusOnly' in itemData;
-
-    if (isPackingStatusChange) {
-      // For packing status changes, we need to ensure the item exists first
-      // Use UPSERT to create the item if it doesn't exist, or update if it does
-      const tripId = itemData.tripId || change.tripId;
+    const itemsData = changes.map((change) => {
+      const item = change.data as TripItem;
+      const tripId = item.tripId || change.tripId;
       if (!tripId) {
-        throw new Error('No tripId available for packing status change');
+        throw new Error(`No tripId available for item ${item.id}`);
       }
 
-      // Get the full item data from the change data or construct minimal item
-      const fullItemData = {
-        id: change.entityId,
+      return {
+        id: item.id,
         trip_id: tripId,
-        name: itemData.name || 'Unknown Item',
-        category: itemData.category,
-        quantity: itemData.quantity || 1,
-        notes: itemData.notes,
-        person_id: itemData.personId !== undefined ? itemData.personId : null,
-        day_index: itemData.dayIndex !== undefined ? itemData.dayIndex : null,
-        rule_id: itemData.ruleId,
-        rule_hash: itemData.ruleHash,
-        packed: itemData.packed,
-        version: itemData.version || 1,
-        is_deleted: false,
-        created_at: itemData.createdAt || new Date().toISOString(),
-        updated_at: itemData.updatedAt || new Date().toISOString(),
+        name: item.name,
+        category: item.category,
+        quantity: item.quantity,
+        notes: item.notes,
+        person_id: item.personId !== undefined ? item.personId : null,
+        day_index: item.dayIndex !== undefined ? item.dayIndex : null,
+        rule_id: item.ruleId,
+        rule_hash: item.ruleHash,
+        packed: item.packed,
+        version: item.version,
+        is_deleted: item.isDeleted || false,
+        created_at: item.createdAt,
+        updated_at: item.updatedAt,
       };
+    });
 
-      const { error } = await supabase.from('trip_items').upsert(fullItemData);
+    const { error } = await supabase.from('trip_items').upsert(itemsData);
 
-      if (error) {
-        console.error(
-          '❌ [SYNC] Error upserting item for packing status:',
-          error
-        );
-        console.error('❌ [SYNC] Item data:', itemData);
-        console.error('❌ [SYNC] Change tripId:', change.tripId);
-
-        // Check if this is an RLS policy violation
-        if (
-          (error.message.includes('policy') ||
-            error.message.includes('permission')) &&
-          change.tripId
-        ) {
-          // Try to verify trip ownership using change.tripId
-          const { data: tripData, error: tripError } = await supabase
-            .from('trips')
-            .select('user_id')
-            .eq('id', change.tripId)
-            .single();
-
-          console.error('❌ [SYNC] Trip ownership check:', {
-            tripData,
-            tripError,
-            tripOwner: tripData?.user_id,
-          });
-        }
-
-        throw new Error(
-          `Failed to upsert item for packing status: ${error.message}`
-        );
-      }
-    } else {
-      // Full item upsert - ensure we have a tripId
-      const tripId = itemData.tripId || change.tripId;
-      if (!tripId) {
-        throw new Error('No tripId available for item upsert');
-      }
-
-      const { error } = await supabase.from('trip_items').upsert({
-        id: itemData.id,
-        trip_id: tripId,
-        name: itemData.name,
-        category: itemData.category,
-        quantity: itemData.quantity,
-        notes: itemData.notes,
-        person_id: itemData.personId !== undefined ? itemData.personId : null,
-        day_index: itemData.dayIndex !== undefined ? itemData.dayIndex : null,
-        rule_id: itemData.ruleId,
-        rule_hash: itemData.ruleHash,
-        packed: itemData.packed,
-        version: itemData.version,
-        is_deleted: itemData.isDeleted || false,
-        created_at: itemData.createdAt,
-        updated_at: itemData.updatedAt,
-      });
-
-      if (error) {
-        console.error('❌ [SYNC] Error upserting item:', error);
-        console.error('❌ [SYNC] Item data:', itemData);
-
-        // Check if this is an RLS policy violation
-        if (
-          error.message.includes('policy') ||
-          error.message.includes('permission')
-        ) {
-          // Try to verify trip ownership
-          const { data: tripData, error: tripError } = await supabase
-            .from('trips')
-            .select('user_id')
-            .eq('id', tripId)
-            .single();
-
-          console.error('❌ [SYNC] Trip ownership check:', {
-            tripData,
-            tripError,
-            tripOwner: tripData?.user_id,
-          });
-        }
-
-        throw new Error(`Failed to upsert item: ${error.message}`);
-      }
+    if (error) {
+      throw new Error(`Failed to batch upsert items: ${error.message}`);
     }
   }
-
-  console.log('✅ [SYNC] Item change pushed successfully:', change.entityId);
 }
 
-async function pushDefaultItemRuleChange(change: Change): Promise<void> {
-  const ruleData = change.data as DefaultItemRule;
+async function pushDefaultItemRuleChangesBatch(
+  changes: Change[],
+  operation: 'create' | 'update' | 'delete'
+): Promise<void> {
+  if (changes.length === 0) return;
 
-  if (change.operation === 'delete') {
-    await supabase
+  console.log(
+    `📦 [SYNC] Pushing ${changes.length} default item rule ${operation} changes`
+  );
+
+  if (operation === 'delete') {
+    const entityIds = changes.map((c) => c.entityId);
+    const { error } = await supabase
       .from('default_item_rules')
       .update({ is_deleted: true, updated_at: new Date().toISOString() })
-      .eq('id', change.entityId);
+      .in('id', entityIds);
+
+    if (error) {
+      throw new Error(
+        `Failed to batch delete default item rules: ${error.message}`
+      );
+    }
   } else {
-    await supabase.from('default_item_rules').upsert({
-      id: ruleData.id, // Primary key
-      rule_id: ruleData.id, // User-defined identifier
-      original_rule_id: ruleData.originalRuleId,
-      name: ruleData.name,
-      calculation: ruleData.calculation as Json,
-      conditions: ruleData.conditions as Json,
-      notes: ruleData.notes,
-      category_id: ruleData.categoryId,
-      subcategory_id: ruleData.subcategoryId,
-      pack_ids: ruleData.packIds as Json,
-      user_id: change.userId,
-      version: 1,
-      is_deleted: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    const rulesData = changes.map((change) => {
+      const rule = change.data as DefaultItemRule;
+      return {
+        id: rule.id,
+        rule_id: rule.id,
+        original_rule_id: rule.originalRuleId,
+        name: rule.name,
+        calculation: rule.calculation as Json,
+        conditions: rule.conditions as Json,
+        notes: rule.notes,
+        category_id: rule.categoryId,
+        subcategory_id: rule.subcategoryId,
+        pack_ids: rule.packIds as Json,
+        user_id: change.userId,
+        version: 1,
+        is_deleted: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
     });
+
+    const { error } = await supabase
+      .from('default_item_rules')
+      .upsert(rulesData);
+
+    if (error) {
+      throw new Error(
+        `Failed to batch upsert default item rules: ${error.message}`
+      );
+    }
   }
 }
 
-async function pushTripRuleChange(change: Change): Promise<void> {
-  const tripRuleData = change.data as TripRule;
+async function pushTripRuleChangesBatch(
+  changes: Change[],
+  operation: 'create' | 'update' | 'delete'
+): Promise<void> {
+  if (changes.length === 0) return;
 
-  if (change.operation === 'delete') {
-    await supabase
-      .from('trip_default_item_rules')
-      .update({ is_deleted: true, updated_at: new Date().toISOString() })
-      .eq('trip_id', tripRuleData.tripId)
-      .eq('rule_id', tripRuleData.ruleId);
-  } else {
-    await supabase.from('trip_default_item_rules').upsert({
-      trip_id: tripRuleData.tripId,
-      rule_id: tripRuleData.ruleId,
-      user_id: change.userId,
-      version: tripRuleData.version,
-      is_deleted: tripRuleData.isDeleted || false,
-      created_at: tripRuleData.createdAt,
-      updated_at: tripRuleData.updatedAt,
+  console.log(
+    `📦 [SYNC] Pushing ${changes.length} trip rule ${operation} changes`
+  );
+
+  if (operation === 'delete') {
+    const deletePromises = changes.map((change) => {
+      const tripRule = change.data as TripRule;
+      return supabase
+        .from('trip_default_item_rules')
+        .update({ is_deleted: true, updated_at: new Date().toISOString() })
+        .eq('trip_id', tripRule.tripId)
+        .eq('rule_id', tripRule.ruleId);
     });
+
+    const results = await Promise.all(deletePromises);
+    const errors = results.filter((r) => r.error);
+
+    if (errors.length > 0) {
+      throw new Error(
+        `Failed to batch delete trip rules: ${errors
+          .map((e) => e.error?.message)
+          .join(', ')}`
+      );
+    }
+  } else {
+    const tripRulesData = changes.map((change) => {
+      const tripRule = change.data as TripRule;
+      return {
+        trip_id: tripRule.tripId,
+        rule_id: tripRule.ruleId,
+        user_id: change.userId,
+        version: tripRule.version,
+        is_deleted: tripRule.isDeleted || false,
+        created_at: tripRule.createdAt,
+        updated_at: tripRule.updatedAt,
+      };
+    });
+
+    const { error } = await supabase
+      .from('trip_default_item_rules')
+      .upsert(tripRulesData);
+
+    if (error) {
+      throw new Error(`Failed to batch upsert trip rules: ${error.message}`);
+    }
   }
 }
 

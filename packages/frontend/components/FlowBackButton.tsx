@@ -2,6 +2,7 @@ import { ChevronLeft } from 'lucide-react';
 import { useAppSelector, useAppDispatch, actions } from '@packing-list/state';
 import { Link } from './Link';
 import { navigate } from 'vike/client/router';
+import { applyBaseUrl } from '@packing-list/shared-utils';
 
 export function FlowBackButton() {
   const flow = useAppSelector((s) => s?.ui?.flow);
@@ -25,7 +26,9 @@ export function FlowBackButton() {
     dispatch(actions.advanceFlow(-1));
 
     // Then navigate to the target step
-    navigate(targetStep.path);
+    navigate(
+      applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, targetStep.path)
+    );
   };
 
   return flow && flow.current !== null && flow.current !== 0 ? (
