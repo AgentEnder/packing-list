@@ -226,7 +226,7 @@ export class LocalAuthService {
 
   private generateId(): string {
     return (
-      'local_' +
+      'local-' +
       Math.random().toString(36).substr(2, 9) +
       Date.now().toString(36)
     );

@@ -289,15 +289,10 @@ export const syncFromServer = createAsyncThunk(
       dispatch(setSyncSyncingStatus(true));
 
       // Pull all data in a single comprehensive query
-      const result = await dispatch(pullAllDataFromServer(params));
-      const { trips, people, items, rules, tripRules } = result.payload as {
-        trips: Trip[];
-        people: Person[];
-        items: TripItem[];
-        rules: DefaultItemRule[];
-        tripRules: TripRule[];
-        conflicts: SyncConflict[];
-      };
+      // Using unwrap() provides proper typing and automatically throws on rejection
+      const { trips, people, items, rules, tripRules } = await dispatch(
+        pullAllDataFromServer(params)
+      ).unwrap();
 
       // Update last sync timestamp
       dispatch(updateLastSyncTimestamp(Date.now()));
@@ -326,7 +321,10 @@ export const syncFromServer = createAsyncThunk(
 // Comprehensive pull function that gets all data in one query
 export const pullAllDataFromServer = createAsyncThunk(
   'sync/pullAllData',
-  async (params: { userId: string; since?: string }, { dispatch }) => {
+  async (
+    params: { userId: string; since?: string },
+    { dispatch, rejectWithValue }
+  ) => {
     console.log('🔄 [SYNC] Pulling all data from server in single query...');
 
     if (!isSupabaseAvailable() || isLocalUser(params.userId)) {
@@ -368,7 +366,7 @@ export const pullAllDataFromServer = createAsyncThunk(
 
     if (error) {
       console.error('❌ [SYNC] Error pulling comprehensive data:', error);
-      throw new Error(`Failed to pull data: ${error.message}`);
+      return rejectWithValue(error);
     }
 
     console.log(

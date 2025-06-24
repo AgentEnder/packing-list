@@ -41,7 +41,7 @@ export function isLocalUser(userId: string): boolean {
   return (
     userId === 'local-shared-user' ||
     userId === 'local-user' ||
-    userId.startsWith('local-')
+    userId.startsWith('local')
   );
 }
 
