@@ -46,10 +46,6 @@ export const ConflictDiffView: React.FC<ConflictDiffViewProps> = ({
           const key = pathParts[0];
           const isNested = pathParts.length > 1;
 
-          if (key === 'conditions') {
-            console.log('conditions', conflictItem);
-          }
-
           return {
             key,
             localValue: conflictItem.localValue,

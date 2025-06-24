@@ -71,7 +71,10 @@ export const NestedObjectDiff: React.FC<NestedObjectDiffProps> = ({
       if (diffType === 'same') return fragments;
 
       fragments.push(
-        <div key={key} className="ml-4 border-l border-gray-200 pl-3 py-1">
+        <div
+          key={currentPath}
+          className="ml-4 border-l border-gray-200 pl-3 py-1"
+        >
           <div className="flex items-center gap-2 text-sm">
             {diffType === 'added' && (
               <Plus className="h-3 w-3 text-green-600" />
