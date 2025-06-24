@@ -1,0 +1,1 @@
+import{r as t}from"./chunk-pSdIku02.js";function r(){const[s,n]=t.useState({x:0,y:0});return t.useEffect(()=>{const e=o=>{n({x:o.clientX,y:o.clientY})};return window.addEventListener("mousemove",e),()=>window.removeEventListener("mousemove",e)},[]),s}export{r as u};

@@ -1,0 +1,2 @@
+# Public directory for static assets served during development
+# Service worker is handled by custom Vite plugin middleware 
