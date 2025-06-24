@@ -20,6 +20,7 @@ import {
   TripRuleStorage,
 } from '@packing-list/offline-storage';
 import { isLocalUser } from './utils.js';
+import { generateDetailedConflicts } from '@packing-list/shared-utils';
 
 /**
  * Batching system for collecting and pushing changes in bulk
@@ -198,35 +199,22 @@ function resolveTimestampOnlyConflict<T extends Record<string, unknown>>(
     delete serverFiltered[field];
   });
 
-  // Deep comparison function that handles object property order
-  function deepEqual(obj1: unknown, obj2: unknown): boolean {
-    if (obj1 === obj2) return true;
-
-    if (obj1 == null || obj2 == null) return obj1 === obj2;
-
-    if (typeof obj1 !== typeof obj2) return false;
-
-    if (typeof obj1 !== 'object') return obj1 === obj2;
-
-    const keys1 = Object.keys(obj1 as Record<string, unknown>).sort();
-    const keys2 = Object.keys(obj2 as Record<string, unknown>).sort();
-
-    if (keys1.length !== keys2.length) return false;
-
-    for (let i = 0; i < keys1.length; i++) {
-      if (keys1[i] !== keys2[i]) return false;
-
-      const val1 = (obj1 as Record<string, unknown>)[keys1[i]];
-      const val2 = (obj2 as Record<string, unknown>)[keys2[i]];
-
-      if (!deepEqual(val1, val2)) return false;
-    }
-
-    return true;
+  if (
+    'isDeleted' in serverFiltered &&
+    !serverFiltered.isDeleted &&
+    (!('isDeleted' in localFiltered) || !localFiltered.isDeleted)
+  ) {
+    delete serverFiltered.isDeleted;
+    delete localFiltered.isDeleted;
   }
 
+  const conflictDetails = generateDetailedConflicts(
+    localFiltered,
+    serverFiltered
+  );
+
   // If the objects are identical without excluded fields, it's a timestamp-only conflict
-  if (deepEqual(localFiltered, serverFiltered)) {
+  if (conflictDetails.length === 0) {
     console.log(
       '✅ [SYNC] Timestamp-only conflict detected - auto-resolving with server timestamp',
       {
@@ -248,8 +236,17 @@ function resolveTimestampOnlyConflict<T extends Record<string, unknown>>(
       serverUpdatedAt: server.updatedAt,
       localFiltered,
       serverFiltered,
-    }
+    },
+    conflictDetails
   );
+
+  // Add conflict details to the returned conflict object if available
+  if ('conflictDetails' in (server as Record<string, unknown>)) {
+    (server as Record<string, unknown>).conflictDetails = {
+      conflicts: conflictDetails,
+    };
+  }
+
   return null;
 }
 
@@ -1118,3 +1115,125 @@ export const trackSyncChange = (
   type: 'TRACK_SYNC_CHANGE',
   payload,
 });
+
+/**
+ * Properly resolve a sync conflict by applying the chosen data to both Redux and IndexedDB
+ */
+export const resolveConflict = createAsyncThunk(
+  'sync/resolveConflict',
+  async (
+    params: {
+      conflictId: string;
+      strategy: 'local' | 'server' | 'manual';
+      manualData?: unknown;
+      conflict: SyncConflict;
+    },
+    { dispatch }
+  ) => {
+    const { conflictId, strategy, manualData, conflict } = params;
+
+    console.log(
+      `🔧 [RESOLVE_CONFLICT] Resolving conflict ${conflictId} with strategy: ${strategy}`
+    );
+
+    try {
+      let dataToApply: unknown;
+
+      // Determine what data to apply based on strategy
+      switch (strategy) {
+        case 'local':
+          // Keep local version - no need to update anything, just remove conflict
+          dataToApply = conflict.localVersion;
+          break;
+        case 'server':
+          // Apply server version
+          dataToApply = conflict.serverVersion;
+          break;
+        case 'manual':
+          // Apply manually merged data
+          dataToApply = manualData || conflict.serverVersion;
+          break;
+        default:
+          throw new Error(`Unknown resolution strategy: ${strategy}`);
+      }
+
+      // For non-local strategies, we need to apply the data to Redux and IndexedDB
+      if (strategy !== 'local') {
+        console.log(
+          `🔧 [RESOLVE_CONFLICT] Applying ${strategy} data for ${conflict.entityType}:${conflict.entityId}`
+        );
+
+        // Apply data based on entity type
+        switch (conflict.entityType) {
+          case 'trip': {
+            const tripData = dataToApply as Trip;
+            await TripStorage.saveTrip(tripData);
+            dispatch(mergeSyncedTrip(tripData));
+            console.log(
+              `✅ [RESOLVE_CONFLICT] Applied trip data to IndexedDB and Redux`
+            );
+            break;
+          }
+
+          case 'person': {
+            const personData = dataToApply as Person;
+            await PersonStorage.savePerson(personData);
+            dispatch(mergeSyncedPerson(personData));
+            console.log(
+              `✅ [RESOLVE_CONFLICT] Applied person data to IndexedDB and Redux`
+            );
+            break;
+          }
+
+          case 'item': {
+            const itemData = dataToApply as TripItem;
+            await ItemStorage.saveItem(itemData);
+            dispatch(mergeSyncedItem(itemData));
+            console.log(
+              `✅ [RESOLVE_CONFLICT] Applied item data to IndexedDB and Redux`
+            );
+            break;
+          }
+
+          case 'default_item_rule': {
+            const ruleData = dataToApply as DefaultItemRule;
+            await DefaultItemRulesStorage.saveDefaultItemRule(ruleData);
+            // Rules don't have a direct merge action, they're handled by recalculation
+            console.log(`✅ [RESOLVE_CONFLICT] Applied rule data to IndexedDB`);
+            break;
+          }
+
+          case 'trip_rule': {
+            const tripRuleData = dataToApply as TripRule;
+            await TripRuleStorage.saveTripRule(tripRuleData);
+            // Trip rules don't have a direct merge action, they're handled by recalculation
+            console.log(
+              `✅ [RESOLVE_CONFLICT] Applied trip rule data to IndexedDB`
+            );
+            break;
+          }
+
+          default:
+            console.warn(
+              `🔧 [RESOLVE_CONFLICT] Unknown entity type: ${conflict.entityType}`
+            );
+        }
+      }
+
+      // Remove the conflict from Redux state
+      dispatch(removeSyncConflict(conflictId));
+
+      console.log(
+        `✅ [RESOLVE_CONFLICT] Successfully resolved conflict ${conflictId}`
+      );
+
+      return { conflictId, strategy, applied: strategy !== 'local' };
+    } catch (error) {
+      console.error(
+        `❌ [RESOLVE_CONFLICT] Failed to resolve conflict ${conflictId}:`,
+        error
+      );
+      throw error;
+    }
+  }
+);

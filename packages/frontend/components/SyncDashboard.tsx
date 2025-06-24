@@ -5,7 +5,7 @@ import {
   SyncStatusIndicator,
 } from '@packing-list/shared-components';
 import type { SyncConflict } from '@packing-list/model';
-import { useAppDispatch } from '@packing-list/state';
+import { resolveConflict, useAppDispatch } from '@packing-list/state';
 import {
   Activity,
   RefreshCw,
@@ -122,9 +122,16 @@ export function SyncDashboard() {
       console.log('🔧 [SYNC DASHBOARD] Manual data:', data);
     }
 
-    // Remove the conflict from Redux state
+    // Use the proper conflict resolution action that updates both Redux and IndexedDB
     if (selectedConflict) {
-      dispatch({ type: 'REMOVE_SYNC_CONFLICT', payload: selectedConflict.id });
+      await dispatch(
+        resolveConflict({
+          conflictId: selectedConflict.id,
+          strategy,
+          manualData: data,
+          conflict: selectedConflict,
+        })
+      );
     }
 
     setSelectedConflict(null);

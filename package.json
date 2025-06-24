@@ -12,7 +12,9 @@
     "supabase:reset": "cd packages/supabase && supabase db reset",
     "supabase:studio": "cd packages/supabase && supabase studio",
     "supabase:logs": "cd packages/supabase && supabase logs",
-    "test:e2e": "node scripts/run-e2e-tests.mjs"
+    "test:e2e": "node scripts/run-e2e-tests.mjs",
+    "verify:quick": "nx run-many -t test,lint,build,typecheck",
+    "verify:full": "pnpm verify:quick && pnpm test:e2e"
   },
   "private": true,
   "dependencies": {

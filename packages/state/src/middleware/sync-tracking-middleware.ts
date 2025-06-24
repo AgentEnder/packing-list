@@ -1,6 +1,6 @@
 import type { Middleware } from '@reduxjs/toolkit';
 import { UnknownAction } from '@reduxjs/toolkit';
-import { uuid } from '@packing-list/shared-utils';
+import { uuid, deepEqual } from '@packing-list/shared-utils';
 import type { Trip, Person, Change } from '@packing-list/model';
 import { StoreType } from '../store.js';
 import {
@@ -26,33 +26,6 @@ import { processSyncedEntities } from '../lib/sync/sync-integration.js';
  */
 let isSyncInProgress = false;
 let pendingSyncUserId: string | null = null;
-
-/**
- * Deep equality check for objects
- */
-function deepEqual(obj1: unknown, obj2: unknown): boolean {
-  if (obj1 === obj2) return true;
-  if (obj1 == null || obj2 == null) return obj1 === obj2;
-  if (typeof obj1 !== 'object' || typeof obj2 !== 'object') return false;
-
-  const keys1 = Object.keys(obj1 as Record<string, unknown>);
-  const keys2 = Object.keys(obj2 as Record<string, unknown>);
-
-  if (keys1.length !== keys2.length) return false;
-
-  for (const key of keys1) {
-    if (!keys2.includes(key)) return false;
-    if (
-      !deepEqual(
-        (obj1 as Record<string, unknown>)[key],
-        (obj2 as Record<string, unknown>)[key]
-      )
-    ) {
-      return false;
-    }
-  }
-  return true;
-}
 
 /**
  * Reload trip data from IndexedDB and populate Redux state
@@ -304,7 +277,13 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
       'sync/',
       'PROCESS_SYNCED_TRIP_ITEMS',
     ];
-    if (
+
+    // Special handling for conflict resolution - allow it to pass through to IndexedDB
+    if ((action as UnknownAction).type === 'sync/resolveConflict/fulfilled') {
+      console.log(
+        '🔄 [SYNC_MIDDLEWARE] Allowing conflict resolution to complete'
+      );
+    } else if (
       skipActions.some((skip) => (action as UnknownAction).type.includes(skip))
     ) {
       return result;

@@ -4,7 +4,7 @@ import {
   ConflictList,
   ConflictResolutionModal,
 } from '@packing-list/shared-components';
-import { useAppSelector } from '@packing-list/state';
+import { resolveConflict, useAppSelector } from '@packing-list/state';
 import type { SyncConflict } from '@packing-list/model';
 import { useAppDispatch } from '@packing-list/state';
 
@@ -40,9 +40,16 @@ export const SyncStatus: React.FC = () => {
       console.log('Manual data:', data);
     }
 
-    // Remove the conflict from Redux state
+    // Use the proper conflict resolution action that updates both Redux and IndexedDB
     if (selectedConflict) {
-      dispatch({ type: 'REMOVE_SYNC_CONFLICT', payload: selectedConflict.id });
+      await dispatch(
+        resolveConflict({
+          conflictId: selectedConflict.id,
+          strategy,
+          manualData: data,
+          conflict: selectedConflict,
+        })
+      );
     }
 
     setSelectedConflict(null);
