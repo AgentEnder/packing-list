@@ -1,6 +1,8 @@
 import React from 'react';
 import { ChevronDown, ChevronRight, Plus, Minus, Edit3 } from 'lucide-react';
 import type { SyncConflict } from '@packing-list/model';
+import { deepEqual } from '@packing-list/shared-utils';
+import { NestedObjectDiff } from './NestedObjectDiff.js';
 
 interface DiffEntry {
   key: string;
@@ -43,6 +45,10 @@ export const ConflictDiffView: React.FC<ConflictDiffViewProps> = ({
           const pathParts = conflictItem.path.split('.');
           const key = pathParts[0];
           const isNested = pathParts.length > 1;
+
+          if (key === 'conditions') {
+            console.log('conditions', conflictItem);
+          }
 
           return {
             key,
@@ -100,7 +106,7 @@ export const ConflictDiffView: React.FC<ConflictDiffViewProps> = ({
         if (!(key in serverData)) {
           return { key, localValue, serverValue: undefined, type: 'removed' };
         }
-        if (JSON.stringify(localValue) !== JSON.stringify(serverValue)) {
+        if (!deepEqual(localValue, serverValue)) {
           return { key, localValue, serverValue, type: 'changed' };
         }
         return { key, localValue, serverValue, type: 'same' };
@@ -199,9 +205,23 @@ export const ConflictDiffView: React.FC<ConflictDiffViewProps> = ({
     if (typeof value === 'string') return `"${value}"`;
     if (typeof value === 'number') return value.toString();
     if (typeof value === 'object') {
-      return JSON.stringify(value, null, 2);
+      if (Array.isArray(value)) {
+        return `[${value.length} items]`;
+      }
+      const keys = Object.keys(value as Record<string, unknown>);
+      return `{${keys.length} properties}`;
     }
     return String(value);
+  };
+
+  const isComplexObject = (value: unknown): boolean => {
+    return (
+      value !== null &&
+      value !== undefined &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      Object.keys(value as Record<string, unknown>).length > 0
+    );
   };
 
   const getIcon = (type: DiffEntry['type']) => {
@@ -300,34 +320,49 @@ export const ConflictDiffView: React.FC<ConflictDiffViewProps> = ({
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <div className="text-xs font-medium text-gray-600 mb-1">
-                    Local Version
+              {/* Show nested object diff for complex objects, otherwise show side-by-side comparison */}
+              {entry.type === 'changed' &&
+              isComplexObject(entry.localValue) &&
+              isComplexObject(entry.serverValue) ? (
+                <div className="mt-2">
+                  <NestedObjectDiff
+                    localValue={entry.localValue}
+                    serverValue={entry.serverValue}
+                    path={entry.path || entry.key}
+                    showPath={!!entry.isNested}
+                    expanded={false}
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-xs font-medium text-gray-600 mb-1">
+                      Local Version
+                    </div>
+                    <div
+                      className={`text-sm p-2 bg-white rounded border font-mono whitespace-pre-line ${getValueClass(
+                        entry.type,
+                        true
+                      )}`}
+                    >
+                      {formatValue(entry.localValue, entry.key)}
+                    </div>
                   </div>
-                  <div
-                    className={`text-sm p-2 bg-white rounded border font-mono whitespace-pre-line ${getValueClass(
-                      entry.type,
-                      true
-                    )}`}
-                  >
-                    {formatValue(entry.localValue, entry.key)}
+                  <div>
+                    <div className="text-xs font-medium text-gray-600 mb-1">
+                      Server Version
+                    </div>
+                    <div
+                      className={`text-sm p-2 bg-white rounded border font-mono whitespace-pre-line ${getValueClass(
+                        entry.type,
+                        false
+                      )}`}
+                    >
+                      {formatValue(entry.serverValue, entry.key)}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <div className="text-xs font-medium text-gray-600 mb-1">
-                    Server Version
-                  </div>
-                  <div
-                    className={`text-sm p-2 bg-white rounded border font-mono whitespace-pre-line ${getValueClass(
-                      entry.type,
-                      false
-                    )}`}
-                  >
-                    {formatValue(entry.serverValue, entry.key)}
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           ))}
 

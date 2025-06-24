@@ -33,6 +33,7 @@ export { ConflictList } from './ConflictList.js';
 export type { ConflictListProps } from './ConflictList.js';
 
 export { ConflictDiffView } from './ConflictDiffView.js';
+export { NestedObjectDiff } from './NestedObjectDiff.js';
 
 export { ConflictBanner } from './ConflictBanner.js';
 export { OfflineBanner } from './OfflineBanner.js';
