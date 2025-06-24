@@ -4,7 +4,7 @@ import { usePageContext } from 'vike-react/usePageContext';
 import { Link } from '../../../components/Link';
 import { PageHeader } from '../../../components/PageHeader';
 import { PageContainer } from '../../../components/PageContainer';
-import { formatDate } from '@packing-list/shared-utils';
+import { applyBaseUrl, formatDate } from '@packing-list/shared-utils';
 import { navigate } from 'vike/client/router';
 import {
   ArrowLeft,
@@ -36,7 +36,7 @@ export default function TripDetailsPage() {
   // If trip doesn't exist, redirect to trips page
   useEffect(() => {
     if (!trip) {
-      navigate('/trips');
+      navigate(applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/trips'));
     }
   }, [trip]);
 
@@ -47,9 +47,8 @@ export default function TripDetailsPage() {
         payload: { tripId },
       });
     }
-    navigate('/');
+    navigate(applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/'));
   };
-
 
   const getPackingProgress = () => {
     if (!trip || trip.totalItems === 0) {

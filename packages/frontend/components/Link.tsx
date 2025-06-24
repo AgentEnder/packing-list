@@ -13,6 +13,9 @@ export function Link(
   const pageContext = usePageContext();
   const { urlPathname } = pageContext;
   const { href, children, className, onClick, ...anchorTagProps } = props;
+  const hrefWithBaseUrl = href
+    ? applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, href)
+    : undefined;
 
   const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     // Call original onClick if provided
@@ -33,18 +36,18 @@ export function Link(
     }
 
     // Only handle internal links
-    if (href && !href.startsWith('http') && !href.startsWith('//')) {
+    if (
+      hrefWithBaseUrl &&
+      href &&
+      !href.startsWith('http') &&
+      !href.startsWith('//')
+    ) {
       event.preventDefault();
-      navigate(href);
+      navigate(hrefWithBaseUrl);
     }
   };
 
   if (href) {
-    const hrefWithBaseUrl = applyBaseUrl(
-      import.meta.env.PUBLIC_ENV__BASE_URL,
-      href
-    );
-
     // The urlPathname from vike's pageContext does not include the base url.
     const isActive =
       href === '/' ? urlPathname === href : urlPathname.startsWith(href);

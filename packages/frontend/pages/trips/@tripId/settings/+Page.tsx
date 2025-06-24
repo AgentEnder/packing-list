@@ -6,7 +6,7 @@ import { PageHeader } from '../../../../components/PageHeader';
 import { PageContainer } from '../../../../components/PageContainer';
 import { ConfirmDialog } from '@packing-list/shared-components';
 import { navigate } from 'vike/client/router';
-import { formatDate } from '@packing-list/shared-utils';
+import { applyBaseUrl, formatDate } from '@packing-list/shared-utils';
 import {
   ArrowLeft,
   Save,
@@ -48,7 +48,7 @@ export default function TripSettingsPage() {
   // If trip doesn't exist, redirect to trips page
   useEffect(() => {
     if (!trip) {
-      navigate('/trips');
+      navigate(applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/trips'));
     }
   }, [trip]);
 
@@ -101,7 +101,9 @@ export default function TripSettingsPage() {
       });
 
       // Navigate back to trips page
-      await navigate('/trips');
+      await navigate(
+        applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/trips')
+      );
     } catch (error) {
       console.error('Failed to save trip settings:', error);
     } finally {
@@ -118,7 +120,7 @@ export default function TripSettingsPage() {
     });
 
     setDeleteModalOpen(false);
-    navigate('/trips');
+    navigate(applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/trips'));
   };
 
   const handleSwitchToTrip = () => {
@@ -128,7 +130,7 @@ export default function TripSettingsPage() {
         payload: { tripId },
       });
     }
-    navigate('/');
+    navigate(applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/'));
   };
 
   const canSave = formData.title.trim().length > 0;

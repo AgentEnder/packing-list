@@ -159,11 +159,6 @@ import {
 // Import sync actions and thunks
 import {
   syncFromServer,
-  pullTripsFromServer,
-  pullPeopleFromServer,
-  pullItemsFromServer,
-  pullDefaultItemRulesFromServer,
-  pullTripRulesFromServer,
   setSyncState,
   setSyncInitialized,
   addSyncConflict,
@@ -357,11 +352,6 @@ export const actions = {
 
   // Sync actions and thunks
   syncFromServer,
-  pullTripsFromServer,
-  pullPeopleFromServer,
-  pullItemsFromServer,
-  pullDefaultItemRulesFromServer,
-  pullTripRulesFromServer,
   setSyncState,
   setSyncInitialized,
   addSyncConflict,

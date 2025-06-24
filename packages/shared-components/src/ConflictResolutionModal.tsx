@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { SyncConflict } from '@packing-list/model';
 import { ConflictDiffView } from './ConflictDiffView.js';
+import { deepEqual } from '@packing-list/shared-utils';
 
 export interface ConflictResolutionModalProps
   extends Omit<ModalProps, 'children'> {
@@ -155,8 +156,7 @@ export const ConflictResolutionModal: React.FC<
         if (!conflictedTopLevelKeys.has(key)) {
           const localValue = localData[key];
           const serverValue = serverData[key];
-          const isConflicted =
-            JSON.stringify(localValue) !== JSON.stringify(serverValue);
+          const isConflicted = !deepEqual(localValue, serverValue);
 
           // Include both conflicted and non-conflicted top-level fields
           fields.push({
@@ -179,8 +179,7 @@ export const ConflictResolutionModal: React.FC<
       const fields: FieldChoice[] = Array.from(allKeys).map((key) => {
         const localValue = localData[key];
         const serverValue = serverData[key];
-        const isConflicted =
-          JSON.stringify(localValue) !== JSON.stringify(serverValue);
+        const isConflicted = !deepEqual(localValue, serverValue);
 
         // Default to server value for conflicts, local for non-conflicts
         const defaultSource: 'local' | 'server' = isConflicted
@@ -305,8 +304,7 @@ export const ConflictResolutionModal: React.FC<
       (choice) =>
         !isSystemManagedField(choice.key) &&
         (choice.source !== 'local' ||
-          JSON.stringify(choice.value) !==
-            JSON.stringify(localData[choice.key]))
+          !deepEqual(choice.value, localData[choice.key]))
     );
 
     // System fields are always considered "impacted" since they'll be auto-updated

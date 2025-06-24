@@ -20,6 +20,154 @@ import {
   TripRuleStorage,
 } from '@packing-list/offline-storage';
 import { isLocalUser } from './utils.js';
+import { generateDetailedConflicts } from '@packing-list/shared-utils';
+
+/**
+ * Batching system for collecting and pushing changes in bulk
+ */
+interface BatchedChange {
+  change: Change;
+  resolve: () => void;
+  reject: (error: Error) => void;
+}
+
+interface BatchManager {
+  trip: BatchedChange[];
+  person: BatchedChange[];
+  item: BatchedChange[];
+  default_item_rule: BatchedChange[];
+  trip_rule: BatchedChange[];
+  rule_pack: BatchedChange[];
+}
+
+// Global batch manager
+const batchManager: BatchManager = {
+  trip: [],
+  person: [],
+  item: [],
+  default_item_rule: [],
+  trip_rule: [],
+  rule_pack: [],
+};
+
+// Debounce timeouts for each entity type
+const batchTimeouts: Record<keyof BatchManager, NodeJS.Timeout | null> = {
+  trip: null,
+  person: null,
+  item: null,
+  default_item_rule: null,
+  trip_rule: null,
+  rule_pack: null,
+};
+
+// Debounce delay in milliseconds
+const BATCH_DEBOUNCE_MS = 100;
+
+/**
+ * Process a batch of changes for a specific entity type
+ */
+async function processBatch(entityType: keyof BatchManager): Promise<void> {
+  const batch = batchManager[entityType];
+  if (batch.length === 0) return;
+
+  console.log(
+    `📦 [SYNC] Processing batch of ${batch.length} ${entityType} changes`
+  );
+
+  // Clear the batch and timeout
+  batchManager[entityType] = [];
+  if (batchTimeouts[entityType]) {
+    clearTimeout(batchTimeouts[entityType]);
+    batchTimeouts[entityType] = null;
+  }
+
+  try {
+    // Group changes by operation type
+    const createChanges = batch.filter((b) => b.change.operation === 'create');
+    const updateChanges = batch.filter((b) => b.change.operation === 'update');
+    const deleteChanges = batch.filter((b) => b.change.operation === 'delete');
+
+    // Process each operation type
+    if (createChanges.length > 0) {
+      await processBatchOperation(entityType, 'create', createChanges);
+    }
+    if (updateChanges.length > 0) {
+      await processBatchOperation(entityType, 'update', updateChanges);
+    }
+    if (deleteChanges.length > 0) {
+      await processBatchOperation(entityType, 'delete', deleteChanges);
+    }
+
+    // Resolve all promises
+    batch.forEach((b) => b.resolve());
+
+    console.log(
+      `✅ [SYNC] Successfully processed batch of ${batch.length} ${entityType} changes`
+    );
+  } catch (error) {
+    console.error(
+      `❌ [SYNC] Failed to process batch of ${entityType} changes:`,
+      error
+    );
+
+    // Reject all promises
+    const errorObj =
+      error instanceof Error
+        ? error
+        : new Error(`Batch processing failed for ${entityType}`);
+    batch.forEach((b) => b.reject(errorObj));
+  }
+}
+
+/**
+ * Process a batch of changes for a specific operation type
+ */
+async function processBatchOperation(
+  entityType: keyof BatchManager,
+  operation: 'create' | 'update' | 'delete',
+  batch: BatchedChange[]
+): Promise<void> {
+  switch (entityType) {
+    case 'trip':
+      await pushTripChangesBatch(
+        batch.map((b) => b.change),
+        operation
+      );
+      break;
+    case 'person':
+      await pushPersonChangesBatch(
+        batch.map((b) => b.change),
+        operation
+      );
+      break;
+    case 'item':
+      await pushItemChangesBatch(
+        batch.map((b) => b.change),
+        operation
+      );
+      break;
+    case 'default_item_rule':
+      await pushDefaultItemRuleChangesBatch(
+        batch.map((b) => b.change),
+        operation
+      );
+      break;
+    case 'trip_rule':
+      await pushTripRuleChangesBatch(
+        batch.map((b) => b.change),
+        operation
+      );
+      break;
+    case 'rule_pack':
+      // Rule packs are not synced to server - they're local only
+      console.log(
+        `🔄 [SYNC] Skipping rule pack batch sync (local only): ${batch.length} changes`
+      );
+      break;
+    default:
+      console.warn(`🔄 [SYNC] Unknown entity type for batch: ${entityType}`);
+  }
+}
 
 /**
  * Check if a conflict is timestamp-only (no meaningful data differences)
@@ -51,35 +199,22 @@ function resolveTimestampOnlyConflict<T extends Record<string, unknown>>(
     delete serverFiltered[field];
   });
 
-  // Deep comparison function that handles object property order
-  function deepEqual(obj1: unknown, obj2: unknown): boolean {
-    if (obj1 === obj2) return true;
-
-    if (obj1 == null || obj2 == null) return obj1 === obj2;
-
-    if (typeof obj1 !== typeof obj2) return false;
-
-    if (typeof obj1 !== 'object') return obj1 === obj2;
-
-    const keys1 = Object.keys(obj1 as Record<string, unknown>).sort();
-    const keys2 = Object.keys(obj2 as Record<string, unknown>).sort();
-
-    if (keys1.length !== keys2.length) return false;
-
-    for (let i = 0; i < keys1.length; i++) {
-      if (keys1[i] !== keys2[i]) return false;
-
-      const val1 = (obj1 as Record<string, unknown>)[keys1[i]];
-      const val2 = (obj2 as Record<string, unknown>)[keys2[i]];
-
-      if (!deepEqual(val1, val2)) return false;
-    }
-
-    return true;
+  if (
+    'isDeleted' in serverFiltered &&
+    !serverFiltered.isDeleted &&
+    (!('isDeleted' in localFiltered) || !localFiltered.isDeleted)
+  ) {
+    delete serverFiltered.isDeleted;
+    delete localFiltered.isDeleted;
   }
 
+  const conflictDetails = generateDetailedConflicts(
+    localFiltered,
+    serverFiltered
+  );
+
   // If the objects are identical without excluded fields, it's a timestamp-only conflict
-  if (deepEqual(localFiltered, serverFiltered)) {
+  if (conflictDetails.length === 0) {
     console.log(
       '✅ [SYNC] Timestamp-only conflict detected - auto-resolving with server timestamp',
       {
@@ -101,652 +236,19 @@ function resolveTimestampOnlyConflict<T extends Record<string, unknown>>(
       serverUpdatedAt: server.updatedAt,
       localFiltered,
       serverFiltered,
-    }
+    },
+    conflictDetails
   );
+
+  // Add conflict details to the returned conflict object if available
+  if ('conflictDetails' in (server as Record<string, unknown>)) {
+    (server as Record<string, unknown>).conflictDetails = {
+      conflicts: conflictDetails,
+    };
+  }
+
   return null;
 }
-
-// Async thunks for pulling data from server
-export const pullTripsFromServer = createAsyncThunk(
-  'sync/pullTrips',
-  async (params: { userId: string; since?: string }, { dispatch }) => {
-    console.log('🔄 [SYNC] Pulling trips from server...');
-
-    if (!isSupabaseAvailable() || isLocalUser(params.userId)) {
-      console.log('🔄 [SYNC] Skipping trip pull - offline mode or local user');
-      return { trips: [], conflicts: [] };
-    }
-
-    const since = params.since || new Date(0).toISOString();
-    const { data: trips, error } = await supabase
-      .from('trips')
-      .select('*')
-      .eq('user_id', params.userId)
-      .gt('updated_at', since)
-      .eq('is_deleted', false) // Only fetch non-deleted trips
-      .order('updated_at', { ascending: true });
-
-    if (error) {
-      console.error('❌ [SYNC] Error pulling trips:', error);
-      throw new Error(`Failed to pull trips: ${error.message}`);
-    }
-
-    console.log(`✅ [SYNC] Pulled ${trips?.length || 0} trips from server`);
-
-    // Process each trip for conflicts and upserts
-    const conflicts: SyncConflict[] = [];
-    const upsertedTrips: Trip[] = [];
-
-    for (const serverTrip of trips || []) {
-      const tripData: Trip = {
-        id: serverTrip.id,
-        userId: serverTrip.user_id,
-        title: serverTrip.title,
-        description: serverTrip.description || '',
-        days: (serverTrip.days as Trip['days']) || [],
-        tripEvents: (serverTrip.trip_events as Trip['tripEvents']) || [],
-        createdAt: serverTrip.created_at || new Date().toISOString(),
-        updatedAt: serverTrip.updated_at || new Date().toISOString(),
-        settings: (serverTrip.settings as Trip['settings']) || {
-          defaultTimeZone: 'UTC',
-          packingViewMode: 'by-day',
-        },
-        version: serverTrip.version || 1,
-        isDeleted: serverTrip.is_deleted || false,
-        defaultItemRules: [],
-      };
-
-      // Check for conflicts
-      const localTrip = await TripStorage.getTrip(serverTrip.id);
-
-      if (localTrip && localTrip.updatedAt !== tripData.updatedAt) {
-        // Check if this is a timestamp-only conflict
-        const resolvedTrip = resolveTimestampOnlyConflict(localTrip, tripData);
-
-        if (resolvedTrip) {
-          // Auto-resolve timestamp-only conflict
-          await TripStorage.saveTrip(resolvedTrip);
-          upsertedTrips.push(resolvedTrip);
-
-          // Use entity callback to handle bulk sync mode
-          const { createEntityCallbacks } = await import(
-            '../sync/sync-integration.js'
-          );
-          const entityCallbacks = createEntityCallbacks(dispatch);
-          entityCallbacks.onTripUpsert(resolvedTrip);
-        } else {
-          // Real conflict detected
-          const conflict: SyncConflict = {
-            id: `trip-${serverTrip.id}-${Date.now()}`,
-            entityType: 'trip',
-            entityId: serverTrip.id,
-            localVersion: localTrip,
-            serverVersion: tripData,
-            conflictType: 'update_conflict',
-            timestamp: Date.now(),
-          };
-          conflicts.push(conflict);
-          console.log(`⚠️ [SYNC] Trip conflict detected: ${serverTrip.id}`);
-        }
-      } else {
-        // No conflict, apply server data
-        await TripStorage.saveTrip(tripData);
-        upsertedTrips.push(tripData);
-
-        // Use entity callback to handle bulk sync mode
-        const { createEntityCallbacks } = await import(
-          '../sync/sync-integration.js'
-        );
-        const entityCallbacks = createEntityCallbacks(dispatch);
-        entityCallbacks.onTripUpsert(tripData);
-      }
-    }
-
-    // Store conflicts
-    if (conflicts.length > 0) {
-      dispatch(setSyncConflicts(conflicts));
-    }
-
-    return { trips: upsertedTrips, conflicts };
-  }
-);
-
-export const pullPeopleFromServer = createAsyncThunk(
-  'sync/pullPeople',
-  async (
-    params: { tripIds: string[]; since?: string; userId: string },
-    { dispatch }
-  ) => {
-    console.log(
-      `🔄 [SYNC] Pulling people from server for ${params.tripIds.length} trips...`
-    );
-
-    if (!isSupabaseAvailable() || isLocalUser(params.userId)) {
-      console.log(
-        '🔄 [SYNC] Skipping people pull - offline mode or local user'
-      );
-      return { people: [], conflicts: [] };
-    }
-
-    if (params.tripIds.length === 0) {
-      console.log('🔄 [SYNC] No trips to pull people for');
-      return { people: [], conflicts: [] };
-    }
-
-    const since = params.since || new Date(0).toISOString();
-    const { data: people, error } = await supabase
-      .from('trip_people')
-      .select('*')
-      .in('trip_id', params.tripIds)
-      .gt('updated_at', since)
-      .eq('is_deleted', false) // Only fetch non-deleted people
-      .order('updated_at', { ascending: true });
-
-    if (error) {
-      console.error('❌ [SYNC] Error pulling people:', error);
-      throw new Error(`Failed to pull people: ${error.message}`);
-    }
-
-    console.log(`✅ [SYNC] Pulled ${people?.length || 0} people from server`);
-
-    const conflicts: SyncConflict[] = [];
-    const upsertedPeople: Person[] = [];
-
-    for (const serverPerson of people || []) {
-      const personData: Person = {
-        id: serverPerson.id,
-        tripId: serverPerson.trip_id,
-        name: serverPerson.name,
-        age: serverPerson.age || undefined,
-        gender: (serverPerson.gender as Person['gender']) || undefined,
-        settings: (serverPerson.settings as Person['settings']) || undefined,
-        createdAt: serverPerson.created_at || new Date().toISOString(),
-        updatedAt: serverPerson.updated_at || new Date().toISOString(),
-        version: serverPerson.version || 1,
-        isDeleted: serverPerson.is_deleted || false,
-      };
-
-      // Check for conflicts by getting all people for the trip and finding this one
-      const existingPeople = await PersonStorage.getTripPeople(
-        serverPerson.trip_id
-      );
-      const localPerson = existingPeople.find(
-        (p: Person) => p.id === serverPerson.id
-      );
-
-      if (localPerson && localPerson.updatedAt !== personData.updatedAt) {
-        // Check if this is a timestamp-only conflict
-        const resolvedPerson = resolveTimestampOnlyConflict(
-          localPerson,
-          personData
-        );
-
-        if (resolvedPerson) {
-          // Auto-resolve timestamp-only conflict
-          await PersonStorage.savePerson(resolvedPerson);
-          upsertedPeople.push(resolvedPerson);
-
-          // Use entity callback to handle bulk sync mode
-          const { createEntityCallbacks } = await import(
-            '../sync/sync-integration.js'
-          );
-          const entityCallbacks = createEntityCallbacks(dispatch);
-          entityCallbacks.onPersonUpsert(resolvedPerson);
-        } else {
-          // Real conflict detected
-          const conflict: SyncConflict = {
-            id: `person-${serverPerson.id}-${Date.now()}`,
-            entityType: 'person',
-            entityId: serverPerson.id,
-            localVersion: localPerson,
-            serverVersion: personData,
-            conflictType: 'update_conflict',
-            timestamp: Date.now(),
-          };
-          conflicts.push(conflict);
-          console.log(`⚠️ [SYNC] Person conflict detected: ${serverPerson.id}`);
-        }
-      } else {
-        // No conflict, apply server data
-        await PersonStorage.savePerson(personData);
-        upsertedPeople.push(personData);
-
-        // Use entity callback to handle bulk sync mode
-        const { createEntityCallbacks } = await import(
-          '../sync/sync-integration.js'
-        );
-        const entityCallbacks = createEntityCallbacks(dispatch);
-        entityCallbacks.onPersonUpsert(personData);
-      }
-    }
-
-    // Store conflicts
-    if (conflicts.length > 0) {
-      dispatch(setSyncConflicts(conflicts));
-    }
-
-    return { people: upsertedPeople, conflicts };
-  }
-);
-
-export const pullItemsFromServer = createAsyncThunk(
-  'sync/pullItems',
-  async (
-    params: { tripIds: string[]; since?: string; userId: string },
-    { dispatch }
-  ) => {
-    console.log(
-      `🔄 [SYNC] Pulling items from server for ${params.tripIds.length} trips...`
-    );
-
-    if (!isSupabaseAvailable() || isLocalUser(params.userId)) {
-      console.log('🔄 [SYNC] Skipping items pull - offline mode or local user');
-      return { items: [], conflicts: [] };
-    }
-
-    if (params.tripIds.length === 0) {
-      console.log('🔄 [SYNC] No trips to pull items for');
-      return { items: [], conflicts: [] };
-    }
-
-    const since = params.since || new Date(0).toISOString();
-    const { data: items, error } = await supabase
-      .from('trip_items')
-      .select('*')
-      .in('trip_id', params.tripIds)
-      .gt('updated_at', since)
-      .eq('is_deleted', false) // Only fetch non-deleted items
-      .order('updated_at', { ascending: true });
-
-    if (error) {
-      console.error('❌ [SYNC] Error pulling items:', error);
-      throw new Error(`Failed to pull items: ${error.message}`);
-    }
-
-    console.log(`✅ [SYNC] Pulled ${items?.length || 0} items from server`);
-
-    const conflicts: SyncConflict[] = [];
-    const upsertedItems: TripItem[] = [];
-
-    for (const serverItem of items || []) {
-      const itemData: TripItem = {
-        id: serverItem.id,
-        tripId: serverItem.trip_id,
-        name: serverItem.name,
-        category: serverItem.category || undefined,
-        quantity: serverItem.quantity || 1,
-        notes: serverItem.notes || undefined,
-        personId:
-          serverItem.person_id !== null ? serverItem.person_id : undefined,
-        dayIndex:
-          serverItem.day_index !== null && serverItem.day_index !== undefined
-            ? serverItem.day_index
-            : undefined,
-        ruleId: serverItem.rule_id || undefined,
-        ruleHash: serverItem.rule_hash || undefined,
-        packed: serverItem.packed || false,
-        createdAt: serverItem.created_at || new Date().toISOString(),
-        updatedAt: serverItem.updated_at || new Date().toISOString(),
-        version: serverItem.version || 1,
-        isDeleted: serverItem.is_deleted || false,
-      };
-
-      // Check for conflicts by getting all items for the trip and finding this one
-      const existingItems = await ItemStorage.getTripItems(serverItem.trip_id);
-      const localItem = existingItems.find(
-        (i: TripItem) => i.id === serverItem.id
-      );
-
-      if (localItem && localItem.updatedAt !== itemData.updatedAt) {
-        // Check if this is a timestamp-only conflict
-        const resolvedItem = resolveTimestampOnlyConflict(localItem, itemData);
-
-        if (resolvedItem) {
-          // Auto-resolve timestamp-only conflict
-          await ItemStorage.saveItem(resolvedItem);
-          upsertedItems.push(resolvedItem);
-
-          // Use entity callback to handle bulk sync mode
-          const { createEntityCallbacks } = await import(
-            '../sync/sync-integration.js'
-          );
-          const entityCallbacks = createEntityCallbacks(dispatch);
-          entityCallbacks.onItemUpsert(resolvedItem);
-        } else {
-          // Real conflict detected
-          const conflict: SyncConflict = {
-            id: `item-${serverItem.id}-${Date.now()}`,
-            entityType: 'item',
-            entityId: serverItem.id,
-            localVersion: localItem,
-            serverVersion: itemData,
-            conflictType: 'update_conflict',
-            timestamp: Date.now(),
-          };
-          conflicts.push(conflict);
-          console.log(`⚠️ [SYNC] Item conflict detected: ${serverItem.id}`);
-        }
-      } else {
-        // No conflict, apply server data
-        await ItemStorage.saveItem(itemData);
-        upsertedItems.push(itemData);
-
-        // Use entity callback to handle bulk sync mode
-        const { createEntityCallbacks } = await import(
-          '../sync/sync-integration.js'
-        );
-        const entityCallbacks = createEntityCallbacks(dispatch);
-        entityCallbacks.onItemUpsert(itemData);
-      }
-    }
-
-    // Store conflicts
-    if (conflicts.length > 0) {
-      dispatch(setSyncConflicts(conflicts));
-    }
-
-    return { items: upsertedItems, conflicts };
-  }
-);
-
-export const pullDefaultItemRulesFromServer = createAsyncThunk(
-  'sync/pullDefaultItemRules',
-  async (
-    params: { tripIds: string[]; since?: string; userId: string },
-    { dispatch }
-  ) => {
-    console.log(
-      `🔄 [SYNC] Pulling default item rules from server for ${params.tripIds.length} trips...`
-    );
-
-    if (!isSupabaseAvailable() || isLocalUser(params.userId)) {
-      console.log('🔄 [SYNC] Skipping rules pull - offline mode or local user');
-      return { rules: [], conflicts: [] };
-    }
-
-    if (params.tripIds.length === 0) {
-      console.log('🔄 [SYNC] No trips to pull default item rules for');
-      return { rules: [], conflicts: [] };
-    }
-
-    const since = params.since || new Date(0).toISOString();
-
-    // Get rules that are associated with the trips via trip_default_item_rules
-    const { data: tripRuleAssociations, error: tripRulesError } = await supabase
-      .from('trip_default_item_rules')
-      .select('rule_id, trip_id')
-      .in('trip_id', params.tripIds)
-      .gt('updated_at', since)
-      .eq('is_deleted', false); // Only fetch non-deleted trip rule associations
-
-    if (tripRulesError) {
-      console.error(
-        '❌ [SYNC] Error pulling trip rule associations:',
-        tripRulesError
-      );
-      throw new Error(
-        `Failed to pull trip rule associations: ${tripRulesError.message}`
-      );
-    }
-
-    const ruleIds = [
-      ...new Set(tripRuleAssociations?.map((tr) => tr.rule_id) || []),
-    ];
-
-    if (ruleIds.length === 0) {
-      console.log('🔄 [SYNC] No rule associations found for trips');
-      return { rules: [], conflicts: [] };
-    }
-
-    // Now get the actual rules
-    const { data: rules, error } = await supabase
-      .from('default_item_rules')
-      .select('*')
-      .in('id', ruleIds)
-      .gt('updated_at', since)
-      .eq('is_deleted', false) // Only fetch non-deleted default item rules
-      .order('updated_at', { ascending: true });
-
-    if (error) {
-      console.error('❌ [SYNC] Error pulling default item rules:', error);
-      throw new Error(`Failed to pull default item rules: ${error.message}`);
-    }
-
-    console.log(
-      `✅ [SYNC] Pulled ${rules?.length || 0} default item rules from server`
-    );
-
-    const conflicts: SyncConflict[] = [];
-    const upsertedRules: DefaultItemRule[] = [];
-
-    // Create a map of rule IDs to trip IDs for efficient lookup
-    const ruleToTripsMap = new Map<string, string[]>();
-    for (const association of tripRuleAssociations || []) {
-      const tripIds = ruleToTripsMap.get(association.rule_id) || [];
-      tripIds.push(association.trip_id);
-      ruleToTripsMap.set(association.rule_id, tripIds);
-    }
-
-    for (const serverRule of rules || []) {
-      const ruleData: DefaultItemRule & {
-        updatedAt?: string;
-        createdAt?: string;
-        version?: number;
-        isDeleted?: boolean;
-      } = {
-        id: serverRule.id,
-        originalRuleId: serverRule.original_rule_id || serverRule.id,
-        name: serverRule.name,
-        calculation:
-          (serverRule.calculation as DefaultItemRule['calculation']) || {
-            type: 'fixed',
-            value: 1,
-          },
-        conditions:
-          (serverRule.conditions as DefaultItemRule['conditions']) || undefined,
-        notes: serverRule.notes || undefined,
-        categoryId: serverRule.category_id || undefined,
-        subcategoryId: serverRule.subcategory_id || undefined,
-        packIds:
-          (serverRule.pack_ids as DefaultItemRule['packIds']) || undefined,
-        updatedAt: serverRule.updated_at || new Date().toISOString(),
-        createdAt: serverRule.created_at || new Date().toISOString(),
-        version: serverRule.version || 1,
-        isDeleted: serverRule.is_deleted || false,
-      };
-
-      // Check for conflicts using available method
-      const localRule = await DefaultItemRulesStorage.getDefaultItemRule(
-        serverRule.id
-      );
-
-      if (
-        localRule &&
-        (localRule as DefaultItemRule & { updatedAt?: string }).updatedAt !==
-          ruleData.updatedAt
-      ) {
-        // Check if this is a timestamp-only conflict
-        const resolvedRule = resolveTimestampOnlyConflict(localRule, ruleData);
-
-        if (resolvedRule) {
-          // Auto-resolve timestamp-only conflict
-          await DefaultItemRulesStorage.saveDefaultItemRule(resolvedRule);
-          upsertedRules.push(resolvedRule);
-
-          // Use entity callback to handle bulk sync mode for each trip that uses this rule
-          const { createEntityCallbacks } = await import(
-            '../sync/sync-integration.js'
-          );
-          const entityCallbacks = createEntityCallbacks(dispatch);
-          const associatedTripIds = ruleToTripsMap.get(serverRule.id) || [];
-          for (const tripId of associatedTripIds) {
-            entityCallbacks.onDefaultItemRuleUpsert({
-              rule: resolvedRule,
-              tripId,
-            });
-          }
-        } else {
-          // Real conflict detected
-          const conflict: SyncConflict = {
-            id: `rule-${serverRule.id}-${Date.now()}`,
-            entityType: 'default_item_rule',
-            entityId: serverRule.id,
-            localVersion: localRule,
-            serverVersion: ruleData,
-            conflictType: 'update_conflict',
-            timestamp: Date.now(),
-          };
-          conflicts.push(conflict);
-          console.log(
-            `⚠️ [SYNC] Default item rule conflict detected: ${serverRule.id}`
-          );
-        }
-      } else {
-        // No conflict, apply server data
-        await DefaultItemRulesStorage.saveDefaultItemRule(ruleData);
-        upsertedRules.push(ruleData);
-
-        // Use entity callback to handle bulk sync mode for each trip that uses this rule
-        const { createEntityCallbacks } = await import(
-          '../sync/sync-integration.js'
-        );
-        const entityCallbacks = createEntityCallbacks(dispatch);
-        const associatedTripIds = ruleToTripsMap.get(serverRule.id) || [];
-        for (const tripId of associatedTripIds) {
-          entityCallbacks.onDefaultItemRuleUpsert({ rule: ruleData, tripId });
-        }
-      }
-    }
-
-    // Store conflicts
-    if (conflicts.length > 0) {
-      dispatch(setSyncConflicts(conflicts));
-    }
-
-    return { rules: upsertedRules, conflicts };
-  }
-);
-
-export const pullTripRulesFromServer = createAsyncThunk(
-  'sync/pullTripRules',
-  async (
-    params: { tripIds: string[]; since?: string; userId: string },
-    { dispatch }
-  ) => {
-    console.log(
-      `🔄 [SYNC] Pulling trip rules from server for ${params.tripIds.length} trips...`
-    );
-
-    if (!isSupabaseAvailable() || isLocalUser(params.userId)) {
-      console.log(
-        '🔄 [SYNC] Skipping trip rules pull - offline mode or local user'
-      );
-      return { tripRules: [], conflicts: [] };
-    }
-
-    if (params.tripIds.length === 0) {
-      console.log('🔄 [SYNC] No trips to pull trip rules for');
-      return { tripRules: [], conflicts: [] };
-    }
-
-    const since = params.since || new Date(0).toISOString();
-    const { data: tripRules, error } = await supabase
-      .from('trip_default_item_rules')
-      .select('*')
-      .in('trip_id', params.tripIds)
-      .gt('updated_at', since)
-      .eq('is_deleted', false) // Only fetch non-deleted trip rules
-      .order('updated_at', { ascending: true });
-
-    if (error) {
-      console.error('❌ [SYNC] Error pulling trip rules:', error);
-      throw new Error(`Failed to pull trip rules: ${error.message}`);
-    }
-
-    console.log(
-      `✅ [SYNC] Pulled ${tripRules?.length || 0} trip rules from server`
-    );
-
-    const conflicts: SyncConflict[] = [];
-    const upsertedTripRules: TripRule[] = [];
-
-    for (const serverTripRule of tripRules || []) {
-      const tripRuleData: TripRule = {
-        id: `${serverTripRule.trip_id}-${serverTripRule.rule_id}`,
-        tripId: serverTripRule.trip_id,
-        ruleId: serverTripRule.rule_id,
-        createdAt: serverTripRule.created_at || new Date().toISOString(),
-        updatedAt: serverTripRule.updated_at || new Date().toISOString(),
-        version: serverTripRule.version || 1,
-        isDeleted: serverTripRule.is_deleted || false,
-      };
-
-      // Check for conflicts using available method
-      const existingRules = await TripRuleStorage.getTripRules(
-        serverTripRule.trip_id
-      );
-      const localTripRule = existingRules.find(
-        (r) => r.ruleId === serverTripRule.rule_id
-      );
-
-      if (localTripRule && localTripRule.updatedAt !== tripRuleData.updatedAt) {
-        // Check if this is a timestamp-only conflict
-        const resolvedTripRule = resolveTimestampOnlyConflict(
-          localTripRule,
-          tripRuleData
-        );
-
-        if (resolvedTripRule) {
-          // Auto-resolve timestamp-only conflict
-          await TripRuleStorage.saveTripRule(resolvedTripRule);
-          upsertedTripRules.push(resolvedTripRule);
-
-          // Use entity callback to handle bulk sync mode
-          const { createEntityCallbacks } = await import(
-            '../sync/sync-integration.js'
-          );
-          const entityCallbacks = createEntityCallbacks(dispatch);
-          entityCallbacks.onTripRuleUpsert(resolvedTripRule);
-        } else {
-          // Real conflict detected
-          const conflict: SyncConflict = {
-            id: `trip-rule-${serverTripRule.trip_id}-${
-              serverTripRule.rule_id
-            }-${Date.now()}`,
-            entityType: 'trip_rule',
-            entityId: `${serverTripRule.trip_id}-${serverTripRule.rule_id}`,
-            localVersion: localTripRule,
-            serverVersion: tripRuleData,
-            conflictType: 'update_conflict',
-            timestamp: Date.now(),
-          };
-          conflicts.push(conflict);
-          console.log(
-            `⚠️ [SYNC] Trip rule conflict detected: ${serverTripRule.trip_id}-${serverTripRule.rule_id}`
-          );
-        }
-      } else {
-        // No conflict, apply server data
-        await TripRuleStorage.saveTripRule(tripRuleData);
-        upsertedTripRules.push(tripRuleData);
-
-        // Use entity callback to handle bulk sync mode
-        const { createEntityCallbacks } = await import(
-          '../sync/sync-integration.js'
-        );
-        const entityCallbacks = createEntityCallbacks(dispatch);
-        entityCallbacks.onTripRuleUpsert(tripRuleData);
-      }
-    }
-
-    // Store conflicts
-    if (conflicts.length > 0) {
-      dispatch(setSyncConflicts(conflicts));
-    }
-
-    return { tripRules: upsertedTripRules, conflicts };
-  }
-);
 
 // Main sync thunk that orchestrates all pulls
 export const syncFromServer = createAsyncThunk(
@@ -763,19 +265,16 @@ export const syncFromServer = createAsyncThunk(
       // Update sync status
       dispatch(setSyncSyncingStatus(true));
 
-      // First pull trips to get the trip IDs
-      const tripsResult = await dispatch(pullTripsFromServer(params));
-      const trips = (tripsResult.payload as { trips: Trip[] })?.trips || [];
-      const tripIds = trips.map((trip) => trip.id);
-
-      // Then pull people and items for those specific trips, along with rules
-      const [peopleResult, itemsResult, rulesResult, tripRulesResult] =
-        await Promise.all([
-          dispatch(pullPeopleFromServer({ ...params, tripIds })),
-          dispatch(pullItemsFromServer({ ...params, tripIds })),
-          dispatch(pullDefaultItemRulesFromServer({ ...params, tripIds })),
-          dispatch(pullTripRulesFromServer({ ...params, tripIds })),
-        ]);
+      // Pull all data in a single comprehensive query
+      const result = await dispatch(pullAllDataFromServer(params));
+      const { trips, people, items, rules, tripRules } = result.payload as {
+        trips: Trip[];
+        people: Person[];
+        items: TripItem[];
+        rules: DefaultItemRule[];
+        tripRules: TripRule[];
+        conflicts: SyncConflict[];
+      };
 
       // Update last sync timestamp
       dispatch(updateLastSyncTimestamp(Date.now()));
@@ -784,13 +283,10 @@ export const syncFromServer = createAsyncThunk(
 
       return {
         trips,
-        people: (peopleResult.payload as { people: Person[] })?.people || [],
-        items: (itemsResult.payload as { items: TripItem[] })?.items || [],
-        rules:
-          (rulesResult.payload as { rules: DefaultItemRule[] })?.rules || [],
-        tripRules:
-          (tripRulesResult.payload as { tripRules: TripRule[] })?.tripRules ||
-          [],
+        people,
+        items,
+        rules,
+        tripRules,
       };
     } catch (error) {
       console.error('❌ [SYNC] Comprehensive sync failed:', error);
@@ -804,7 +300,434 @@ export const syncFromServer = createAsyncThunk(
   }
 );
 
-// Push operations (called from middleware)
+// Comprehensive pull function that gets all data in one query
+export const pullAllDataFromServer = createAsyncThunk(
+  'sync/pullAllData',
+  async (params: { userId: string; since?: string }, { dispatch }) => {
+    console.log('🔄 [SYNC] Pulling all data from server in single query...');
+
+    if (!isSupabaseAvailable() || isLocalUser(params.userId)) {
+      console.log('🔄 [SYNC] Skipping pull - offline mode or local user');
+      return {
+        trips: [],
+        people: [],
+        items: [],
+        rules: [],
+        tripRules: [],
+        conflicts: [],
+      };
+    }
+
+    const since = params.since || new Date(0).toISOString();
+
+    // Single comprehensive query using PostgREST joins
+    const { data: tripsWithRelations, error } = await supabase
+      .from('trips')
+      .select(
+        `
+        *,
+        trip_people(*),
+        trip_items(*),
+        trip_default_item_rules(
+          *,
+          default_item_rules(*)
+        )
+      `
+      )
+      .eq('user_id', params.userId)
+      .gt('updated_at', since)
+      .eq('is_deleted', false)
+      .eq('trip_people.is_deleted', false)
+      .eq('trip_items.is_deleted', false)
+      .eq('trip_default_item_rules.is_deleted', false)
+      .eq('trip_default_item_rules.default_item_rules.is_deleted', false)
+      .order('updated_at', { ascending: true });
+
+    if (error) {
+      console.error('❌ [SYNC] Error pulling comprehensive data:', error);
+      throw new Error(`Failed to pull data: ${error.message}`);
+    }
+
+    console.log(
+      `✅ [SYNC] Pulled ${
+        tripsWithRelations?.length || 0
+      } trips with relations from server`
+    );
+
+    // Process the comprehensive data
+    const conflicts: SyncConflict[] = [];
+    const upsertedTrips: Trip[] = [];
+    const upsertedPeople: Person[] = [];
+    const upsertedItems: TripItem[] = [];
+    const upsertedRules: DefaultItemRule[] = [];
+    const upsertedTripRules: TripRule[] = [];
+
+    // Create maps to deduplicate rules that might appear in multiple trips
+    const processedRules = new Map<string, DefaultItemRule>();
+
+    for (const serverTripData of tripsWithRelations || []) {
+      // Process trip
+      const tripData: Trip = {
+        id: serverTripData.id,
+        userId: serverTripData.user_id,
+        title: serverTripData.title,
+        description: serverTripData.description || '',
+        days: (serverTripData.days as Trip['days']) || [],
+        tripEvents: (serverTripData.trip_events as Trip['tripEvents']) || [],
+        createdAt: serverTripData.created_at || new Date().toISOString(),
+        updatedAt: serverTripData.updated_at || new Date().toISOString(),
+        settings: (serverTripData.settings as Trip['settings']) || {
+          defaultTimeZone: 'UTC',
+          packingViewMode: 'by-day',
+        },
+        version: serverTripData.version || 1,
+        isDeleted: serverTripData.is_deleted || false,
+        defaultItemRules: [],
+      };
+
+      // Check for trip conflicts
+      const localTrip = await TripStorage.getTrip(serverTripData.id);
+      if (localTrip && localTrip.updatedAt !== tripData.updatedAt) {
+        const resolvedTrip = resolveTimestampOnlyConflict(localTrip, tripData);
+        if (resolvedTrip) {
+          await TripStorage.saveTrip(resolvedTrip);
+          upsertedTrips.push(resolvedTrip);
+
+          const { createEntityCallbacks } = await import(
+            '../sync/sync-integration.js'
+          );
+          const entityCallbacks = createEntityCallbacks(dispatch);
+          entityCallbacks.onTripUpsert(resolvedTrip);
+        } else {
+          conflicts.push({
+            id: `trip-${serverTripData.id}-${Date.now()}`,
+            entityType: 'trip',
+            entityId: serverTripData.id,
+            localVersion: localTrip,
+            serverVersion: tripData,
+            conflictType: 'update_conflict',
+            timestamp: Date.now(),
+          });
+        }
+      } else {
+        await TripStorage.saveTrip(tripData);
+        upsertedTrips.push(tripData);
+
+        const { createEntityCallbacks } = await import(
+          '../sync/sync-integration.js'
+        );
+        const entityCallbacks = createEntityCallbacks(dispatch);
+        entityCallbacks.onTripUpsert(tripData);
+      }
+
+      // Process people for this trip
+      if (serverTripData.trip_people) {
+        for (const serverPerson of serverTripData.trip_people) {
+          const personData: Person = {
+            id: serverPerson.id,
+            tripId: serverPerson.trip_id,
+            name: serverPerson.name,
+            age: serverPerson.age || undefined,
+            gender: (serverPerson.gender as Person['gender']) || undefined,
+            settings:
+              (serverPerson.settings as Person['settings']) || undefined,
+            createdAt: serverPerson.created_at || new Date().toISOString(),
+            updatedAt: serverPerson.updated_at || new Date().toISOString(),
+            version: serverPerson.version || 1,
+            isDeleted: serverPerson.is_deleted || false,
+          };
+
+          // Check for person conflicts
+          const existingPeople = await PersonStorage.getTripPeople(
+            serverPerson.trip_id
+          );
+          const localPerson = existingPeople.find(
+            (p: Person) => p.id === serverPerson.id
+          );
+
+          if (localPerson && localPerson.updatedAt !== personData.updatedAt) {
+            const resolvedPerson = resolveTimestampOnlyConflict(
+              localPerson,
+              personData
+            );
+            if (resolvedPerson) {
+              await PersonStorage.savePerson(resolvedPerson);
+              upsertedPeople.push(resolvedPerson);
+
+              const { createEntityCallbacks } = await import(
+                '../sync/sync-integration.js'
+              );
+              const entityCallbacks = createEntityCallbacks(dispatch);
+              entityCallbacks.onPersonUpsert(resolvedPerson);
+            } else {
+              conflicts.push({
+                id: `person-${serverPerson.id}-${Date.now()}`,
+                entityType: 'person',
+                entityId: serverPerson.id,
+                localVersion: localPerson,
+                serverVersion: personData,
+                conflictType: 'update_conflict',
+                timestamp: Date.now(),
+              });
+            }
+          } else {
+            await PersonStorage.savePerson(personData);
+            upsertedPeople.push(personData);
+
+            const { createEntityCallbacks } = await import(
+              '../sync/sync-integration.js'
+            );
+            const entityCallbacks = createEntityCallbacks(dispatch);
+            entityCallbacks.onPersonUpsert(personData);
+          }
+        }
+      }
+
+      // Process items for this trip
+      if (serverTripData.trip_items) {
+        for (const serverItem of serverTripData.trip_items) {
+          const itemData: TripItem = {
+            id: serverItem.id,
+            tripId: serverItem.trip_id,
+            name: serverItem.name,
+            category: serverItem.category || undefined,
+            quantity: serverItem.quantity || 1,
+            notes: serverItem.notes || undefined,
+            personId:
+              serverItem.person_id !== null ? serverItem.person_id : undefined,
+            dayIndex:
+              serverItem.day_index !== null &&
+              serverItem.day_index !== undefined
+                ? serverItem.day_index
+                : undefined,
+            ruleId: serverItem.rule_id || undefined,
+            ruleHash: serverItem.rule_hash || undefined,
+            packed: serverItem.packed || false,
+            createdAt: serverItem.created_at || new Date().toISOString(),
+            updatedAt: serverItem.updated_at || new Date().toISOString(),
+            version: serverItem.version || 1,
+            isDeleted: serverItem.is_deleted || false,
+          };
+
+          // Check for item conflicts
+          const existingItems = await ItemStorage.getTripItems(
+            serverItem.trip_id
+          );
+          const localItem = existingItems.find(
+            (i: TripItem) => i.id === serverItem.id
+          );
+
+          if (localItem && localItem.updatedAt !== itemData.updatedAt) {
+            const resolvedItem = resolveTimestampOnlyConflict(
+              localItem,
+              itemData
+            );
+            if (resolvedItem) {
+              await ItemStorage.saveItem(resolvedItem);
+              upsertedItems.push(resolvedItem);
+
+              const { createEntityCallbacks } = await import(
+                '../sync/sync-integration.js'
+              );
+              const entityCallbacks = createEntityCallbacks(dispatch);
+              entityCallbacks.onItemUpsert(resolvedItem);
+            } else {
+              conflicts.push({
+                id: `item-${serverItem.id}-${Date.now()}`,
+                entityType: 'item',
+                entityId: serverItem.id,
+                localVersion: localItem,
+                serverVersion: itemData,
+                conflictType: 'update_conflict',
+                timestamp: Date.now(),
+              });
+            }
+          } else {
+            await ItemStorage.saveItem(itemData);
+            upsertedItems.push(itemData);
+
+            const { createEntityCallbacks } = await import(
+              '../sync/sync-integration.js'
+            );
+            const entityCallbacks = createEntityCallbacks(dispatch);
+            entityCallbacks.onItemUpsert(itemData);
+          }
+        }
+      }
+
+      // Process trip rules and default item rules
+      if (serverTripData.trip_default_item_rules) {
+        for (const serverTripRule of serverTripData.trip_default_item_rules) {
+          // Process trip rule association
+          const tripRuleData: TripRule = {
+            id: `${serverTripRule.trip_id}-${serverTripRule.rule_id}`,
+            tripId: serverTripRule.trip_id,
+            ruleId: serverTripRule.rule_id,
+            createdAt: serverTripRule.created_at || new Date().toISOString(),
+            updatedAt: serverTripRule.updated_at || new Date().toISOString(),
+            version: serverTripRule.version || 1,
+            isDeleted: serverTripRule.is_deleted || false,
+          };
+
+          // Check for trip rule conflicts
+          const existingRules = await TripRuleStorage.getTripRules(
+            serverTripRule.trip_id
+          );
+          const localTripRule = existingRules.find(
+            (r) => r.ruleId === serverTripRule.rule_id
+          );
+
+          if (
+            localTripRule &&
+            localTripRule.updatedAt !== tripRuleData.updatedAt
+          ) {
+            const resolvedTripRule = resolveTimestampOnlyConflict(
+              localTripRule,
+              tripRuleData
+            );
+            if (resolvedTripRule) {
+              await TripRuleStorage.saveTripRule(resolvedTripRule);
+              upsertedTripRules.push(resolvedTripRule);
+
+              const { createEntityCallbacks } = await import(
+                '../sync/sync-integration.js'
+              );
+              const entityCallbacks = createEntityCallbacks(dispatch);
+              entityCallbacks.onTripRuleUpsert(resolvedTripRule);
+            } else {
+              conflicts.push({
+                id: `trip-rule-${serverTripRule.trip_id}-${
+                  serverTripRule.rule_id
+                }-${Date.now()}`,
+                entityType: 'trip_rule',
+                entityId: `${serverTripRule.trip_id}-${serverTripRule.rule_id}`,
+                localVersion: localTripRule,
+                serverVersion: tripRuleData,
+                conflictType: 'update_conflict',
+                timestamp: Date.now(),
+              });
+            }
+          } else {
+            await TripRuleStorage.saveTripRule(tripRuleData);
+            upsertedTripRules.push(tripRuleData);
+
+            const { createEntityCallbacks } = await import(
+              '../sync/sync-integration.js'
+            );
+            const entityCallbacks = createEntityCallbacks(dispatch);
+            entityCallbacks.onTripRuleUpsert(tripRuleData);
+          }
+
+          // Process the actual default item rule (deduplicated)
+          if (
+            serverTripRule.default_item_rules &&
+            !processedRules.has(serverTripRule.default_item_rules.id)
+          ) {
+            const serverRule = serverTripRule.default_item_rules;
+            const ruleData: DefaultItemRule & {
+              updatedAt?: string;
+              createdAt?: string;
+              version?: number;
+              isDeleted?: boolean;
+            } = {
+              id: serverRule.id,
+              originalRuleId: serverRule.original_rule_id || serverRule.id,
+              name: serverRule.name,
+              calculation:
+                serverRule.calculation as DefaultItemRule['calculation'],
+              conditions:
+                (serverRule.conditions as DefaultItemRule['conditions']) ||
+                undefined,
+              notes: serverRule.notes || undefined,
+              categoryId: serverRule.category_id || undefined,
+              subcategoryId: serverRule.subcategory_id || undefined,
+              packIds:
+                (serverRule.pack_ids as DefaultItemRule['packIds']) ||
+                undefined,
+              updatedAt: serverRule.updated_at || new Date().toISOString(),
+              createdAt: serverRule.created_at || new Date().toISOString(),
+              version: serverRule.version || 1,
+              isDeleted: serverRule.is_deleted || false,
+            };
+
+            // Check for rule conflicts
+            const localRule = await DefaultItemRulesStorage.getDefaultItemRule(
+              serverRule.id
+            );
+
+            if (
+              localRule &&
+              (localRule as DefaultItemRule & { updatedAt?: string })
+                .updatedAt !== ruleData.updatedAt
+            ) {
+              const resolvedRule = resolveTimestampOnlyConflict(
+                localRule,
+                ruleData
+              );
+              if (resolvedRule) {
+                await DefaultItemRulesStorage.saveDefaultItemRule(resolvedRule);
+                processedRules.set(serverRule.id, resolvedRule);
+                upsertedRules.push(resolvedRule);
+
+                const { createEntityCallbacks } = await import(
+                  '../sync/sync-integration.js'
+                );
+                const entityCallbacks = createEntityCallbacks(dispatch);
+                entityCallbacks.onDefaultItemRuleUpsert({
+                  rule: resolvedRule,
+                  tripId: serverTripRule.trip_id,
+                });
+              } else {
+                conflicts.push({
+                  id: `rule-${serverRule.id}-${Date.now()}`,
+                  entityType: 'default_item_rule',
+                  entityId: serverRule.id,
+                  localVersion: localRule,
+                  serverVersion: ruleData,
+                  conflictType: 'update_conflict',
+                  timestamp: Date.now(),
+                });
+              }
+            } else {
+              await DefaultItemRulesStorage.saveDefaultItemRule(ruleData);
+              processedRules.set(serverRule.id, ruleData);
+              upsertedRules.push(ruleData);
+
+              const { createEntityCallbacks } = await import(
+                '../sync/sync-integration.js'
+              );
+              const entityCallbacks = createEntityCallbacks(dispatch);
+              entityCallbacks.onDefaultItemRuleUpsert({
+                rule: ruleData,
+                tripId: serverTripRule.trip_id,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Store conflicts if any
+    if (conflicts.length > 0) {
+      dispatch(setSyncConflicts(conflicts));
+    }
+
+    console.log(
+      `✅ [SYNC] Processed comprehensive data: ${upsertedTrips.length} trips, ${upsertedPeople.length} people, ${upsertedItems.length} items, ${upsertedRules.length} rules, ${upsertedTripRules.length} trip rules`
+    );
+
+    return {
+      trips: upsertedTrips,
+      people: upsertedPeople,
+      items: upsertedItems,
+      rules: upsertedRules,
+      tripRules: upsertedTripRules,
+      conflicts,
+    };
+  }
+);
+
+// Push operations (called from middleware) - now with batching
 export const pushChangeToServer = async (change: Change): Promise<void> => {
   if (!isSupabaseAvailable() || isLocalUser(change.userId)) {
     console.log('🔄 [SYNC] Skipping push - offline mode or local user');
@@ -825,313 +748,286 @@ export const pushChangeToServer = async (change: Change): Promise<void> => {
   }
 
   console.log(
-    `🔄 [SYNC] Pushing change: ${change.operation} ${change.entityType}:${change.entityId}`
+    `🔄 [SYNC] Batching change: ${change.operation} ${change.entityType}:${change.entityId}`
   );
 
-  try {
-    switch (change.entityType) {
-      case 'trip':
-        await pushTripChange(change);
-        break;
-      case 'person':
-        await pushPersonChange(change);
-        break;
-      case 'item':
-        await pushItemChange(change);
-        break;
-      case 'default_item_rule':
-        await pushDefaultItemRuleChange(change);
-        break;
-      case 'trip_rule':
-        await pushTripRuleChange(change);
-        break;
-      case 'rule_pack':
-        // Rule packs are not synced to server - they're local only
-        console.log(
-          `🔄 [SYNC] Skipping rule pack sync (local only): ${change.entityId}`
-        );
-        break;
-      default:
-        console.warn(`🔄 [SYNC] Unknown entity type: ${change.entityType}`);
+  return new Promise<void>((resolve, reject) => {
+    const entityType = change.entityType as keyof BatchManager;
+
+    // Add change to batch
+    batchManager[entityType].push({
+      change,
+      resolve,
+      reject,
+    });
+
+    // Clear existing timeout for this entity type
+    if (batchTimeouts[entityType]) {
+      clearTimeout(batchTimeouts[entityType]);
     }
 
-    console.log(
-      `✅ [SYNC] Successfully pushed change: ${change.entityType}:${change.entityId}`
-    );
-  } catch (error) {
-    console.error(
-      `❌ [SYNC] Failed to push change: ${change.entityType}:${change.entityId}`,
-      error
-    );
-    throw error;
-  }
+    // Set new timeout to process batch
+    batchTimeouts[entityType] = setTimeout(() => {
+      processBatch(entityType).catch((error) => {
+        console.error(
+          `❌ [SYNC] Batch processing failed for ${entityType}:`,
+          error
+        );
+      });
+    }, BATCH_DEBOUNCE_MS);
+  });
 };
 
-// Individual push functions
-async function pushTripChange(change: Change): Promise<void> {
-  const tripData = change.data as Trip;
+// Batch push functions for bulk operations
+async function pushTripChangesBatch(
+  changes: Change[],
+  operation: 'create' | 'update' | 'delete'
+): Promise<void> {
+  if (changes.length === 0) return;
 
-  if (change.operation === 'delete') {
-    await supabase
+  console.log(`📦 [SYNC] Pushing ${changes.length} trip ${operation} changes`);
+
+  if (operation === 'delete') {
+    const entityIds = changes.map((c) => c.entityId);
+    const { error } = await supabase
       .from('trips')
       .update({ is_deleted: true, updated_at: new Date().toISOString() })
-      .eq('id', change.entityId);
+      .in('id', entityIds);
+
+    if (error) {
+      throw new Error(`Failed to batch delete trips: ${error.message}`);
+    }
   } else {
-    await supabase.from('trips').upsert({
-      id: tripData.id,
-      user_id: tripData.userId,
-      title: tripData.title,
-      description: tripData.description,
-      days: tripData.days as Json,
-      trip_events: tripData.tripEvents as Json,
-      settings: tripData.settings as Json,
-      version: tripData.version,
-      is_deleted: tripData.isDeleted || false,
-      created_at: tripData.createdAt,
-      updated_at: tripData.updatedAt,
+    const tripData = changes.map((change) => {
+      const trip = change.data as Trip;
+      return {
+        id: trip.id,
+        user_id: trip.userId,
+        title: trip.title,
+        description: trip.description,
+        days: trip.days as Json,
+        trip_events: trip.tripEvents as Json,
+        settings: trip.settings as Json,
+        version: trip.version,
+        is_deleted: trip.isDeleted || false,
+        created_at: trip.createdAt,
+        updated_at: trip.updatedAt,
+      };
     });
+
+    const { error } = await supabase.from('trips').upsert(tripData);
+
+    if (error) {
+      throw new Error(`Failed to batch upsert trips: ${error.message}`);
+    }
   }
 }
 
-async function pushPersonChange(change: Change): Promise<void> {
-  const personData = change.data as Person;
+async function pushPersonChangesBatch(
+  changes: Change[],
+  operation: 'create' | 'update' | 'delete'
+): Promise<void> {
+  if (changes.length === 0) return;
 
-  if (change.operation === 'delete') {
+  console.log(
+    `📦 [SYNC] Pushing ${changes.length} person ${operation} changes`
+  );
+
+  if (operation === 'delete') {
+    const entityIds = changes.map((c) => c.entityId);
     const { error } = await supabase
       .from('trip_people')
       .update({ is_deleted: true, updated_at: new Date().toISOString() })
-      .eq('id', change.entityId);
+      .in('id', entityIds);
 
     if (error) {
-      console.error('❌ [SYNC] Error deleting person:', error);
-      throw new Error(`Failed to delete person: ${error.message}`);
+      throw new Error(`Failed to batch delete people: ${error.message}`);
     }
   } else {
-    const { error } = await supabase.from('trip_people').upsert({
-      id: personData.id,
-      trip_id: personData.tripId,
-      name: personData.name,
-      age: personData.age,
-      gender: personData.gender,
-      settings: personData.settings as Json,
-      version: personData.version,
-      is_deleted: personData.isDeleted || false,
-      created_at: personData.createdAt,
-      updated_at: personData.updatedAt,
+    const peopleData = changes.map((change) => {
+      const person = change.data as Person;
+      return {
+        id: person.id,
+        trip_id: person.tripId,
+        name: person.name,
+        age: person.age,
+        gender: person.gender,
+        settings: person.settings as Json,
+        version: person.version,
+        is_deleted: person.isDeleted || false,
+        created_at: person.createdAt,
+        updated_at: person.updatedAt,
+      };
     });
 
+    const { error } = await supabase.from('trip_people').upsert(peopleData);
+
     if (error) {
-      console.error('❌ [SYNC] Error upserting person:', error);
-      console.error('❌ [SYNC] Person data:', personData);
-
-      // Check if this is an RLS policy violation
-      if (
-        error.message.includes('policy') ||
-        error.message.includes('permission')
-      ) {
-        // Try to verify trip ownership
-        const { data: tripData, error: tripError } = await supabase
-          .from('trips')
-          .select('user_id')
-          .eq('id', personData.tripId)
-          .single();
-
-        console.error('❌ [SYNC] Trip ownership check:', {
-          tripData,
-          tripError,
-          tripOwner: tripData?.user_id,
-        });
-      }
-
-      throw new Error(`Failed to upsert person: ${error.message}`);
+      throw new Error(`Failed to batch upsert people: ${error.message}`);
     }
   }
-
-  console.log('✅ [SYNC] Person change pushed successfully:', personData.id);
 }
 
-async function pushItemChange(change: Change): Promise<void> {
-  const itemData = change.data as TripItem;
+async function pushItemChangesBatch(
+  changes: Change[],
+  operation: 'create' | 'update' | 'delete'
+): Promise<void> {
+  if (changes.length === 0) return;
 
-  if (change.operation === 'delete') {
+  console.log(`📦 [SYNC] Pushing ${changes.length} item ${operation} changes`);
+
+  if (operation === 'delete') {
+    const entityIds = changes.map((c) => c.entityId);
     const { error } = await supabase
       .from('trip_items')
       .update({ is_deleted: true, updated_at: new Date().toISOString() })
-      .eq('id', change.entityId);
+      .in('id', entityIds);
 
     if (error) {
-      console.error('❌ [SYNC] Error deleting item:', error);
-      throw new Error(`Failed to delete item: ${error.message}`);
+      throw new Error(`Failed to batch delete items: ${error.message}`);
     }
   } else {
-    // Handle packing status changes (minimal data) vs full item updates
-    const isPackingStatusChange = '_packingStatusOnly' in itemData;
-
-    if (isPackingStatusChange) {
-      // For packing status changes, we need to ensure the item exists first
-      // Use UPSERT to create the item if it doesn't exist, or update if it does
-      const tripId = itemData.tripId || change.tripId;
+    const itemsData = changes.map((change) => {
+      const item = change.data as TripItem;
+      const tripId = item.tripId || change.tripId;
       if (!tripId) {
-        throw new Error('No tripId available for packing status change');
+        throw new Error(`No tripId available for item ${item.id}`);
       }
 
-      // Get the full item data from the change data or construct minimal item
-      const fullItemData = {
-        id: change.entityId,
+      return {
+        id: item.id,
         trip_id: tripId,
-        name: itemData.name || 'Unknown Item',
-        category: itemData.category,
-        quantity: itemData.quantity || 1,
-        notes: itemData.notes,
-        person_id: itemData.personId !== undefined ? itemData.personId : null,
-        day_index: itemData.dayIndex !== undefined ? itemData.dayIndex : null,
-        rule_id: itemData.ruleId,
-        rule_hash: itemData.ruleHash,
-        packed: itemData.packed,
-        version: itemData.version || 1,
-        is_deleted: false,
-        created_at: itemData.createdAt || new Date().toISOString(),
-        updated_at: itemData.updatedAt || new Date().toISOString(),
+        name: item.name,
+        category: item.category,
+        quantity: item.quantity,
+        notes: item.notes,
+        person_id: item.personId !== undefined ? item.personId : null,
+        day_index: item.dayIndex !== undefined ? item.dayIndex : null,
+        rule_id: item.ruleId,
+        rule_hash: item.ruleHash,
+        packed: item.packed,
+        version: item.version,
+        is_deleted: item.isDeleted || false,
+        created_at: item.createdAt,
+        updated_at: item.updatedAt,
       };
+    });
 
-      const { error } = await supabase.from('trip_items').upsert(fullItemData);
+    const { error } = await supabase.from('trip_items').upsert(itemsData);
 
-      if (error) {
-        console.error(
-          '❌ [SYNC] Error upserting item for packing status:',
-          error
-        );
-        console.error('❌ [SYNC] Item data:', itemData);
-        console.error('❌ [SYNC] Change tripId:', change.tripId);
-
-        // Check if this is an RLS policy violation
-        if (
-          (error.message.includes('policy') ||
-            error.message.includes('permission')) &&
-          change.tripId
-        ) {
-          // Try to verify trip ownership using change.tripId
-          const { data: tripData, error: tripError } = await supabase
-            .from('trips')
-            .select('user_id')
-            .eq('id', change.tripId)
-            .single();
-
-          console.error('❌ [SYNC] Trip ownership check:', {
-            tripData,
-            tripError,
-            tripOwner: tripData?.user_id,
-          });
-        }
-
-        throw new Error(
-          `Failed to upsert item for packing status: ${error.message}`
-        );
-      }
-    } else {
-      // Full item upsert - ensure we have a tripId
-      const tripId = itemData.tripId || change.tripId;
-      if (!tripId) {
-        throw new Error('No tripId available for item upsert');
-      }
-
-      const { error } = await supabase.from('trip_items').upsert({
-        id: itemData.id,
-        trip_id: tripId,
-        name: itemData.name,
-        category: itemData.category,
-        quantity: itemData.quantity,
-        notes: itemData.notes,
-        person_id: itemData.personId !== undefined ? itemData.personId : null,
-        day_index: itemData.dayIndex !== undefined ? itemData.dayIndex : null,
-        rule_id: itemData.ruleId,
-        rule_hash: itemData.ruleHash,
-        packed: itemData.packed,
-        version: itemData.version,
-        is_deleted: itemData.isDeleted || false,
-        created_at: itemData.createdAt,
-        updated_at: itemData.updatedAt,
-      });
-
-      if (error) {
-        console.error('❌ [SYNC] Error upserting item:', error);
-        console.error('❌ [SYNC] Item data:', itemData);
-
-        // Check if this is an RLS policy violation
-        if (
-          error.message.includes('policy') ||
-          error.message.includes('permission')
-        ) {
-          // Try to verify trip ownership
-          const { data: tripData, error: tripError } = await supabase
-            .from('trips')
-            .select('user_id')
-            .eq('id', tripId)
-            .single();
-
-          console.error('❌ [SYNC] Trip ownership check:', {
-            tripData,
-            tripError,
-            tripOwner: tripData?.user_id,
-          });
-        }
-
-        throw new Error(`Failed to upsert item: ${error.message}`);
-      }
+    if (error) {
+      throw new Error(`Failed to batch upsert items: ${error.message}`);
     }
   }
-
-  console.log('✅ [SYNC] Item change pushed successfully:', change.entityId);
 }
 
-async function pushDefaultItemRuleChange(change: Change): Promise<void> {
-  const ruleData = change.data as DefaultItemRule;
+async function pushDefaultItemRuleChangesBatch(
+  changes: Change[],
+  operation: 'create' | 'update' | 'delete'
+): Promise<void> {
+  if (changes.length === 0) return;
 
-  if (change.operation === 'delete') {
-    await supabase
+  console.log(
+    `📦 [SYNC] Pushing ${changes.length} default item rule ${operation} changes`
+  );
+
+  if (operation === 'delete') {
+    const entityIds = changes.map((c) => c.entityId);
+    const { error } = await supabase
       .from('default_item_rules')
       .update({ is_deleted: true, updated_at: new Date().toISOString() })
-      .eq('id', change.entityId);
+      .in('id', entityIds);
+
+    if (error) {
+      throw new Error(
+        `Failed to batch delete default item rules: ${error.message}`
+      );
+    }
   } else {
-    await supabase.from('default_item_rules').upsert({
-      id: ruleData.id, // Primary key
-      rule_id: ruleData.id, // User-defined identifier
-      original_rule_id: ruleData.originalRuleId,
-      name: ruleData.name,
-      calculation: ruleData.calculation as Json,
-      conditions: ruleData.conditions as Json,
-      notes: ruleData.notes,
-      category_id: ruleData.categoryId,
-      subcategory_id: ruleData.subcategoryId,
-      pack_ids: ruleData.packIds as Json,
-      user_id: change.userId,
-      version: 1,
-      is_deleted: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    const rulesData = changes.map((change) => {
+      const rule = change.data as DefaultItemRule;
+      return {
+        id: rule.id,
+        rule_id: rule.id,
+        original_rule_id: rule.originalRuleId,
+        name: rule.name,
+        calculation: rule.calculation as Json,
+        conditions: rule.conditions as Json,
+        notes: rule.notes,
+        category_id: rule.categoryId,
+        subcategory_id: rule.subcategoryId,
+        pack_ids: rule.packIds as Json,
+        user_id: change.userId,
+        version: 1,
+        is_deleted: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
     });
+
+    const { error } = await supabase
+      .from('default_item_rules')
+      .upsert(rulesData);
+
+    if (error) {
+      throw new Error(
+        `Failed to batch upsert default item rules: ${error.message}`
+      );
+    }
   }
 }
 
-async function pushTripRuleChange(change: Change): Promise<void> {
-  const tripRuleData = change.data as TripRule;
+async function pushTripRuleChangesBatch(
+  changes: Change[],
+  operation: 'create' | 'update' | 'delete'
+): Promise<void> {
+  if (changes.length === 0) return;
 
-  if (change.operation === 'delete') {
-    await supabase
-      .from('trip_default_item_rules')
-      .update({ is_deleted: true, updated_at: new Date().toISOString() })
-      .eq('trip_id', tripRuleData.tripId)
-      .eq('rule_id', tripRuleData.ruleId);
-  } else {
-    await supabase.from('trip_default_item_rules').upsert({
-      trip_id: tripRuleData.tripId,
-      rule_id: tripRuleData.ruleId,
-      user_id: change.userId,
-      version: tripRuleData.version,
-      is_deleted: tripRuleData.isDeleted || false,
-      created_at: tripRuleData.createdAt,
-      updated_at: tripRuleData.updatedAt,
+  console.log(
+    `📦 [SYNC] Pushing ${changes.length} trip rule ${operation} changes`
+  );
+
+  if (operation === 'delete') {
+    const deletePromises = changes.map((change) => {
+      const tripRule = change.data as TripRule;
+      return supabase
+        .from('trip_default_item_rules')
+        .update({ is_deleted: true, updated_at: new Date().toISOString() })
+        .eq('trip_id', tripRule.tripId)
+        .eq('rule_id', tripRule.ruleId);
     });
+
+    const results = await Promise.all(deletePromises);
+    const errors = results.filter((r) => r.error);
+
+    if (errors.length > 0) {
+      throw new Error(
+        `Failed to batch delete trip rules: ${errors
+          .map((e) => e.error?.message)
+          .join(', ')}`
+      );
+    }
+  } else {
+    const tripRulesData = changes.map((change) => {
+      const tripRule = change.data as TripRule;
+      return {
+        trip_id: tripRule.tripId,
+        rule_id: tripRule.ruleId,
+        user_id: change.userId,
+        version: tripRule.version,
+        is_deleted: tripRule.isDeleted || false,
+        created_at: tripRule.createdAt,
+        updated_at: tripRule.updatedAt,
+      };
+    });
+
+    const { error } = await supabase
+      .from('trip_default_item_rules')
+      .upsert(tripRulesData);
+
+    if (error) {
+      throw new Error(`Failed to batch upsert trip rules: ${error.message}`);
+    }
   }
 }
 
@@ -1219,3 +1115,125 @@ export const trackSyncChange = (
   type: 'TRACK_SYNC_CHANGE',
   payload,
 });
+
+/**
+ * Properly resolve a sync conflict by applying the chosen data to both Redux and IndexedDB
+ */
+export const resolveConflict = createAsyncThunk(
+  'sync/resolveConflict',
+  async (
+    params: {
+      conflictId: string;
+      strategy: 'local' | 'server' | 'manual';
+      manualData?: unknown;
+      conflict: SyncConflict;
+    },
+    { dispatch }
+  ) => {
+    const { conflictId, strategy, manualData, conflict } = params;
+
+    console.log(
+      `🔧 [RESOLVE_CONFLICT] Resolving conflict ${conflictId} with strategy: ${strategy}`
+    );
+
+    try {
+      let dataToApply: unknown;
+
+      // Determine what data to apply based on strategy
+      switch (strategy) {
+        case 'local':
+          // Keep local version - no need to update anything, just remove conflict
+          dataToApply = conflict.localVersion;
+          break;
+        case 'server':
+          // Apply server version
+          dataToApply = conflict.serverVersion;
+          break;
+        case 'manual':
+          // Apply manually merged data
+          dataToApply = manualData || conflict.serverVersion;
+          break;
+        default:
+          throw new Error(`Unknown resolution strategy: ${strategy}`);
+      }
+
+      // For non-local strategies, we need to apply the data to Redux and IndexedDB
+      if (strategy !== 'local') {
+        console.log(
+          `🔧 [RESOLVE_CONFLICT] Applying ${strategy} data for ${conflict.entityType}:${conflict.entityId}`
+        );
+
+        // Apply data based on entity type
+        switch (conflict.entityType) {
+          case 'trip': {
+            const tripData = dataToApply as Trip;
+            await TripStorage.saveTrip(tripData);
+            dispatch(mergeSyncedTrip(tripData));
+            console.log(
+              `✅ [RESOLVE_CONFLICT] Applied trip data to IndexedDB and Redux`
+            );
+            break;
+          }
+
+          case 'person': {
+            const personData = dataToApply as Person;
+            await PersonStorage.savePerson(personData);
+            dispatch(mergeSyncedPerson(personData));
+            console.log(
+              `✅ [RESOLVE_CONFLICT] Applied person data to IndexedDB and Redux`
+            );
+            break;
+          }
+
+          case 'item': {
+            const itemData = dataToApply as TripItem;
+            await ItemStorage.saveItem(itemData);
+            dispatch(mergeSyncedItem(itemData));
+            console.log(
+              `✅ [RESOLVE_CONFLICT] Applied item data to IndexedDB and Redux`
+            );
+            break;
+          }
+
+          case 'default_item_rule': {
+            const ruleData = dataToApply as DefaultItemRule;
+            await DefaultItemRulesStorage.saveDefaultItemRule(ruleData);
+            // Rules don't have a direct merge action, they're handled by recalculation
+            console.log(`✅ [RESOLVE_CONFLICT] Applied rule data to IndexedDB`);
+            break;
+          }
+
+          case 'trip_rule': {
+            const tripRuleData = dataToApply as TripRule;
+            await TripRuleStorage.saveTripRule(tripRuleData);
+            // Trip rules don't have a direct merge action, they're handled by recalculation
+            console.log(
+              `✅ [RESOLVE_CONFLICT] Applied trip rule data to IndexedDB`
+            );
+            break;
+          }
+
+          default:
+            console.warn(
+              `🔧 [RESOLVE_CONFLICT] Unknown entity type: ${conflict.entityType}`
+            );
+        }
+      }
+
+      // Remove the conflict from Redux state
+      dispatch(removeSyncConflict(conflictId));
+
+      console.log(
+        `✅ [RESOLVE_CONFLICT] Successfully resolved conflict ${conflictId}`
+      );
+
+      return { conflictId, strategy, applied: strategy !== 'local' };
+    } catch (error) {
+      console.error(
+        `❌ [RESOLVE_CONFLICT] Failed to resolve conflict ${conflictId}:`,
+        error
+      );
+      throw error;
+    }
+  }
+);

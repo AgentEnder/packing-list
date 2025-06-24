@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useAppSelector } from '@packing-list/state';
 import { navigate } from 'vike/client/router';
+import { applyBaseUrl } from '@packing-list/shared-utils';
 
 export const useConflictBanner = () => {
   // Use try-catch to handle potential context errors during initialization
@@ -34,7 +35,9 @@ export const useConflictBanner = () => {
 
   const handleViewConflicts = useCallback(() => {
     // Navigate to settings page with sync dashboard tab
-    navigate('/settings#sync');
+    navigate(
+      applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/settings#sync')
+    );
   }, []);
 
   const handleDismiss = useCallback(() => {

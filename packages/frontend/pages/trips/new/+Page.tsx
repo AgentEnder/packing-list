@@ -16,7 +16,7 @@ import {
   Check,
 } from 'lucide-react';
 import { navigate } from 'vike/client/router';
-import { uuid } from '@packing-list/shared-utils';
+import { applyBaseUrl, uuid } from '@packing-list/shared-utils';
 
 // Trip templates
 const TRIP_TEMPLATES = [
@@ -194,7 +194,12 @@ export default function NewTripPage() {
       dispatch({ type: 'RESET_WIZARD' });
 
       // Navigate to full-page wizard
-      await navigate(`/trips/${tripId}/wizard`);
+      await navigate(
+        applyBaseUrl(
+          import.meta.env.PUBLIC_ENV__BASE_URL,
+          `/trips/${tripId}/wizard`
+        )
+      );
     }
   };
 
@@ -222,7 +227,7 @@ export default function NewTripPage() {
       dispatch(actions.triggerConfettiBurst(source));
 
       // Navigate to the new trip
-      await navigate('/');
+      await navigate(applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/'));
     } catch (error) {
       console.error('Failed to create trip:', error);
     } finally {

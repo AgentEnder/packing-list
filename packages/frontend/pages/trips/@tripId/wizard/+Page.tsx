@@ -6,7 +6,7 @@ import type { TripEvent } from '@packing-list/model';
 import { PageContainer } from '../../../../components/PageContainer';
 import { PageHeader } from '../../../../components/PageHeader';
 import { TripWizard } from '../../../days/TripWizard';
-import { useMousePosition } from '@packing-list/shared-utils';
+import { applyBaseUrl, useMousePosition } from '@packing-list/shared-utils';
 
 export default function TripWizardPage() {
   const pageContext = usePageContext();
@@ -21,7 +21,7 @@ export default function TripWizardPage() {
   // If trip not found, redirect to trips list
   useEffect(() => {
     if (!tripData) {
-      navigate('/trips');
+      navigate(applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/trips'));
     }
   }, [tripData]);
 
@@ -42,17 +42,21 @@ export default function TripWizardPage() {
       dispatch(actions.advanceFlow());
       const nextStep = flow.steps[flow.current + 1];
       if (nextStep) {
-        navigate(nextStep.path);
+        navigate(
+          applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, nextStep.path)
+        );
       } else {
-        navigate('/people');
+        navigate(applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/people'));
       }
     } else {
-      navigate(`/trips/${tripId}`);
+      navigate(
+        applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, `/trips/${tripId}`)
+      );
     }
   };
 
   const handleClose = () => {
-    navigate('/trips');
+    navigate(applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/trips'));
   };
 
   return (

@@ -34,4 +34,8 @@ describe('apply-base-url', () => {
   it('should handle empty base url', () => {
     expect(applyBaseUrl('', '/test')).toBe('/test');
   });
+
+  it('should handle navigation to root', () => {
+    expect(applyBaseUrl('/packing-list/', '/')).toBe('/packing-list/');
+  });
 });

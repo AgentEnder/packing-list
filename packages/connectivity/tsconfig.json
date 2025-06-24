@@ -15,7 +15,8 @@
       "@testing-library/jest-dom"
     ]
   },
-  "include": ["src/**/*"],
+  "files": [],
+  "include": [],
   "references": [
     {
       "path": "../shared-utils"
