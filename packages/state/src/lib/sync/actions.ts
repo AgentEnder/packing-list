@@ -547,6 +547,7 @@ export const pullAllDataFromServer = createAsyncThunk(
             gender: (serverPerson.gender as Person['gender']) || undefined,
             settings:
               (serverPerson.settings as Person['settings']) || undefined,
+            userPersonId: serverPerson.user_person_id || undefined, // Sprint 2: Support userPersonId
             createdAt: serverPerson.created_at || new Date().toISOString(),
             updatedAt: serverPerson.updated_at || new Date().toISOString(),
             version: serverPerson.version || 1,
@@ -967,6 +968,7 @@ async function pushPersonChangesBatch(
         age: person.age,
         gender: person.gender,
         settings: person.settings as Json,
+        user_person_id: person.userPersonId || null, // Sprint 2: Include userPersonId
         version: person.version,
         is_deleted: person.isDeleted || false,
         created_at: person.createdAt,

@@ -2,6 +2,7 @@ import { StoreType, TripData } from '../store.js';
 import { Trip, TripSummary } from '@packing-list/model';
 import { uuid } from '@packing-list/shared-utils';
 import { createEmptyTripData, initialState } from '../store.js';
+import { createPersonFromProfileHandler } from './create-person-from-profile.js';
 
 // Action types
 export interface CreateTripAction {
@@ -120,9 +121,8 @@ export function createTripHandler(
     title: tripModel.title,
   });
 
-  // Persist trip asynchronously
-
-  return {
+  // Create the initial state with the new trip
+  let stateWithNewTrip: StoreType = {
     ...state,
     trips: {
       ...state.trips,
@@ -138,6 +138,34 @@ export function createTripHandler(
         ? initialState.sync
         : state.sync,
   };
+
+  // Sprint 2: Auto-add user profile to new trips
+  const userProfile = state.userProfile?.profile;
+  if (userProfile && userProfile.isUserProfile) {
+    console.log(
+      `👤 [CREATE_TRIP] Auto-adding user profile to trip: ${userProfile.name}`
+    );
+
+    // Use the createPersonFromProfileHandler to add the profile
+    stateWithNewTrip = createPersonFromProfileHandler(stateWithNewTrip, {
+      type: 'CREATE_PERSON_FROM_PROFILE',
+      payload: {
+        userPersonId: userProfile.id,
+        userPerson: userProfile,
+        tripId,
+      },
+    });
+
+    console.log(
+      `✅ [CREATE_TRIP] Successfully auto-added user profile to trip`
+    );
+  } else {
+    console.log(
+      `📋 [CREATE_TRIP] No user profile found for auto-add. User will need to add manually or create profile.`
+    );
+  }
+
+  return stateWithNewTrip;
 }
 
 export function selectTripHandler(

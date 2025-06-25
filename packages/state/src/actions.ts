@@ -117,6 +117,11 @@ import {
   UpdateTripSummaryAction,
 } from './action-handlers/trip-management.js';
 import {
+  createPersonFromProfileHandler,
+  CreatePersonFromProfileAction,
+  createPersonFromProfile,
+} from './action-handlers/create-person-from-profile.js';
+import {
   InitFlowAction,
   AdvanceFlowAction,
   ResetFlowAction,
@@ -184,6 +189,7 @@ export type AllActions =
   | AddPersonAction
   | RemovePersonAction
   | UpdatePersonAction
+  | CreatePersonFromProfileAction
   | CalculateDefaultItemsAction
   | UpdateTripEventsAction
   | CalculateDaysAction
@@ -242,6 +248,7 @@ export const Mutations: {
   ADD_PERSON: addPersonHandler,
   REMOVE_PERSON: removePersonHandler,
   UPDATE_PERSON: updatePersonHandler,
+  CREATE_PERSON_FROM_PROFILE: createPersonFromProfileHandler,
   CALCULATE_DEFAULT_ITEMS: calculateDefaultItems,
   UPDATE_TRIP_EVENTS: updateTripEventsHandler,
   CALCULATE_DAYS: calculateDaysHandler,
@@ -353,6 +360,7 @@ export const actions = {
   addPerson,
   createTrip,
   createItemRule,
+  createPersonFromProfile,
 
   // Sync actions and thunks
   syncFromServer,

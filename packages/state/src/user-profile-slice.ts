@@ -3,6 +3,7 @@
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { UserPerson } from '@packing-list/model';
+import { HydrateOfflineAction } from './action-handlers/hydrate-offline.js';
 
 // State interface for user profile management (Sprint 1)
 interface UserProfileState {
@@ -72,6 +73,15 @@ const userProfileSlice = createSlice({
   extraReducers: (builder) => {
     // Handle sync actions that update user profile
     builder
+      .addCase('HYDRATE_OFFLINE', (state, action: HydrateOfflineAction) => {
+        const { userProfile } = action.payload;
+        if (userProfile) {
+          state.profile = userProfile.profile;
+          state.hasTriedToLoad = true;
+          state.error = null;
+          state.isLoading = false;
+        }
+      })
       .addCase(
         'BULK_UPSERT_SYNCED_ENTITIES',
         (

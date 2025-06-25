@@ -38,6 +38,26 @@ vi.mock('@packing-list/shared-components', () => ({
   ),
   OfflineBanner: () => <div data-testid="offline-banner">Offline Banner</div>,
   useBannerHeight: () => 0,
+  Link: ({
+    href,
+    children,
+    onClick,
+    className,
+  }: {
+    href?: string;
+    children: React.ReactNode;
+    onClick?: () => void;
+    className?: string;
+  }) => (
+    <a
+      href={href}
+      onClick={onClick}
+      className={className}
+      data-testid={`link-${href || 'no-href'}`}
+    >
+      {children}
+    </a>
+  ),
 }));
 
 vi.mock('../components/Link', () => ({
