@@ -3,6 +3,7 @@ import {
   PersonStorage,
   ItemStorage,
   TripRuleStorage,
+  UserPersonStorage,
 } from '@packing-list/offline-storage';
 import type {
   TripItem,
@@ -53,6 +54,12 @@ export async function loadOfflineState(
 
   const base: Omit<StoreType, 'auth' | 'rulePacks' | 'ui' | 'sync'> = {
     trips: { summaries: [], selectedTripId: null, byId: {} },
+    userProfile: {
+      profile: null,
+      isLoading: false,
+      error: null,
+      hasTriedToLoad: true,
+    },
   };
 
   // Validate userId before proceeding
@@ -68,6 +75,20 @@ export async function loadOfflineState(
   );
 
   try {
+    // Load user profile first
+    try {
+      const userProfile = await UserPersonStorage.getUserPerson(userId);
+      if (userProfile) {
+        base.userProfile.profile = userProfile;
+        console.log(`✅ [HYDRATION] Loaded user profile for ${userId}`);
+      } else {
+        console.log(`📋 [HYDRATION] No user profile found for ${userId}`);
+      }
+    } catch (profileError) {
+      console.error('❌ [HYDRATION] Error loading user profile:', profileError);
+    }
+
+    // Load trip data
     const summaries = await TripStorage.getUserTripSummaries(userId);
     console.log(
       '🔄 [HYDRATION] Got summaries from TripStorage:',

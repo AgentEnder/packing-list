@@ -9,13 +9,22 @@ import userProfileReducer, {
   selectHasUserProfile,
 } from '../user-profile-slice.js';
 
+interface UserProfileTestState {
+  userProfile: {
+    profile: unknown;
+    isLoading: boolean;
+    error: string | null;
+    hasTriedToLoad: boolean;
+  };
+}
+
 describe('userProfileSlice', () => {
   it('should have correct initial state', () => {
     const store = configureStore({
       reducer: { userProfile: userProfileReducer },
     });
 
-    const state = store.getState() as { userProfile: any };
+    const state = store.getState() as UserProfileTestState;
     expect(state.userProfile).toEqual({
       profile: null,
       isLoading: false,
@@ -31,7 +40,7 @@ describe('userProfileSlice', () => {
 
     // Clear error
     store.dispatch(clearError());
-    const state = store.getState() as { userProfile: any };
+    const state = store.getState() as UserProfileTestState;
     expect(state.userProfile.error).toBeNull();
   });
 
@@ -41,7 +50,7 @@ describe('userProfileSlice', () => {
     });
 
     store.dispatch(resetProfileState());
-    const state = store.getState() as { userProfile: any };
+    const state = store.getState() as UserProfileTestState;
     expect(state.userProfile).toEqual({
       profile: null,
       isLoading: false,

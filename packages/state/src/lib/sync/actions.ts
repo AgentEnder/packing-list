@@ -9,6 +9,7 @@ import type {
   Change,
   DefaultItemRule,
   TripRule,
+  UserPerson,
 } from '@packing-list/model';
 import { supabase, isSupabaseAvailable } from '@packing-list/supabase';
 import type { Json } from '@packing-list/supabase';
@@ -38,6 +39,7 @@ interface BatchManager {
   default_item_rule: BatchedChange[];
   trip_rule: BatchedChange[];
   rule_pack: BatchedChange[];
+  user_person: BatchedChange[];
 }
 
 // Global batch manager
@@ -48,6 +50,7 @@ const batchManager: BatchManager = {
   default_item_rule: [],
   trip_rule: [],
   rule_pack: [],
+  user_person: [],
 };
 
 // Global timeout for processing all batches
@@ -185,6 +188,12 @@ async function processBatchOperation(
       // Rule packs are not synced to server - they're local only
       console.log(
         `🔄 [SYNC] Skipping rule pack batch sync (local only): ${batch.length} changes`
+      );
+      break;
+    case 'user_person':
+      await pushUserPersonChangesBatch(
+        batch.map((b) => b.change),
+        operation
       );
       break;
     default:
@@ -1045,6 +1054,69 @@ async function pushTripRuleChangesBatch(
 
     if (error) {
       throw new Error(`Failed to batch upsert trip rules: ${error.message}`);
+    }
+  }
+}
+
+async function pushUserPersonChangesBatch(
+  changes: Change[],
+  operation: 'create' | 'update' | 'delete'
+): Promise<void> {
+  console.log(
+    `🔄 [SYNC] Processing ${changes.length} user person ${operation} operations`
+  );
+
+  for (const change of changes) {
+    const userPerson = change.data as UserPerson;
+
+    try {
+      if (operation === 'create' || operation === 'update') {
+        // Note: Using existing user_profiles table as the backend storage
+        const { error } = await supabase.from('user_profiles').upsert([
+          {
+            id: userPerson.userId, // Use userId as the primary key for user_profiles
+            preferences: {
+              name: userPerson.name,
+              age: userPerson.age,
+              gender: userPerson.gender,
+              settings: userPerson.settings,
+              isUserProfile: userPerson.isUserProfile,
+            } as import('@packing-list/supabase').Json,
+            updated_at: userPerson.updatedAt,
+          },
+        ]);
+
+        if (error) {
+          console.error(
+            `❌ [SYNC] Error ${operation}ing user person ${userPerson.id}:`,
+            error
+          );
+          throw error;
+        }
+      } else if (operation === 'delete') {
+        const { error } = await supabase
+          .from('user_profiles')
+          .delete()
+          .eq('id', userPerson.userId);
+
+        if (error) {
+          console.error(
+            `❌ [SYNC] Error deleting user person ${userPerson.id}:`,
+            error
+          );
+          throw error;
+        }
+      }
+
+      console.log(
+        `✅ [SYNC] Successfully ${operation}d user person: ${userPerson.name}`
+      );
+    } catch (error) {
+      console.error(
+        `❌ [SYNC] Failed to ${operation} user person ${userPerson.id}:`,
+        error
+      );
+      throw error;
     }
   }
 }

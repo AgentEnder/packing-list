@@ -192,6 +192,78 @@ async function trackAndPushChange(
 }
 
 /**
+ * Track changes to user profile data
+ */
+function trackUserProfileChanges(
+  prevState: StoreType,
+  nextState: StoreType,
+  userId: string
+): void {
+  const prevProfile = prevState.userProfile?.profile;
+  const nextProfile = nextState.userProfile?.profile;
+
+  // Profile created
+  if (!prevProfile && nextProfile) {
+    console.log(
+      `🔄 [SYNC_MIDDLEWARE] User profile created: ${nextProfile.name}`
+    );
+
+    void trackAndPushChange(
+      {
+        userId,
+        entityType: 'user_person',
+        entityId: nextProfile.id,
+        operation: 'create',
+        data: nextProfile,
+        version: nextProfile.version || 1,
+      },
+      userId
+    );
+    return;
+  }
+
+  // Profile updated
+  if (prevProfile && nextProfile && !deepEqual(prevProfile, nextProfile)) {
+    console.log(
+      `🔄 [SYNC_MIDDLEWARE] User profile updated: ${nextProfile.name}`
+    );
+
+    void trackAndPushChange(
+      {
+        userId,
+        entityType: 'user_person',
+        entityId: nextProfile.id,
+        operation: 'update',
+        data: nextProfile,
+        version: nextProfile.version || 1,
+      },
+      userId
+    );
+    return;
+  }
+
+  // Profile deleted
+  if (prevProfile && !nextProfile) {
+    console.log(
+      `🔄 [SYNC_MIDDLEWARE] User profile deleted: ${prevProfile.name}`
+    );
+
+    void trackAndPushChange(
+      {
+        userId,
+        entityType: 'user_person',
+        entityId: prevProfile.id,
+        operation: 'delete',
+        data: prevProfile,
+        version: prevProfile.version || 1,
+      },
+      userId
+    );
+    return;
+  }
+}
+
+/**
  * Redux middleware that automatically tracks sync changes and handles sync operations.
  */
 export const syncTrackingMiddleware: Middleware<object, StoreType> =
@@ -200,9 +272,28 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
     const result = next(action);
     const nextState = store.getState();
 
+    const userId = nextState.auth.user?.id;
+
+    if (!userId) {
+      return result;
+    }
+
+    // Handle initialization actions
+    if ((action as UnknownAction).type === 'auth/loginSuccess' && userId) {
+      void reloadFromIndexedDB(next, userId);
+      void startSyncService(next, userId);
+      return result;
+    }
+
+    if ((action as UnknownAction).type === 'HYDRATE_OFFLINE') {
+      return result;
+    }
+
+    // Track user profile changes
+    trackUserProfileChanges(prevState, nextState, userId);
+
     // Handle auth changes and sign-in to reload from IndexedDB and start sync
     const userChanged = prevState.auth.user?.id !== nextState.auth.user?.id;
-    const userId = nextState.auth.user?.id;
 
     if (userChanged && userId) {
       console.log(
@@ -288,10 +379,6 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
 
     // Check if we should track changes
     const tripId = nextState.trips.selectedTripId;
-
-    if (!userId) {
-      return result;
-    }
 
     if (!tripId || userId === 'local-user') {
       return result;
