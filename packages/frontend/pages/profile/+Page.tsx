@@ -15,7 +15,7 @@ import {
 import { UserProfileForm } from './components/UserProfileForm.js';
 import { UserProfileCard } from './components/UserProfileCard.js';
 
-export default function ProfilePage() {
+export function Page() {
   const dispatch = useAppDispatch();
   const { user } = useAuth();
 
@@ -27,20 +27,21 @@ export default function ProfilePage() {
   // Load user profile on mount
   useEffect(() => {
     if (user?.id) {
-      dispatch(loadUserProfile(user.id) as any);
+      dispatch(loadUserProfile(user.id));
     }
   }, [dispatch, user?.id]);
 
   // Clear error when component unmounts
   useEffect(() => {
     return () => {
-      dispatch(clearError() as any);
+      dispatch(clearProfileError());
     };
   }, [dispatch]);
 
   if (!user) {
     return (
-      <Page title="Profile">
+      <PageContainer>
+        <PageHeader title="Profile" />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <User className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -52,25 +53,27 @@ export default function ProfilePage() {
             </p>
           </div>
         </div>
-      </Page>
+      </PageContainer>
     );
   }
 
   if (isLoading) {
     return (
-      <Page title="Profile">
+      <PageContainer>
+        <PageHeader title="Profile" />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading your profile...</p>
           </div>
         </div>
-      </Page>
+      </PageContainer>
     );
   }
 
   return (
-    <Page title="Profile">
+    <PageContainer>
+      <PageHeader title="Profile" />
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <header className="mb-8">
           <div className="flex items-center gap-3 mb-2">
@@ -107,7 +110,7 @@ export default function ProfilePage() {
               </div>
               <div className="ml-auto">
                 <button
-                  onClick={() => dispatch(clearError() as any)}
+                  onClick={() => dispatch(clearProfileError())}
                   className="text-red-400 hover:text-red-600"
                   aria-label="Dismiss error"
                 >
@@ -208,7 +211,7 @@ export default function ProfilePage() {
               <div>
                 <h4 className="font-medium text-blue-900">Save Preferences</h4>
                 <p className="text-sm text-blue-700">
-                  Store your packing preferences across all trips.
+                  Your preferences are automatically saved across all trips.
                 </p>
               </div>
             </div>
@@ -227,15 +230,15 @@ export default function ProfilePage() {
                 </svg>
               </div>
               <div>
-                <h4 className="font-medium text-blue-900">Future Features</h4>
+                <h4 className="font-medium text-blue-900">Quick Setup</h4>
                 <p className="text-sm text-blue-700">
-                  Ready for upcoming people templates and sharing.
+                  Automatically add yourself to new trips as a person.
                 </p>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </Page>
+    </PageContainer>
   );
 }
