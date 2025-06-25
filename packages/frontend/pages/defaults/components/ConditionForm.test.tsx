@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 import { ConditionForm } from './ConditionForm';
+import { useAppSelector } from '@packing-list/state';
 
 // Mock Redux store and selectors
 const mockPeople = [
@@ -159,9 +160,7 @@ describe('ConditionForm', () => {
 
   test('should show message when no people are added to trip', () => {
     // Mock empty people array
-    const mockUseAppSelector = vi.fn(() => []);
-    const stateModule = require('@packing-list/state');
-    stateModule.useAppSelector = mockUseAppSelector;
+    vi.mocked(useAppSelector).mockReturnValue([]);
 
     render(
       <ConditionForm

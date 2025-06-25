@@ -1,7 +1,7 @@
 import { Day } from './Day.js';
 import { Person } from './Person.js';
 
-export type ConditionValue = string | number | boolean | string[];
+export type ConditionValue = string | number | boolean | ConditionValue[];
 
 export type Operator = '==' | '>' | '<' | '>=' | '<=' | 'in';
 

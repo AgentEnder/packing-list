@@ -214,7 +214,7 @@ export default function LayoutDefault({
           checked={isDrawerOpen}
           onChange={(e) => setIsDrawerOpen(e.target.checked)}
         />
-        <div className="drawer-content flex flex-col min-h-screen">
+        <div className="drawer-content flex flex-col min-h-screen z-1">
           {/* Navbar */}
           <div className="navbar bg-base-100 lg:hidden">
             <div className="flex-none">
@@ -226,13 +226,13 @@ export default function LayoutDefault({
               </label>
             </div>
             <div className="flex-1 flex items-center gap-2">
-              <Link
+              {/* <Link
                 href="/"
                 className="btn btn-ghost normal-case text-xl"
                 onClick={handleLinkClick}
               >
                 Packing List
-              </Link>
+              </Link> */}
               <TripSelector />
             </div>
             <div className="flex-none flex items-center gap-2">
