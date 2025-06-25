@@ -9,6 +9,7 @@ vi.mock('@packing-list/state', () => ({
   },
   useAppDispatch: vi.fn(),
   useAppSelector: vi.fn(),
+  selectUserTheme: vi.fn(() => 'light'),
   loadOfflineState: vi.fn(() =>
     Promise.resolve({
       trips: { summaries: [] },
@@ -23,6 +24,9 @@ vi.mock('@packing-list/shared-components', () => ({
   UserProfile: () => <div data-testid="user-profile">User Profile</div>,
   LoginModal: () => <div data-testid="login-modal">Login Modal</div>,
   SyncStatusBadge: () => <div data-testid="sync-status-badge">Sync Status</div>,
+  SyncStatusIndicator: () => (
+    <div data-testid="sync-status-indicator">Sync Status Indicator</div>
+  ),
   ConflictBanner: () => (
     <div data-testid="conflict-banner">Conflict Banner</div>
   ),
@@ -124,6 +128,14 @@ vi.mock('../hooks/useConflictBanner', () => ({
   useConflictBanner: vi.fn(),
 }));
 
+vi.mock('../hooks/useTheme', () => ({
+  useTheme: vi.fn(() => ({
+    currentTheme: 'light',
+    setTheme: vi.fn(),
+    availableThemes: [],
+  })),
+}));
+
 // Mock CSS imports
 vi.mock('./tailwind.css', () => ({}));
 vi.mock('./style.css', () => ({}));
@@ -167,6 +179,15 @@ describe('LayoutDefault Component', () => {
       handleViewConflicts: vi.fn(),
       handleDismiss: vi.fn(),
     });
+    // Mock useAppSelector to return mock state
+    (useAppSelector as unknown as Mock).mockImplementation((selector) => {
+      const mockState = {
+        ui: { flow: { current: null, steps: [] } },
+        sync: { syncState: 'idle' },
+        userPreferences: { theme: 'light' },
+      };
+      return selector(mockState);
+    });
     // Mock window.location
     Object.defineProperty(window, 'location', {
       value: { pathname: '/' },
@@ -190,7 +211,6 @@ describe('LayoutDefault Component', () => {
       loading: true,
       isRemotelyAuthenticated: false,
     });
-    (useAppSelector as unknown as Mock).mockReturnValue(null);
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 

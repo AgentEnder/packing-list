@@ -24,6 +24,7 @@ import {
   Grid3X3,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { navigate } from 'vike/client/router';
 
 type ViewMode = 'grid' | 'calendar';
 
@@ -35,8 +36,6 @@ export default function TripsPage() {
   const [tripToDelete, setTripToDelete] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const tripDataById = useAppSelector((state) => state.trips.byId);
-
-  console.log('TripsPage: Rendering with viewMode:', viewMode);
 
   const handleSelectTrip = (tripId: string) => {
     dispatch({
@@ -77,8 +76,18 @@ export default function TripsPage() {
   };
 
   const handleCalendarTripClick = (tripId: string) => {
-    console.log('Calendar trip clicked:', tripId);
-    handleSelectTrip(tripId);
+    if (tripId !== selectedTripId) {
+      handleSelectTrip(tripId);
+    }
+  };
+
+  const handleDateRangeSelect = (startDate: Date, endDate: Date) => {
+    // Navigate to new trip page with prefilled dates
+    const searchParams = new URLSearchParams({
+      startDate: startDate.toISOString().split('T')[0], // YYYY-MM-DD format
+      endDate: endDate.toISOString().split('T')[0],
+    });
+    navigate(`/trips/new?${searchParams.toString()}`);
   };
 
   // Transform trip data for calendar component
@@ -169,9 +178,10 @@ export default function TripsPage() {
               trips={calendarTrips}
               onTripClick={handleCalendarTripClick}
               selectedTripId={selectedTripId || undefined}
+              onDateRangeSelect={handleDateRangeSelect}
             />
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {tripSummaries.map((trip) => (
                 <div
                   key={trip.tripId}
