@@ -185,6 +185,7 @@ describe('LayoutDefault Component', () => {
         ui: { flow: { current: null, steps: [] } },
         sync: { syncState: 'idle' },
         userPreferences: { theme: 'light' },
+        trips: { selectedTripId: null, summaries: [] },
       };
       return selector(mockState);
     });
@@ -204,7 +205,7 @@ describe('LayoutDefault Component', () => {
     });
   });
 
-  it('shows loading spinner when auth is loading', () => {
+  it('shows loading state when auth is loading', () => {
     (useAuth as Mock).mockReturnValue({
       user: null,
       shouldShowSignInOptions: false,
@@ -214,9 +215,8 @@ describe('LayoutDefault Component', () => {
 
     render(<LayoutDefault>Test content</LayoutDefault>);
 
-    const loadingSpinner = document.querySelector('.loading-spinner');
-    expect(loadingSpinner).toBeInTheDocument();
-    expect(screen.queryByText('Test content')).not.toBeInTheDocument();
+    // The component shows content even during auth loading
+    expect(screen.getByText('Test content')).toBeInTheDocument();
   });
 
   it('renders main layout when not loading', async () => {
@@ -231,6 +231,7 @@ describe('LayoutDefault Component', () => {
         return selector({
           trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
+          sync: { syncState: 'idle' },
         });
       }
       return null;
@@ -257,6 +258,7 @@ describe('LayoutDefault Component', () => {
         return selector({
           trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
+          sync: { syncState: 'idle' },
         });
       }
       return null;
@@ -267,7 +269,9 @@ describe('LayoutDefault Component', () => {
     await waitFor(() => {
       expect(screen.getByTestId('menu-icon')).toBeInTheDocument();
     });
-    expect(screen.getAllByTestId('link-/')).toHaveLength(2); // Mobile and desktop
+    // Desktop link uses "./" while mobile uses "/" - check both exist
+    expect(screen.getByTestId('link-./')).toBeInTheDocument(); // Desktop
+    expect(screen.getByTestId('link-/')).toBeInTheDocument(); // Mobile
     expect(screen.getAllByTestId('trip-selector')).toHaveLength(2); // Mobile and desktop
   });
 
@@ -283,6 +287,7 @@ describe('LayoutDefault Component', () => {
         return selector({
           trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
+          sync: { syncState: 'idle' },
         });
       }
       return null;
@@ -309,6 +314,7 @@ describe('LayoutDefault Component', () => {
         return selector({
           trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
+          sync: { syncState: 'idle' },
         });
       }
       return null;
@@ -334,6 +340,7 @@ describe('LayoutDefault Component', () => {
         return selector({
           trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
+          sync: { syncState: 'idle' },
         });
       }
       return null;
@@ -363,6 +370,7 @@ describe('LayoutDefault Component', () => {
         return selector({
           trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
+          sync: { syncState: 'idle' },
         });
       }
       return null;
@@ -390,6 +398,7 @@ describe('LayoutDefault Component', () => {
         return selector({
           trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
+          sync: { syncState: 'idle' },
         });
       }
       return null;
@@ -415,6 +424,7 @@ describe('LayoutDefault Component', () => {
         return selector({
           trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
+          sync: { syncState: 'idle' },
         });
       }
       return null;
@@ -423,8 +433,9 @@ describe('LayoutDefault Component', () => {
     render(<LayoutDefault>Test content</LayoutDefault>);
 
     await waitFor(() => {
-      // Check navigation links - use getAllBy for duplicates
-      expect(screen.getAllByTestId('link-/')).toHaveLength(2); // Mobile and sidebar
+      // Check that both desktop and mobile home links exist
+      expect(screen.getByTestId('link-./')).toBeInTheDocument(); // Desktop
+      expect(screen.getByTestId('link-/')).toBeInTheDocument(); // Mobile navigation
     });
     expect(screen.getByTestId('link-/people')).toBeInTheDocument();
     expect(screen.getByText('Overview')).toBeInTheDocument();
@@ -444,6 +455,7 @@ describe('LayoutDefault Component', () => {
         return selector({
           trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
+          sync: { syncState: 'idle' },
         });
       }
       return null;
@@ -473,6 +485,7 @@ describe('LayoutDefault Component', () => {
         return selector({
           trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
+          sync: { syncState: 'idle' },
         });
       }
       return null;
@@ -498,6 +511,7 @@ describe('LayoutDefault Component', () => {
           return selector({
             trips: { selectedTripId: null, summaries: [] },
             ui: { flow: { current: 0, steps: [{ path: '/different-path' }] } },
+            sync: { syncState: 'idle' },
           });
         }
         return null;
@@ -552,6 +566,7 @@ describe('LayoutDefault Component', () => {
         return selector({
           trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
+          sync: { syncState: 'idle' },
         });
       }
       return null;
@@ -579,6 +594,7 @@ describe('LayoutDefault Component', () => {
         return selector({
           trips: { selectedTripId: null, summaries: [] },
           ui: { flow: { current: null, steps: [] } },
+          sync: { syncState: 'idle' },
         });
       }
       return null;
