@@ -5,6 +5,7 @@ import { RulePack } from './RulePack.js';
 import { Trip } from './Trip.js';
 import { TripItem } from './TripItem.js';
 import { TripRule } from './TripRule.js';
+import { UserPerson } from './UserPerson.js';
 
 // Base change interface
 export interface BaseChange {
@@ -66,6 +67,13 @@ export type TripRuleChange = BaseChange & {
   tripId: string;
 };
 
+export type UserPersonChange = BaseChange & {
+  entityType: 'user_person';
+  entityId: string;
+  data: Partial<UserPerson> & { id?: string }; // id might be generated on create
+  tripId?: never; // User people are not trip-specific
+};
+
 // Special change types for packing operations
 export type PackingStatusChange = BaseChange & {
   entityType: 'item';
@@ -106,7 +114,8 @@ export type Change =
   | RulePackChange
   | TripRuleChange
   | PackingStatusChange
-  | BulkPackingChange;
+  | BulkPackingChange
+  | UserPersonChange;
 
 // Legacy type for backward compatibility (to be removed gradually)
 export type LegacyChange = {

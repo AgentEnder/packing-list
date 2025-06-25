@@ -19,6 +19,9 @@ import {
 } from '@packing-list/model';
 import { DEFAULT_RULE_PACKS } from './default-rule-packs.js';
 import { syncTrackingMiddleware } from './middleware/sync-tracking-middleware.js';
+import userProfileReducer, {
+  type UserProfileState,
+} from './user-profile-slice.js';
 
 // New multi-trip store structure
 export type StoreType = {
@@ -64,6 +67,9 @@ export type StoreType = {
 
   // Auth state
   auth: AuthState;
+
+  // User profile state (Sprint 1)
+  userProfile: UserProfileState;
 };
 
 // Trip-specific data structure
@@ -165,6 +171,12 @@ export const initialState: StoreType = {
     },
   },
   auth: authInitialState,
+  userProfile: {
+    profile: null,
+    isLoading: false,
+    error: null,
+    hasTriedToLoad: false,
+  },
 };
 
 function createAppReducer(
@@ -227,6 +239,10 @@ export function createStore(pageContext?: PageContext, _state?: StoreType) {
     return {
       ...appReducer(state, action),
       auth: authReducer(state?.auth, action as AuthActions),
+      userProfile: userProfileReducer(
+        state?.userProfile,
+        action as Parameters<typeof userProfileReducer>[1]
+      ),
     };
   };
 

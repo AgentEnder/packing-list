@@ -8,6 +8,7 @@ export * from './lib/PackingListItem.js';
 export * from './lib/RulePack.js';
 export * from './lib/Trip.js';
 export * from './lib/Person.js';
+export * from './lib/UserPerson.js';
 export * from './lib/Calculation.js';
 export * from './lib/PackingListView.js';
 export * from './lib/Category.js';

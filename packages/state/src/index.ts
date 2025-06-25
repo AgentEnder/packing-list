@@ -19,5 +19,21 @@ export { createEntityCallbacks } from './lib/sync/sync-integration.js';
 // Consolidated sync functionality
 export * from './lib/sync/index.js';
 
+// User profile management exports
+export {
+  createUserProfile,
+  updateUserProfile,
+  loadUserProfile,
+  deleteUserProfile,
+  clearError as clearProfileError,
+  resetProfileState,
+  selectUserProfile,
+  selectUserProfileLoading,
+  selectUserProfileError,
+  selectHasUserProfile,
+  selectUserProfileState,
+  type UserProfileState,
+} from './user-profile-slice.js';
+
 // Re-export auth-state for convenience
 export * from '@packing-list/auth-state';
