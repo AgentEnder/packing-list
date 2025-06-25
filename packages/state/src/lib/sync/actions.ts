@@ -429,9 +429,9 @@ export const pullAllDataFromServer = createAsyncThunk(
         isDeleted: serverUserPerson.is_deleted || false,
       };
 
-      // Check for user profile conflicts
-      const localUserPerson = await UserPersonStorage.getUserPerson(
-        serverUserPerson.user_id
+      // Check for user person conflicts by ID (not userId)
+      const localUserPerson = await UserPersonStorage.getUserPersonById(
+        serverUserPerson.id
       );
 
       if (
