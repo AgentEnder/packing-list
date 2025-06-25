@@ -7,12 +7,13 @@ import {
 import { formatDate } from '@packing-list/shared-utils';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
+import { Calendar } from '../../components/Calendar';
 import { Link, Modal } from '@packing-list/shared-components';
 import { uuid } from '@packing-list/shared-utils';
 import {
   Plus,
   MapPin,
-  Calendar,
+  Calendar as CalendarIcon,
   Users,
   Package,
   Settings,
@@ -20,8 +21,11 @@ import {
   Copy,
   MoreVertical,
   Edit,
+  Grid3X3,
 } from 'lucide-react';
 import { format } from 'date-fns';
+
+type ViewMode = 'grid' | 'calendar';
 
 export default function TripsPage() {
   const dispatch = useAppDispatch();
@@ -29,7 +33,10 @@ export default function TripsPage() {
   const selectedTripId = useAppSelector((state) => state.trips.selectedTripId);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tripToDelete, setTripToDelete] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const tripDataById = useAppSelector((state) => state.trips.byId);
+
+  console.log('TripsPage: Rendering with viewMode:', viewMode);
 
   const handleSelectTrip = (tripId: string) => {
     dispatch({
@@ -69,6 +76,28 @@ export default function TripsPage() {
     }
   };
 
+  const handleCalendarTripClick = (tripId: string) => {
+    console.log('Calendar trip clicked:', tripId);
+    handleSelectTrip(tripId);
+  };
+
+  // Transform trip data for calendar component
+  const calendarTrips = tripSummaries
+    .filter((trip) => {
+      const tripData = tripDataById[trip.tripId];
+      return tripData?.trip?.days && tripData.trip.days.length > 0;
+    })
+    .map((trip) => {
+      const tripData = tripDataById[trip.tripId];
+      const days = tripData.trip.days;
+      return {
+        tripId: trip.tripId,
+        title: trip.title,
+        startDate: new Date(days[0].date),
+        endDate: new Date(days[days.length - 1].date),
+      };
+    });
+
   const tripToDeleteData = tripSummaries.find((t) => t.tripId === tripToDelete);
 
   return (
@@ -76,15 +105,45 @@ export default function TripsPage() {
       <PageHeader
         title="Trips"
         actions={
-          <Link href="/trips/new" className="btn btn-primary gap-2">
-            <Plus className="w-4 h-4" />
-            New Trip
-          </Link>
+          <div className="flex items-center gap-2">
+            {/* View Toggle */}
+            <div className="join">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`btn btn-sm join-item ${
+                  viewMode === 'grid' ? 'btn-primary' : 'btn-ghost'
+                }`}
+                data-testid="grid-view-button"
+              >
+                <Grid3X3 className="w-4 h-4" />
+                Grid
+              </button>
+              <button
+                onClick={() => setViewMode('calendar')}
+                className={`btn btn-sm join-item ${
+                  viewMode === 'calendar' ? 'btn-primary' : 'btn-ghost'
+                }`}
+                data-testid="calendar-view-button"
+              >
+                <CalendarIcon className="w-4 h-4" />
+                Calendar
+              </button>
+            </div>
+
+            <Link href="/trips/new" className="btn btn-primary gap-2">
+              <Plus className="w-4 h-4" />
+              New Trip
+            </Link>
+          </div>
         }
       />
 
       <div className="mb-6">
-        <p className="text-base-content/70">Manage all your packing trips</p>
+        <p className="text-base-content/70">
+          {viewMode === 'grid'
+            ? 'Manage all your packing trips'
+            : 'View your trips on a calendar timeline'}
+        </p>
       </div>
 
       {tripSummaries.length === 0 ? (
@@ -104,161 +163,175 @@ export default function TripsPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {tripSummaries.map((trip) => (
-            <div
-              key={trip.tripId}
-              className={`card bg-base-100 shadow-lg border-2 transition-all hover:shadow-xl ${
-                trip.tripId === selectedTripId
-                  ? 'border-primary ring-2 ring-primary/20'
-                  : 'border-transparent'
-              }`}
-            >
-              <div className="card-body">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="card-title text-lg truncate">
-                      {trip.title}
-                      {trip.tripId === selectedTripId && (
-                        <span className="badge badge-primary badge-sm">
-                          Current
-                        </span>
-                      )}
-                    </h3>
-                    {trip.description && (
-                      <p className="text-sm text-base-content/70 line-clamp-2 mt-1">
-                        {trip.description}
-                      </p>
+        <>
+          {viewMode === 'calendar' ? (
+            <Calendar
+              trips={calendarTrips}
+              onTripClick={handleCalendarTripClick}
+              selectedTripId={selectedTripId || undefined}
+            />
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {tripSummaries.map((trip) => (
+                <div
+                  key={trip.tripId}
+                  className={`card bg-base-100 shadow-lg border-2 transition-all hover:shadow-xl ${
+                    trip.tripId === selectedTripId
+                      ? 'border-primary ring-2 ring-primary/20'
+                      : 'border-transparent'
+                  }`}
+                >
+                  <div className="card-body">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="card-title text-lg truncate">
+                          {trip.title}
+                          {trip.tripId === selectedTripId && (
+                            <span className="badge badge-primary badge-sm">
+                              Current
+                            </span>
+                          )}
+                        </h3>
+                        {trip.description && (
+                          <p className="text-sm text-base-content/70 line-clamp-2 mt-1">
+                            {trip.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="dropdown dropdown-end">
+                        <div
+                          tabIndex={0}
+                          role="button"
+                          className="btn btn-ghost btn-sm btn-square"
+                          data-testid={`trip-menu-${trip.tripId}`}
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </div>
+                        <ul
+                          tabIndex={0}
+                          className="dropdown-content menu bg-base-100 rounded-box z-[1] w-48 p-2 shadow-lg border"
+                        >
+                          <li>
+                            <Link
+                              href={`/trips/${trip.tripId}/settings`}
+                              className="flex items-center gap-2"
+                            >
+                              <Edit className="w-4 h-4" />
+                              Edit
+                            </Link>
+                          </li>
+                          <li>
+                            <button
+                              onClick={() => handleDuplicateTrip(trip.tripId)}
+                              className="flex items-center gap-2"
+                              data-testid={`duplicate-trip-${trip.tripId}`}
+                            >
+                              <Copy className="w-4 h-4" />
+                              Duplicate
+                            </button>
+                          </li>
+                          <div className="divider my-1"></div>
+                          <li>
+                            <button
+                              onClick={() => handleDeleteTrip(trip.tripId)}
+                              className="flex items-center gap-2 text-error"
+                              data-testid={`delete-trip-${trip.tripId}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Delete
+                            </button>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div className="stat p-0">
+                        <div className="stat-figure text-primary">
+                          <Users className="w-5 h-5" />
+                        </div>
+                        <div className="stat-title text-xs">People</div>
+                        <div className="stat-value text-lg">
+                          {trip.totalPeople}
+                        </div>
+                      </div>
+                      <div className="stat p-0">
+                        <div className="stat-figure text-secondary">
+                          <Package className="w-5 h-5" />
+                        </div>
+                        <div className="stat-title text-xs">Packed</div>
+                        <div className="stat-value text-lg">
+                          {trip.packedItems}/{trip.totalItems}
+                        </div>
+                      </div>
+                    </div>
+
+                    {tripDataById[trip.tripId].trip.days?.length && (
+                      <div className="flex gap-2 w-fit">
+                        <div>
+                          {format(
+                            new Date(
+                              tripDataById[trip.tripId].trip.days[0].date
+                            ),
+                            'MMM d'
+                          )}
+                        </div>
+                        <div>-</div>
+                        <div>
+                          {format(
+                            new Date(
+                              tripDataById[trip.tripId].trip.days[
+                                tripDataById[trip.tripId].trip.days.length - 1
+                              ].date
+                            ),
+                            'MMM d'
+                          )}
+                        </div>
+                      </div>
                     )}
-                  </div>
 
-                  <div className="dropdown dropdown-end">
-                    <div
-                      tabIndex={0}
-                      role="button"
-                      className="btn btn-ghost btn-sm btn-square"
-                      data-testid={`trip-menu-${trip.tripId}`}
-                    >
-                      <MoreVertical className="w-4 h-4" />
+                    <div className="text-xs text-base-content/60 mt-2">
+                      Created {formatDate(trip.createdAt)}
+                      {trip.updatedAt !== trip.createdAt && (
+                        <span> • Updated {formatDate(trip.updatedAt)}</span>
+                      )}
                     </div>
-                    <ul
-                      tabIndex={0}
-                      className="dropdown-content menu bg-base-100 rounded-box z-[1] w-48 p-2 shadow-lg border"
-                    >
-                      <li>
+
+                    <div className="card-actions justify-between mt-4">
+                      {trip.tripId !== selectedTripId ? (
+                        <button
+                          onClick={() => handleSelectTrip(trip.tripId)}
+                          className="btn btn-primary btn-sm flex-1"
+                          data-testid={`select-trip-${trip.tripId}`}
+                        >
+                          <MapPin className="w-4 h-4" />
+                          Switch to Trip
+                        </button>
+                      ) : (
                         <Link
-                          href={`/trips/${trip.tripId}/settings`}
-                          className="flex items-center gap-2"
+                          href="/"
+                          className="btn btn-primary btn-sm flex-1"
+                          data-testid={`go-to-trip-${trip.tripId}`}
                         >
-                          <Edit className="w-4 h-4" />
-                          Edit
+                          <CalendarIcon className="w-4 h-4" />
+                          Go to Trip
                         </Link>
-                      </li>
-                      <li>
-                        <button
-                          onClick={() => handleDuplicateTrip(trip.tripId)}
-                          className="flex items-center gap-2"
-                          data-testid={`duplicate-trip-${trip.tripId}`}
-                        >
-                          <Copy className="w-4 h-4" />
-                          Duplicate
-                        </button>
-                      </li>
-                      <div className="divider my-1"></div>
-                      <li>
-                        <button
-                          onClick={() => handleDeleteTrip(trip.tripId)}
-                          className="flex items-center gap-2 text-error"
-                          data-testid={`delete-trip-${trip.tripId}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </button>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div className="stat p-0">
-                    <div className="stat-figure text-primary">
-                      <Users className="w-5 h-5" />
-                    </div>
-                    <div className="stat-title text-xs">People</div>
-                    <div className="stat-value text-lg">{trip.totalPeople}</div>
-                  </div>
-                  <div className="stat p-0">
-                    <div className="stat-figure text-secondary">
-                      <Package className="w-5 h-5" />
-                    </div>
-                    <div className="stat-title text-xs">Packed</div>
-                    <div className="stat-value text-lg">
-                      {trip.packedItems}/{trip.totalItems}
-                    </div>
-                  </div>
-                </div>
-
-                {tripDataById[trip.tripId].trip.days?.length && (
-                  <div className="flex gap-2 w-fit">
-                    <div>
-                      {format(
-                        new Date(tripDataById[trip.tripId].trip.days[0].date),
-                        'MMM d'
                       )}
-                    </div>
-                    <div>-</div>
-                    <div>
-                      {format(
-                        new Date(
-                          tripDataById[trip.tripId].trip.days[
-                            tripDataById[trip.tripId].trip.days.length - 1
-                          ].date
-                        ),
-                        'MMM d'
-                      )}
+                      <Link
+                        href={`/trips/${trip.tripId}/settings`}
+                        className="btn btn-ghost btn-sm btn-square"
+                        data-testid={`trip-settings-${trip.tripId}`}
+                      >
+                        <Settings className="w-4 h-4" />
+                      </Link>
                     </div>
                   </div>
-                )}
-
-                <div className="text-xs text-base-content/60 mt-2">
-                  Created {formatDate(trip.createdAt)}
-                  {trip.updatedAt !== trip.createdAt && (
-                    <span> • Updated {formatDate(trip.updatedAt)}</span>
-                  )}
                 </div>
-
-                <div className="card-actions justify-between mt-4">
-                  {trip.tripId !== selectedTripId ? (
-                    <button
-                      onClick={() => handleSelectTrip(trip.tripId)}
-                      className="btn btn-primary btn-sm flex-1"
-                      data-testid={`select-trip-${trip.tripId}`}
-                    >
-                      <MapPin className="w-4 h-4" />
-                      Switch to Trip
-                    </button>
-                  ) : (
-                    <Link
-                      href="/"
-                      className="btn btn-primary btn-sm flex-1"
-                      data-testid={`go-to-trip-${trip.tripId}`}
-                    >
-                      <Calendar className="w-4 h-4" />
-                      Go to Trip
-                    </Link>
-                  )}
-                  <Link
-                    href={`/trips/${trip.tripId}/settings`}
-                    className="btn btn-ghost btn-sm btn-square"
-                    data-testid={`trip-settings-${trip.tripId}`}
-                  >
-                    <Settings className="w-4 h-4" />
-                  </Link>
-                </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       {/* Delete Confirmation Modal */}

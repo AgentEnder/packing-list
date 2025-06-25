@@ -16,6 +16,7 @@ import {
   RulePacksStorage,
   TripRuleStorage,
   UserPersonStorage,
+  UserPreferencesStorage,
   getDatabase,
 } from '@packing-list/offline-storage';
 import type { AllActions } from '../actions.js';
@@ -193,6 +194,61 @@ async function trackAndPushChange(
 }
 
 /**
+ * Track changes to user preferences
+ */
+function trackUserPreferencesChanges(
+  prevState: StoreType,
+  nextState: StoreType,
+  userId: string
+): void {
+  const prevPreferences = prevState.userPreferences;
+  const nextPreferences = nextState.userPreferences;
+
+  // Handle user preferences creation or update
+  if (!prevPreferences && nextPreferences) {
+    // User preferences created
+    console.log('🔄 [SYNC_MIDDLEWARE] User preferences created');
+
+    // Save to IndexedDB
+    void UserPreferencesStorage.savePreferences(nextPreferences);
+
+    void trackAndPushChange(
+      {
+        userId,
+        entityType: 'user_preferences',
+        entityId: userId, // Use userId as entityId for preferences
+        operation: 'create',
+        data: nextPreferences,
+        version: 1,
+      },
+      userId
+    );
+  } else if (
+    prevPreferences &&
+    nextPreferences &&
+    !deepEqual(prevPreferences, nextPreferences)
+  ) {
+    // User preferences updated
+    console.log('🔄 [SYNC_MIDDLEWARE] User preferences updated');
+
+    // Save to IndexedDB
+    void UserPreferencesStorage.savePreferences(nextPreferences);
+
+    void trackAndPushChange(
+      {
+        userId,
+        entityType: 'user_preferences',
+        entityId: userId, // Use userId as entityId for preferences
+        operation: 'update',
+        data: nextPreferences,
+        version: 1,
+      },
+      userId
+    );
+  }
+}
+
+/**
  * Track changes to user people data (profiles and templates)
  */
 function trackUserPeopleChanges(
@@ -312,6 +368,9 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
     // Track user people changes (profiles and templates)
     trackUserPeopleChanges(prevState, nextState, userId);
 
+    // Track user preferences changes
+    trackUserPreferencesChanges(prevState, nextState, userId);
+
     // Handle auth changes and sign-in to reload from IndexedDB and start sync
     const userChanged = prevState.auth.user?.id !== nextState.auth.user?.id;
 
@@ -387,6 +446,7 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
       'HYDRATE_OFFLINE',
       'sync/',
       'PROCESS_SYNCED_TRIP_ITEMS',
+      'BULK_UPSERT_SYNCED_ENTITIES',
     ];
 
     // Special handling for conflict resolution - allow it to pass through to IndexedDB

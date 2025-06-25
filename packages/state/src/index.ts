@@ -30,6 +30,7 @@ export {
   clearError as clearPeopleError,
   resetPeopleState,
   markAsTriedToLoad,
+  createUserPerson,
   selectUserPeople,
   selectUserProfile,
   selectUserTemplates,

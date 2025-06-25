@@ -3,8 +3,10 @@ import { uuid } from '@packing-list/shared-utils';
 import { StoreType } from '../store.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
 
+export const ADD_PERSON = 'ADD_PERSON' as const;
+
 export type AddPersonAction = {
-  type: 'ADD_PERSON';
+  type: typeof ADD_PERSON;
   payload: Person;
 };
 
@@ -16,7 +18,7 @@ export const addPerson = (payload: {
 }): AddPersonAction => {
   const now = new Date().toISOString();
   return {
-    type: 'ADD_PERSON',
+    type: ADD_PERSON,
     payload: {
       id: uuid(),
       name: payload.name,

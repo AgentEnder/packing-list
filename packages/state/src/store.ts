@@ -16,6 +16,7 @@ import {
   RulePack,
   TripSummary,
   SyncState,
+  UserPreferences,
 } from '@packing-list/model';
 import { DEFAULT_RULE_PACKS } from './default-rule-packs.js';
 import { syncTrackingMiddleware } from './middleware/sync-tracking-middleware.js';
@@ -34,6 +35,9 @@ export type StoreType = {
 
   // Global state (not trip-specific)
   rulePacks: RulePack[];
+
+  // User preferences (persisted to IndexedDB and Supabase)
+  userPreferences: UserPreferences | null;
 
   // Sync state
   sync: {
@@ -138,6 +142,7 @@ export const initialState: StoreType = {
     byId: {},
   },
   rulePacks: DEFAULT_RULE_PACKS,
+  userPreferences: null,
   sync: {
     syncState: {
       lastSyncTimestamp: null,

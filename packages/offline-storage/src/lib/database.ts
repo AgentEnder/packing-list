@@ -74,6 +74,7 @@ export async function initializeDatabase(): Promise<IDBPDatabase<OfflineDB>> {
             defaultTripDuration: 7,
             autoSyncEnabled: true,
             serviceWorkerEnabled: false, // Disabled by default, can be enabled in settings
+            lastSelectedTripId: null, // Track last selected trip for multi-trip sessions
           },
           'preferences'
         );

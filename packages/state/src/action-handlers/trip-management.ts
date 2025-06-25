@@ -173,13 +173,34 @@ export function selectTripHandler(
   state: StoreType,
   action: { type: 'SELECT_TRIP'; payload: { tripId: string } }
 ): StoreType {
-  return {
+  console.log(
+    '🎯 [SELECT_TRIP_HANDLER] Selecting trip:',
+    action.payload.tripId
+  );
+
+  // Update user preferences in Redux state (the sync middleware will handle persistence)
+  const updatedState = {
     ...state,
     trips: {
       ...state.trips,
       selectedTripId: action.payload.tripId,
     },
+    userPreferences: state.userPreferences
+      ? {
+          ...state.userPreferences,
+          lastSelectedTripId: action.payload.tripId,
+        }
+      : {
+          defaultTimeZone: 'UTC',
+          theme: 'system' as const,
+          defaultTripDuration: 7,
+          autoSyncEnabled: true,
+          serviceWorkerEnabled: false,
+          lastSelectedTripId: action.payload.tripId,
+        },
   };
+
+  return updatedState;
 }
 
 export function deleteTripHandler(

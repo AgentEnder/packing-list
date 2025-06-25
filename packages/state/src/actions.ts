@@ -170,6 +170,17 @@ import {
   setUserPeopleErrorHandler,
 } from './action-handlers/user-people-handlers.js';
 
+import {
+  loadUserPreferencesHandler,
+  updateUserPreferencesHandler,
+  updateLastSelectedTripIdHandler,
+  syncUserPreferencesHandler,
+  LoadUserPreferencesAction,
+  UpdateUserPreferencesAction,
+  UpdateLastSelectedTripIdAction,
+  SyncUserPreferencesAction,
+} from './action-handlers/user-preferences-handlers.js';
+
 // Import sync actions and thunks
 import {
   syncFromServer,
@@ -242,6 +253,10 @@ export type AllActions =
   | SyncActions
   | SyncIntegrationActions
   | TriggerConfettiBurstAction
+  | LoadUserPreferencesAction
+  | UpdateUserPreferencesAction
+  | UpdateLastSelectedTripIdAction
+  | SyncUserPreferencesAction
   | { type: 'CREATE_USER_PERSON_TEMPLATE'; payload: CreateUserPersonInput }
   | { type: 'UPDATE_USER_PERSON'; payload: UpdateUserPersonInput }
   | { type: 'DELETE_USER_PERSON'; payload: DeleteUserPersonInput }
@@ -371,6 +386,12 @@ export const Mutations: {
       },
     };
   },
+
+  // User preferences handlers
+  LOAD_USER_PREFERENCES: loadUserPreferencesHandler,
+  UPDATE_USER_PREFERENCES: updateUserPreferencesHandler,
+  UPDATE_LAST_SELECTED_TRIP_ID: updateLastSelectedTripIdHandler,
+  SYNC_USER_PREFERENCES: syncUserPreferencesHandler,
 };
 
 export const actions = {

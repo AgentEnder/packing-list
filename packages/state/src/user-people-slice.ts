@@ -5,6 +5,8 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { UserPerson } from '@packing-list/model';
 import { HydrateOfflineAction } from './action-handlers/hydrate-offline.js';
 
+import { uuid } from '@packing-list/shared-utils';
+
 // State interface for user people management (Sprint 3)
 interface UserPeopleState {
   people: UserPerson[]; // All user's people (profile + templates)
@@ -41,6 +43,27 @@ const userPeopleSlice = createSlice({
       } else {
         state.people.push(action.payload);
       }
+      state.hasTriedToLoad = true;
+      state.error = null;
+    },
+
+    createUserPerson: (
+      state,
+      action: PayloadAction<
+        Omit<
+          UserPerson,
+          'id' | 'createdAt' | 'updatedAt' | 'version' | 'isDeleted'
+        >
+      >
+    ) => {
+      state.people.push({
+        ...action.payload,
+        id: uuid(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        version: 1,
+        isDeleted: false,
+      });
       state.hasTriedToLoad = true;
       state.error = null;
     },
@@ -168,6 +191,7 @@ export const {
   clearError,
   resetPeopleState,
   markAsTriedToLoad,
+  createUserPerson,
 } = userPeopleSlice.actions;
 
 // Reducer

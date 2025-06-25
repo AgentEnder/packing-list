@@ -10,6 +10,7 @@ import type {
   DefaultItemRule,
   TripRule,
   UserPerson,
+  UserPreferences,
 } from '@packing-list/model';
 import { supabase, isSupabaseAvailable } from '@packing-list/supabase';
 import type { Json, Tables } from '@packing-list/supabase';
@@ -20,6 +21,7 @@ import {
   DefaultItemRulesStorage,
   TripRuleStorage,
   UserPersonStorage,
+  UserPreferencesStorage,
 } from '@packing-list/offline-storage';
 import { isLocalUser } from './utils.js';
 import { generateDetailedConflicts } from '@packing-list/shared-utils';
@@ -41,6 +43,7 @@ interface BatchManager {
   trip_rule: BatchedChange[];
   rule_pack: BatchedChange[];
   user_person: BatchedChange[];
+  user_preferences: BatchedChange[]; // Special case - only one per user, but keeping for consistency
 }
 
 // Global batch manager
@@ -52,6 +55,7 @@ const batchManager: BatchManager = {
   trip_rule: [],
   rule_pack: [],
   user_person: [],
+  user_preferences: [],
 };
 
 // Global timeout for processing all batches
@@ -61,12 +65,15 @@ let globalBatchTimeout: NodeJS.Timeout | null = null;
 const BATCH_DEBOUNCE_MS = 1000;
 
 // Processing order to respect foreign key dependencies
-// 1. trips (parent table)
-// 2. people, items (depend on trips)
-// 3. default_item_rule (needed before trip_rule)
-// 4. trip_rule (depends on trips and default_item_rule)
-// 5. rule_pack (local only, processed last)
+// 1. user_preferences (singleton, no dependencies)
+// 2. user_person (user-level data)
+// 3. trips (parent table)
+// 4. people, items (depend on trips)
+// 5. default_item_rule (needed before trip_rule)
+// 6. trip_rule (depends on trips and default_item_rule)
+// 7. rule_pack (local only, processed last)
 const PROCESSING_ORDER: (keyof BatchManager)[] = [
+  'user_preferences',
   'user_person',
   'trip',
   'person',
@@ -198,6 +205,12 @@ async function processBatchOperation(
         operation
       );
       break;
+    case 'user_preferences':
+      await pushUserPreferencesChangesBatch(
+        batch.map((b) => b.change),
+        operation
+      );
+      break;
     default:
       console.warn(`🔄 [SYNC] Unknown entity type for batch: ${entityType}`);
   }
@@ -301,8 +314,15 @@ export const syncFromServer = createAsyncThunk(
 
       // Pull all data in a single comprehensive query
       // Using unwrap() provides proper typing and automatically throws on rejection
-      const { trips, people, items, rules, tripRules, userPeople } =
-        await dispatch(pullAllDataFromServer(params)).unwrap();
+      const {
+        trips,
+        people,
+        items,
+        rules,
+        tripRules,
+        userPeople,
+        userPreferences,
+      } = await dispatch(pullAllDataFromServer(params)).unwrap();
 
       // Update last sync timestamp
       dispatch(updateLastSyncTimestamp(Date.now()));
@@ -316,6 +336,7 @@ export const syncFromServer = createAsyncThunk(
         rules,
         tripRules,
         userPeople,
+        userPreferences,
       };
     } catch (error) {
       console.error('❌ [SYNC] Comprehensive sync failed:', error);
@@ -347,13 +368,30 @@ export const pullAllDataFromServer = createAsyncThunk(
         rules: [],
         tripRules: [],
         userPeople: [],
+        userPreferences: null,
         conflicts: [],
       };
     }
 
     const since = params.since || new Date(0).toISOString();
 
-    // Pull user profiles first
+    // Pull user preferences first
+    const { data: userPreferencesData, error: userPreferencesError } =
+      await supabase
+        .from('user_profiles')
+        .select('preferences, updated_at')
+        .eq('id', params.userId)
+        .single();
+
+    if (userPreferencesError && userPreferencesError.code !== 'PGRST116') {
+      console.error(
+        '❌ [SYNC] Error pulling user preferences:',
+        userPreferencesError
+      );
+      return rejectWithValue(userPreferencesError);
+    }
+
+    // Pull user profiles (people templates)
     const { data: userPeopleData, error: userPeopleError } = await supabase
       .from('user_people')
       .select('*')
@@ -411,6 +449,7 @@ export const pullAllDataFromServer = createAsyncThunk(
     const upsertedRules: DefaultItemRule[] = [];
     const upsertedTripRules: TripRule[] = [];
     const upsertedUserPeople: UserPerson[] = [];
+    let upsertedUserPreferences: UserPreferences | null = null;
 
     // Process user profiles first
     for (const serverUserPerson of userPeopleData || []) {
@@ -476,6 +515,43 @@ export const pullAllDataFromServer = createAsyncThunk(
           entityCallbacks.onUserPersonUpsert(userPersonData);
         }
       }
+    }
+
+    // Process user preferences (singleton per user)
+    if (userPreferencesData?.preferences) {
+      const serverPreferences =
+        userPreferencesData.preferences as UserPreferences;
+
+      console.log(
+        '✅ [SYNC] Processing user preferences from server:',
+        serverPreferences
+      );
+
+      // Check for user preferences conflicts
+      const localPreferences = await UserPreferencesStorage.getPreferences();
+
+      if (localPreferences) {
+        // For user preferences, we use a simple last-write-wins strategy
+        // since they're singleton and typically small changes like lastSelectedTripId
+        console.log(
+          '🔄 [SYNC] Server preferences override local (last-write-wins)'
+        );
+        await UserPreferencesStorage.savePreferences(serverPreferences);
+        upsertedUserPreferences = serverPreferences;
+
+        // Dispatch to Redux state
+        dispatch({ type: 'SYNC_USER_PREFERENCES', payload: serverPreferences });
+      } else {
+        // No local preferences, save server version
+        console.log('🔄 [SYNC] No local preferences, saving server version');
+        await UserPreferencesStorage.savePreferences(serverPreferences);
+        upsertedUserPreferences = serverPreferences;
+
+        // Dispatch to Redux state
+        dispatch({ type: 'SYNC_USER_PREFERENCES', payload: serverPreferences });
+      }
+    } else {
+      console.log('📋 [SYNC] No user preferences found on server');
     }
 
     // Create maps to deduplicate rules that might appear in multiple trips
@@ -830,7 +906,13 @@ export const pullAllDataFromServer = createAsyncThunk(
     }
 
     console.log(
-      `✅ [SYNC] Processed comprehensive data: ${upsertedTrips.length} trips, ${upsertedPeople.length} people, ${upsertedItems.length} items, ${upsertedRules.length} rules, ${upsertedTripRules.length} trip rules`
+      `✅ [SYNC] Processed comprehensive data: ${upsertedTrips.length} trips, ${
+        upsertedPeople.length
+      } people, ${upsertedItems.length} items, ${upsertedRules.length} rules, ${
+        upsertedTripRules.length
+      } trip rules, ${upsertedUserPeople.length} user people, ${
+        upsertedUserPreferences ? 'user preferences' : 'no user preferences'
+      }`
     );
 
     return {
@@ -840,6 +922,7 @@ export const pullAllDataFromServer = createAsyncThunk(
       rules: upsertedRules,
       tripRules: upsertedTripRules,
       userPeople: upsertedUserPeople,
+      userPreferences: upsertedUserPreferences,
       conflicts,
     };
   }
@@ -1229,6 +1312,76 @@ async function pushUserPersonChangesBatch(
   }
 }
 
+async function pushUserPreferencesChangesBatch(
+  changes: Change[],
+  operation: 'create' | 'update' | 'delete'
+): Promise<void> {
+  if (changes.length === 0) return;
+
+  console.log(
+    `🔄 [SYNC] Processing ${changes.length} user preferences ${operation} operations`
+  );
+
+  // User preferences are singleton - there should only be one per user
+  for (const change of changes) {
+    const userPreferences = change.data as UserPreferences;
+
+    try {
+      if (operation === 'create' || operation === 'update') {
+        const { error } = await supabase.from('user_profiles').upsert(
+          {
+            id: change.userId,
+            preferences: userPreferences as Json,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: 'id',
+          }
+        );
+
+        if (error) {
+          console.error(
+            `❌ [SYNC] Error ${operation}ing user preferences for ${change.userId}:`,
+            error
+          );
+          throw error;
+        }
+
+        console.log(
+          `✅ [SYNC] Successfully ${operation}d user preferences for user: ${change.userId}`
+        );
+      } else if (operation === 'delete') {
+        // For user preferences deletion, we set preferences to null rather than deleting the profile
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({
+            preferences: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', change.userId);
+
+        if (error) {
+          console.error(
+            `❌ [SYNC] Error deleting user preferences for ${change.userId}:`,
+            error
+          );
+          throw error;
+        }
+
+        console.log(
+          `✅ [SYNC] Successfully cleared user preferences for user: ${change.userId}`
+        );
+      }
+    } catch (error) {
+      console.error(
+        `❌ [SYNC] Failed to ${operation} user preferences for ${change.userId}:`,
+        error
+      );
+      throw error;
+    }
+  }
+}
+
 // Basic sync state actions
 export const setSyncState = (payload: Partial<SyncState>): SyncActions => ({
   type: 'SET_SYNC_STATE',
@@ -1422,6 +1575,19 @@ export const resolveConflict = createAsyncThunk(
             dispatch(mergeSyncedUserPerson(userPersonData));
             console.log(
               `✅ [RESOLVE_CONFLICT] Applied user person data to IndexedDB and Redux`
+            );
+            break;
+          }
+
+          case 'user_preferences': {
+            const userPreferencesData = dataToApply as UserPreferences;
+            await UserPreferencesStorage.savePreferences(userPreferencesData);
+            dispatch({
+              type: 'SYNC_USER_PREFERENCES',
+              payload: userPreferencesData,
+            });
+            console.log(
+              `✅ [RESOLVE_CONFLICT] Applied user preferences data to IndexedDB and Redux`
             );
             break;
           }
