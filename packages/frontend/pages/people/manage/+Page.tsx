@@ -15,6 +15,7 @@ import { PageHeader } from '../../../components/PageHeader';
 import { PageContainer } from '../../../components/PageContainer';
 import { HelpBlurb } from '../../../components/HelpBlurb';
 import { User, Plus, Edit3, Trash2, Bookmark } from 'lucide-react';
+import { TemplateForm } from './components/TemplateForm';
 
 export default function PeopleManagePage() {
   const dispatch = useAppDispatch();
@@ -217,19 +218,14 @@ export default function PeopleManagePage() {
                   : 'Create Template'}
               </h3>
 
-              {/* Placeholder for form component */}
-              <div className="text-center py-8 text-base-content/70">
-                Template form component would go here
-              </div>
-
-              <div className="flex gap-2 justify-end">
-                <button onClick={handleCancelEdit} className="btn btn-ghost">
-                  Cancel
-                </button>
-                <button className="btn btn-primary">
-                  {editingTemplate ? 'Save Changes' : 'Create Template'}
-                </button>
-              </div>
+              <TemplateForm
+                template={editingTemplate || undefined}
+                onCancel={handleCancelEdit}
+                onSave={() => {
+                  // Refresh will happen automatically via Redux state updates
+                  console.log('Template saved successfully');
+                }}
+              />
             </div>
           </div>
         </div>

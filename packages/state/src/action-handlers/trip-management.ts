@@ -3,6 +3,7 @@ import { Trip, TripSummary } from '@packing-list/model';
 import { uuid } from '@packing-list/shared-utils';
 import { createEmptyTripData, initialState } from '../store.js';
 import { createPersonFromProfileHandler } from './create-person-from-profile.js';
+import { selectUserProfile } from '../user-people-slice.js';
 
 // Action types
 export interface CreateTripAction {
@@ -139,8 +140,8 @@ export function createTripHandler(
         : state.sync,
   };
 
-  // Sprint 2: Auto-add user profile to new trips
-  const userProfile = state.userProfile?.profile;
+  // Sprint 3: Auto-add user profile to new trips
+  const userProfile = selectUserProfile(stateWithNewTrip);
   if (userProfile && userProfile.isUserProfile) {
     console.log(
       `👤 [CREATE_TRIP] Auto-adding user profile to trip: ${userProfile.name}`

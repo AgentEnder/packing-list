@@ -176,8 +176,14 @@ export function PersonTemplateSelector({
                       </div>
                     )}
                   </div>
-                  <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                    Template
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      template.isUserProfile
+                        ? 'text-green-600 bg-green-100'
+                        : 'text-blue-600 bg-blue-100'
+                    }`}
+                  >
+                    {template.isUserProfile ? 'You' : 'Template'}
                   </span>
                 </button>
               </li>

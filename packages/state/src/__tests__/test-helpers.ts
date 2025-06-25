@@ -40,6 +40,12 @@ export function createTestTripState(options: {
         [tripId]: tripData,
       },
     },
+    userPeople: {
+      people: [],
+      isLoading: false,
+      error: null,
+      hasTriedToLoad: false,
+    },
     rulePacks: [],
     ui: {
       rulePackModal: {

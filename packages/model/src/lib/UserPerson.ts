@@ -165,5 +165,22 @@ export const getTemplateSuggestions = (
   searchTerm: string,
   limit = 5
 ): UserPerson[] => {
-  return findTemplatesByName(userPeople, searchTerm).slice(0, limit);
+  const term = searchTerm.toLowerCase().trim();
+  if (!term) return [];
+
+  // Include ALL user people (both profile and templates) in search
+  return userPeople
+    .filter((person) => person.name.toLowerCase().includes(term))
+    .sort((a, b) => {
+      // Sort user profile first, then by exact match, then by name
+      if (a.isUserProfile && !b.isUserProfile) return -1;
+      if (!a.isUserProfile && b.isUserProfile) return 1;
+
+      const aExact = a.name.toLowerCase() === term;
+      const bExact = b.name.toLowerCase() === term;
+      if (aExact && !bExact) return -1;
+      if (!aExact && bExact) return 1;
+      return a.name.localeCompare(b.name);
+    })
+    .slice(0, limit);
 };
