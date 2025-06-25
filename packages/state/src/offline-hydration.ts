@@ -54,8 +54,8 @@ export async function loadOfflineState(
 
   const base: Omit<StoreType, 'auth' | 'rulePacks' | 'ui' | 'sync'> = {
     trips: { summaries: [], selectedTripId: null, byId: {} },
-    userProfile: {
-      profile: null,
+    userPeople: {
+      people: [],
       isLoading: false,
       error: null,
       hasTriedToLoad: true,
@@ -75,17 +75,19 @@ export async function loadOfflineState(
   );
 
   try {
-    // Load user profile first
+    // Load all user people (profile + templates)
     try {
-      const userProfile = await UserPersonStorage.getUserPerson(userId);
-      if (userProfile) {
-        base.userProfile.profile = userProfile;
-        console.log(`✅ [HYDRATION] Loaded user profile for ${userId}`);
+      const userPeople = await UserPersonStorage.getAllUserPeople(userId);
+      if (userPeople.length > 0) {
+        base.userPeople.people = userPeople;
+        console.log(
+          `✅ [HYDRATION] Loaded ${userPeople.length} user people for ${userId}`
+        );
       } else {
-        console.log(`📋 [HYDRATION] No user profile found for ${userId}`);
+        console.log(`📋 [HYDRATION] No user people found for ${userId}`);
       }
-    } catch (profileError) {
-      console.error('❌ [HYDRATION] Error loading user profile:', profileError);
+    } catch (peopleError) {
+      console.error('❌ [HYDRATION] Error loading user people:', peopleError);
     }
 
     // Load trip data

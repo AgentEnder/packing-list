@@ -15,6 +15,7 @@ import {
   DefaultItemRulesStorage,
   RulePacksStorage,
   TripRuleStorage,
+  UserPersonStorage,
   getDatabase,
 } from '@packing-list/offline-storage';
 import type { AllActions } from '../actions.js';
@@ -192,74 +193,93 @@ async function trackAndPushChange(
 }
 
 /**
- * Track changes to user profile data
+ * Track changes to user people data (profiles and templates)
  */
-function trackUserProfileChanges(
+function trackUserPeopleChanges(
   prevState: StoreType,
   nextState: StoreType,
   userId: string
 ): void {
-  const prevProfile = prevState.userProfile?.profile;
-  const nextProfile = nextState.userProfile?.profile;
+  const prevPeople = prevState.userPeople?.people || [];
+  const nextPeople = nextState.userPeople?.people || [];
 
-  // Profile created
-  if (!prevProfile && nextProfile) {
-    console.log(
-      `🔄 [SYNC_MIDDLEWARE] User profile created: ${nextProfile.name}`
-    );
+  // Create maps for efficient lookups
+  const prevPeopleMap = new Map(prevPeople.map((p) => [p.id, p]));
+  const nextPeopleMap = new Map(nextPeople.map((p) => [p.id, p]));
 
-    void trackAndPushChange(
-      {
-        userId,
-        entityType: 'user_person',
-        entityId: nextProfile.id,
-        operation: 'create',
-        data: nextProfile,
-        version: nextProfile.version || 1,
-      },
-      userId
-    );
-    return;
+  // Check for new or updated people
+  for (const nextPerson of nextPeople) {
+    const prevPerson = prevPeopleMap.get(nextPerson.id);
+
+    if (!prevPerson) {
+      // Person created
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] User person created: ${nextPerson.name} (${
+          nextPerson.isUserProfile ? 'profile' : 'template'
+        })`
+      );
+
+      // Save to IndexedDB
+      void UserPersonStorage.saveUserPerson(nextPerson);
+
+      void trackAndPushChange(
+        {
+          userId,
+          entityType: 'user_person',
+          entityId: nextPerson.id,
+          operation: 'create',
+          data: nextPerson,
+          version: nextPerson.version || 1,
+        },
+        userId
+      );
+    } else if (!deepEqual(prevPerson, nextPerson)) {
+      // Person updated
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] User person updated: ${nextPerson.name} (${
+          nextPerson.isUserProfile ? 'profile' : 'template'
+        })`
+      );
+
+      // Save to IndexedDB
+      void UserPersonStorage.saveUserPerson(nextPerson);
+
+      void trackAndPushChange(
+        {
+          userId,
+          entityType: 'user_person',
+          entityId: nextPerson.id,
+          operation: 'update',
+          data: nextPerson,
+          version: nextPerson.version || 1,
+        },
+        userId
+      );
+    }
   }
 
-  // Profile updated
-  if (prevProfile && nextProfile && !deepEqual(prevProfile, nextProfile)) {
-    console.log(
-      `🔄 [SYNC_MIDDLEWARE] User profile updated: ${nextProfile.name}`
-    );
+  // Check for deleted people
+  for (const prevPerson of prevPeople) {
+    if (!nextPeopleMap.has(prevPerson.id)) {
+      // Person deleted
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] User person deleted: ${prevPerson.name} (${
+          prevPerson.isUserProfile ? 'profile' : 'template'
+        })`
+      );
 
-    void trackAndPushChange(
-      {
-        userId,
-        entityType: 'user_person',
-        entityId: nextProfile.id,
-        operation: 'update',
-        data: nextProfile,
-        version: nextProfile.version || 1,
-      },
-      userId
-    );
-    return;
-  }
-
-  // Profile deleted
-  if (prevProfile && !nextProfile) {
-    console.log(
-      `🔄 [SYNC_MIDDLEWARE] User profile deleted: ${prevProfile.name}`
-    );
-
-    void trackAndPushChange(
-      {
-        userId,
-        entityType: 'user_person',
-        entityId: prevProfile.id,
-        operation: 'delete',
-        data: prevProfile,
-        version: prevProfile.version || 1,
-      },
-      userId
-    );
-    return;
+      void trackAndPushChange(
+        {
+          userId,
+          entityType: 'user_person',
+          entityId: prevPerson.id,
+          operation: 'delete',
+          data: { ...prevPerson, isDeleted: true },
+          version: prevPerson.version || 1,
+        },
+        userId
+      );
+    }
   }
 }
 
@@ -289,8 +309,8 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
       return result;
     }
 
-    // Track user profile changes
-    trackUserProfileChanges(prevState, nextState, userId);
+    // Track user people changes (profiles and templates)
+    trackUserPeopleChanges(prevState, nextState, userId);
 
     // Handle auth changes and sign-in to reload from IndexedDB and start sync
     const userChanged = prevState.auth.user?.id !== nextState.auth.user?.id;

@@ -20,7 +20,7 @@ export class UserPersonStorage {
   }
 
   /**
-   * Get user profile by userId
+   * Get user profile by userId (returns only the profile, not templates)
    */
   static async getUserPerson(userId: string): Promise<UserPerson | null> {
     const db = await getDatabase();
@@ -49,6 +49,32 @@ export class UserPersonStorage {
         error
       );
       return null;
+    }
+  }
+
+  /**
+   * Get all user people (profile + templates) for a user
+   */
+  static async getAllUserPeople(userId: string): Promise<UserPerson[]> {
+    const db = await getDatabase();
+
+    try {
+      // Use the userId index to find all user people for this user
+      const userPersonsIndex = db
+        .transaction('userPersons')
+        .store.index('userId');
+      const results = await userPersonsIndex.getAll(userId);
+
+      console.log(
+        `✅ [UserPersonStorage] Retrieved ${results.length} user people for user ${userId}`
+      );
+      return results.filter((person) => !person.isDeleted);
+    } catch (error) {
+      console.error(
+        `❌ [UserPersonStorage] Error retrieving user people for user ${userId}:`,
+        error
+      );
+      return [];
     }
   }
 
