@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@packing-list/state';
 import { User } from 'lucide-react';
 import { PageContainer } from '../../components/PageContainer.js';
@@ -9,7 +9,6 @@ import {
   selectUserProfileLoading,
   selectUserProfileError,
   selectHasUserProfile,
-  loadUserProfile,
   clearProfileError,
 } from '@packing-list/state';
 import { UserProfileForm } from './components/UserProfileForm.js';
@@ -24,12 +23,8 @@ export function Page() {
   const error = useAppSelector(selectUserProfileError);
   const hasProfile = useAppSelector(selectHasUserProfile);
 
-  // Load user profile on mount
-  useEffect(() => {
-    if (user?.id) {
-      dispatch(loadUserProfile(user.id));
-    }
-  }, [dispatch, user?.id]);
+  // Note: Profile loading is now handled by the sync system automatically
+  // when the user logs in. No need to manually trigger loading.
 
   // Clear error when component unmounts
   useEffect(() => {
@@ -63,7 +58,7 @@ export function Page() {
         <PageHeader title="Profile" />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading your profile...</p>
           </div>
         </div>

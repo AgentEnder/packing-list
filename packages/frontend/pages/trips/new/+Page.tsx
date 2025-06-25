@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { actions, useAppDispatch } from '@packing-list/state';
-import { Link } from '../../../components/Link';
 import { PageHeader } from '../../../components/PageHeader';
 import { PageContainer } from '../../../components/PageContainer';
 import type { TripEvent } from '@packing-list/model';
@@ -17,6 +16,7 @@ import {
 } from 'lucide-react';
 import { navigate } from 'vike/client/router';
 import { applyBaseUrl, uuid } from '@packing-list/shared-utils';
+import { Link } from '@packing-list/shared-components';
 
 // Trip templates
 const TRIP_TEMPLATES = [

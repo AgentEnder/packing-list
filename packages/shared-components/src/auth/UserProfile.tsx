@@ -1,5 +1,6 @@
 import { useAuth } from './useAuth.js';
 import { Avatar } from './Avatar.js';
+import { Link } from '../Link.js';
 
 export function UserProfile() {
   const { user, signOut, loading, isOnline } = useAuth();
@@ -63,7 +64,7 @@ export function UserProfile() {
           <hr />
         </li>
         <li>
-          <a
+          <Link
             href="/profile"
             className="flex items-center gap-2"
             data-testid="profile-link"
@@ -82,7 +83,7 @@ export function UserProfile() {
               />
             </svg>
             My Profile
-          </a>
+          </Link>
         </li>
         <li>
           <hr />

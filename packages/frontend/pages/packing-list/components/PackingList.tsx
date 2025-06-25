@@ -21,12 +21,12 @@ import {
   Users,
   ClipboardList,
 } from 'lucide-react';
-import { Link } from '../../../components/Link';
 import { PrintButton } from './PrintButton';
 import { getAllCategories } from '@packing-list/model';
 import { format } from 'date-fns';
 import { PageHeader } from '../../../components/PageHeader';
 import { useMousePosition } from '@packing-list/shared-utils';
+import { Link } from '@packing-list/shared-components';
 
 export const PackingList: React.FC = () => {
   const dispatch = useAppDispatch();

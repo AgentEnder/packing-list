@@ -297,6 +297,10 @@ export const Mutations: {
   MERGE_SYNCED_TRIP: mergeSyncedTripHandler,
   MERGE_SYNCED_PERSON: mergeSyncedPersonHandler,
   MERGE_SYNCED_ITEM: mergeSyncedItemHandler,
+  MERGE_SYNCED_USER_PERSON: (s) => {
+    // TODO: This will be needed when we have more than just the user profile
+    return s;
+  },
   TRACK_SYNC_CHANGE: (state: StoreType) => state, // Placeholder - no-op for now
   PROCESS_SYNCED_TRIP_ITEMS: processSyncedTripItemsHandler,
   BULK_UPSERT_SYNCED_ENTITIES: bulkUpsertSyncedEntitiesHandler,

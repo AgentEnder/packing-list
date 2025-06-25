@@ -12,13 +12,14 @@ import type {
   UserPerson,
 } from '@packing-list/model';
 import { supabase, isSupabaseAvailable } from '@packing-list/supabase';
-import type { Json } from '@packing-list/supabase';
+import type { Json, Tables } from '@packing-list/supabase';
 import {
   TripStorage,
   PersonStorage,
   ItemStorage,
   DefaultItemRulesStorage,
   TripRuleStorage,
+  UserPersonStorage,
 } from '@packing-list/offline-storage';
 import { isLocalUser } from './utils.js';
 import { generateDetailedConflicts } from '@packing-list/shared-utils';
@@ -66,6 +67,7 @@ const BATCH_DEBOUNCE_MS = 1000;
 // 4. trip_rule (depends on trips and default_item_rule)
 // 5. rule_pack (local only, processed last)
 const PROCESSING_ORDER: (keyof BatchManager)[] = [
+  'user_person',
   'trip',
   'person',
   'item',
@@ -299,9 +301,8 @@ export const syncFromServer = createAsyncThunk(
 
       // Pull all data in a single comprehensive query
       // Using unwrap() provides proper typing and automatically throws on rejection
-      const { trips, people, items, rules, tripRules } = await dispatch(
-        pullAllDataFromServer(params)
-      ).unwrap();
+      const { trips, people, items, rules, tripRules, userPeople } =
+        await dispatch(pullAllDataFromServer(params)).unwrap();
 
       // Update last sync timestamp
       dispatch(updateLastSyncTimestamp(Date.now()));
@@ -314,6 +315,7 @@ export const syncFromServer = createAsyncThunk(
         items,
         rules,
         tripRules,
+        userPeople,
       };
     } catch (error) {
       console.error('❌ [SYNC] Comprehensive sync failed:', error);
@@ -344,13 +346,28 @@ export const pullAllDataFromServer = createAsyncThunk(
         items: [],
         rules: [],
         tripRules: [],
+        userPeople: [],
         conflicts: [],
       };
     }
 
     const since = params.since || new Date(0).toISOString();
 
-    // Single comprehensive query using PostgREST joins
+    // Pull user profiles first
+    const { data: userPeopleData, error: userPeopleError } = await supabase
+      .from('user_people')
+      .select('*')
+      .eq('user_id', params.userId)
+      .gt('updated_at', since)
+      .eq('is_deleted', false)
+      .order('updated_at', { ascending: true });
+
+    if (userPeopleError) {
+      console.error('❌ [SYNC] Error pulling user profiles:', userPeopleError);
+      return rejectWithValue(userPeopleError);
+    }
+
+    // Single comprehensive query using PostgREST joins for trip data
     const { data: tripsWithRelations, error } = await supabase
       .from('trips')
       .select(
@@ -381,7 +398,9 @@ export const pullAllDataFromServer = createAsyncThunk(
     console.log(
       `✅ [SYNC] Pulled ${
         tripsWithRelations?.length || 0
-      } trips with relations from server`
+      } trips with relations and ${
+        userPeopleData?.length || 0
+      } user profiles from server`
     );
 
     // Process the comprehensive data
@@ -391,6 +410,73 @@ export const pullAllDataFromServer = createAsyncThunk(
     const upsertedItems: TripItem[] = [];
     const upsertedRules: DefaultItemRule[] = [];
     const upsertedTripRules: TripRule[] = [];
+    const upsertedUserPeople: UserPerson[] = [];
+
+    // Process user profiles first
+    for (const serverUserPerson of userPeopleData || []) {
+      const userPersonData: UserPerson = {
+        id: serverUserPerson.id,
+        userId: serverUserPerson.user_id,
+        name: serverUserPerson.name,
+        age: serverUserPerson.age || undefined,
+        gender: (serverUserPerson.gender as UserPerson['gender']) || undefined,
+        settings:
+          (serverUserPerson.settings as UserPerson['settings']) || undefined,
+        isUserProfile: serverUserPerson.is_user_profile ?? true,
+        createdAt: serverUserPerson.created_at || new Date().toISOString(),
+        updatedAt: serverUserPerson.updated_at || new Date().toISOString(),
+        version: serverUserPerson.version || 1,
+        isDeleted: serverUserPerson.is_deleted || false,
+      };
+
+      // Check for user profile conflicts
+      const localUserPerson = await UserPersonStorage.getUserPerson(
+        serverUserPerson.user_id
+      );
+
+      if (
+        localUserPerson &&
+        localUserPerson.updatedAt !== userPersonData.updatedAt
+      ) {
+        const resolvedUserPerson = resolveTimestampOnlyConflict(
+          localUserPerson,
+          userPersonData
+        );
+        if (resolvedUserPerson) {
+          await UserPersonStorage.saveUserPerson(resolvedUserPerson);
+          upsertedUserPeople.push(resolvedUserPerson);
+
+          const { createEntityCallbacks } = await import(
+            '../sync/sync-integration.js'
+          );
+          const entityCallbacks = createEntityCallbacks(dispatch);
+          if (entityCallbacks.onUserPersonUpsert) {
+            entityCallbacks.onUserPersonUpsert(resolvedUserPerson);
+          }
+        } else {
+          conflicts.push({
+            id: `user-person-${serverUserPerson.id}-${Date.now()}`,
+            entityType: 'user_person',
+            entityId: serverUserPerson.id,
+            localVersion: localUserPerson,
+            serverVersion: userPersonData,
+            conflictType: 'update_conflict',
+            timestamp: Date.now(),
+          });
+        }
+      } else {
+        await UserPersonStorage.saveUserPerson(userPersonData);
+        upsertedUserPeople.push(userPersonData);
+
+        const { createEntityCallbacks } = await import(
+          '../sync/sync-integration.js'
+        );
+        const entityCallbacks = createEntityCallbacks(dispatch);
+        if (entityCallbacks.onUserPersonUpsert) {
+          entityCallbacks.onUserPersonUpsert(userPersonData);
+        }
+      }
+    }
 
     // Create maps to deduplicate rules that might appear in multiple trips
     const processedRules = new Map<string, DefaultItemRule>();
@@ -752,6 +838,7 @@ export const pullAllDataFromServer = createAsyncThunk(
       items: upsertedItems,
       rules: upsertedRules,
       tripRules: upsertedTripRules,
+      userPeople: upsertedUserPeople,
       conflicts,
     };
   }
@@ -1069,22 +1156,38 @@ async function pushUserPersonChangesBatch(
   for (const change of changes) {
     const userPerson = change.data as UserPerson;
 
+    const [upsertChanges, deleteChanges] = changes.reduce(
+      ([up, del], change) => {
+        if (change.entityType === 'user_person') {
+          if (change.operation === 'create' || change.operation === 'update') {
+            up.push({
+              name: userPerson.name,
+              user_id: userPerson.userId,
+              age: userPerson.age ?? null,
+              gender: userPerson.gender ?? null,
+              settings: userPerson.settings as Json,
+              is_user_profile: userPerson.isUserProfile,
+              version: userPerson.version,
+              created_at: userPerson.createdAt,
+              updated_at: userPerson.updatedAt,
+              id: userPerson.id,
+              is_deleted: userPerson.isDeleted ?? false,
+            });
+          } else if (change.operation === 'delete') {
+            del.push(change);
+          }
+        }
+        return [up, del];
+      },
+      [[], []] as [Tables<'user_people'>[], { id: string }[]]
+    );
+
     try {
       if (operation === 'create' || operation === 'update') {
         // Note: Using existing user_profiles table as the backend storage
-        const { error } = await supabase.from('user_profiles').upsert([
-          {
-            id: userPerson.userId, // Use userId as the primary key for user_profiles
-            preferences: {
-              name: userPerson.name,
-              age: userPerson.age,
-              gender: userPerson.gender,
-              settings: userPerson.settings,
-              isUserProfile: userPerson.isUserProfile,
-            } as import('@packing-list/supabase').Json,
-            updated_at: userPerson.updatedAt,
-          },
-        ]);
+        const { error } = await supabase
+          .from('user_people')
+          .upsert(upsertChanges);
 
         if (error) {
           console.error(
@@ -1095,9 +1198,12 @@ async function pushUserPersonChangesBatch(
         }
       } else if (operation === 'delete') {
         const { error } = await supabase
-          .from('user_profiles')
+          .from('user_people')
           .delete()
-          .eq('id', userPerson.userId);
+          .in(
+            'id',
+            deleteChanges.map((c) => c.id)
+          );
 
         if (error) {
           console.error(
@@ -1195,6 +1301,11 @@ export const mergeSyncedPerson = (payload: Person): SyncActions => ({
 
 export const mergeSyncedItem = (payload: TripItem): SyncActions => ({
   type: 'MERGE_SYNCED_ITEM',
+  payload,
+});
+
+export const mergeSyncedUserPerson = (payload: UserPerson): SyncActions => ({
+  type: 'MERGE_SYNCED_USER_PERSON',
   payload,
 });
 
@@ -1299,6 +1410,16 @@ export const resolveConflict = createAsyncThunk(
             // Trip rules don't have a direct merge action, they're handled by recalculation
             console.log(
               `✅ [RESOLVE_CONFLICT] Applied trip rule data to IndexedDB`
+            );
+            break;
+          }
+
+          case 'user_person': {
+            const userPersonData = dataToApply as UserPerson;
+            await UserPersonStorage.saveUserPerson(userPersonData);
+            dispatch(mergeSyncedUserPerson(userPersonData));
+            console.log(
+              `✅ [RESOLVE_CONFLICT] Applied user person data to IndexedDB and Redux`
             );
             break;
           }

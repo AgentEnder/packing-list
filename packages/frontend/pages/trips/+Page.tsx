@@ -5,10 +5,9 @@ import {
   selectAccurateTripSummaries,
 } from '@packing-list/state';
 import { formatDate } from '@packing-list/shared-utils';
-import { Link } from '../../components/Link';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
-import { Modal } from '@packing-list/shared-components';
+import { Link, Modal } from '@packing-list/shared-components';
 import { uuid } from '@packing-list/shared-utils';
 import {
   Plus,

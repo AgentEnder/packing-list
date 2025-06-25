@@ -11,17 +11,11 @@ export class UserPersonStorage {
   static async saveUserPerson(userPerson: UserPerson): Promise<void> {
     const db = await getDatabase();
 
-    // Store in the trips objectStore with a special userId as the key
-    // This allows us to use existing infrastructure while keeping user profiles separate
-    await db.put('trips', {
-      ...userPerson,
-      // Use special ID format to distinguish from regular trips
-      id: `user-profile-${userPerson.userId}`,
-      type: 'user_person',
-    });
+    // Store in the dedicated userPersons objectStore
+    await db.put('userPersons', userPerson);
 
     console.log(
-      `✅ [UserPersonStorage] Saved user profile for user ${userPerson.userId}`
+      `✅ [UserPersonStorage] Saved user profile: ${userPerson.name} (${userPerson.id}) for user ${userPerson.userId}`
     );
   }
 
@@ -32,28 +26,57 @@ export class UserPersonStorage {
     const db = await getDatabase();
 
     try {
-      const profileId = `user-profile-${userId}`;
-      const result = await db.get('trips', profileId);
+      // Use the userId index to find the user profile
+      const userPersonsIndex = db
+        .transaction('userPersons')
+        .store.index('userId');
+      const result = await userPersonsIndex.get(userId);
 
-      if (!result || result.type !== 'user_person') {
+      if (!result) {
         console.log(
           `📋 [UserPersonStorage] No user profile found for user ${userId}`
         );
         return null;
       }
 
-      // Remove the storage-specific fields before returning
-      const { type: _type, ...userPerson } = result as {
-        type: string;
-      } & UserPerson;
-
       console.log(
-        `✅ [UserPersonStorage] Retrieved user profile for user ${userId}`
+        `✅ [UserPersonStorage] Retrieved user profile: ${result.name} (${result.id}) for user ${userId}`
       );
-      return userPerson as UserPerson;
+      return result;
     } catch (error) {
       console.error(
         `❌ [UserPersonStorage] Error retrieving user profile for user ${userId}:`,
+        error
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Get user profile by UserPerson ID
+   */
+  static async getUserPersonById(
+    userPersonId: string
+  ): Promise<UserPerson | null> {
+    const db = await getDatabase();
+
+    try {
+      const result = await db.get('userPersons', userPersonId);
+
+      if (!result) {
+        console.log(
+          `📋 [UserPersonStorage] No user profile found for ID ${userPersonId}`
+        );
+        return null;
+      }
+
+      console.log(
+        `✅ [UserPersonStorage] Retrieved user profile: ${result.name} (${result.id})`
+      );
+      return result;
+    } catch (error) {
+      console.error(
+        `❌ [UserPersonStorage] Error retrieving user profile for ID ${userPersonId}:`,
         error
       );
       return null;
@@ -67,11 +90,20 @@ export class UserPersonStorage {
     const db = await getDatabase();
 
     try {
-      const profileId = `user-profile-${userId}`;
-      await db.delete('trips', profileId);
+      // First find the user profile by userId
+      const userPerson = await this.getUserPerson(userId);
+      if (!userPerson) {
+        console.log(
+          `📋 [UserPersonStorage] No user profile found to delete for user ${userId}`
+        );
+        return;
+      }
+
+      // Delete by the actual ID
+      await db.delete('userPersons', userPerson.id);
 
       console.log(
-        `✅ [UserPersonStorage] Deleted user profile for user ${userId}`
+        `✅ [UserPersonStorage] Deleted user profile: ${userPerson.name} (${userPerson.id}) for user ${userId}`
       );
     } catch (error) {
       console.error(
@@ -88,5 +120,26 @@ export class UserPersonStorage {
   static async hasUserPerson(userId: string): Promise<boolean> {
     const userPerson = await this.getUserPerson(userId);
     return userPerson !== null;
+  }
+
+  /**
+   * Get all user profiles (for debugging/admin purposes)
+   */
+  static async getAllUserPersons(): Promise<UserPerson[]> {
+    const db = await getDatabase();
+
+    try {
+      const allUserPersons = await db.getAll('userPersons');
+      console.log(
+        `✅ [UserPersonStorage] Retrieved ${allUserPersons.length} user profiles`
+      );
+      return allUserPersons;
+    } catch (error) {
+      console.error(
+        `❌ [UserPersonStorage] Error retrieving all user profiles:`,
+        error
+      );
+      return [];
+    }
   }
 }

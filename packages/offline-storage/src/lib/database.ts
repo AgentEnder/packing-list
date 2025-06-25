@@ -10,6 +10,7 @@ import type {
   TripRule,
   DefaultItemRule,
   RulePack,
+  UserPerson,
 } from '@packing-list/model';
 
 // Declare global window type for database instance
@@ -22,6 +23,7 @@ declare global {
 export interface OfflineDB {
   // User data
   userPreferences: UserPreferences;
+  userPersons: UserPerson;
 
   // Trip data
   trips: Trip;
@@ -46,7 +48,7 @@ export interface OfflineDB {
 }
 
 const DB_NAME = 'PackingListOfflineDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbInstance: IDBPDatabase<OfflineDB> | null = null;
 
@@ -57,8 +59,10 @@ export async function initializeDatabase(): Promise<IDBPDatabase<OfflineDB>> {
 
   console.log('[OfflineDB] Opening database');
   dbInstance = await openDB<OfflineDB>(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      console.log('[OfflineDB] Initializing database schema...');
+    upgrade(db, oldVersion) {
+      console.log(
+        `[OfflineDB] Upgrading database from version ${oldVersion} to ${DB_VERSION}`
+      );
 
       // User preferences store
       if (!db.objectStoreNames.contains('userPreferences')) {
@@ -72,6 +76,28 @@ export async function initializeDatabase(): Promise<IDBPDatabase<OfflineDB>> {
             serviceWorkerEnabled: false, // Disabled by default, can be enabled in settings
           },
           'preferences'
+        );
+      }
+
+      // User persons store (user profiles)
+      if (!db.objectStoreNames.contains('userPersons')) {
+        const userPersonsStore = db.createObjectStore('userPersons', {
+          keyPath: 'id',
+        });
+        userPersonsStore.createIndex('userId', 'userId');
+        userPersonsStore.createIndex('updatedAt', 'updatedAt');
+        console.log('[OfflineDB] Created userPersons object store');
+      }
+
+      // Handle data migration from version 2 to 3
+      if (oldVersion === 2 && db.objectStoreNames.contains('trips')) {
+        console.log(
+          '[OfflineDB] Running migration from v2 to v3: moving user profiles from trips to userPersons'
+        );
+
+        // Note: Migration will be handled post-upgrade to avoid transaction complexity
+        console.log(
+          '[OfflineDB] Migration will be handled on first access after upgrade'
         );
       }
 

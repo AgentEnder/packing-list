@@ -1,13 +1,8 @@
 // User Profile State Management - Sprint 1
-// Profile-only implementation (not full templates yet)
+// Simplified slice - sync integration handles persistence
 
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import {
-  UserPerson,
-  CreateUserPersonInput,
-  UpdateUserPersonInput,
-  validateUserPerson,
-} from '@packing-list/model';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { UserPerson } from '@packing-list/model';
 
 // State interface for user profile management (Sprint 1)
 interface UserProfileState {
@@ -24,209 +19,129 @@ const initialState: UserProfileState = {
   hasTriedToLoad: false,
 };
 
-// Async thunks for profile operations
-export const createUserProfile = createAsyncThunk<
-  UserPerson,
-  CreateUserPersonInput,
-  { rejectValue: string }
->('userProfile/create', async (profileData, { rejectWithValue }) => {
-  try {
-    // Validate input
-    const errors = validateUserPerson(profileData);
-    if (errors.length > 0) {
-      return rejectWithValue(errors.join(', '));
-    }
-
-    // TODO: Replace with actual API call to Supabase
-    // For now, create a mock profile with generated ID
-    const mockProfile: UserPerson = {
-      id: `profile_${Date.now()}`,
-      ...profileData,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      version: 1,
-      isDeleted: false,
-    };
-
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    return mockProfile;
-  } catch (error) {
-    return rejectWithValue(
-      error instanceof Error ? error.message : 'Failed to create profile'
-    );
-  }
-});
-
-export const updateUserProfile = createAsyncThunk<
-  UserPerson,
-  UpdateUserPersonInput,
-  { rejectValue: string }
->('userProfile/update', async (updateData, { rejectWithValue }) => {
-  try {
-    // Validate input - convert to CreateUserPersonInput format for validation
-    const validationData: CreateUserPersonInput = {
-      userId: updateData.userId || 'temp', // Provide default for validation
-      name: updateData.name || 'temp',
-      age: updateData.age,
-      gender: updateData.gender,
-      settings: updateData.settings,
-      isUserProfile: updateData.isUserProfile ?? true,
-    };
-    const errors = validateUserPerson(validationData);
-    if (errors.length > 0) {
-      return rejectWithValue(errors.join(', '));
-    }
-
-    // TODO: Replace with actual API call to Supabase
-    // For now, simulate update
-    const mockUpdatedProfile: UserPerson = {
-      id: updateData.id,
-      userId: updateData.userId || 'user1', // Default for mock
-      name: updateData.name || 'Unknown',
-      age: updateData.age,
-      gender: updateData.gender,
-      settings: updateData.settings || {},
-      isUserProfile: updateData.isUserProfile ?? true,
-      createdAt: '2025-01-25T00:00:00Z', // Mock timestamp
-      updatedAt: new Date().toISOString(),
-      version: 2, // Increment version
-      isDeleted: false,
-    };
-
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    return mockUpdatedProfile;
-  } catch (error) {
-    return rejectWithValue(
-      error instanceof Error ? error.message : 'Failed to update profile'
-    );
-  }
-});
-
-export const loadUserProfile = createAsyncThunk<
-  UserPerson | null,
-  string, // userId
-  { rejectValue: string }
->('userProfile/load', async (userId, { rejectWithValue }) => {
-  try {
-    // TODO: Replace with actual API call to Supabase
-    // For now, return null (no profile found)
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Mock: Return null to simulate no existing profile
-    return null;
-  } catch (error) {
-    return rejectWithValue(
-      error instanceof Error ? error.message : 'Failed to load profile'
-    );
-  }
-});
-
-export const deleteUserProfile = createAsyncThunk<
-  void,
-  string, // profileId
-  { rejectValue: string }
->('userProfile/delete', async (profileId, { rejectWithValue }) => {
-  try {
-    // TODO: Replace with actual API call to Supabase
-    // For now, just simulate deletion
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  } catch (error) {
-    return rejectWithValue(
-      error instanceof Error ? error.message : 'Failed to delete profile'
-    );
-  }
-});
-
-// Profile slice
+// Profile slice with simple reducers
 const userProfileSlice = createSlice({
   name: 'userProfile',
   initialState,
   reducers: {
+    // Set profile (used by sync integration)
+    setUserProfile: (state, action: PayloadAction<UserPerson>) => {
+      state.profile = action.payload;
+      state.hasTriedToLoad = true;
+      state.error = null;
+      state.isLoading = false;
+    },
+
+    // Clear profile
+    clearUserProfile: (state) => {
+      state.profile = null;
+      state.error = null;
+      state.isLoading = false;
+    },
+
+    // Set loading state
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.isLoading = action.payload;
+    },
+
+    // Set error
+    setError: (state, action: PayloadAction<string | null>) => {
+      state.error = action.payload;
+      state.isLoading = false;
+    },
+
+    // Clear error
     clearError: (state) => {
       state.error = null;
     },
+
+    // Reset entire state
     resetProfileState: (state) => {
       state.profile = null;
       state.isLoading = false;
       state.error = null;
       state.hasTriedToLoad = false;
     },
+
+    // Mark as tried to load (used when sync completes)
+    markAsTriedToLoad: (state) => {
+      state.hasTriedToLoad = true;
+      state.isLoading = false;
+    },
   },
   extraReducers: (builder) => {
+    // Handle sync actions that update user profile
     builder
-      // Create profile
-      .addCase(createUserProfile.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(createUserProfile.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.profile = action.payload;
-        state.error = null;
-        state.hasTriedToLoad = true;
-      })
-      .addCase(createUserProfile.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload || 'Failed to create profile';
-      })
+      .addCase(
+        'BULK_UPSERT_SYNCED_ENTITIES',
+        (
+          state,
+          action: {
+            type: 'BULK_UPSERT_SYNCED_ENTITIES';
+            payload: {
+              userPeople?: UserPerson[];
+            };
+          }
+        ) => {
+          const { userPeople } = action.payload || {};
 
-      // Update profile
-      .addCase(updateUserProfile.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(updateUserProfile.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.profile = action.payload;
-        state.error = null;
-      })
-      .addCase(updateUserProfile.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload || 'Failed to update profile';
-      })
+          if (userPeople && userPeople.length > 0) {
+            for (const syncedUserPerson of userPeople) {
+              // Update user profile state if this is a user profile
+              if (syncedUserPerson.isUserProfile) {
+                console.log(
+                  `👤 [USER PROFILE REDUCER] Updating profile from sync: ${syncedUserPerson.name} (${syncedUserPerson.id}) for user ${syncedUserPerson.userId}`,
+                  syncedUserPerson
+                );
 
-      // Load profile
-      .addCase(loadUserProfile.pending, (state) => {
-        if (!state.hasTriedToLoad) {
-          state.isLoading = true;
+                // Only update if this synced user person matches the current user
+                // or if we don't have a profile yet
+                if (
+                  syncedUserPerson.userId === state.profile?.userId ||
+                  !state.profile
+                ) {
+                  state.profile = syncedUserPerson;
+                  state.hasTriedToLoad = true;
+                  state.error = null;
+                  state.isLoading = false;
+
+                  console.log(
+                    `✅ [USER PROFILE REDUCER] Updated user profile state for user: ${syncedUserPerson.userId}`,
+                    state.profile
+                  );
+                }
+              }
+            }
+          }
         }
-        state.error = null;
-      })
-      .addCase(loadUserProfile.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.profile = action.payload;
-        state.error = null;
-        state.hasTriedToLoad = true;
-      })
-      .addCase(loadUserProfile.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload || 'Failed to load profile';
-        state.hasTriedToLoad = true;
-      })
-
-      // Delete profile
-      .addCase(deleteUserProfile.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(deleteUserProfile.fulfilled, (state) => {
-        state.isLoading = false;
-        state.profile = null;
-        state.error = null;
-      })
-      .addCase(deleteUserProfile.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload || 'Failed to delete profile';
-      });
+      )
+      .addCase(
+        'MERGE_SYNCED_USER_PERSON',
+        (
+          state,
+          action: { type: 'MERGE_SYNCED_USER_PERSON'; payload: UserPerson }
+        ) => {
+          if (action.payload.isUserProfile) {
+            state.profile = action.payload;
+            state.hasTriedToLoad = true;
+            state.error = null;
+            state.isLoading = false;
+          }
+        }
+      );
   },
 });
 
 // Action creators
-export const { clearError, resetProfileState } = userProfileSlice.actions;
+export const {
+  setUserProfile,
+  clearUserProfile,
+  setLoading,
+  setError,
+  clearError,
+  resetProfileState,
+  markAsTriedToLoad,
+} = userProfileSlice.actions;
 
 // Reducer
 export default userProfileSlice.reducer;

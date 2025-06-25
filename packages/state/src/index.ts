@@ -21,12 +21,13 @@ export * from './lib/sync/index.js';
 
 // User profile management exports
 export {
-  createUserProfile,
-  updateUserProfile,
-  loadUserProfile,
-  deleteUserProfile,
+  setUserProfile,
+  clearUserProfile,
+  setLoading as setProfileLoading,
+  setError as setProfileError,
   clearError as clearProfileError,
   resetProfileState,
+  markAsTriedToLoad,
   selectUserProfile,
   selectUserProfileLoading,
   selectUserProfileError,

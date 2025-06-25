@@ -428,6 +428,48 @@ export type Database = {
         }
         Relationships: []
       }
+      user_people: {
+        Row: {
+          age: number | null
+          created_at: string | null
+          gender: string | null
+          id: string
+          is_deleted: boolean | null
+          is_user_profile: boolean | null
+          name: string
+          settings: Json | null
+          updated_at: string | null
+          user_id: string
+          version: number | null
+        }
+        Insert: {
+          age?: number | null
+          created_at?: string | null
+          gender?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_user_profile?: boolean | null
+          name: string
+          settings?: Json | null
+          updated_at?: string | null
+          user_id: string
+          version?: number | null
+        }
+        Update: {
+          age?: number | null
+          created_at?: string | null
+          gender?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_user_profile?: boolean | null
+          name?: string
+          settings?: Json | null
+          updated_at?: string | null
+          user_id?: string
+          version?: number | null
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           created_at: string | null

@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from '@packing-list/state';
 import { usePageContext } from 'vike-react/usePageContext';
-import { Link } from '../../../components/Link';
 import { PageHeader } from '../../../components/PageHeader';
 import { PageContainer } from '../../../components/PageContainer';
 import { applyBaseUrl, formatDate } from '@packing-list/shared-utils';
@@ -21,6 +20,7 @@ import {
   List,
   BarChart3,
 } from 'lucide-react';
+import { Link } from '@packing-list/shared-components';
 
 export default function TripDetailsPage() {
   const pageContext = usePageContext();

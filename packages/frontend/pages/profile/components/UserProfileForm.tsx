@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import {
-  useAppDispatch,
-  createUserProfile,
-  updateUserProfile,
-} from '@packing-list/state';
+import { useState, useEffect } from 'react';
+import { useAppDispatch, setUserProfile } from '@packing-list/state';
 import { Save, User, Calendar, Users } from 'lucide-react';
-import { UserPerson, validateUserPerson } from '@packing-list/model';
+import {
+  UserPerson,
+  validateUserPerson,
+  CreateUserPersonInput,
+} from '@packing-list/model';
+import { uuid } from '@packing-list/shared-utils';
 
 interface UserProfileFormProps {
   profile: UserPerson | null;
@@ -59,8 +60,8 @@ export function UserProfileForm({
     setValidationErrors([]);
 
     try {
-      // Prepare form data
-      const profileData = {
+      // Prepare form data for validation
+      const validationData: CreateUserPersonInput = {
         userId,
         name: formData.name.trim(),
         age: formData.age ? parseInt(formData.age, 10) : undefined,
@@ -72,24 +73,44 @@ export function UserProfileForm({
       };
 
       // Validate
-      const errors = validateUserPerson(profileData);
+      const errors = validateUserPerson(validationData);
       if (errors.length > 0) {
         setValidationErrors(errors);
         setIsSubmitting(false);
         return;
       }
 
-      // Submit
+      let savedProfile: UserPerson;
+
       if (isEditing && profile) {
-        await dispatch(
-          updateUserProfile({
-            id: profile.id,
-            ...profileData,
-          }) as any
-        );
+        // Update existing profile
+        savedProfile = {
+          ...profile,
+          ...validationData,
+          updatedAt: new Date().toISOString(),
+          version: (profile.version || 1) + 1,
+        };
       } else {
-        await dispatch(createUserProfile(profileData) as any);
+        // Create new profile
+        savedProfile = {
+          id: uuid(),
+          ...validationData,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          version: 1,
+          isDeleted: false,
+        };
       }
+
+      // Update Redux state - the sync middleware will detect the change
+      // and handle IndexedDB storage and server sync automatically
+      dispatch(setUserProfile(savedProfile));
+
+      console.log(
+        `✅ [USER PROFILE FORM] ${isEditing ? 'Updated' : 'Created'} profile: ${
+          savedProfile.name
+        }`
+      );
     } catch (error) {
       console.error('Profile submission error:', error);
       setValidationErrors(['An unexpected error occurred. Please try again.']);
@@ -194,9 +215,9 @@ export function UserProfileForm({
       {/* Info Message */}
       <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <p className="text-sm text-blue-700">
-          <strong>Privacy Note:</strong> Your profile information is stored
-          securely and used only to provide personalized packing
-          recommendations. You can update or delete your profile at any time.
+          <strong>Note:</strong> Your profile changes are automatically synced
+          across all your devices. The sync system handles server communication
+          in the background.
         </p>
       </div>
     </form>

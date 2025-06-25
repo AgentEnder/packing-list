@@ -1,4 +1,5 @@
 export * from './lib/Timeline.js';
+export * from './Link.js';
 
 // Banner system
 export {

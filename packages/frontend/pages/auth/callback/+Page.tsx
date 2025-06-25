@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '@packing-list/shared-components';
-import { Link } from '../../../components/Link';
+import { useAuth, Link } from '@packing-list/shared-components';
 import { navigate } from 'vike/client/router';
 
 export default function AuthCallback() {

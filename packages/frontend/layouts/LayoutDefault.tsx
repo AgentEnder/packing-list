@@ -2,7 +2,6 @@ import './tailwind.css';
 import './style.css';
 import React, { useState, useEffect, useRef } from 'react';
 // import logoUrl from '../assets/logo.svg';
-import { Link } from '../components/Link';
 import { DemoBanner } from '../components/DemoBanner';
 import { DevModeBannerContainer } from '../components/DevModeBannerContainer';
 import { ToastContainer } from '../components/Toast';
@@ -20,6 +19,7 @@ import {
   BannerProvider,
   OfflineBanner,
   useBannerHeight,
+  Link,
 } from '@packing-list/shared-components';
 import {
   Menu,
