@@ -1,5 +1,6 @@
 // Action handlers for user people template operations - Sprint 3
 
+import { uuid } from '@packing-list/shared-utils';
 import { StoreType } from '../store.js';
 import {
   UserPerson,
@@ -8,7 +9,6 @@ import {
   DeleteUserPersonInput,
   ClonePersonAsTemplateInput,
 } from '@packing-list/model';
-import { randomUUID } from 'crypto';
 
 // Create User Person Template (Sprint 3)
 export function createUserPersonTemplateHandler(
@@ -24,7 +24,7 @@ export function createUserPersonTemplateHandler(
   );
 
   const newTemplate: UserPerson = {
-    id: randomUUID(),
+    id: uuid(),
     userId: action.payload.userId,
     name: action.payload.name,
     age: action.payload.age,
@@ -175,7 +175,7 @@ export function clonePersonAsTemplateHandler(
   );
 
   const newTemplate: UserPerson = {
-    id: randomUUID(),
+    id: uuid(),
     userId: action.payload.userId,
     name: action.payload.personData.name,
     age: action.payload.personData.age,

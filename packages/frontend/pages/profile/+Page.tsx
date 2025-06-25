@@ -6,10 +6,10 @@ import { PageHeader } from '../../components/PageHeader.js';
 import { useAuth } from '@packing-list/auth-state';
 import {
   selectUserProfile,
-  selectUserProfileLoading,
-  selectUserProfileError,
+  selectUserPeopleLoading,
+  selectUserPeopleError,
   selectHasUserProfile,
-  clearProfileError,
+  clearPeopleError,
 } from '@packing-list/state';
 import { UserProfileForm } from './components/UserProfileForm.js';
 import { UserProfileCard } from './components/UserProfileCard.js';
@@ -19,8 +19,8 @@ export function Page() {
   const { user } = useAuth();
 
   const profile = useAppSelector(selectUserProfile);
-  const isLoading = useAppSelector(selectUserProfileLoading);
-  const error = useAppSelector(selectUserProfileError);
+  const isLoading = useAppSelector(selectUserPeopleLoading);
+  const error = useAppSelector(selectUserPeopleError);
   const hasProfile = useAppSelector(selectHasUserProfile);
 
   // Note: Profile loading is now handled by the sync system automatically
@@ -29,7 +29,7 @@ export function Page() {
   // Clear error when component unmounts
   useEffect(() => {
     return () => {
-      dispatch(clearProfileError());
+      dispatch(clearPeopleError());
     };
   }, [dispatch]);
 
@@ -105,7 +105,7 @@ export function Page() {
               </div>
               <div className="ml-auto">
                 <button
-                  onClick={() => dispatch(clearProfileError())}
+                  onClick={() => dispatch(clearPeopleError())}
                   className="text-red-400 hover:text-red-600"
                   aria-label="Dismiss error"
                 >

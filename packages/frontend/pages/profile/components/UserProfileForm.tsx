@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAppDispatch, setUserProfile } from '@packing-list/state';
+import { useAppDispatch, upsertUserPerson } from '@packing-list/state';
 import { Save, User, Calendar, Users } from 'lucide-react';
 import {
   UserPerson,
@@ -104,7 +104,7 @@ export function UserProfileForm({
 
       // Update Redux state - the sync middleware will detect the change
       // and handle IndexedDB storage and server sync automatically
-      dispatch(setUserProfile(savedProfile));
+      dispatch(upsertUserPerson(savedProfile));
 
       console.log(
         `✅ [USER PROFILE FORM] ${isEditing ? 'Updated' : 'Created'} profile: ${

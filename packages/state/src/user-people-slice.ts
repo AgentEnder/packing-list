@@ -91,12 +91,10 @@ const userPeopleSlice = createSlice({
     // Handle sync actions that update user people
     builder
       .addCase('HYDRATE_OFFLINE', (state, action: HydrateOfflineAction) => {
-        const { userProfile } = action.payload;
-        if (userProfile) {
-          // Handle backwards compatibility with old profile structure
-          const profile = userProfile.profile;
-          if (profile) {
-            state.people = [profile];
+        const { userPeople } = action.payload;
+        if (userPeople) {
+          if (userPeople.people) {
+            state.people = userPeople.people;
             state.hasTriedToLoad = true;
             state.error = null;
             state.isLoading = false;

@@ -199,8 +199,6 @@ function createAppReducer(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = mutation(state ?? initialState, action as any);
 
-        console.log(result.userPeople);
-
         // Remove auth from result and return
         return result;
       }
@@ -210,6 +208,7 @@ function createAppReducer(
       if (
         !action.type.startsWith('@@redux') &&
         !action.type.startsWith('userProfile') &&
+        !action.type.startsWith('userPeople') &&
         !action.type.startsWith('auth') &&
         !action.type.startsWith('sync') &&
         !action.type.startsWith('UPSERT')
