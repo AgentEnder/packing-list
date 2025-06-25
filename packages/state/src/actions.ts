@@ -160,6 +160,15 @@ import {
   bulkUpsertSyncedEntitiesHandler,
   type SyncIntegrationActions,
 } from './lib/sync/sync-integration.js';
+import {
+  createUserPersonTemplateHandler,
+  updateUserPersonHandler,
+  deleteUserPersonHandler,
+  clonePersonAsTemplateHandler,
+  loadUserPeopleHandler,
+  setUserPeopleLoadingHandler,
+  setUserPeopleErrorHandler,
+} from './action-handlers/user-people-handlers.js';
 
 // Import sync actions and thunks
 import {
@@ -177,6 +186,13 @@ import {
   setSyncError,
   resetSyncState,
 } from './lib/sync/actions.js';
+import {
+  CreateUserPersonInput,
+  UpdateUserPersonInput,
+  DeleteUserPersonInput,
+  ClonePersonAsTemplateInput,
+  UserPerson,
+} from '@packing-list/model';
 
 export type ActionHandler<T extends AllActions> = (
   state: StoreType,
@@ -226,6 +242,13 @@ export type AllActions =
   | SyncActions
   | SyncIntegrationActions
   | TriggerConfettiBurstAction
+  | { type: 'CREATE_USER_PERSON_TEMPLATE'; payload: CreateUserPersonInput }
+  | { type: 'UPDATE_USER_PERSON'; payload: UpdateUserPersonInput }
+  | { type: 'DELETE_USER_PERSON'; payload: DeleteUserPersonInput }
+  | { type: 'CLONE_PERSON_AS_TEMPLATE'; payload: ClonePersonAsTemplateInput }
+  | { type: 'LOAD_USER_PEOPLE'; payload: UserPerson[] }
+  | { type: 'SET_USER_PEOPLE_LOADING'; payload: boolean }
+  | { type: 'SET_USER_PEOPLE_ERROR'; payload: string | null }
   | {
       type: 'SYNC_UPDATE_TRIP_SUMMARIES';
       payload: {
@@ -311,6 +334,13 @@ export const Mutations: {
   TRACK_SYNC_CHANGE: (state: StoreType) => state, // Placeholder - no-op for now
   PROCESS_SYNCED_TRIP_ITEMS: processSyncedTripItemsHandler,
   BULK_UPSERT_SYNCED_ENTITIES: bulkUpsertSyncedEntitiesHandler,
+  CREATE_USER_PERSON_TEMPLATE: createUserPersonTemplateHandler,
+  UPDATE_USER_PERSON: updateUserPersonHandler,
+  DELETE_USER_PERSON: deleteUserPersonHandler,
+  CLONE_PERSON_AS_TEMPLATE: clonePersonAsTemplateHandler,
+  LOAD_USER_PEOPLE: loadUserPeopleHandler,
+  SET_USER_PEOPLE_LOADING: setUserPeopleLoadingHandler,
+  SET_USER_PEOPLE_ERROR: setUserPeopleErrorHandler,
   SYNC_UPDATE_TRIP_SUMMARIES: (
     state: StoreType,
     action: {

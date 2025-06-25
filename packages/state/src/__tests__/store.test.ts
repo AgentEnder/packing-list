@@ -23,11 +23,11 @@ describe('store', () => {
       redux: { ssrState },
     });
 
-    // The store now includes userProfile slice, so we need to account for that
+    // The store now includes userPeople slice, so we need to account for that
     const expectedState = {
       ...ssrState,
-      userProfile: {
-        profile: null,
+      userPeople: {
+        people: [],
         isLoading: false,
         error: null,
         hasTriedToLoad: false,

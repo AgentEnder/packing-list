@@ -9,6 +9,8 @@ import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
 import { NoTripSelected } from '../../components/NoTripSelected';
 import { FlowContinueButton } from '../../components/FlowContinueButton';
+// import { Link } from '../../components/Link';
+import { Settings } from 'lucide-react';
 
 export default function PeoplePage() {
   const selectedTripId = useAppSelector(selectSelectedTripId);
@@ -31,7 +33,17 @@ export default function PeoplePage() {
 
   return (
     <PageContainer>
-      <PageHeader title="People on this Trip" />
+      <div className="flex items-center justify-between mb-4">
+        <PageHeader title="People on this Trip" />
+        <a
+          href="/people/manage"
+          className="btn btn-outline btn-sm"
+          title="Manage Templates"
+        >
+          <Settings className="w-4 h-4" />
+          Manage Templates
+        </a>
+      </div>
       <HelpBlurb storageKey="travelers" title="Managing Travelers">
         <p>
           Add everyone who&apos;s going on the trip to help calculate the right

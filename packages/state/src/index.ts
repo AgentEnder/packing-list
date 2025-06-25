@@ -19,22 +19,27 @@ export { createEntityCallbacks } from './lib/sync/sync-integration.js';
 // Consolidated sync functionality
 export * from './lib/sync/index.js';
 
-// User profile management exports
+// User people management exports (Sprint 3)
 export {
-  setUserProfile,
-  clearUserProfile,
-  setLoading as setProfileLoading,
-  setError as setProfileError,
-  clearError as clearProfileError,
-  resetProfileState,
+  setUserPeople,
+  upsertUserPerson,
+  removeUserPerson,
+  clearUserPeople,
+  setLoading as setPeopleLoading,
+  setError as setPeopleError,
+  clearError as clearPeopleError,
+  resetPeopleState,
   markAsTriedToLoad,
+  selectUserPeople,
   selectUserProfile,
-  selectUserProfileLoading,
-  selectUserProfileError,
+  selectUserTemplates,
+  selectUserPeopleLoading,
+  selectUserPeopleError,
   selectHasUserProfile,
-  selectUserProfileState,
-  type UserProfileState,
-} from './user-profile-slice.js';
+  selectUserPeopleState,
+  selectUserPersonById,
+  type UserPeopleState,
+} from './user-people-slice.js';
 
 // Re-export auth-state for convenience
 export * from '@packing-list/auth-state';

@@ -1,7 +1,7 @@
 import { Person } from '@packing-list/model';
 import { useState } from 'react';
 import { PersonCard } from './PersonCard';
-import { PersonForm } from './PersonForm';
+import { PersonFormEnhanced } from './PersonFormEnhanced';
 import { useAppDispatch } from '@packing-list/state';
 
 export type PersonListProps = {
@@ -29,7 +29,7 @@ export const PersonList = ({ people }: PersonListProps) => {
         />
       ))}
       {isAdding ? (
-        <PersonForm onCancel={() => setIsAdding(false)} />
+        <PersonFormEnhanced onCancel={() => setIsAdding(false)} />
       ) : (
         <button
           className="card bg-base-200 shadow-xl flex flex-col items-center justify-center border-2 border-dashed border-primary cursor-pointer min-h-[280px] hover:bg-primary hover:text-white transition col-span-1"

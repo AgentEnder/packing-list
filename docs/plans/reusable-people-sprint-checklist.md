@@ -125,6 +125,7 @@
 
 - [ ] Update person creation flow to offer "Save as template"
 - [ ] Add "Quick Add" from templates when adding people to trips
+  - [ ] When typing in the person name, offer known people from templates as suggestions
 - [ ] Template management (edit/delete templates)
 - [ ] Bulk template operations
 

@@ -19,9 +19,9 @@ import {
 } from '@packing-list/model';
 import { DEFAULT_RULE_PACKS } from './default-rule-packs.js';
 import { syncTrackingMiddleware } from './middleware/sync-tracking-middleware.js';
-import userProfileReducer, {
-  type UserProfileState,
-} from './user-profile-slice.js';
+import userPeopleReducer, {
+  type UserPeopleState,
+} from './user-people-slice.js';
 
 // New multi-trip store structure
 export type StoreType = {
@@ -68,8 +68,8 @@ export type StoreType = {
   // Auth state
   auth: AuthState;
 
-  // User profile state (Sprint 1)
-  userProfile: UserProfileState;
+  // User people state (Sprint 3)
+  userPeople: UserPeopleState;
 };
 
 // Trip-specific data structure
@@ -171,8 +171,8 @@ export const initialState: StoreType = {
     },
   },
   auth: authInitialState,
-  userProfile: {
-    profile: null,
+  userPeople: {
+    people: [],
     isLoading: false,
     error: null,
     hasTriedToLoad: false,
@@ -199,7 +199,7 @@ function createAppReducer(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = mutation(state ?? initialState, action as any);
 
-        console.log(result.userProfile);
+        console.log(result.userPeople);
 
         // Remove auth from result and return
         return result;
@@ -242,9 +242,9 @@ export function createStore(pageContext?: PageContext, _state?: StoreType) {
     return {
       ...appReducer(state, action),
       auth: authReducer(state?.auth, action as AuthActions),
-      userProfile: userProfileReducer(
-        state?.userProfile,
-        action as Parameters<typeof userProfileReducer>[1]
+      userPeople: userPeopleReducer(
+        state?.userPeople,
+        action as Parameters<typeof userPeopleReducer>[1]
       ),
     };
   };
