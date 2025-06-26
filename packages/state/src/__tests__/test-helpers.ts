@@ -96,6 +96,14 @@ export function createTestTripState(options: {
       isInitialized: true,
       lastError: null,
     },
+    userPreferences: {
+      theme: 'light',
+      defaultTimeZone: 'America/New_York',
+      defaultTripDuration: 7,
+      autoSyncEnabled: true,
+      serviceWorkerEnabled: true,
+      lastSelectedTripId: 'test-trip',
+    },
   };
 }
 

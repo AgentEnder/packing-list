@@ -3,6 +3,9 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "outDir": "./out-tsc/vitest",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "types": [
       "vitest",
       "vitest/globals",

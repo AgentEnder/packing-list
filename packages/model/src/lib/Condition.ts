@@ -11,17 +11,17 @@ export type BaseCondition = {
   notes?: string;
 };
 
-type PersonFields = keyof Pick<Person, 'age' | 'gender' | 'name'>;
+export type PersonFields = keyof Pick<Person, 'age' | 'gender' | 'name'>;
 
 // Special handling for name field which can be a string array
-type PersonNameCondition = BaseCondition & {
+export type PersonNameCondition = BaseCondition & {
   type: 'person';
   field: 'name';
   operator: 'in';
   value: string[];
 };
 
-type PersonOtherCondition<
+export type PersonOtherCondition<
   T extends Exclude<PersonFields, 'name'> = Exclude<PersonFields, 'name'>
 > = BaseCondition & {
   type: 'person';
@@ -32,7 +32,7 @@ type PersonOtherCondition<
 
 export type PersonCondition = PersonNameCondition | PersonOtherCondition;
 
-type DayFields = keyof Pick<Day, 'expectedClimate' | 'location'>;
+export type DayFields = keyof Pick<Day, 'expectedClimate' | 'location'>;
 
 export type DayCondition<T extends DayFields = DayFields> = BaseCondition & {
   type: 'day';
