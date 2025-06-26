@@ -25,12 +25,9 @@ export function createUserPersonTemplateHandler(
 
   const newTemplate: UserPerson = {
     id: uuid(),
-    userId: action.payload.userId,
-    name: action.payload.name,
-    age: action.payload.age,
-    gender: action.payload.gender,
-    settings: action.payload.settings || {},
+    ...action.payload,
     isUserProfile: false, // Templates are never profiles
+    autoAddToNewTrips: action.payload.autoAddToNewTrips ?? false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     version: 1,
@@ -50,6 +47,41 @@ export function createUserPersonTemplateHandler(
       error: null,
     },
   };
+}
+
+export function upsertUserPersonHandler(
+  state: StoreType,
+  action: {
+    type: 'UPSERT_USER_PERSON';
+    payload: CreateUserPersonInput & { id?: string };
+  }
+): StoreType {
+  console.log('📝 [UPSERT_USER_PERSON] Upserting person:', action.payload);
+
+  const personIndex = action.payload.id
+    ? state.userPeople.people.findIndex((p) => p.id === action.payload.id)
+    : -1;
+
+  if (personIndex === -1) {
+    return createUserPersonTemplateHandler(state, {
+      type: 'CREATE_USER_PERSON_TEMPLATE',
+      payload: action.payload,
+    });
+  }
+
+  if (!action.payload.id) {
+    throw new Error('ID is required');
+  }
+
+  return updateUserPersonHandler(state, {
+    type: 'UPDATE_USER_PERSON',
+    payload: {
+      id: action.payload.id,
+      name: action.payload.name,
+      birthDate: action.payload.birthDate,
+      gender: action.payload.gender,
+    },
+  });
 }
 
 // Update User Person (Profile or Template)
@@ -84,7 +116,7 @@ export function updateUserPersonHandler(
   const updatedPerson: UserPerson = {
     ...existingPerson,
     name: action.payload.name ?? existingPerson.name,
-    age: action.payload.age ?? existingPerson.age,
+    birthDate: action.payload.birthDate ?? existingPerson.birthDate,
     gender: action.payload.gender ?? existingPerson.gender,
     settings: action.payload.settings ?? existingPerson.settings,
     updatedAt: new Date().toISOString(),
@@ -178,10 +210,11 @@ export function clonePersonAsTemplateHandler(
     id: uuid(),
     userId: action.payload.userId,
     name: action.payload.personData.name,
-    age: action.payload.personData.age,
+    birthDate: action.payload.personData.birthDate,
     gender: action.payload.personData.gender as UserPerson['gender'],
     settings: {},
     isUserProfile: false,
+    autoAddToNewTrips: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     version: 1,

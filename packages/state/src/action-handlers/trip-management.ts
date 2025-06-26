@@ -1,5 +1,5 @@
 import { StoreType, TripData } from '../store.js';
-import { Trip, TripSummary } from '@packing-list/model';
+import { getAutoAddPeople, Trip, TripSummary } from '@packing-list/model';
 import { uuid } from '@packing-list/shared-utils';
 import { createEmptyTripData, initialState } from '../store.js';
 import { createPersonFromProfileHandler } from './create-person-from-profile.js';
@@ -164,6 +164,24 @@ export function createTripHandler(
     console.log(
       `📋 [CREATE_TRIP] No user profile found for auto-add. User will need to add manually or create profile.`
     );
+  }
+
+  // Also add any auto-add people to the trip
+  const autoAddPeople = getAutoAddPeople(stateWithNewTrip.userPeople.people);
+  if (autoAddPeople.length > 0) {
+    console.log(
+      `👤 [CREATE_TRIP] Auto-adding ${autoAddPeople.length} people to trip`
+    );
+    for (const person of autoAddPeople) {
+      stateWithNewTrip = createPersonFromProfileHandler(stateWithNewTrip, {
+        type: 'CREATE_PERSON_FROM_PROFILE',
+        payload: {
+          userPersonId: person.id,
+          userPerson: person,
+          tripId,
+        },
+      });
+    }
   }
 
   return stateWithNewTrip;

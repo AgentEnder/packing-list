@@ -1,7 +1,7 @@
 // User People State Management - Sprint 3
 // Enhanced slice supporting user profile + multiple people templates
 
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { UserPerson } from '@packing-list/model';
 import { HydrateOfflineAction } from './action-handlers/hydrate-offline.js';
 
@@ -204,8 +204,10 @@ export const selectUserPeople = (state: { userPeople: UserPeopleState }) =>
 export const selectUserProfile = (state: { userPeople: UserPeopleState }) =>
   state.userPeople.people.find((p) => p.isUserProfile) || null;
 
-export const selectUserTemplates = (state: { userPeople: UserPeopleState }) =>
-  state.userPeople.people.filter((p) => !p.isUserProfile);
+export const selectUserTemplates = createSelector(
+  (state: { userPeople: UserPeopleState }) => state.userPeople.people,
+  (people) => people.filter((p) => !p.isUserProfile)
+);
 
 export const selectUserPeopleLoading = (state: {
   userPeople: UserPeopleState;
@@ -214,8 +216,10 @@ export const selectUserPeopleLoading = (state: {
 export const selectUserPeopleError = (state: { userPeople: UserPeopleState }) =>
   state.userPeople.error;
 
-export const selectHasUserProfile = (state: { userPeople: UserPeopleState }) =>
-  state.userPeople.people.some((p) => p.isUserProfile);
+export const selectHasUserProfile = createSelector(
+  (state: { userPeople: UserPeopleState }) => state.userPeople.people,
+  (people) => people.some((p) => p.isUserProfile)
+);
 
 export const selectUserPeopleState = (state: { userPeople: UserPeopleState }) =>
   state.userPeople;
@@ -223,7 +227,11 @@ export const selectUserPeopleState = (state: { userPeople: UserPeopleState }) =>
 export const selectUserPersonById = (
   state: { userPeople: UserPeopleState },
   id: string
-) => state.userPeople.people.find((p) => p.id === id) || null;
+) =>
+  createSelector(
+    (state: { userPeople: UserPeopleState }) => state.userPeople.people,
+    (people) => people.find((p) => p.id === id) || null
+  );
 
 // Type exports for use in components
 export type { UserPeopleState };

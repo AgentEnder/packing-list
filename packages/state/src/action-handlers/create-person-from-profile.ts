@@ -1,4 +1,4 @@
-import { Person, UserPerson } from '@packing-list/model';
+import { calculateCurrentAge, Person, UserPerson } from '@packing-list/model';
 import { uuid } from '@packing-list/shared-utils';
 import { StoreType } from '../store.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
@@ -57,7 +57,9 @@ export const createPersonFromProfileHandler = (
     id: uuid(),
     tripId,
     name: userPerson.name,
-    age: userPerson.age,
+    age: userPerson.birthDate
+      ? calculateCurrentAge(userPerson.birthDate)
+      : undefined,
     gender: userPerson.gender,
     settings: userPerson.settings || {},
     userPersonId, // Link to the user profile
@@ -66,6 +68,14 @@ export const createPersonFromProfileHandler = (
     version: 1,
     isDeleted: false,
   };
+
+  if (!newPerson.age) {
+    console.warn(
+      `[CREATE_PERSON_FROM_PROFILE] No age found for user profile: ${userPerson.name}`,
+      userPerson
+    );
+    return state;
+  }
 
   // Update the trip data with the new person
   const updatedTripData = {

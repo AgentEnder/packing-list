@@ -168,6 +168,7 @@ import {
   loadUserPeopleHandler,
   setUserPeopleLoadingHandler,
   setUserPeopleErrorHandler,
+  upsertUserPersonHandler,
 } from './action-handlers/user-people-handlers.js';
 
 import {
@@ -204,6 +205,7 @@ import {
   ClonePersonAsTemplateInput,
   UserPerson,
 } from '@packing-list/model';
+import { upsertUserPerson } from './action-creators/user-people-actions.js';
 
 export type ActionHandler<T extends AllActions> = (
   state: StoreType,
@@ -259,6 +261,7 @@ export type AllActions =
   | SyncUserPreferencesAction
   | { type: 'CREATE_USER_PERSON_TEMPLATE'; payload: CreateUserPersonInput }
   | { type: 'UPDATE_USER_PERSON'; payload: UpdateUserPersonInput }
+  | ReturnType<typeof upsertUserPerson>
   | { type: 'DELETE_USER_PERSON'; payload: DeleteUserPersonInput }
   | { type: 'CLONE_PERSON_AS_TEMPLATE'; payload: ClonePersonAsTemplateInput }
   | { type: 'LOAD_USER_PEOPLE'; payload: UserPerson[] }
@@ -351,6 +354,7 @@ export const Mutations: {
   BULK_UPSERT_SYNCED_ENTITIES: bulkUpsertSyncedEntitiesHandler,
   CREATE_USER_PERSON_TEMPLATE: createUserPersonTemplateHandler,
   UPDATE_USER_PERSON: updateUserPersonHandler,
+  UPSERT_USER_PERSON: upsertUserPersonHandler,
   DELETE_USER_PERSON: deleteUserPersonHandler,
   CLONE_PERSON_AS_TEMPLATE: clonePersonAsTemplateHandler,
   LOAD_USER_PEOPLE: loadUserPeopleHandler,

@@ -20,6 +20,11 @@ export const updateUserPerson = (payload: UpdateUserPersonInput) => ({
   payload,
 });
 
+export const upsertUserPerson = (payload: CreateUserPersonInput) => ({
+  type: 'UPSERT_USER_PERSON' as const,
+  payload,
+});
+
 // Delete User Person Action Creator
 export const deleteUserPerson = (payload: DeleteUserPersonInput) => ({
   type: 'DELETE_USER_PERSON' as const,

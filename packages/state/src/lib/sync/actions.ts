@@ -1,16 +1,17 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import type { SyncActions } from './types.js';
-import type {
-  SyncState,
-  SyncConflict,
-  Trip,
-  Person,
-  TripItem,
-  Change,
-  DefaultItemRule,
-  TripRule,
-  UserPerson,
-  UserPreferences,
+import {
+  type SyncState,
+  type SyncConflict,
+  type Trip,
+  type Person,
+  type TripItem,
+  type Change,
+  type DefaultItemRule,
+  type TripRule,
+  type UserPerson,
+  type UserPreferences,
+  estimateBirthDateFromAge,
 } from '@packing-list/model';
 import { supabase, isSupabaseAvailable } from '@packing-list/supabase';
 import type { Json, Tables } from '@packing-list/supabase';
@@ -25,7 +26,8 @@ import {
 } from '@packing-list/offline-storage';
 import { isLocalUser } from './utils.js';
 import { generateDetailedConflicts } from '@packing-list/shared-utils';
-
+import { upsertUserPerson } from '../../user-people-slice.js';
+import { createEntityCallbacks } from '../sync/sync-integration.js';
 /**
  * Batching system for collecting and pushing changes in bulk
  */
@@ -453,11 +455,26 @@ export const pullAllDataFromServer = createAsyncThunk(
 
     // Process user profiles first
     for (const serverUserPerson of userPeopleData || []) {
+      // Handle both new birth_date and legacy age fields for migration compatibility
+      let birthDate: string | undefined = undefined;
+      if ('birth_date' in serverUserPerson && serverUserPerson.birth_date) {
+        birthDate = serverUserPerson.birth_date as string;
+      } else if (
+        'age' in serverUserPerson &&
+        typeof (serverUserPerson as unknown as { age?: number }).age ===
+          'number'
+      ) {
+        // Migrate from age to birthDate using utility function
+        birthDate = estimateBirthDateFromAge(
+          (serverUserPerson as unknown as { age: number }).age
+        );
+      }
+
       const userPersonData: UserPerson = {
         id: serverUserPerson.id,
         userId: serverUserPerson.user_id,
         name: serverUserPerson.name,
-        age: serverUserPerson.age || undefined,
+        birthDate,
         gender: (serverUserPerson.gender as UserPerson['gender']) || undefined,
         settings:
           (serverUserPerson.settings as UserPerson['settings']) || undefined,
@@ -466,6 +483,7 @@ export const pullAllDataFromServer = createAsyncThunk(
         updatedAt: serverUserPerson.updated_at || new Date().toISOString(),
         version: serverUserPerson.version || 1,
         isDeleted: serverUserPerson.is_deleted || false,
+        autoAddToNewTrips: serverUserPerson.auto_add_to_new_trips ?? false,
       };
 
       // Check for user person conflicts by ID (not userId)
@@ -485,9 +503,6 @@ export const pullAllDataFromServer = createAsyncThunk(
           await UserPersonStorage.saveUserPerson(resolvedUserPerson);
           upsertedUserPeople.push(resolvedUserPerson);
 
-          const { createEntityCallbacks } = await import(
-            '../sync/sync-integration.js'
-          );
           const entityCallbacks = createEntityCallbacks(dispatch);
           if (entityCallbacks.onUserPersonUpsert) {
             entityCallbacks.onUserPersonUpsert(resolvedUserPerson);
@@ -507,9 +522,6 @@ export const pullAllDataFromServer = createAsyncThunk(
         await UserPersonStorage.saveUserPerson(userPersonData);
         upsertedUserPeople.push(userPersonData);
 
-        const { createEntityCallbacks } = await import(
-          '../sync/sync-integration.js'
-        );
         const entityCallbacks = createEntityCallbacks(dispatch);
         if (entityCallbacks.onUserPersonUpsert) {
           entityCallbacks.onUserPersonUpsert(userPersonData);
@@ -585,9 +597,6 @@ export const pullAllDataFromServer = createAsyncThunk(
           await TripStorage.saveTrip(resolvedTrip);
           upsertedTrips.push(resolvedTrip);
 
-          const { createEntityCallbacks } = await import(
-            '../sync/sync-integration.js'
-          );
           const entityCallbacks = createEntityCallbacks(dispatch);
           entityCallbacks.onTripUpsert(resolvedTrip);
         } else {
@@ -604,10 +613,6 @@ export const pullAllDataFromServer = createAsyncThunk(
       } else {
         await TripStorage.saveTrip(tripData);
         upsertedTrips.push(tripData);
-
-        const { createEntityCallbacks } = await import(
-          '../sync/sync-integration.js'
-        );
         const entityCallbacks = createEntityCallbacks(dispatch);
         entityCallbacks.onTripUpsert(tripData);
       }
@@ -647,9 +652,6 @@ export const pullAllDataFromServer = createAsyncThunk(
               await PersonStorage.savePerson(resolvedPerson);
               upsertedPeople.push(resolvedPerson);
 
-              const { createEntityCallbacks } = await import(
-                '../sync/sync-integration.js'
-              );
               const entityCallbacks = createEntityCallbacks(dispatch);
               entityCallbacks.onPersonUpsert(resolvedPerson);
             } else {
@@ -667,9 +669,6 @@ export const pullAllDataFromServer = createAsyncThunk(
             await PersonStorage.savePerson(personData);
             upsertedPeople.push(personData);
 
-            const { createEntityCallbacks } = await import(
-              '../sync/sync-integration.js'
-            );
             const entityCallbacks = createEntityCallbacks(dispatch);
             entityCallbacks.onPersonUpsert(personData);
           }
@@ -719,9 +718,6 @@ export const pullAllDataFromServer = createAsyncThunk(
               await ItemStorage.saveItem(resolvedItem);
               upsertedItems.push(resolvedItem);
 
-              const { createEntityCallbacks } = await import(
-                '../sync/sync-integration.js'
-              );
               const entityCallbacks = createEntityCallbacks(dispatch);
               entityCallbacks.onItemUpsert(resolvedItem);
             } else {
@@ -739,9 +735,6 @@ export const pullAllDataFromServer = createAsyncThunk(
             await ItemStorage.saveItem(itemData);
             upsertedItems.push(itemData);
 
-            const { createEntityCallbacks } = await import(
-              '../sync/sync-integration.js'
-            );
             const entityCallbacks = createEntityCallbacks(dispatch);
             entityCallbacks.onItemUpsert(itemData);
           }
@@ -782,9 +775,6 @@ export const pullAllDataFromServer = createAsyncThunk(
               await TripRuleStorage.saveTripRule(resolvedTripRule);
               upsertedTripRules.push(resolvedTripRule);
 
-              const { createEntityCallbacks } = await import(
-                '../sync/sync-integration.js'
-              );
               const entityCallbacks = createEntityCallbacks(dispatch);
               entityCallbacks.onTripRuleUpsert(resolvedTripRule);
             } else {
@@ -804,9 +794,6 @@ export const pullAllDataFromServer = createAsyncThunk(
             await TripRuleStorage.saveTripRule(tripRuleData);
             upsertedTripRules.push(tripRuleData);
 
-            const { createEntityCallbacks } = await import(
-              '../sync/sync-integration.js'
-            );
             const entityCallbacks = createEntityCallbacks(dispatch);
             entityCallbacks.onTripRuleUpsert(tripRuleData);
           }
@@ -862,9 +849,6 @@ export const pullAllDataFromServer = createAsyncThunk(
                 processedRules.set(serverRule.id, resolvedRule);
                 upsertedRules.push(resolvedRule);
 
-                const { createEntityCallbacks } = await import(
-                  '../sync/sync-integration.js'
-                );
                 const entityCallbacks = createEntityCallbacks(dispatch);
                 entityCallbacks.onDefaultItemRuleUpsert({
                   rule: resolvedRule,
@@ -886,9 +870,6 @@ export const pullAllDataFromServer = createAsyncThunk(
               processedRules.set(serverRule.id, ruleData);
               upsertedRules.push(ruleData);
 
-              const { createEntityCallbacks } = await import(
-                '../sync/sync-integration.js'
-              );
               const entityCallbacks = createEntityCallbacks(dispatch);
               entityCallbacks.onDefaultItemRuleUpsert({
                 rule: ruleData,
@@ -1248,7 +1229,7 @@ async function pushUserPersonChangesBatch(
             up.push({
               name: userPerson.name,
               user_id: userPerson.userId,
-              age: userPerson.age ?? null,
+              birth_date: userPerson.birthDate ?? null,
               gender: userPerson.gender ?? null,
               settings: userPerson.settings as Json,
               is_user_profile: userPerson.isUserProfile,
@@ -1611,17 +1592,7 @@ export const resolveConflict = createAsyncThunk(
 
           // Use the proper Redux action for user people
           // This will trigger sync tracking and update the UI
-          dispatch({
-            type: 'UPDATE_USER_PERSON',
-            payload: {
-              id: userPersonData.id,
-              name: userPersonData.name,
-              age: userPersonData.age,
-              gender: userPersonData.gender,
-              settings: userPersonData.settings,
-              isUserProfile: userPersonData.isUserProfile,
-            },
-          });
+          dispatch(upsertUserPerson(userPersonData));
 
           console.log(
             `✅ [RESOLVE_CONFLICT] Applied user person data to IndexedDB and Redux`
