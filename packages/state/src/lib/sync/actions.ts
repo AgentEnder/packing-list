@@ -1257,6 +1257,7 @@ async function pushUserPersonChangesBatch(
               updated_at: userPerson.updatedAt,
               id: userPerson.id,
               is_deleted: userPerson.isDeleted ?? false,
+              auto_add_to_new_trips: userPerson.autoAddToNewTrips ?? false,
             });
           } else if (change.operation === 'delete') {
             del.push(change);
@@ -1498,7 +1499,7 @@ export const resolveConflict = createAsyncThunk(
       // Determine what data to apply based on strategy
       switch (strategy) {
         case 'local':
-          // Keep local version - no need to update anything, just remove conflict
+          // Keep local version
           dataToApply = conflict.localVersion;
           break;
         case 'server':
@@ -1513,100 +1514,153 @@ export const resolveConflict = createAsyncThunk(
           throw new Error(`Unknown resolution strategy: ${strategy}`);
       }
 
-      // For non-local strategies, we need to apply the data to Redux and IndexedDB
-      if (strategy !== 'local') {
-        console.log(
-          `🔧 [RESOLVE_CONFLICT] Applying ${strategy} data for ${conflict.entityType}:${conflict.entityId}`
-        );
+      console.log(
+        `🔧 [RESOLVE_CONFLICT] Applying ${strategy} data for ${conflict.entityType}:${conflict.entityId}`
+      );
 
-        // Apply data based on entity type
-        switch (conflict.entityType) {
-          case 'trip': {
-            const tripData = dataToApply as Trip;
-            await TripStorage.saveTrip(tripData);
+      // Apply data based on entity type using proper Redux actions that trigger sync tracking
+      switch (conflict.entityType) {
+        case 'trip': {
+          const tripData = dataToApply as Trip;
+
+          // Save to IndexedDB first
+          await TripStorage.saveTrip(tripData);
+
+          // For server/manual strategies, use merge action (data from server)
+          // For local strategy, we don't need to update Redux since it's already there
+          if (strategy !== 'local') {
             dispatch(mergeSyncedTrip(tripData));
-            console.log(
-              `✅ [RESOLVE_CONFLICT] Applied trip data to IndexedDB and Redux`
-            );
-            break;
           }
 
-          case 'person': {
-            const personData = dataToApply as Person;
-            await PersonStorage.savePerson(personData);
-            dispatch(mergeSyncedPerson(personData));
-            console.log(
-              `✅ [RESOLVE_CONFLICT] Applied person data to IndexedDB and Redux`
-            );
-            break;
-          }
-
-          case 'item': {
-            const itemData = dataToApply as TripItem;
-            await ItemStorage.saveItem(itemData);
-            dispatch(mergeSyncedItem(itemData));
-            console.log(
-              `✅ [RESOLVE_CONFLICT] Applied item data to IndexedDB and Redux`
-            );
-            break;
-          }
-
-          case 'default_item_rule': {
-            const ruleData = dataToApply as DefaultItemRule;
-            await DefaultItemRulesStorage.saveDefaultItemRule(ruleData);
-            // Rules don't have a direct merge action, they're handled by recalculation
-            console.log(`✅ [RESOLVE_CONFLICT] Applied rule data to IndexedDB`);
-            break;
-          }
-
-          case 'trip_rule': {
-            const tripRuleData = dataToApply as TripRule;
-            await TripRuleStorage.saveTripRule(tripRuleData);
-            // Trip rules don't have a direct merge action, they're handled by recalculation
-            console.log(
-              `✅ [RESOLVE_CONFLICT] Applied trip rule data to IndexedDB`
-            );
-            break;
-          }
-
-          case 'user_person': {
-            const userPersonData = dataToApply as UserPerson;
-            await UserPersonStorage.saveUserPerson(userPersonData);
-            dispatch(mergeSyncedUserPerson(userPersonData));
-            console.log(
-              `✅ [RESOLVE_CONFLICT] Applied user person data to IndexedDB and Redux`
-            );
-            break;
-          }
-
-          case 'user_preferences': {
-            const userPreferencesData = dataToApply as UserPreferences;
-            await UserPreferencesStorage.savePreferences(userPreferencesData);
-            dispatch({
-              type: 'SYNC_USER_PREFERENCES',
-              payload: userPreferencesData,
-            });
-            console.log(
-              `✅ [RESOLVE_CONFLICT] Applied user preferences data to IndexedDB and Redux`
-            );
-            break;
-          }
-
-          default:
-            console.warn(
-              `🔧 [RESOLVE_CONFLICT] Unknown entity type: ${conflict.entityType}`
-            );
+          console.log(
+            `✅ [RESOLVE_CONFLICT] Applied trip data to IndexedDB${
+              strategy !== 'local' ? ' and Redux' : ''
+            }`
+          );
+          break;
         }
+
+        case 'person': {
+          const personData = dataToApply as Person;
+
+          // Save to IndexedDB first
+          await PersonStorage.savePerson(personData);
+
+          // For all strategies, we need to update Redux properly
+          // Use UPDATE_PERSON action which will trigger sync tracking
+          dispatch({
+            type: 'UPDATE_PERSON',
+            payload: personData,
+          });
+
+          console.log(
+            `✅ [RESOLVE_CONFLICT] Applied person data to IndexedDB and Redux`
+          );
+          break;
+        }
+
+        case 'item': {
+          const itemData = dataToApply as TripItem;
+
+          // Save to IndexedDB first
+          await ItemStorage.saveItem(itemData);
+
+          // For server/manual strategies, use merge action
+          // For local strategy, we don't need to update Redux since it's already there
+          if (strategy !== 'local') {
+            dispatch(mergeSyncedItem(itemData));
+          }
+
+          console.log(
+            `✅ [RESOLVE_CONFLICT] Applied item data to IndexedDB${
+              strategy !== 'local' ? ' and Redux' : ''
+            }`
+          );
+          break;
+        }
+
+        case 'default_item_rule': {
+          const ruleData = dataToApply as DefaultItemRule;
+
+          // Save to IndexedDB
+          await DefaultItemRulesStorage.saveDefaultItemRule(ruleData);
+
+          // Rules don't have a direct Redux action, they're handled by recalculation
+          console.log(`✅ [RESOLVE_CONFLICT] Applied rule data to IndexedDB`);
+          break;
+        }
+
+        case 'trip_rule': {
+          const tripRuleData = dataToApply as TripRule;
+
+          // Save to IndexedDB
+          await TripRuleStorage.saveTripRule(tripRuleData);
+
+          // Trip rules don't have a direct Redux action, they're handled by recalculation
+          console.log(
+            `✅ [RESOLVE_CONFLICT] Applied trip rule data to IndexedDB`
+          );
+          break;
+        }
+
+        case 'user_person': {
+          const userPersonData = dataToApply as UserPerson;
+
+          // Save to IndexedDB first
+          await UserPersonStorage.saveUserPerson(userPersonData);
+
+          // Use the proper Redux action for user people
+          // This will trigger sync tracking and update the UI
+          dispatch({
+            type: 'UPDATE_USER_PERSON',
+            payload: {
+              id: userPersonData.id,
+              name: userPersonData.name,
+              age: userPersonData.age,
+              gender: userPersonData.gender,
+              settings: userPersonData.settings,
+              isUserProfile: userPersonData.isUserProfile,
+            },
+          });
+
+          console.log(
+            `✅ [RESOLVE_CONFLICT] Applied user person data to IndexedDB and Redux`
+          );
+          break;
+        }
+
+        case 'user_preferences': {
+          const userPreferencesData = dataToApply as UserPreferences;
+
+          // Save to IndexedDB
+          await UserPreferencesStorage.savePreferences(userPreferencesData);
+
+          // Use the proper Redux action for user preferences
+          dispatch({
+            type: 'SYNC_USER_PREFERENCES',
+            payload: userPreferencesData,
+          });
+
+          console.log(
+            `✅ [RESOLVE_CONFLICT] Applied user preferences data to IndexedDB and Redux`
+          );
+          break;
+        }
+
+        default:
+          console.warn(
+            `🔧 [RESOLVE_CONFLICT] Unknown entity type: ${conflict.entityType}`
+          );
       }
 
       // Remove the conflict from Redux state
       dispatch(removeSyncConflict(conflictId));
 
       console.log(
-        `✅ [RESOLVE_CONFLICT] Successfully resolved conflict ${conflictId}`
+        `✅ [RESOLVE_CONFLICT] Successfully resolved conflict ${conflictId} using ${strategy} strategy`
       );
 
-      return { conflictId, strategy, applied: strategy !== 'local' };
+      return { conflictId, strategy, applied: true };
     } catch (error) {
       console.error(
         `❌ [RESOLVE_CONFLICT] Failed to resolve conflict ${conflictId}:`,
