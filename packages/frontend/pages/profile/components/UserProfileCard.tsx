@@ -4,7 +4,7 @@ import {
   UserCheck,
   Settings as SettingsIcon,
 } from 'lucide-react';
-import { UserPerson } from '@packing-list/model';
+import { UserPerson, calculateCurrentAge } from '@packing-list/model';
 
 interface UserProfileCardProps {
   profile: UserPerson;
@@ -13,6 +13,17 @@ interface UserProfileCardProps {
 export function UserProfileCard({ profile }: UserProfileCardProps) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  const formatBirthDate = (dateString: string) => {
+    // Parse YYYY-MM-DD string directly without timezone conversion
+    const [year, month, day] = dateString.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -48,13 +59,18 @@ export function UserProfileCard({ profile }: UserProfileCardProps) {
           </div>
         </div>
 
-        {/* Age */}
-        {profile.age && (
+        {/* Age from Birth Date */}
+        {profile.birthDate && (
           <div className="flex items-center gap-3">
             <Calendar className="h-4 w-4 text-gray-500" />
             <div>
               <p className="text-sm font-medium text-gray-700">Age</p>
-              <p className="text-gray-900">{profile.age} years old</p>
+              <p className="text-gray-900">
+                {calculateCurrentAge(profile.birthDate)} years old
+              </p>
+              <p className="text-xs text-gray-500">
+                Born: {formatBirthDate(profile.birthDate)}
+              </p>
             </div>
           </div>
         )}

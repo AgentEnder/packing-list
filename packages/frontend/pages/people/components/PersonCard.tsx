@@ -1,7 +1,12 @@
-import { Person, isPersonFromUserProfile } from '@packing-list/model';
+import {
+  Person,
+  isPersonFromUserProfile,
+  isPersonFromTemplate,
+} from '@packing-list/model';
 import { useState } from 'react';
 import { PersonForm } from './PersonForm';
-import { UserCheck } from 'lucide-react';
+import { UserCheck, User } from 'lucide-react';
+import { useAppSelector, selectUserProfile } from '@packing-list/state';
 
 export type PersonCardProps = {
   person: Person;
@@ -10,7 +15,11 @@ export type PersonCardProps = {
 
 export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
-  const isFromProfile = isPersonFromUserProfile(person);
+  const userProfile = useAppSelector(selectUserProfile);
+
+  const isFromUserProfile = isPersonFromUserProfile(person, userProfile);
+  const isFromOtherTemplate =
+    isPersonFromTemplate(person) && !isFromUserProfile;
 
   return isEditing ? (
     <PersonForm person={person} onCancel={() => setIsEditing(false)} />
@@ -23,10 +32,16 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
             <div className="font-medium text-lg">{person.name}</div>
-            {isFromProfile && (
-              <div className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+            {isFromUserProfile && (
+              <div className="flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
                 <UserCheck className="h-3 w-3" />
                 You
+              </div>
+            )}
+            {isFromOtherTemplate && (
+              <div className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                <User className="h-3 w-3" />
+                Template
               </div>
             )}
           </div>
@@ -45,9 +60,9 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
             className="btn btn-outline btn-error btn-sm"
             onClick={onDelete}
             data-testid="delete-person-button"
-            disabled={isFromProfile}
+            disabled={isFromUserProfile}
             title={
-              isFromProfile
+              isFromUserProfile
                 ? 'Profile-based people cannot be deleted'
                 : 'Delete this person'
             }

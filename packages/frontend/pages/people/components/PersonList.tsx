@@ -17,7 +17,7 @@ export const PersonList = ({ people }: PersonListProps) => {
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
       {people.length === 0 && !isAdding && (
         <div className="text-gray-500 col-span-full">No people added yet.</div>
       )}

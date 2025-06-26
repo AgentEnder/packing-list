@@ -33,17 +33,19 @@ export default function PeoplePage() {
 
   return (
     <PageContainer>
-      <div className="flex items-center justify-between mb-4">
-        <PageHeader title="People on this Trip" />
-        <a
-          href="/people/manage"
-          className="btn btn-outline btn-sm"
-          title="Manage Templates"
-        >
-          <Settings className="w-4 h-4" />
-          Manage Templates
-        </a>
-      </div>
+      <PageHeader
+        title="People on this Trip"
+        actions={
+          <a
+            href="/people/manage"
+            className="btn btn-outline btn-sm ml-auto"
+            title="Manage Templates"
+          >
+            <Settings className="w-4 h-4" />
+            Manage Templates
+          </a>
+        }
+      />
       <HelpBlurb storageKey="travelers" title="Managing Travelers">
         <p>
           Add everyone who&apos;s going on the trip to help calculate the right

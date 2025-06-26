@@ -9,18 +9,20 @@ import {
   type FormEvent,
 } from 'react';
 import type { Person, UserPerson } from '@packing-list/model';
-import { getTemplateSuggestions } from '@packing-list/model';
 import {
-  createUserPerson,
-  useAppDispatch,
-  useAppSelector,
-} from '@packing-list/state';
+  getTemplateSuggestions,
+  calculateAgeForTrip,
+  estimateBirthDateFromAge,
+} from '@packing-list/model';
+import { useAppDispatch, useAppSelector } from '@packing-list/state';
 import {
   actions,
   selectUserProfile,
   selectUserPeople,
+  selectCurrentTrip,
 } from '@packing-list/state';
 import { Bookmark, User, Plus } from 'lucide-react';
+import { navigate } from 'vike/client/router';
 
 const genders = ['male', 'female', 'other', 'prefer-not-to-say'];
 
@@ -45,6 +47,7 @@ export const PersonFormEnhanced = ({
   const dispatch = useAppDispatch();
   const userProfile = useAppSelector(selectUserProfile);
   const userPeople = useAppSelector(selectUserPeople);
+  const currentTrip = useAppSelector(selectCurrentTrip);
 
   const [form, setForm] = useState(() =>
     person
@@ -94,81 +97,58 @@ export const PersonFormEnhanced = ({
 
   const handleTemplateSelect = (template: UserPerson) => {
     setSelectedTemplate(template);
+
+    // Calculate age based on trip start date or current date
+    const tripStartDate = currentTrip?.tripEvents?.find(
+      (e) => e.type === 'leave_home'
+    )?.date;
+    const calculatedAge = calculateAgeForTrip(
+      template.birthDate,
+      tripStartDate
+    );
+
     setForm((prev) => ({
       ...prev,
       name: template.name,
-      age: String(template.age || ''),
+      age: calculatedAge ? String(calculatedAge) : '',
       gender: template.gender || 'male',
     }));
     setIsDropdownOpen(false);
   };
 
-  const handleNameKeyDown = (e: React.KeyboardEvent) => {
-    if (!isDropdownOpen || person || !showTemplateFeatures) {
-      if (e.key === 'ArrowDown' && form.name.trim()) {
-        e.preventDefault();
-        setIsDropdownOpen(true);
-      }
-      return;
-    }
+  const handleSaveAsTemplateChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, saveAsTemplate: e.target.checked }));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isDropdownOpen || suggestions.length === 0) return;
+
+    const maxIndex = suggestions.length + (hasExactMatch ? -1 : 0);
 
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex((prev) => {
-          const maxIndex = suggestions.length + (hasExactMatch ? 0 : 1) - 1;
-          return prev < maxIndex ? prev + 1 : 0;
-        });
+        setHighlightedIndex((prev) =>
+          prev < maxIndex ? prev + 1 : prev === -1 ? 0 : prev
+        );
         break;
-
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightedIndex((prev) => {
-          const maxIndex = suggestions.length + (hasExactMatch ? 0 : 1) - 1;
-          return prev > 0 ? prev - 1 : maxIndex;
-        });
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : prev));
         break;
-
       case 'Enter':
         e.preventDefault();
-        if (highlightedIndex >= 0) {
-          if (highlightedIndex < suggestions.length) {
-            handleTemplateSelect(suggestions[highlightedIndex]);
-          } else {
-            // Selected "Create new" option
-            setIsDropdownOpen(false);
-          }
-        } else if (form.name.trim()) {
+        if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
+          handleTemplateSelect(suggestions[highlightedIndex]);
+        } else if (highlightedIndex === suggestions.length && !hasExactMatch) {
           setIsDropdownOpen(false);
         }
         break;
-
       case 'Escape':
         setIsDropdownOpen(false);
         setHighlightedIndex(-1);
-        nameInputRef.current?.blur();
         break;
     }
-  };
-
-  const handleNameBlur = () => {
-    // Delay closing to allow clicks on suggestions
-    setTimeout(() => {
-      if (!dropdownRef.current?.contains(document.activeElement)) {
-        setIsDropdownOpen(false);
-        setHighlightedIndex(-1);
-      }
-    }, 200);
-  };
-
-  const handleNameFocus = () => {
-    if (form.name.length > 0 && !person && showTemplateFeatures) {
-      setIsDropdownOpen(true);
-    }
-  };
-
-  const handleSaveAsTemplateChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, saveAsTemplate: e.target.checked }));
   };
 
   const handleSubmit = (e: FormEvent) => {
@@ -201,17 +181,23 @@ export const PersonFormEnhanced = ({
       dispatch(actions.addPerson(personData));
     }
 
-    // Save as template if requested (and not editing existing person)
+    // Handle "Save as template" functionality
     if (!person && form.saveAsTemplate && userProfile) {
-      dispatch(
-        createUserPerson({
-          userId: userProfile.userId,
-          name: form.name,
-          age: form.age ? Number(form.age) : undefined,
-          gender: form.gender as UserPerson['gender'],
-          isUserProfile: false,
-        })
-      );
+      // Don't save template directly - navigate to management screen with prefilled data
+      const estimatedBirthDate = form.age
+        ? estimateBirthDateFromAge(Number(form.age))
+        : '';
+
+      // Navigate to management screen with query parameters for prefilling
+      const params = new URLSearchParams({
+        name: form.name,
+        gender: form.gender,
+        birthDate: estimatedBirthDate,
+        source: 'person-form',
+      });
+
+      navigate(`/people/manage?${params.toString()}`);
+      return; // Don't call onCancel since we're navigating away
     }
 
     onCancel();
@@ -257,14 +243,21 @@ export const PersonFormEnhanced = ({
               className="input input-bordered w-full mb-2"
               name="name"
               value={form.name}
+              autoComplete="off"
               onChange={handleChange}
-              onKeyDown={handleNameKeyDown}
-              onBlur={handleNameBlur}
-              onFocus={handleNameFocus}
+              onKeyDown={handleKeyDown}
+              onFocus={() =>
+                setIsDropdownOpen(
+                  form.name.length > 0 && !person && showTemplateFeatures
+                )
+              }
+              onBlur={() => {
+                // Delay closing to allow click events on dropdown items
+                setTimeout(() => setIsDropdownOpen(false), 150);
+              }}
               placeholder="Name"
               required
               data-testid="person-name-input"
-              autoComplete="off"
             />
 
             {/* Autocomplete Dropdown */}
@@ -291,14 +284,25 @@ export const PersonFormEnhanced = ({
                         <User className="w-4 h-4 text-gray-400" />
                         <div className="flex-1">
                           <div className="font-medium">{template.name}</div>
-                          {(template.age || template.gender) && (
+                          {template.birthDate && (
                             <div className="text-sm text-gray-500">
-                              {[
-                                template.age ? `Age ${template.age}` : null,
-                                template.gender,
-                              ]
-                                .filter(Boolean)
-                                .join(' • ')}
+                              Born {template.birthDate}
+                              {currentTrip && (
+                                <span className="ml-2">
+                                  • Age{' '}
+                                  {calculateAgeForTrip(
+                                    template.birthDate,
+                                    currentTrip.tripEvents?.find(
+                                      (e) => e.type === 'leave_home'
+                                    )?.date
+                                  ) || calculateAgeForTrip(template.birthDate)}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {template.gender && (
+                            <div className="text-sm text-gray-500">
+                              {template.gender}
                             </div>
                           )}
                         </div>
@@ -344,9 +348,7 @@ export const PersonFormEnhanced = ({
 
           {/* Age Field */}
           <div className="form-control">
-            <label className="label" htmlFor="age">
-              <span className="label-text">Age (optional)</span>
-            </label>
+            <label className="label" htmlFor="age"></label>
             <input
               id="age"
               className="input input-bordered w-full mb-2"
@@ -358,6 +360,7 @@ export const PersonFormEnhanced = ({
               onChange={handleChange}
               placeholder="Age"
               data-testid="person-age-input"
+              readOnly={!!selectedTemplate} // Make readonly if using template
             />
           </div>
 
@@ -401,21 +404,15 @@ export const PersonFormEnhanced = ({
                 </div>
               </label>
               <div className="text-xs text-gray-500 ml-6 mt-1">
-                Templates let you quickly add this person to other trips
+                Creates a reusable template. Age will be converted to birth
+                date.
               </div>
             </div>
           )}
         </div>
 
         {/* Action Buttons */}
-        <div className="card-actions justify-end">
-          <button
-            type="submit"
-            className="btn btn-primary"
-            data-testid="save-person-button"
-          >
-            {person ? 'Save Changes' : 'Add Person'}
-          </button>
+        <div className="card-actions justify-end gap-2 pt-4 border-t border-base-300">
           <button
             type="button"
             className="btn btn-ghost"
@@ -423,6 +420,18 @@ export const PersonFormEnhanced = ({
             data-testid="cancel-person-button"
           >
             Cancel
+          </button>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={!form.name.trim()}
+            data-testid="save-person-button"
+          >
+            {person
+              ? 'Save Changes'
+              : form.saveAsTemplate
+              ? 'Add & Create Template'
+              : 'Add Person'}
           </button>
         </div>
       </form>

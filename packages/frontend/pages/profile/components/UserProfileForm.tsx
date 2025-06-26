@@ -5,6 +5,7 @@ import {
   UserPerson,
   validateUserPerson,
   CreateUserPersonInput,
+  calculateCurrentAge,
 } from '@packing-list/model';
 import { uuid } from '@packing-list/shared-utils';
 
@@ -24,7 +25,7 @@ export function UserProfileForm({
   // Form state
   const [formData, setFormData] = useState({
     name: profile?.name || '',
-    age: profile?.age?.toString() || '',
+    birthDate: profile?.birthDate || '',
     gender: profile?.gender || '',
   });
 
@@ -36,7 +37,7 @@ export function UserProfileForm({
     if (profile) {
       setFormData({
         name: profile.name,
-        age: profile.age?.toString() || '',
+        birthDate: profile.birthDate || '',
         gender: profile.gender || '',
       });
     }
@@ -64,7 +65,7 @@ export function UserProfileForm({
       const validationData: CreateUserPersonInput = {
         userId,
         name: formData.name.trim(),
-        age: formData.age ? parseInt(formData.age, 10) : undefined,
+        birthDate: formData.birthDate || undefined,
         gender: formData.gender
           ? (formData.gender as UserPerson['gender'])
           : undefined,
@@ -154,21 +155,24 @@ export function UserProfileForm({
         </p>
       </div>
 
-      {/* Age Field */}
+      {/* Birth Date Field */}
       <div>
         <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
           <Calendar className="h-4 w-4" />
-          Age (optional)
+          Birth Date (optional)
         </label>
         <input
-          type="number"
-          value={formData.age}
-          onChange={(e) => handleInputChange('age', e.target.value)}
+          type="date"
+          value={formData.birthDate}
+          onChange={(e) => handleInputChange('birthDate', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          placeholder="Enter your age"
-          min="0"
-          max="150"
+          placeholder="Enter your birth date"
         />
+        {formData.birthDate && (
+          <p className="mt-1 text-xs text-gray-600">
+            Current age: {calculateCurrentAge(formData.birthDate)} years old
+          </p>
+        )}
         <p className="mt-1 text-xs text-gray-500">
           Helps provide age-appropriate packing recommendations
         </p>

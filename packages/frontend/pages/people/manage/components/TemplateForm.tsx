@@ -3,10 +3,11 @@
 
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import type { UserPerson } from '@packing-list/model';
+import { calculateCurrentAge } from '@packing-list/model';
 import { useAppDispatch, useAppSelector } from '@packing-list/state';
 import { selectUserProfile, upsertUserPerson } from '@packing-list/state';
 import { uuid } from '@packing-list/shared-utils';
-import { User, Save, X } from 'lucide-react';
+import { Save, X, Calendar } from 'lucide-react';
 
 const genders = ['male', 'female', 'other', 'prefer-not-to-say'];
 
@@ -14,28 +15,43 @@ export type TemplateFormProps = {
   template?: UserPerson;
   onCancel: () => void;
   onSave?: () => void;
+  prefillBirthDate?: string; // For when coming from person form with age guess
+  prefillName?: string; // For when coming from person form
+  prefillGender?: string; // For when coming from person form
 };
 
 export const TemplateForm = ({
   template,
   onCancel,
   onSave,
+  prefillBirthDate,
+  prefillName,
+  prefillGender,
 }: TemplateFormProps) => {
   const dispatch = useAppDispatch();
   const userProfile = useAppSelector(selectUserProfile);
 
   const [form, setForm] = useState(() => ({
-    name: template?.name || '',
-    age: String(template?.age || ''),
-    gender: template?.gender || 'male',
+    name: template?.name || prefillName || '',
+    birthDate: template?.birthDate || prefillBirthDate || '',
+    gender: template?.gender || prefillGender || 'male',
+    autoAddToNewTrips: template?.autoAddToNewTrips || false,
   }));
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Calculate current age for display
+  const currentAge = form.birthDate
+    ? calculateCurrentAge(form.birthDate)
+    : undefined;
+
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value, type } = e.target;
+    const newValue =
+      type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+    setForm((prev) => ({ ...prev, [name]: newValue }));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -51,10 +67,13 @@ export const TemplateForm = ({
         id: template?.id || uuid(),
         userId,
         name: form.name.trim(),
-        age: form.age ? Number(form.age) : undefined,
+        birthDate: form.birthDate || undefined,
         gender: form.gender as UserPerson['gender'],
         settings: template?.settings || {},
         isUserProfile: template?.isUserProfile || false,
+        autoAddToNewTrips: template?.isUserProfile
+          ? true
+          : form.autoAddToNewTrips, // User profiles always auto-add
         createdAt: template?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         version: (template?.version || 0) + 1,
@@ -95,22 +114,36 @@ export const TemplateForm = ({
       </div>
 
       <div className="form-control">
-        <label className="label" htmlFor="template-age">
-          <span className="label-text font-medium">Age (optional)</span>
+        <label className="label" htmlFor="template-birthDate">
+          <span className="label-text font-medium flex items-center gap-2">
+            <Calendar className="w-4 h-4" />
+            Birth Date (optional)
+          </span>
         </label>
         <input
-          id="template-age"
+          id="template-birthDate"
           className="input input-bordered w-full"
-          name="age"
-          type="number"
-          min="0"
-          max="150"
-          value={form.age}
+          name="birthDate"
+          type="date"
+          value={form.birthDate}
           onChange={handleChange}
-          placeholder="Enter age"
           disabled={isSubmitting}
-          data-testid="template-age-input"
+          data-testid="template-birthdate-input"
         />
+        {currentAge !== undefined && (
+          <div className="label">
+            <span className="label-text-alt text-base-content/70">
+              Current age: {currentAge} years old
+            </span>
+          </div>
+        )}
+        {prefillBirthDate && (
+          <div className="label">
+            <span className="label-text-alt text-warning">
+              💡 Birth date estimated from entered age. Please adjust if needed.
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="form-control">
@@ -134,30 +167,35 @@ export const TemplateForm = ({
         </select>
       </div>
 
-      {/* Visual indicator for profile vs template */}
-      <div className="flex items-center gap-2 p-3 bg-base-200 rounded-lg">
-        <User className="w-4 h-4 text-base-content/60" />
-        <span className="text-sm text-base-content/70">
-          {isProfile ? (
-            <>
-              This is your <strong>profile</strong> - it represents you and is
-              automatically added to new trips.
-            </>
-          ) : (
-            <>
-              This is a <strong>template</strong> - use it to quickly add this
-              person to any trip.
-            </>
-          )}
-        </span>
-      </div>
+      {/* Auto-add checkbox - only show for templates, not user profiles */}
+      {!isProfile && (
+        <div className="form-control">
+          <label className="label cursor-pointer justify-start gap-2">
+            <input
+              type="checkbox"
+              className="checkbox checkbox-sm"
+              name="autoAddToNewTrips"
+              checked={form.autoAddToNewTrips}
+              onChange={handleChange}
+              disabled={isSubmitting}
+              data-testid="template-auto-add-checkbox"
+            />
+            <span className="label-text">Auto-add to new trips</span>
+          </label>
+          <div className="text-xs text-base-content/70 ml-6">
+            Automatically add this template to new trips
+          </div>
+        </div>
+      )}
 
-      <div className="flex gap-2 justify-end pt-4">
+      {/* Action Buttons */}
+      <div className="modal-action gap-2">
         <button
           type="button"
           onClick={onCancel}
           className="btn btn-ghost"
           disabled={isSubmitting}
+          data-testid="template-cancel-button"
         >
           <X className="w-4 h-4" />
           Cancel
@@ -166,13 +204,14 @@ export const TemplateForm = ({
           type="submit"
           className="btn btn-primary"
           disabled={isSubmitting || !form.name.trim()}
+          data-testid="template-save-button"
         >
           {isSubmitting ? (
             <span className="loading loading-spinner loading-sm"></span>
           ) : (
             <Save className="w-4 h-4" />
           )}
-          {isEditing ? 'Save Changes' : 'Create Template'}
+          {isEditing ? 'Update' : 'Save'} {isProfile ? 'Profile' : 'Template'}
         </button>
       </div>
     </form>

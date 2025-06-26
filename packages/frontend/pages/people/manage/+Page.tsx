@@ -1,8 +1,9 @@
 // Template Management Page - Sprint 3
 // Allows users to manage their person templates
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { UserPerson } from '@packing-list/model';
+import { calculateCurrentAge } from '@packing-list/model';
 import {
   useAppSelector,
   useAppDispatch,
@@ -14,8 +15,9 @@ import {
 import { PageHeader } from '../../../components/PageHeader';
 import { PageContainer } from '../../../components/PageContainer';
 import { HelpBlurb } from '../../../components/HelpBlurb';
-import { User, Plus, Edit3, Trash2, Bookmark } from 'lucide-react';
+import { User, Plus, Edit3, Trash2, Bookmark, ArrowLeft } from 'lucide-react';
 import { TemplateForm } from './components/TemplateForm';
+import { usePageContext } from 'vike-react/usePageContext';
 
 export default function PeopleManagePage() {
   const dispatch = useAppDispatch();
@@ -23,11 +25,41 @@ export default function PeopleManagePage() {
   const profile = useAppSelector(selectUserProfile);
   const isLoading = useAppSelector(selectUserPeopleLoading);
   const error = useAppSelector(selectUserPeopleError);
+  const pageContext = usePageContext();
 
   const [editingTemplate, setEditingTemplate] = useState<UserPerson | null>(
     null
   );
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [prefillData, setPrefillData] = useState<{
+    name?: string;
+    gender?: string;
+    birthDate?: string;
+    source?: string;
+  } | null>(null);
+
+  // Check for query parameters on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(pageContext.urlParsed?.search || '');
+    const name = urlParams.get('name');
+    const gender = urlParams.get('gender');
+    const birthDate = urlParams.get('birthDate');
+    const source = urlParams.get('source');
+
+    if (name && source === 'person-form') {
+      setPrefillData({
+        name,
+        gender: gender || undefined,
+        birthDate: birthDate || undefined,
+        source,
+      });
+      setShowCreateForm(true);
+      setEditingTemplate(null);
+
+      // Clear the URL parameters after extracting them
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [pageContext.urlParsed?.search]);
 
   const handleDeleteTemplate = (template: UserPerson) => {
     if (confirm(`Delete template "${template.name}"? This cannot be undone.`)) {
@@ -41,21 +73,40 @@ export default function PeopleManagePage() {
   const handleCreateTemplate = () => {
     setShowCreateForm(true);
     setEditingTemplate(null);
+    setPrefillData(null);
   };
 
   const handleEditTemplate = (template: UserPerson) => {
     setEditingTemplate(template);
     setShowCreateForm(false);
+    setPrefillData(null);
   };
 
   const handleCancelEdit = () => {
     setEditingTemplate(null);
     setShowCreateForm(false);
+    setPrefillData(null);
+  };
+
+  const handleGoBack = () => {
+    window.history.back();
   };
 
   return (
     <PageContainer>
-      <PageHeader title="Manage People Templates" />
+      <PageHeader
+        title="Manage People Templates"
+        actions={
+          <button
+            onClick={handleGoBack}
+            className="btn btn-ghost btn-sm"
+            title="Go back"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+        }
+      />
 
       <HelpBlurb storageKey="templates" title="Person Templates">
         <p>
@@ -89,6 +140,37 @@ export default function PeopleManagePage() {
         </div>
       )}
 
+      {/* Template Form Modal */}
+      {(showCreateForm || editingTemplate) && (
+        <div className="card bg-base-100 shadow-xl border-2 border-primary mb-8">
+          <div className="card-header p-4 border-b border-base-300">
+            <h3 className="text-lg font-semibold">
+              {editingTemplate
+                ? `Edit ${
+                    editingTemplate.isUserProfile ? 'Profile' : 'Template'
+                  }: ${editingTemplate.name}`
+                : 'Create New Template'}
+            </h3>
+            {prefillData?.source === 'person-form' && (
+              <p className="text-sm text-base-content/70 mt-1">
+                Creating template from person form data. Birth date was
+                estimated from age.
+              </p>
+            )}
+          </div>
+          <div className="card-body">
+            <TemplateForm
+              template={editingTemplate || undefined}
+              prefillBirthDate={prefillData?.birthDate}
+              prefillName={prefillData?.name}
+              prefillGender={prefillData?.gender}
+              onCancel={handleCancelEdit}
+              onSave={handleCancelEdit}
+            />
+          </div>
+        </div>
+      )}
+
       {/* User Profile Section */}
       {profile && (
         <div className="mb-8">
@@ -102,10 +184,20 @@ export default function PeopleManagePage() {
                 <div>
                   <h3 className="font-semibold">{profile.name}</h3>
                   <div className="text-sm text-base-content/70">
-                    {[profile.age ? `Age ${profile.age}` : null, profile.gender]
+                    {[
+                      profile.birthDate
+                        ? `Age ${calculateCurrentAge(profile.birthDate)}`
+                        : null,
+                      profile.gender,
+                    ]
                       .filter(Boolean)
                       .join(' • ') || 'No additional details'}
                   </div>
+                  {profile.birthDate && (
+                    <div className="text-xs text-base-content/50">
+                      Born {profile.birthDate}
+                    </div>
+                  )}
                   <span className="badge badge-primary badge-sm mt-1">
                     Your Profile
                   </span>
@@ -171,12 +263,19 @@ export default function PeopleManagePage() {
                       <h3 className="font-semibold">{template.name}</h3>
                       <div className="text-sm text-base-content/70">
                         {[
-                          template.age ? `Age ${template.age}` : null,
+                          template.birthDate
+                            ? `Age ${calculateCurrentAge(template.birthDate)}`
+                            : null,
                           template.gender,
                         ]
                           .filter(Boolean)
                           .join(' • ') || 'No additional details'}
                       </div>
+                      {template.birthDate && (
+                        <div className="text-xs text-base-content/50">
+                          Born {template.birthDate}
+                        </div>
+                      )}
                       <span className="badge badge-outline badge-sm mt-1">
                         Template
                       </span>
@@ -204,32 +303,6 @@ export default function PeopleManagePage() {
           </div>
         )}
       </div>
-
-      {/* Template Form Modal (would be implemented separately) */}
-      {(editingTemplate || showCreateForm) && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-base-100 rounded-lg w-full max-w-md">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold mb-4">
-                {editingTemplate
-                  ? editingTemplate.isUserProfile
-                    ? 'Edit Profile'
-                    : 'Edit Template'
-                  : 'Create Template'}
-              </h3>
-
-              <TemplateForm
-                template={editingTemplate || undefined}
-                onCancel={handleCancelEdit}
-                onSave={() => {
-                  // Refresh will happen automatically via Redux state updates
-                  console.log('Template saved successfully');
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </PageContainer>
   );
 }
