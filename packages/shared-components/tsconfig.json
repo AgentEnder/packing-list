@@ -1,15 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "allowImportingTsExtensions": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "types": ["vite", "vitest/globals", "@testing-library/jest-dom"]
-  },
+  "compilerOptions": {},
   "include": [],
   "files": [],
   "references": [

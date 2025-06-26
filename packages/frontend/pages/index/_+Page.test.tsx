@@ -12,10 +12,10 @@ vi.mock('@packing-list/state', () => ({
   selectAccurateTripSummaries: vi.fn(),
 }));
 
-// Mock components
-vi.mock('../../components/Link', () => ({
-  Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <a href={href} data-testid={`link-${href}`}>
+// Mock shared-components
+vi.mock('@packing-list/shared-components', () => ({
+  Link: ({ href, children }: { href?: string; children: React.ReactNode }) => (
+    <a href={href} data-testid={`link-${href || 'no-href'}`}>
       {children}
     </a>
   ),

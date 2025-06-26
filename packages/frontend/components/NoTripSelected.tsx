@@ -1,4 +1,3 @@
-import { Link } from './Link';
 import {
   MapPin,
   Plus,
@@ -7,6 +6,7 @@ import {
   PlayCircle,
 } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '@packing-list/state';
+import { Link } from '@packing-list/shared-components';
 
 interface NoTripSelectedProps {
   title: string;

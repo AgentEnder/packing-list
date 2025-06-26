@@ -461,7 +461,7 @@ export const CREATE_DEMO_DATA: () => Partial<StoreType> = () => {
   };
 
   // Create the full state with proper multi-trip structure
-  const baseState: StoreType = {
+  const baseState: Omit<StoreType, 'userProfile' | 'auth'> = {
     trips: {
       summaries: [tripSummary],
       selectedTripId: tripId,
@@ -501,20 +501,6 @@ export const CREATE_DEMO_DATA: () => Partial<StoreType> = () => {
         burstId: 0,
         source: null,
       },
-    },
-    auth: {
-      user: null,
-      session: null,
-      loading: false,
-      error: null,
-      isOfflineMode: false,
-      connectivityState: { isOnline: false, isConnected: false },
-      isInitialized: false,
-      lastError: null,
-      isAuthenticating: false,
-      forceOfflineMode: false,
-      offlineAccounts: [],
-      hasOfflinePasscode: false,
     },
   };
 

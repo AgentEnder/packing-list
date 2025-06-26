@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
-import { useAuth, LoginForm } from '@packing-list/shared-components';
-import { Link } from '../../components/Link';
+import { useAuth, LoginForm, Link } from '@packing-list/shared-components';
 import { navigate } from 'vike/client/router';
 
 export default function LoginPage() {

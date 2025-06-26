@@ -3,9 +3,7 @@ import {
   createAsyncThunk,
   PayloadAction,
   ThunkDispatch,
-  ActionCreator,
   Reducer,
-  UnknownAction,
 } from '@reduxjs/toolkit';
 import { useDispatch } from 'react-redux';
 import { authService, AuthUser } from '@packing-list/auth';
@@ -1029,11 +1027,7 @@ export const {
   resetAuthState,
 } = authSlice.actions;
 
-export type AuthActions = typeof authSlice.actions extends ActionCreator<
-  infer T
->
-  ? T
-  : UnknownAction;
+export type AuthActions = Parameters<typeof authSlice.reducer>[1];
 
 export type AuthDispatch = ThunkDispatch<AuthState, unknown, AuthActions>;
 

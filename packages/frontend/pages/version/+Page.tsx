@@ -13,7 +13,10 @@ export default function VersionPage() {
   const { versionInfo } = useData<{ versionInfo: VersionInfo }>();
 
   // Check if this is a JSON request by looking at URL params
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams =
+    typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search)
+      : new URLSearchParams();
   const isJsonRequest = urlParams.get('format') === 'json';
 
   // If JSON is requested, display as JSON

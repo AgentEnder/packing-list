@@ -8,6 +8,7 @@ import type {
   DefaultItemRule,
   RulePack,
   Change,
+  UserPerson,
 } from '@packing-list/model';
 
 // Core sync state structure
@@ -37,6 +38,10 @@ export type SyncActions =
   | {
       type: 'TRACK_SYNC_CHANGE';
       payload: Omit<Change, 'id' | 'timestamp' | 'synced'>;
+    }
+  | {
+      type: 'MERGE_SYNCED_USER_PERSON';
+      payload: UserPerson;
     };
 
 // Callback types for integration with different state management systems

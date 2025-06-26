@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { actions, useAppDispatch } from '@packing-list/state';
-import { Link } from '../../../components/Link';
 import { PageHeader } from '../../../components/PageHeader';
 import { PageContainer } from '../../../components/PageContainer';
 import type { TripEvent } from '@packing-list/model';
@@ -17,6 +16,8 @@ import {
 } from 'lucide-react';
 import { navigate } from 'vike/client/router';
 import { applyBaseUrl, uuid } from '@packing-list/shared-utils';
+import { Link } from '@packing-list/shared-components';
+import { usePageContext } from 'vike-react/usePageContext';
 
 // Trip templates
 const TRIP_TEMPLATES = [
@@ -72,6 +73,7 @@ const TRIP_TEMPLATES = [
 
 export default function NewTripPage() {
   const dispatch = useAppDispatch();
+  const pageContext = usePageContext();
   const [step, setStep] = useState<'template' | 'details'>('template');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -82,6 +84,24 @@ export default function NewTripPage() {
     location: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Extract dates from URL parameters if provided
+  useEffect(() => {
+    const urlParams = new URLSearchParams(pageContext.urlParsed?.search || '');
+    const startDate = urlParams.get('startDate');
+    const endDate = urlParams.get('endDate');
+
+    if (startDate && endDate) {
+      setFormData((prev) => ({
+        ...prev,
+        startDate,
+        endDate,
+      }));
+      // Skip template selection and go directly to details
+      setSelectedTemplate('custom');
+      setStep('details');
+    }
+  }, [pageContext.urlParsed?.search]);
 
   const template = TRIP_TEMPLATES.find((t) => t.id === selectedTemplate);
 

@@ -3,6 +3,8 @@ import {
   PersonStorage,
   ItemStorage,
   TripRuleStorage,
+  UserPersonStorage,
+  UserPreferencesStorage,
 } from '@packing-list/offline-storage';
 import type {
   TripItem,
@@ -53,6 +55,13 @@ export async function loadOfflineState(
 
   const base: Omit<StoreType, 'auth' | 'rulePacks' | 'ui' | 'sync'> = {
     trips: { summaries: [], selectedTripId: null, byId: {} },
+    userPreferences: null,
+    userPeople: {
+      people: [],
+      isLoading: false,
+      error: null,
+      hasTriedToLoad: true,
+    },
   };
 
   // Validate userId before proceeding
@@ -68,6 +77,39 @@ export async function loadOfflineState(
   );
 
   try {
+    // Load user preferences first
+    let userPreferences = null;
+    try {
+      userPreferences = await UserPreferencesStorage.getPreferences();
+      if (userPreferences) {
+        base.userPreferences = userPreferences;
+        console.log('✅ [HYDRATION] Loaded user preferences:', userPreferences);
+      } else {
+        console.log('📋 [HYDRATION] No user preferences found');
+      }
+    } catch (preferencesError) {
+      console.error(
+        '❌ [HYDRATION] Error loading user preferences:',
+        preferencesError
+      );
+    }
+
+    // Load all user people (profile + templates)
+    try {
+      const userPeople = await UserPersonStorage.getAllUserPeople(userId);
+      if (userPeople.length > 0) {
+        base.userPeople.people = userPeople;
+        console.log(
+          `✅ [HYDRATION] Loaded ${userPeople.length} user people for ${userId}`
+        );
+      } else {
+        console.log(`📋 [HYDRATION] No user people found for ${userId}`);
+      }
+    } catch (peopleError) {
+      console.error('❌ [HYDRATION] Error loading user people:', peopleError);
+    }
+
+    // Load trip data
     const summaries = await TripStorage.getUserTripSummaries(userId);
     console.log(
       '🔄 [HYDRATION] Got summaries from TripStorage:',
@@ -77,12 +119,26 @@ export async function loadOfflineState(
 
     base.trips.summaries = summaries;
     if (summaries.length > 0) {
-      base.trips.selectedTripId = summaries[0].tripId;
-      console.log(
-        '🔄 [HYDRATION] Selected first trip:',
-        summaries[0].tripId,
-        summaries[0].title
-      );
+      // Try to restore last selected trip if available and valid
+      const lastSelectedTripId = userPreferences?.lastSelectedTripId;
+      const tripExists = lastSelectedTripId
+        ? summaries.some((s) => s.tripId === lastSelectedTripId)
+        : false;
+
+      if (tripExists && lastSelectedTripId) {
+        base.trips.selectedTripId = lastSelectedTripId;
+        console.log(
+          '🎯 [HYDRATION] Restored last selected trip:',
+          lastSelectedTripId
+        );
+      } else {
+        base.trips.selectedTripId = summaries[0].tripId;
+        console.log(
+          '🔄 [HYDRATION] Selected first trip:',
+          summaries[0].tripId,
+          summaries[0].title
+        );
+      }
     } else {
       console.log('🔄 [HYDRATION] No trips found, selectedTripId remains null');
     }

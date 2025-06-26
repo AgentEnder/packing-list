@@ -41,6 +41,15 @@ export class TripStorage {
     const db = await getDatabase();
     const trip = await db.get('trips', tripId);
 
+    // Filter out user profiles that might still be in the trips table
+    if (
+      trip &&
+      (trip.id.startsWith('user-profile-') || trip.type === 'user_person')
+    ) {
+      console.log(`[TripStorage] Skipping user profile entry: ${tripId}`);
+      return undefined;
+    }
+
     console.log(
       `[TripStorage] Retrieved trip: ${tripId}`,
       trip ? 'found' : 'not found'
@@ -77,8 +86,13 @@ export class TripStorage {
         }))
       );
 
-      // Filter out deleted trips
-      const trips = allUserTrips.filter((trip) => !trip.isDeleted);
+      // Filter out deleted trips and user profiles
+      const trips = allUserTrips.filter((trip) => {
+        const isNotDeleted = !trip.isDeleted;
+        const isNotUserProfile =
+          !trip.id.startsWith('user-profile-') && trip.type !== 'user_person';
+        return isNotDeleted && isNotUserProfile;
+      });
       console.log(
         `🔍 [TripStorage] Active trips after filtering:`,
         trips.length,
@@ -108,10 +122,12 @@ export class TripStorage {
         }))
       );
 
-      // Filter by userId and exclude deleted trips
+      // Filter by userId and exclude deleted trips and user profiles
       const userTrips = allTrips.filter((trip) => {
         const matchesUser = trip.userId === userId;
         const isActive = !trip.isDeleted;
+        const isNotUserProfile =
+          !trip.id.startsWith('user-profile-') && trip.type !== 'user_person';
 
         if (!matchesUser) {
           console.log(
@@ -119,7 +135,13 @@ export class TripStorage {
           );
         }
 
-        return matchesUser && isActive;
+        if (trip.id.startsWith('user-profile-')) {
+          console.log(
+            `🔍 [TripStorage] Skipping user profile entry: ${trip.id}`
+          );
+        }
+
+        return matchesUser && isActive && isNotUserProfile;
       });
 
       console.log(

@@ -16,6 +16,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { useAppSelector } from '@packing-list/state';
+import { useIsClient } from '../hooks/useIsClient';
 
 // Mock conflict data for testing
 const mockConflicts: SyncConflict[] = [
@@ -191,7 +192,7 @@ export function SyncDashboard() {
   };
 
   const displayState = syncState;
-
+  const isClient = useIsClient();
   return (
     <div className="space-y-6">
       {/* Sync Status Overview */}
@@ -226,7 +227,7 @@ export function SyncDashboard() {
                 <div className="flex justify-between">
                   <span>Online:</span>
                   <div className="flex items-center gap-1">
-                    {displayState.isOnline ? (
+                    {displayState.isOnline || !isClient ? (
                       <Wifi className="w-4 h-4 text-success" />
                     ) : (
                       <WifiOff className="w-4 h-4 text-error" />

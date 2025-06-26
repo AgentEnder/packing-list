@@ -22,7 +22,19 @@ describe('store', () => {
       isClient: true,
       redux: { ssrState },
     });
-    expect(store.getState()).toEqual(ssrState);
+
+    // The store now includes userPeople slice, so we need to account for that
+    const expectedState = {
+      ...ssrState,
+      userPeople: {
+        people: [],
+        isLoading: false,
+        error: null,
+        hasTriedToLoad: false,
+      },
+    };
+
+    expect(store.getState()).toEqual(expectedState);
   });
 
   it('should handle ADD_PERSON action', () => {

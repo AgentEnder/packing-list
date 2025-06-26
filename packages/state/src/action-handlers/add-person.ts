@@ -3,8 +3,10 @@ import { uuid } from '@packing-list/shared-utils';
 import { StoreType } from '../store.js';
 import { calculatePackingListHandler } from './calculate-packing-list.js';
 
+export const ADD_PERSON = 'ADD_PERSON' as const;
+
 export type AddPersonAction = {
-  type: 'ADD_PERSON';
+  type: typeof ADD_PERSON;
   payload: Person;
 };
 
@@ -13,10 +15,11 @@ export const addPerson = (payload: {
   name: string;
   age: number;
   gender?: string;
+  userPersonId?: string; // Template reference
 }): AddPersonAction => {
   const now = new Date().toISOString();
   return {
-    type: 'ADD_PERSON',
+    type: ADD_PERSON,
     payload: {
       id: uuid(),
       name: payload.name,
@@ -27,6 +30,7 @@ export const addPerson = (payload: {
         | 'other'
         | 'prefer-not-to-say'
         | undefined,
+      userPersonId: payload.userPersonId, // Include template reference
       settings: {},
       createdAt: now,
       updatedAt: now,
@@ -60,7 +64,7 @@ export const addPersonHandler = (
   }
 
   // Set the tripId on the person since action creator uses placeholder
-  const personWithTripId = {
+  const personWithTripId: Person = {
     ...action.payload,
     tripId: selectedTripId,
   };

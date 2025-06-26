@@ -13,6 +13,7 @@ interface PrintItem {
   dayEnd?: number; // For items that span multiple days
   categoryId?: string;
   subcategoryId?: string;
+  packed?: boolean;
 }
 
 interface PrintableViewProps {
@@ -133,6 +134,28 @@ export const PrintableView: React.FC<PrintableViewProps> = ({
           border: 2px solid #718096;
           border-radius: 4px;
           display: inline-block;
+          position: relative;
+        }
+
+        .checkbox.packed {
+          background-color: #48bb78;
+        }
+
+        .checkbox.packed::after {
+          content: '✓';
+          color: white;
+          font-size: 12px;
+          font-weight: bold;
+          text-align: center;
+          line-height: 16px;
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
         
         .item-details {
@@ -244,7 +267,11 @@ export const PrintableView: React.FC<PrintableViewProps> = ({
                               className="item"
                             >
                               <div className="checkbox-container">
-                                <div className="checkbox" />
+                                <div
+                                  className={`checkbox ${
+                                    item.packed ? 'packed' : ''
+                                  }`}
+                                />
                               </div>
                               <div className="item-details">
                                 <span className="item-name">{item.name}</span>

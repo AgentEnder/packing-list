@@ -12,5 +12,6 @@ export const loadDemoDataHandler = (state: StoreType): StoreType => {
   return {
     ...demoData,
     auth: state.auth, // Preserve existing auth state
+    userProfile: state.userProfile, // Preserve existing user profile state
   } as StoreType;
 };

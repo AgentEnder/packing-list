@@ -1,2 +1,4 @@
-@import 'tailwindcss' source("../../");
-@plugin 'daisyui';
+@import 'tailwindcss' source('../../');
+@plugin 'daisyui' {
+  themes: all;
+}

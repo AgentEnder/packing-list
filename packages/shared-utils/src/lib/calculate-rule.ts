@@ -4,10 +4,9 @@ import {
   Day,
   DayCalculation,
   Condition,
-  Item,
 } from '@packing-list/model';
 
-type CompareValue = string | number | boolean | Item[];
+type CompareValue = string | number | boolean | CompareValue[];
 
 export const compare = (
   a: CompareValue,
@@ -27,6 +26,11 @@ export const compare = (
       return typeof a === 'number' && typeof b === 'number' ? a <= b : false;
     case '>=':
       return typeof a === 'number' && typeof b === 'number' ? a >= b : false;
+    case 'in':
+      return (
+        (Array.isArray(a) && a.includes(b)) ||
+        (Array.isArray(b) && b.includes(a))
+      );
     default:
       return false;
   }
@@ -100,7 +104,7 @@ export function calculateNumDaysMeetingCondition(
   return days.filter((day) =>
     conditions.every((condition) => {
       if (condition.type === 'day') {
-        const value = day[condition.field as keyof Day];
+        const value = day[condition.field];
         if (condition.value === undefined) {
           return false;
         }
@@ -156,11 +160,7 @@ export const calculateRuleTotal = (
         // Filter out days that don't meet the condition
         for (const day of days) {
           if (
-            !compare(
-              day[condition.field as keyof Day],
-              condition.operator,
-              condition.value
-            )
+            !compare(day[condition.field], condition.operator, condition.value)
           ) {
             daysCount--;
           }

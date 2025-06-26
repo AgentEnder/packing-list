@@ -1,7 +1,9 @@
 import { StoreType, TripData } from '../store.js';
-import { Trip, TripSummary } from '@packing-list/model';
+import { getAutoAddPeople, Trip, TripSummary } from '@packing-list/model';
 import { uuid } from '@packing-list/shared-utils';
 import { createEmptyTripData, initialState } from '../store.js';
+import { createPersonFromProfileHandler } from './create-person-from-profile.js';
+import { selectUserProfile } from '../user-people-slice.js';
 
 // Action types
 export interface CreateTripAction {
@@ -120,9 +122,8 @@ export function createTripHandler(
     title: tripModel.title,
   });
 
-  // Persist trip asynchronously
-
-  return {
+  // Create the initial state with the new trip
+  let stateWithNewTrip: StoreType = {
     ...state,
     trips: {
       ...state.trips,
@@ -138,19 +139,86 @@ export function createTripHandler(
         ? initialState.sync
         : state.sync,
   };
+
+  // Sprint 3: Auto-add user profile to new trips
+  const userProfile = selectUserProfile(stateWithNewTrip);
+  if (userProfile && userProfile.isUserProfile) {
+    console.log(
+      `👤 [CREATE_TRIP] Auto-adding user profile to trip: ${userProfile.name}`
+    );
+
+    // Use the createPersonFromProfileHandler to add the profile
+    stateWithNewTrip = createPersonFromProfileHandler(stateWithNewTrip, {
+      type: 'CREATE_PERSON_FROM_PROFILE',
+      payload: {
+        userPersonId: userProfile.id,
+        userPerson: userProfile,
+        tripId,
+      },
+    });
+
+    console.log(
+      `✅ [CREATE_TRIP] Successfully auto-added user profile to trip`
+    );
+  } else {
+    console.log(
+      `📋 [CREATE_TRIP] No user profile found for auto-add. User will need to add manually or create profile.`
+    );
+  }
+
+  // Also add any auto-add people to the trip
+  const autoAddPeople = getAutoAddPeople(stateWithNewTrip.userPeople.people);
+  if (autoAddPeople.length > 0) {
+    console.log(
+      `👤 [CREATE_TRIP] Auto-adding ${autoAddPeople.length} people to trip`
+    );
+    for (const person of autoAddPeople) {
+      stateWithNewTrip = createPersonFromProfileHandler(stateWithNewTrip, {
+        type: 'CREATE_PERSON_FROM_PROFILE',
+        payload: {
+          userPersonId: person.id,
+          userPerson: person,
+          tripId,
+        },
+      });
+    }
+  }
+
+  return stateWithNewTrip;
 }
 
 export function selectTripHandler(
   state: StoreType,
   action: { type: 'SELECT_TRIP'; payload: { tripId: string } }
 ): StoreType {
-  return {
+  console.log(
+    '🎯 [SELECT_TRIP_HANDLER] Selecting trip:',
+    action.payload.tripId
+  );
+
+  // Update user preferences in Redux state (the sync middleware will handle persistence)
+  const updatedState = {
     ...state,
     trips: {
       ...state.trips,
       selectedTripId: action.payload.tripId,
     },
+    userPreferences: state.userPreferences
+      ? {
+          ...state.userPreferences,
+          lastSelectedTripId: action.payload.tripId,
+        }
+      : {
+          defaultTimeZone: 'UTC',
+          theme: 'system' as const,
+          defaultTripDuration: 7,
+          autoSyncEnabled: true,
+          serviceWorkerEnabled: false,
+          lastSelectedTripId: action.payload.tripId,
+        },
   };
+
+  return updatedState;
 }
 
 export function deleteTripHandler(
