@@ -440,7 +440,8 @@ export type Database = {
       }
       user_people: {
         Row: {
-          age: number | null
+          auto_add_to_new_trips: boolean | null
+          birth_date: string | null
           created_at: string | null
           gender: string | null
           id: string
@@ -453,7 +454,8 @@ export type Database = {
           version: number | null
         }
         Insert: {
-          age?: number | null
+          auto_add_to_new_trips?: boolean | null
+          birth_date?: string | null
           created_at?: string | null
           gender?: string | null
           id?: string
@@ -466,7 +468,8 @@ export type Database = {
           version?: number | null
         }
         Update: {
-          age?: number | null
+          auto_add_to_new_trips?: boolean | null
+          birth_date?: string | null
           created_at?: string | null
           gender?: string | null
           id?: string

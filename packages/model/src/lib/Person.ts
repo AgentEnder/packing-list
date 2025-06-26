@@ -25,8 +25,15 @@ export const isPersonFromTemplate = (person: Person): boolean => {
   return !!person.userPersonId;
 };
 
-export const isPersonFromUserProfile = (person: Person): boolean => {
-  // This indicates the person was created from the user's profile
-  // (will be enhanced in Sprint 3 to check if it's the profile vs other templates)
-  return isPersonFromTemplate(person);
+export const isPersonFromUserProfile = (
+  person: Person,
+  userProfile?: { id: string; isUserProfile: boolean } | null
+): boolean => {
+  // This indicates the person was created from the user's profile specifically
+  return !!(
+    person.userPersonId &&
+    userProfile &&
+    person.userPersonId === userProfile.id &&
+    userProfile.isUserProfile
+  );
 };
