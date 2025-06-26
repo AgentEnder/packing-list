@@ -244,7 +244,10 @@ export default function TripsPage() {
                           <div className="divider my-1"></div>
                           <li>
                             <button
-                              onClick={() => handleDeleteTrip(trip.tripId)}
+                              onClick={(e) => {
+                                e.currentTarget.blur();
+                                handleDeleteTrip(trip.tripId);
+                              }}
                               className="flex items-center gap-2 text-error"
                               data-testid={`delete-trip-${trip.tripId}`}
                             >

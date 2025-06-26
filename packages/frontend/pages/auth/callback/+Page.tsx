@@ -3,10 +3,6 @@ import { useAuth, Link } from '@packing-list/shared-components';
 import { navigate } from 'vike/client/router';
 
 export default function AuthCallback() {
-  console.log('🎯 [CALLBACK] AuthCallback component is rendering');
-  console.log('🎯 [CALLBACK] window.location.href:', window.location.href);
-  console.log('🎯 [CALLBACK] document.referrer:', document.referrer);
-
   const { user, error } = useAuth();
   const [countdown, setCountdown] = useState(3);
   const [isPopup, setIsPopup] = useState(false);
