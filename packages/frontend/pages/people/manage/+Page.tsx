@@ -11,6 +11,7 @@ import {
   selectUserProfile,
   selectUserPeopleLoading,
   selectUserPeopleError,
+  removeUserPerson,
 } from '@packing-list/state';
 import { PageHeader } from '../../../components/PageHeader';
 import { PageContainer } from '../../../components/PageContainer';
@@ -63,10 +64,7 @@ export default function PeopleManagePage() {
 
   const handleDeleteTemplate = (template: UserPerson) => {
     if (confirm(`Delete template "${template.name}"? This cannot be undone.`)) {
-      dispatch({
-        type: 'DELETE_USER_PERSON',
-        payload: { id: template.id },
-      });
+      dispatch(removeUserPerson(template.id));
     }
   };
 
@@ -226,6 +224,7 @@ export default function PeopleManagePage() {
             onClick={handleCreateTemplate}
             className="btn btn-primary btn-sm"
             disabled={isLoading}
+            data-testid="add-template-button"
           >
             <Plus className="w-4 h-4" />
             Add Template
@@ -256,7 +255,13 @@ export default function PeopleManagePage() {
         ) : (
           <div className="grid gap-3">
             {templates.map((template) => (
-              <div key={template.id} className="card bg-base-100 border">
+              <div
+                key={template.id}
+                className="card bg-base-100 border"
+                data-testid={`template-card-${template.name
+                  .toLowerCase()
+                  .replace(/\s+/g, '-')}`}
+              >
                 <div className="card-body p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
@@ -285,6 +290,9 @@ export default function PeopleManagePage() {
                         onClick={() => handleEditTemplate(template)}
                         className="btn btn-sm btn-ghost"
                         title="Edit template"
+                        data-testid={`edit-template-${template.name
+                          .toLowerCase()
+                          .replace(/\s+/g, '-')}-button`}
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
@@ -292,6 +300,9 @@ export default function PeopleManagePage() {
                         onClick={() => handleDeleteTemplate(template)}
                         className="btn btn-sm btn-ghost text-error hover:bg-error/10"
                         title="Delete template"
+                        data-testid={`delete-template-${template.name
+                          .toLowerCase()
+                          .replace(/\s+/g, '-')}-button`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

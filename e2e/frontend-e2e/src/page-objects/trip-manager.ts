@@ -49,9 +49,218 @@ export class TripManager {
     startDate?: string;
     endDate?: string;
   }) {
-    // Should be on home page with no trip selected
+    console.log('Starting createFirstTrip...');
+
+    // Navigate to home page first to ensure we're in the right state
+    await this.page.goto('/');
+    await this.page.waitForLoadState('networkidle');
+
+    // Check if we're in the no-trip-selected state
+    const noTripSelected = this.page.getByTestId('no-trip-selected');
+    const isNoTripVisible = await noTripSelected.isVisible();
+
+    console.log(`No-trip-selected visible: ${isNoTripVisible}`);
+
+    if (!isNoTripVisible) {
+      // Check if there's a selected trip by looking for trip selector
+      const tripSelector = this.page.getByTestId('trip-selector');
+      const hasTripSelector = await tripSelector.isVisible().catch(() => false);
+
+      console.log(`Trip selector visible: ${hasTripSelector}`);
+
+      if (hasTripSelector) {
+        // There's a selected trip, clear it by clearing all trips
+        console.log('Clearing existing trips...');
+        await this.clearAllExistingTrips();
+
+        // Navigate back to home page
+        await this.page.goto('/');
+        await this.page.waitForLoadState('networkidle');
+
+        // Double-check if we now have no-trip-selected
+        const noTripAfterClear = await this.page
+          .getByTestId('no-trip-selected')
+          .isVisible();
+        console.log(
+          `No-trip-selected visible after clear: ${noTripAfterClear}`
+        );
+
+        if (!noTripAfterClear) {
+          // If still not in no-trip state, force database cleanup
+          console.log('Forcing additional cleanup...');
+          await this.page.evaluate(() => {
+            // Clear all trips from the Redux store
+            if ((window as any).store) {
+              (window as any).store.dispatch({ type: 'CLEAR_ALL_TRIPS' });
+            }
+          });
+
+          // Reload the page to ensure clean state
+          await this.page.reload();
+          await this.page.waitForLoadState('networkidle');
+        }
+      }
+    }
+
+    // Final check - now we should be able to see the no-trip-selected element
+    const finalCheck = await this.page
+      .getByTestId('no-trip-selected')
+      .isVisible();
+    console.log(`Final no-trip-selected check: ${finalCheck}`);
+
+    if (!finalCheck) {
+      // Get page content for debugging
+      const pageContent = await this.page.content();
+      console.log('Current page URL:', this.page.url());
+      console.log('Page title:', await this.page.title());
+
+      // Check what's actually on the page
+      const tripSelectorExists = await this.page
+        .getByTestId('trip-selector')
+        .isVisible()
+        .catch(() => false);
+      const tripSelectorEmpty = await this.page
+        .getByTestId('trip-selector-empty')
+        .isVisible()
+        .catch(() => false);
+      const hasTripsTitle = await this.page
+        .getByText('Current Trip Status')
+        .isVisible()
+        .catch(() => false);
+
+      console.log(
+        `Debugging - tripSelector: ${tripSelectorExists}, tripSelectorEmpty: ${tripSelectorEmpty}, hasTripsTitle: ${hasTripsTitle}`
+      );
+
+      // Last resort: Force clear the store directly and reload
+      console.log('Attempting force store cleanup...');
+      await this.page.evaluate(() => {
+        if ((window as any).store) {
+          const store = (window as any).store;
+          // Force clear everything
+          store.dispatch({ type: 'CLEAR_ALL_TRIPS' });
+          store.dispatch({ type: 'SELECT_TRIP', payload: { tripId: null } });
+          store.dispatch({ type: 'CLEAR_ALL_PEOPLE' });
+          // Force update the state
+          store.dispatch({ type: 'FORCE_NO_TRIP_STATE' });
+        }
+      });
+
+      // Reload and check again
+      await this.page.reload();
+      await this.page.waitForLoadState('networkidle');
+
+      const afterForceCheck = await this.page
+        .getByTestId('no-trip-selected')
+        .isVisible();
+      console.log(`After force cleanup check: ${afterForceCheck}`);
+
+      if (!afterForceCheck) {
+        throw new Error(
+          `Expected no-trip-selected state but page shows trip dashboard. Check logs for debugging info.`
+        );
+      }
+    }
+
     await expect(this.page.getByTestId('no-trip-selected')).toBeVisible();
     await this.createTrip(options);
+  }
+
+  /**
+   * Clears all existing trips by navigating to trips page and deleting them
+   */
+  private async clearAllExistingTrips() {
+    console.log('Navigating to trips page for cleanup...');
+    await this.navigateToTripsPage();
+
+    // Wait for page to load and check what's there
+    await this.page.waitForLoadState('networkidle');
+
+    // Check if there are any trip menus (which indicate existing trips)
+    const tripMenus = this.page.locator('[data-testid^="trip-menu-"]');
+    const tripCount = await tripMenus.count();
+
+    console.log(`Found ${tripCount} trips to delete`);
+
+    if (tripCount === 0) {
+      console.log('No trips found on trips page');
+      return; // No trips to delete
+    }
+
+    // Delete all existing trips one by one
+    let deleteAttempts = 0;
+    const maxAttempts = tripCount + 2; // Safety margin
+
+    while (deleteAttempts < maxAttempts) {
+      deleteAttempts++;
+
+      // Re-check trip count
+      const currentTripMenus = this.page.locator('[data-testid^="trip-menu-"]');
+      const currentCount = await currentTripMenus.count();
+
+      console.log(
+        `Deletion attempt ${deleteAttempts}: ${currentCount} trips remaining`
+      );
+
+      if (currentCount === 0) {
+        console.log('All trips successfully deleted');
+        break;
+      }
+
+      // Get the first trip menu that's still visible
+      const firstTripMenu = currentTripMenus.first();
+
+      // Only proceed if the menu is still visible
+      if (await firstTripMenu.isVisible()) {
+        // Get the trip ID from the test ID
+        const testId = await firstTripMenu.getAttribute('data-testid');
+        console.log(`Deleting trip with menu ID: ${testId}`);
+
+        if (testId) {
+          const tripId = testId.replace('trip-menu-', '');
+
+          try {
+            // Click the menu
+            await firstTripMenu.click();
+
+            // Wait for dropdown to be visible
+            await this.page.waitForTimeout(200);
+
+            // Click delete button for this specific trip
+            const deleteButton = this.page.getByTestId(`delete-trip-${tripId}`);
+            await deleteButton.click();
+
+            // Confirm deletion
+            await this.page.getByTestId('confirm-delete-trip').click();
+
+            // Wait for the deletion to complete and UI to update
+            await this.page.waitForTimeout(1500);
+
+            console.log(`Successfully deleted trip ${tripId}`);
+          } catch (error) {
+            console.log(`Error deleting trip ${tripId}:`, error);
+            // Try to close any open dropdowns and continue
+            await this.page.keyboard.press('Escape');
+            await this.page.waitForTimeout(500);
+          }
+        }
+      } else {
+        console.log('No visible trip menu found, breaking loop');
+        break;
+      }
+    }
+
+    // Final verification
+    const finalTripCount = await this.page
+      .locator('[data-testid^="trip-menu-"]')
+      .count();
+    console.log(`Trip cleanup completed. Final trip count: ${finalTripCount}`);
+
+    if (finalTripCount > 0) {
+      console.warn(
+        `Warning: ${finalTripCount} trips still remain after cleanup`
+      );
+    }
   }
 
   /**

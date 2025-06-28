@@ -2,7 +2,7 @@
 // Enhanced slice supporting user profile + multiple people templates
 
 import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { UserPerson } from '@packing-list/model';
+import { CreateUserPersonInput, UserPerson } from '@packing-list/model';
 import { HydrateOfflineAction } from './action-handlers/hydrate-offline.js';
 
 import { uuid } from '@packing-list/shared-utils';
@@ -47,15 +47,7 @@ const userPeopleSlice = createSlice({
       state.error = null;
     },
 
-    createUserPerson: (
-      state,
-      action: PayloadAction<
-        Omit<
-          UserPerson,
-          'id' | 'createdAt' | 'updatedAt' | 'version' | 'isDeleted'
-        >
-      >
-    ) => {
+    createUserPerson: (state, action: PayloadAction<CreateUserPersonInput>) => {
       state.people.push({
         ...action.payload,
         id: uuid(),

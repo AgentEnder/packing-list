@@ -9,7 +9,13 @@ export class PeoplePage {
       return;
     }
     try {
-      const peopleLink = this.page.getByRole('link', { name: 'People' });
+      // Use exact match to avoid strict mode violation with trip names containing "People"
+      const peopleLink = this.page
+        .getByRole('link', {
+          name: 'People',
+          exact: true,
+        })
+        .filter({ visible: true });
       await peopleLink.waitFor({ state: 'visible', timeout: 10000 });
       await peopleLink.click({ force: true });
 

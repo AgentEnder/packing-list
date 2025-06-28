@@ -4,8 +4,9 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import type { UserPerson } from '@packing-list/model';
 import { calculateCurrentAge } from '@packing-list/model';
-import { useAppDispatch, useAppSelector } from '@packing-list/state';
-import { selectUserProfile, upsertUserPerson } from '@packing-list/state';
+import { useAppDispatch } from '@packing-list/state';
+import { upsertUserPerson } from '@packing-list/state';
+import { useAuth } from '@packing-list/auth-state';
 import { uuid } from '@packing-list/shared-utils';
 import { Save, X, Calendar } from 'lucide-react';
 
@@ -29,7 +30,7 @@ export const TemplateForm = ({
   prefillGender,
 }: TemplateFormProps) => {
   const dispatch = useAppDispatch();
-  const userProfile = useAppSelector(selectUserProfile);
+  const { user } = useAuth();
 
   const [form, setForm] = useState(() => ({
     name: template?.name || prefillName || '',
@@ -61,7 +62,7 @@ export const TemplateForm = ({
     setIsSubmitting(true);
 
     try {
-      const userId = userProfile?.userId || 'local-user';
+      const userId = user?.id || 'local-user';
 
       const personData: UserPerson = {
         id: template?.id || uuid(),

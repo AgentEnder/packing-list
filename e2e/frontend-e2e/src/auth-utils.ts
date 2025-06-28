@@ -57,13 +57,11 @@ export async function signInWithEmail(
   // Check if already signed in (but not with shared account)
   const authState = await getAuthState(page);
   if (authState.isAuthenticated && authState.user?.email === user.email) {
-    console.log('User already signed in with correct account');
     return;
   }
 
   // If signed in with wrong account, sign out first
   if (authState.isAuthenticated) {
-    console.log('Signing out wrong account first');
     await signOut(page);
     await page.waitForLoadState('networkidle');
   }
@@ -94,7 +92,6 @@ export async function signInWithEmail(
     await emailSignInLink.click();
   } catch {
     // Email link not found, might already be on email form
-    console.log('Email sign-in link not found, assuming already on email form');
   }
 
   // Wait for email/password form
@@ -126,8 +123,6 @@ export async function signInWithEmail(
   } catch {
     // No error found, which is good
   }
-
-  console.log('Sign in completed');
 }
 
 /**
@@ -282,15 +277,12 @@ export async function waitForAuthReady(
       ]);
 
       if (result === 'profile') {
-        console.log('Auth ready: Authenticated state detected');
         return true;
       } else if (result === 'signin') {
-        console.log('Auth ready: Unauthenticated state detected');
         return true;
       }
 
       // If we got timeout, continue the loop
-      console.log('Auth state not ready yet, continuing to wait...');
     } catch (error) {
       console.warn('Error during auth ready check:', error);
       // Small delay before retrying to avoid hammering the DOM

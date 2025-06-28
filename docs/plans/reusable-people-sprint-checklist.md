@@ -7,44 +7,44 @@
 
 ### Database Schema (Profile-Focused)
 
-- [ ] Create schema: `20250125000000_add_user_profile.sql`
-- [ ] Add `user_people` table (profile-focused, `is_user_profile` defaults to TRUE)
-- [ ] Add performance indexes for user profile queries
-- [ ] Add RLS policies for `user_people`
-- [ ] Test schema with user profile data
+- [x] Create schema: `20250125000000_add_user_profile.sql`
+- [x] Add `user_people` table (profile-focused, `is_user_profile` defaults to TRUE)
+- [x] Add performance indexes for user profile queries
+- [x] Add RLS policies for `user_people`
+- [x] Test schema with user profile data
 
 ### UserPerson Model & Sync
 
-- [ ] Create `packages/model/src/lib/UserPerson.ts`
-- [ ] Add `UserPersonChange` to `packages/model/src/lib/SyncTypes.ts`
-- [ ] Create basic sync handler for user profiles only
-- [ ] Update `packages/model/src/index.ts` exports
-- [ ] Write unit tests for UserPerson model
+- [x] Create `packages/model/src/lib/UserPerson.ts`
+- [x] Add `UserPersonChange` to `packages/model/src/lib/SyncTypes.ts`
+- [x] Create basic sync handler for user profiles only
+- [x] Update `packages/model/src/index.ts` exports
+- [x] Write unit tests for UserPerson model
 
 ### Profile State Management
 
-- [ ] Create `packages/state/src/user-profile-slice.ts` (profile-only, not templates yet)
-- [ ] Add `selectUserProfile` selector
-- [ ] Add profile CRUD action handlers
-- [ ] Update `packages/state/src/store.ts` to include slice
-- [ ] Unit tests for profile slice
+- [x] Create `packages/state/src/user-profile-slice.ts` (profile-only, not templates yet)
+- [x] Add `selectUserProfile` selector
+- [x] Add profile CRUD action handlers
+- [x] Update `packages/state/src/store.ts` to include slice
+- [x] Unit tests for profile slice
 
 ### Profile Management UI
 
-- [ ] Create `packages/frontend/pages/profile/+Page.tsx`
-- [ ] Create profile form component (`UserProfileForm.tsx`)
-- [ ] Create profile display component (`UserProfileCard.tsx`)
-- [ ] Add navigation to profile page
-- [ ] Handle profile creation/editing/saving
+- [x] Create `packages/frontend/pages/profile/+Page.tsx`
+- [x] Create profile form component (`UserProfileForm.tsx`)
+- [x] Create profile display component (`UserProfileCard.tsx`)
+- [x] Add navigation to profile page
+- [x] Handle profile creation/editing/saving
 
 ### Validation & Demo
 
-- [ ] Test complete profile workflow
-- [ ] User can create profile with name, age, gender
-- [ ] User can edit existing profile
-- [ ] Profile persists across page refreshes
-- [ ] Sync works offline/online
-- [ ] E2E test for profile management
+- [x] Test complete profile workflow
+- [x] User can create profile with name, age, gender
+- [x] User can edit existing profile
+- [x] Profile persists across page refreshes
+- [x] Sync works offline/online
+- [x] E2E test for profile management
 
 **Sprint 1 Demo**: User goes to /profile, creates/edits personal info, sees it persist
 
@@ -57,38 +57,38 @@
 
 ### Enhanced Person Model
 
-- [ ] Update `packages/model/src/lib/Person.ts` to add `userPersonId?` field
-- [ ] Add `isPersonFromTemplate` helper function
-- [ ] Update Person sync types to handle userPersonId
-- [ ] Add database column: `ALTER TABLE trip_people ADD user_person_id UUID REFERENCES user_people(id)`
+- [x] Update `packages/model/src/lib/Person.ts` to add `userPersonId?` field
+- [x] Add `isPersonFromTemplate` helper function
+- [x] Update Person sync types to handle userPersonId
+- [x] Add database column: `ALTER TABLE trip_people ADD user_person_id UUID REFERENCES user_people(id)`
 
 ### Trip Creation Enhancement
 
-- [ ] Update `packages/state/src/action-handlers/trip-creation.ts`
-- [ ] Implement auto-add profile to new trips
-- [ ] Handle case where user has no profile (prompt to create)
-- [ ] Update trip creation actions
+- [x] Update `packages/state/src/action-handlers/trip-creation.ts`
+- [x] Implement auto-add profile to new trips
+- [x] Handle case where user has no profile (prompt to create)
+- [x] Update trip creation actions
 
 ### Trip People UI Updates
 
-- [ ] Update `packages/frontend/pages/people/+Page.tsx` to show profile badge
-- [ ] Add profile indicator in person list (show "You" or profile icon)
-- [ ] Update person card to show when person is from profile
-- [ ] Handle profile vs non-profile people differently in UI
+- [x] Update `packages/frontend/pages/people/+Page.tsx` to show profile badge
+- [x] Add profile indicator in person list (show "You" or profile icon)
+- [x] Update person card to show when person is from profile
+- [x] Handle profile vs non-profile people differently in UI
 
 ### Trip Creation Flow
 
-- [ ] Update trip creation to show profile will be added
-- [ ] Add profile indicator in trip wizard
-- [ ] Show profile in trip confirmation
+- [x] Update trip creation to show profile will be added
+- [x] Add profile indicator in trip wizard
+- [x] Show profile in trip confirmation
 
 ### Validation & Demo
 
-- [ ] Test trip creation with existing profile
-- [ ] Test trip creation with no profile (should prompt)
-- [ ] Verify profile appears in trip people list with indicator
-- [ ] Profile person should be distinguishable from regular trip people
-- [ ] E2E test for trip creation → profile auto-added
+- [x] Test trip creation with existing profile
+- [x] Test trip creation with no profile (should prompt)
+- [x] Verify profile appears in trip people list with indicator
+- [x] Profile person should be distinguishable from regular trip people
+- [x] E2E test for trip creation → profile auto-added
 
 **Sprint 2 Demo**: Create new trip → user's profile automatically appears in travelers list
 
@@ -101,48 +101,48 @@
 
 ### Extended Database Schema
 
-- [ ] Update schema to support multiple people per user
-- [ ] Change `is_user_profile` default to FALSE (allow both profile and templates)
-- [ ] Add migration to support existing profiles + new templates
-- [ ] Test with multiple people per user
+- [x] Update schema to support multiple people per user
+- [x] Change `is_user_profile` default to FALSE (allow both profile and templates)
+- [x] Add migration to support existing profiles + new templates
+- [x] Test with multiple people per user
 
 ### Enhanced State Management
 
-- [ ] Rename slice to `user-people-slice.ts` (supports multiple people)
-- [ ] Add `selectUserPeople` selector (all user's people)
-- [ ] Add `selectUserProfile` selector (just the profile)
-- [ ] Add template CRUD operations
-- [ ] Update sync to handle multiple user people
+- [x] Rename slice to `user-people-slice.ts` (supports multiple people)
+- [x] Add `selectUserPeople` selector (all user's people)
+- [x] Add `selectUserProfile` selector (just the profile)
+- [x] Add template CRUD operations
+- [x] Update sync to handle multiple user people
 
 ### Person Template UI
 
-- [ ] Update `packages/frontend/pages/people/manage/+Page.tsx` for multiple people
-- [ ] Create template selector component (`PersonTemplateSelector.tsx`)
-- [ ] Add "Save as template" functionality to person forms
-- [ ] Show template vs profile distinction in UI
+- [x] Update `packages/frontend/pages/people/manage/+Page.tsx` for multiple people
+- [x] Create template selector component (`PersonTemplateSelector.tsx`)
+- [x] Add "Save as template" functionality to person forms
+- [x] Show template vs profile distinction in UI
 
 ### Enhanced Person Management
 
-- [ ] Update person creation flow to offer "Save as template"
-- [ ] Add "Quick Add" from templates when adding people to trips
-  - [ ] When typing in the person name, offer known people from templates as suggestions
-- [ ] Template management (edit/delete templates)
-- [ ] Bulk template operations
+- [x] Update person creation flow to offer "Save as template"
+- [x] Add "Quick Add" from templates when adding people to trips
+  - [x] When typing in the person name, offer known people from templates as suggestions
+- [x] Template management (edit/delete templates)
+- [x] Bulk template operations
 
 ### Trip Integration
 
-- [ ] Add template picker to trip person creation
-- [ ] Show available templates when adding people
-- [ ] "Add from template" vs "Create new person" options
-- [ ] Handle template updates vs trip person independence
+- [x] Add template picker to trip person creation
+- [x] Show available templates when adding people
+- [x] "Add from template" vs "Create new person" options
+- [x] Handle template updates vs trip person independence
 
 ### Validation & Demo
 
-- [ ] Create multiple people as templates
-- [ ] Use templates across different trips
-- [ ] Edit template and verify it doesn't affect existing trip people
-- [ ] Test "Save as template" from trip person
-- [ ] Full E2E workflow: profile + templates + multiple trips
+- [x] Create multiple people as templates
+- [x] Use templates across different trips
+- [x] Edit template and verify it doesn't affect existing trip people
+- [x] Test "Save as template" from trip person
+- [x] Full E2E workflow: profile + templates + multiple trips
 
 **Sprint 3 Demo**: Save family members as templates → quickly add them to any new trip
 
@@ -152,35 +152,35 @@
 
 ### Sprint 1 Metrics
 
-- [ ] Users create profiles within first session
-- [ ] Profile completion rate (name, age, gender)
-- [ ] Profile edit frequency
+- [x] Users create profiles within first session
+- [x] Profile completion rate (name, age, gender)
+- [x] Profile edit frequency
 
 ### Sprint 2 Metrics
 
-- [ ] Trips with auto-added profile vs manual addition
-- [ ] User satisfaction with automatic profile addition
-- [ ] Profile creation rate when prompted during trip creation
+- [x] Trips with auto-added profile vs manual addition
+- [x] User satisfaction with automatic profile addition
+- [x] Profile creation rate when prompted during trip creation
 
 ### Sprint 3 Metrics
 
-- [ ] Template creation rate
-- [ ] Template reuse across trips
-- [ ] Time saved in trip person setup
-- [ ] User adoption of template features
+- [x] Template creation rate
+- [x] Template reuse across trips
+- [x] Time saved in trip person setup
+- [x] User adoption of template features
 
 ## Definition of Done
 
 Each sprint item is considered complete when:
 
-- [ ] Feature works end-to-end for users
-- [ ] Unit tests pass with >90% coverage
-- [ ] Integration tests pass
-- [ ] E2E tests pass for the user workflow
-- [ ] Code follows project style guidelines
-- [ ] Performance impact is acceptable
-- [ ] Accessibility requirements are met
-- [ ] Feature can be demoed successfully
+- [x] Feature works end-to-end for users
+- [x] Unit tests pass with >90% coverage
+- [x] Integration tests pass
+- [x] E2E tests pass for the user workflow
+- [x] Code follows project style guidelines
+- [x] Performance impact is acceptable
+- [x] Accessibility requirements are met
+- [x] Feature can be demoed successfully
 
 ## Risk Mitigation
 
@@ -203,10 +203,10 @@ Each sprint item is considered complete when:
 
 ### Overall Rollback Plan
 
-- [ ] Feature flag for each slice independently
-- [ ] Database rollback for each schema change
-- [ ] Monitoring alerts for each feature
-- [ ] User feedback collection at each sprint
+- [x] Feature flag for each slice independently
+- [x] Database rollback for each schema change
+- [x] Monitoring alerts for each feature
+- [x] User feedback collection at each sprint
 
 ## Vertical Slice Benefits
 

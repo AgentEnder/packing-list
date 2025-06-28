@@ -149,6 +149,7 @@ export function UserProfileForm({
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder="Enter your name"
           required
+          data-testid="profile-name-input"
         />
         <p className="mt-1 text-xs text-gray-500">
           This will be used for personalized packing suggestions
@@ -167,6 +168,7 @@ export function UserProfileForm({
           onChange={(e) => handleInputChange('birthDate', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder="Enter your birth date"
+          data-testid="profile-birthdate-input"
         />
         {formData.birthDate && (
           <p className="mt-1 text-xs text-gray-600">
@@ -188,6 +190,7 @@ export function UserProfileForm({
           value={formData.gender}
           onChange={(e) => handleInputChange('gender', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          data-testid="profile-gender-select"
         >
           <option value="">Select gender (optional)</option>
           <option value="male">Male</option>
@@ -206,6 +209,7 @@ export function UserProfileForm({
           type="submit"
           disabled={isSubmitting}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          data-testid="profile-save-button"
         >
           <Save className="h-4 w-4" />
           {isSubmitting

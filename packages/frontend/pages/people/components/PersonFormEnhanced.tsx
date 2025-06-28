@@ -280,6 +280,9 @@ export const PersonFormEnhanced = ({
                             ? 'bg-blue-50 text-blue-700'
                             : 'text-gray-700'
                         }`}
+                        data-testid={`template-suggestion-${template.name
+                          .toLowerCase()
+                          .replace(/\s+/g, '-')}`}
                       >
                         <User className="w-4 h-4 text-gray-400" />
                         <div className="flex-1">

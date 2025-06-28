@@ -160,16 +160,6 @@ import {
   bulkUpsertSyncedEntitiesHandler,
   type SyncIntegrationActions,
 } from './lib/sync/sync-integration.js';
-import {
-  createUserPersonTemplateHandler,
-  updateUserPersonHandler,
-  deleteUserPersonHandler,
-  clonePersonAsTemplateHandler,
-  loadUserPeopleHandler,
-  setUserPeopleLoadingHandler,
-  setUserPeopleErrorHandler,
-  upsertUserPersonHandler,
-} from './action-handlers/user-people-handlers.js';
 
 import {
   loadUserPreferencesHandler,
@@ -198,14 +188,6 @@ import {
   setSyncError,
   resetSyncState,
 } from './lib/sync/actions.js';
-import {
-  CreateUserPersonInput,
-  UpdateUserPersonInput,
-  DeleteUserPersonInput,
-  ClonePersonAsTemplateInput,
-  UserPerson,
-} from '@packing-list/model';
-import { upsertUserPerson } from './action-creators/user-people-actions.js';
 
 export type ActionHandler<T extends AllActions> = (
   state: StoreType,
@@ -259,14 +241,6 @@ export type AllActions =
   | UpdateUserPreferencesAction
   | UpdateLastSelectedTripIdAction
   | SyncUserPreferencesAction
-  | { type: 'CREATE_USER_PERSON_TEMPLATE'; payload: CreateUserPersonInput }
-  | { type: 'UPDATE_USER_PERSON'; payload: UpdateUserPersonInput }
-  | ReturnType<typeof upsertUserPerson>
-  | { type: 'DELETE_USER_PERSON'; payload: DeleteUserPersonInput }
-  | { type: 'CLONE_PERSON_AS_TEMPLATE'; payload: ClonePersonAsTemplateInput }
-  | { type: 'LOAD_USER_PEOPLE'; payload: UserPerson[] }
-  | { type: 'SET_USER_PEOPLE_LOADING'; payload: boolean }
-  | { type: 'SET_USER_PEOPLE_ERROR'; payload: string | null }
   | {
       type: 'SYNC_UPDATE_TRIP_SUMMARIES';
       payload: {
@@ -352,14 +326,6 @@ export const Mutations: {
   TRACK_SYNC_CHANGE: (state: StoreType) => state, // Placeholder - no-op for now
   PROCESS_SYNCED_TRIP_ITEMS: processSyncedTripItemsHandler,
   BULK_UPSERT_SYNCED_ENTITIES: bulkUpsertSyncedEntitiesHandler,
-  CREATE_USER_PERSON_TEMPLATE: createUserPersonTemplateHandler,
-  UPDATE_USER_PERSON: updateUserPersonHandler,
-  UPSERT_USER_PERSON: upsertUserPersonHandler,
-  DELETE_USER_PERSON: deleteUserPersonHandler,
-  CLONE_PERSON_AS_TEMPLATE: clonePersonAsTemplateHandler,
-  LOAD_USER_PEOPLE: loadUserPeopleHandler,
-  SET_USER_PEOPLE_LOADING: setUserPeopleLoadingHandler,
-  SET_USER_PEOPLE_ERROR: setUserPeopleErrorHandler,
   SYNC_UPDATE_TRIP_SUMMARIES: (
     state: StoreType,
     action: {
