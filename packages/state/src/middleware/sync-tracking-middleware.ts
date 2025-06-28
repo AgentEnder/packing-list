@@ -361,6 +361,19 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
       return result;
     }
 
+    // Handle auth initialization with existing user (e.g., page reload with saved session)
+    if (
+      (action as UnknownAction).type === 'auth/initializeAuth/fulfilled' &&
+      userId
+    ) {
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] Auth initialized with user ${userId}, reloading from IndexedDB`
+      );
+      void reloadFromIndexedDB(next, userId);
+      void startSyncService(next, userId);
+      return result;
+    }
+
     if ((action as UnknownAction).type === 'HYDRATE_OFFLINE') {
       return result;
     }
