@@ -248,7 +248,7 @@ export function createStore(pageContext?: PageContext, _state?: StoreType) {
       auth: authReducer(state?.auth, action as AuthActions),
       userPeople: userPeopleReducer(
         state?.userPeople,
-        action as any // Allow Redux Toolkit slice actions to pass through
+        action as Parameters<typeof userPeopleReducer>[1] // Properly type the action for userPeopleReducer
       ),
     };
   };

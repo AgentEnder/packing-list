@@ -141,6 +141,41 @@ export class UserPersonStorage {
   }
 
   /**
+   * Delete a specific user person by ID (for templates and profiles)
+   */
+  static async deleteUserPersonById(userPersonId: string): Promise<void> {
+    const db = await getDatabase();
+
+    try {
+      // First get the user person to log the deletion
+      const userPerson = await this.getUserPersonById(userPersonId);
+      if (!userPerson) {
+        console.log(
+          `📋 [UserPersonStorage] No user person found to delete for ID ${userPersonId}`
+        );
+        return;
+      }
+
+      // Delete by the actual ID
+      await db.delete('userPersons', userPersonId);
+
+      console.log(
+        `✅ [UserPersonStorage] Deleted user person: ${
+          userPerson.name
+        } (${userPersonId}) - ${
+          userPerson.isUserProfile ? 'profile' : 'template'
+        }`
+      );
+    } catch (error) {
+      console.error(
+        `❌ [UserPersonStorage] Error deleting user person for ID ${userPersonId}:`,
+        error
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Check if user profile exists
    */
   static async hasUserPerson(userId: string): Promise<boolean> {

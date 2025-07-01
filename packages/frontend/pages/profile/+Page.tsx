@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@packing-list/state';
 import { User } from 'lucide-react';
 import { PageContainer } from '../../components/PageContainer.js';
@@ -23,15 +22,10 @@ export function Page() {
   const error = useAppSelector(selectUserPeopleError);
   const hasProfile = useAppSelector(selectHasUserProfile);
 
-  // Note: Profile loading is now handled by the sync system automatically
-  // when the user logs in. No need to manually trigger loading.
-
-  // Clear error when component unmounts
-  useEffect(() => {
-    return () => {
-      dispatch(clearPeopleError());
-    };
-  }, [dispatch]);
+  // Clear any previous errors when component mounts
+  if (error) {
+    dispatch(clearPeopleError());
+  }
 
   if (!user) {
     return (

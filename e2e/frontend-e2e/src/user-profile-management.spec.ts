@@ -12,16 +12,6 @@ test.describe('User Profile Management', () => {
     await setupCleanTestUser(page);
     userPeoplePage = new UserPeoplePage(page);
     tripManager = new TripManager(page);
-
-    // Capture console logs for debugging
-    page.on('console', (msg) => {
-      if (
-        msg.text().includes('[USER PROFILE FORM]') ||
-        msg.text().includes('profile')
-      ) {
-        console.log(`🌐 BROWSER: ${msg.text()}`);
-      }
-    });
   });
 
   test.describe('Profile Creation', () => {
@@ -190,6 +180,9 @@ test.describe('User Profile Management', () => {
 
       // Go back online
       await context.setOffline(false);
+
+      // Sync doesn't happen instantly, so we need to wait for it
+      await page.waitForTimeout(1200);
 
       // Profile should sync and persist
       await page.reload();

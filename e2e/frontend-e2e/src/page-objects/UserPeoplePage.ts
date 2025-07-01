@@ -8,14 +8,16 @@ export class UserPeoplePage {
    * Navigate to the user profile page
    */
   async gotoProfile() {
+    if (this.page.url().includes('/profile')) {
+      return;
+    }
     // Direct navigation to profile page - simpler and more reliable
-    console.log('Navigating directly to profile page...');
+
     await this.page.goto('/profile');
     await this.page.waitForLoadState('networkidle');
 
     // Verify we're on the profile page (with or without trailing slash)
     await expect(this.page).toHaveURL(/\/profile\/?$/);
-    console.log('Successfully navigated to profile page');
 
     // Ensure clean state is maintained after profile visit
     await this.page.evaluate(() => {
@@ -32,9 +34,13 @@ export class UserPeoplePage {
    * Navigate to the people management page
    */
   async gotoPeopleManagement() {
-    // Direct navigation to people management page - more reliable than trying to navigate through People page
-    await this.page.goto('/people/manage');
-    await this.page.waitForLoadState('networkidle');
+    await this.page
+      .getByRole('link', { name: 'People' })
+      .filter({
+        visible: true,
+      })
+      .click();
+    await this.page.getByRole('link', { name: 'Manage Templates' }).click();
     await expect(this.page).toHaveURL(/\/people\/manage\/?/);
   }
 
@@ -269,7 +275,11 @@ export class UserPeoplePage {
     // Set up dialog handler before clicking - use once() to avoid multiple handlers
     this.page.once('dialog', async (dialog) => {
       if (dialog.type() === 'confirm') {
-        await dialog.accept();
+        try {
+          await dialog.accept();
+        } catch {
+          //
+        }
       }
     });
 
@@ -395,7 +405,6 @@ export class UserPeoplePage {
     const headingExists = await templatesHeading.isVisible().catch(() => false);
 
     if (!headingExists) {
-      console.log('No templates heading found, skipping cleanup');
       return;
     }
 
@@ -404,8 +413,6 @@ export class UserPeoplePage {
     if (templateCount === 0) {
       return;
     }
-
-    console.log(`Found ${templateCount} templates to delete`);
 
     // Keep deleting templates until none are left
     let attempts = 0;
@@ -425,11 +432,22 @@ export class UserPeoplePage {
           // Click the first delete button
           await deleteButtons.first().click();
 
-          // Wait for deletion to process with shorter timeout
-          await this.page.waitForTimeout(500);
+          // Wait for deletion to process and UI to update
+          await this.page.waitForTimeout(1000);
+
+          // Wait for network activity to settle (deletion + reload)
+          await this.page.waitForLoadState('networkidle', { timeout: 5000 });
 
           // Re-check count more efficiently
-          templateCount = await this.getPersonTemplatesCount();
+          const newCount = await this.getPersonTemplatesCount();
+          if (newCount >= templateCount) {
+            // Count didn't decrease, something went wrong
+            console.log(
+              `Template count didn't decrease: ${templateCount} -> ${newCount}`
+            );
+            break;
+          }
+          templateCount = newCount;
         } else {
           break; // No more delete buttons found
         }
@@ -441,8 +459,6 @@ export class UserPeoplePage {
         break;
       }
     }
-
-    console.log(`Template cleanup completed after ${attempts} attempts`);
   }
 
   /**

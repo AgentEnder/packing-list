@@ -59,9 +59,7 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
       className="card bg-base-100 shadow-xl min-h-[280px] flex flex-col"
       data-testid={`person-card-${person.name
         .toLowerCase()
-        .replace(/\s+/g, '-')}${isFromUserProfile ? '-profile' : ''}${
-        isFromOtherTemplate ? '-template' : ''
-      }`}
+        .replace(/\s+/g, '-')}`}
     >
       <div className="card-body gap-2 flex-1 flex flex-col">
         <div className="flex-1">

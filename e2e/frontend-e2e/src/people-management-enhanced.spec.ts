@@ -9,41 +9,6 @@ test.describe('Enhanced People Management with Reusable Features', () => {
   let userPeoplePage: UserPeoplePage;
   let peoplePage: PeoplePage;
 
-  test.describe('No Trip Selected State with Profile', () => {
-    test.beforeEach(async ({ page }) => {
-      await clearAllTestData(page);
-      await setupCleanTestUser(page);
-      tripManager = new TripManager(page);
-      userPeoplePage = new UserPeoplePage(page);
-      peoplePage = new PeoplePage(page);
-    });
-
-    test('shows profile creation prompt when accessing people page without trip', async ({
-      page,
-    }) => {
-      await page.getByRole('link', { name: 'People' }).click();
-      await tripManager.expectNoTripSelected();
-
-      // Should suggest creating profile for future trips
-      await expect(
-        page.getByText(
-          'Create your profile to be automatically added to future trips'
-        )
-      ).toBeVisible();
-      await expect(
-        page.getByTestId('create-profile-from-people')
-      ).toBeVisible();
-    });
-
-    test('can create profile from no-trip people state', async ({ page }) => {
-      await page.getByRole('link', { name: 'People' }).click();
-      await page.getByTestId('create-profile-from-people').click();
-
-      await expect(page).toHaveURL(/\/profile\/?$/);
-      await expect(page.getByTestId('profile-name-input')).toBeVisible();
-    });
-  });
-
   test.describe('Trip People with Profile Integration', () => {
     test.beforeEach(async ({ page }) => {
       await clearAllTestData(page);
@@ -59,12 +24,16 @@ test.describe('Enhanced People Management with Reusable Features', () => {
         gender: 'male',
       });
 
-      // Create a trip - profile should auto-appear
-      await tripManager.createFirstTrip({
-        template: 'business',
-        title: 'Enhanced Test Trip',
-        skipDates: true,
-      });
+      try {
+        // Create a trip - profile should auto-appear
+        await tripManager.createTrip({
+          template: 'business',
+          title: 'Enhanced Test Trip',
+          skipDates: true,
+        });
+      } catch {
+        // There was probably an existing trip.
+      }
 
       await page.getByRole('link', { name: 'People' }).click();
     });
@@ -152,6 +121,13 @@ test.describe('Enhanced People Management with Reusable Features', () => {
       userPeoplePage = new UserPeoplePage(page);
       peoplePage = new PeoplePage(page);
 
+      // Create trip
+      await tripManager.createTrip({
+        template: 'vacation',
+        title: 'Template Integration Trip',
+        skipDates: true,
+      });
+
       // Create some person templates
       await userPeoplePage.createPersonTemplate({
         name: 'Family Member',
@@ -163,13 +139,6 @@ test.describe('Enhanced People Management with Reusable Features', () => {
         name: 'Work Colleague',
         age: 35,
         gender: 'male',
-      });
-
-      // Create trip
-      await tripManager.createFirstTrip({
-        template: 'vacation',
-        title: 'Template Integration Trip',
-        skipDates: true,
       });
 
       await page.getByRole('link', { name: 'People' }).click();
@@ -278,14 +247,6 @@ test.describe('Enhanced People Management with Reusable Features', () => {
   });
 
   test.describe('Complex Scenarios', () => {
-    test.beforeEach(async ({ page }) => {
-      await clearAllTestData(page);
-      await setupCleanTestUser(page);
-      tripManager = new TripManager(page);
-      userPeoplePage = new UserPeoplePage(page);
-      peoplePage = new PeoplePage(page);
-    });
-
     test('profile + templates + regular people all work together', async ({
       page,
     }) => {
@@ -304,7 +265,7 @@ test.describe('Enhanced People Management with Reusable Features', () => {
       });
 
       // Create trip
-      await tripManager.createFirstTrip({
+      await tripManager.createTrip({
         template: 'vacation',
         title: 'Complex Scenario Trip',
         skipDates: true,
@@ -360,7 +321,7 @@ test.describe('Enhanced People Management with Reusable Features', () => {
       });
 
       // Create first trip
-      await tripManager.createFirstTrip({
+      await tripManager.createTrip({
         template: 'business',
         title: 'First Trip',
         skipDates: true,

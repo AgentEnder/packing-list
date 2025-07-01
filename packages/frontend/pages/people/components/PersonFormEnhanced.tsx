@@ -292,7 +292,7 @@ export const PersonFormEnhanced = ({
                               Born {template.birthDate}
                               {currentTrip && (
                                 <span className="ml-2">
-                                  • Age{' '}
+                                  • Age:{' '}
                                   {calculateAgeForTrip(
                                     template.birthDate,
                                     currentTrip.tripEvents?.find(

@@ -13,7 +13,20 @@ export class TripManager {
     startDate?: string;
     endDate?: string;
   }) {
-    await this.page.getByTestId('create-new-trip-button').click();
+    if (this.page.url() !== '/trips') {
+      await this.page
+        .getByTestId('trip-selector')
+        .or(this.page.getByTestId('no-trip-selected'))
+        .filter({
+          visible: true,
+        })
+        .click();
+    }
+    await this.page
+      .locator('a[href="/trips/new"]')
+      .filter({ visible: true })
+      .first()
+      .click();
     await expect(this.page).toHaveURL('/trips/new');
 
     await this.page.getByTestId(`template-${options.template}`).click();
@@ -49,28 +62,22 @@ export class TripManager {
     startDate?: string;
     endDate?: string;
   }) {
-    console.log('Starting createFirstTrip...');
-
     // Navigate to home page first to ensure we're in the right state
-    await this.page.goto('/');
+    await this.page.locator('a[href="/"]').click();
     await this.page.waitForLoadState('networkidle');
 
     // Check if we're in the no-trip-selected state
     const noTripSelected = this.page.getByTestId('no-trip-selected');
     const isNoTripVisible = await noTripSelected.isVisible();
 
-    console.log(`No-trip-selected visible: ${isNoTripVisible}`);
-
     if (!isNoTripVisible) {
       // Check if there's a selected trip by looking for trip selector
       const tripSelector = this.page.getByTestId('trip-selector');
       const hasTripSelector = await tripSelector.isVisible().catch(() => false);
 
-      console.log(`Trip selector visible: ${hasTripSelector}`);
-
       if (hasTripSelector) {
         // There's a selected trip, clear it by clearing all trips
-        console.log('Clearing existing trips...');
+
         await this.clearAllExistingTrips();
 
         // Navigate back to home page
@@ -87,7 +94,7 @@ export class TripManager {
 
         if (!noTripAfterClear) {
           // If still not in no-trip state, force database cleanup
-          console.log('Forcing additional cleanup...');
+
           await this.page.evaluate(() => {
             // Clear all trips from the Redux store
             if ((window as any).store) {
@@ -106,7 +113,6 @@ export class TripManager {
     const finalCheck = await this.page
       .getByTestId('no-trip-selected')
       .isVisible();
-    console.log(`Final no-trip-selected check: ${finalCheck}`);
 
     if (!finalCheck) {
       // Get page content for debugging
@@ -133,7 +139,7 @@ export class TripManager {
       );
 
       // Last resort: Force clear the store directly and reload
-      console.log('Attempting force store cleanup...');
+
       await this.page.evaluate(() => {
         if ((window as any).store) {
           const store = (window as any).store;
@@ -153,7 +159,6 @@ export class TripManager {
       const afterForceCheck = await this.page
         .getByTestId('no-trip-selected')
         .isVisible();
-      console.log(`After force cleanup check: ${afterForceCheck}`);
 
       if (!afterForceCheck) {
         throw new Error(
@@ -169,8 +174,7 @@ export class TripManager {
   /**
    * Clears all existing trips by navigating to trips page and deleting them
    */
-  private async clearAllExistingTrips() {
-    console.log('Navigating to trips page for cleanup...');
+  public async clearAllExistingTrips() {
     await this.navigateToTripsPage();
 
     // Wait for page to load and check what's there
@@ -180,10 +184,7 @@ export class TripManager {
     const tripMenus = this.page.locator('[data-testid^="trip-menu-"]');
     const tripCount = await tripMenus.count();
 
-    console.log(`Found ${tripCount} trips to delete`);
-
     if (tripCount === 0) {
-      console.log('No trips found on trips page');
       return; // No trips to delete
     }
 
@@ -203,7 +204,6 @@ export class TripManager {
       );
 
       if (currentCount === 0) {
-        console.log('All trips successfully deleted');
         break;
       }
 
@@ -214,7 +214,6 @@ export class TripManager {
       if (await firstTripMenu.isVisible()) {
         // Get the trip ID from the test ID
         const testId = await firstTripMenu.getAttribute('data-testid');
-        console.log(`Deleting trip with menu ID: ${testId}`);
 
         if (testId) {
           const tripId = testId.replace('trip-menu-', '');
@@ -235,8 +234,6 @@ export class TripManager {
 
             // Wait for the deletion to complete and UI to update
             await this.page.waitForTimeout(1500);
-
-            console.log(`Successfully deleted trip ${tripId}`);
           } catch (error) {
             console.log(`Error deleting trip ${tripId}:`, error);
             // Try to close any open dropdowns and continue
@@ -245,7 +242,6 @@ export class TripManager {
           }
         }
       } else {
-        console.log('No visible trip menu found, breaking loop');
         break;
       }
     }
@@ -254,7 +250,6 @@ export class TripManager {
     const finalTripCount = await this.page
       .locator('[data-testid^="trip-menu-"]')
       .count();
-    console.log(`Trip cleanup completed. Final trip count: ${finalTripCount}`);
 
     if (finalTripCount > 0) {
       console.warn(

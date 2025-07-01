@@ -27,7 +27,7 @@ test.describe('Profile Auto-Addition to Trips', () => {
       });
 
       // Create a new trip
-      await tripManager.createFirstTrip({
+      await tripManager.createTrip({
         template: 'business',
         title: 'Business Trip',
         skipDates: true,
@@ -62,7 +62,7 @@ test.describe('Profile Auto-Addition to Trips', () => {
         gender: 'female',
       });
 
-      await tripManager.createFirstTrip({
+      await tripManager.createTrip({
         template: 'vacation',
         title: 'Vacation Trip',
         skipDates: true,
@@ -96,7 +96,7 @@ test.describe('Profile Auto-Addition to Trips', () => {
       });
 
       // Create first trip
-      await tripManager.createFirstTrip({
+      await tripManager.createTrip({
         template: 'business',
         title: 'First Trip',
         skipDates: true,
@@ -134,7 +134,7 @@ test.describe('Profile Auto-Addition to Trips', () => {
     test('trip creation works when user has no profile', async ({ page }) => {
       // No profile created
 
-      await tripManager.createFirstTrip({
+      await tripManager.createTrip({
         template: 'business',
         title: 'No Profile Trip',
         skipDates: true,
@@ -157,7 +157,7 @@ test.describe('Profile Auto-Addition to Trips', () => {
         age: 31,
       });
 
-      await tripManager.createFirstTrip({
+      await tripManager.createTrip({
         template: 'business',
         title: 'Edge Case Trip',
         skipDates: true,
@@ -180,7 +180,7 @@ test.describe('Profile Auto-Addition to Trips', () => {
       });
 
       // Test with business template
-      await tripManager.createFirstTrip({
+      await tripManager.createTrip({
         template: 'business',
         title: 'Business Template Trip',
         skipDates: true,

@@ -1,6 +1,9 @@
 import { Page } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import type { Database } from '../../../packages/supabase/src/database-types.js'; // Ensure types are loaded
+
 // Direct Supabase client for test database operations
 function getTestSupabaseClient() {
   const supabaseUrl =
@@ -9,70 +12,49 @@ function getTestSupabaseClient() {
     process.env.PUBLIC_ENV__SUPABASE_SERVICE_ROLE_KEY ||
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
 
-  const client = createClient(supabaseUrl, supabaseServiceRoleKey);
+  const client = createClient<Database>(supabaseUrl, supabaseServiceRoleKey);
   return client;
 }
 
 /**
- * Clear all test data (for when we need a completely clean slate)
- * Still faster than full DB reset as it only clears data, not schema
+ * Clear all test data using server-side Supabase client
+ * More reliable than browser-based cleanup
  */
 export async function clearAllTestData(page: Page): Promise<void> {
-  await page.evaluate(async () => {
-    const supabase = (window as any).supabase;
-    if (!supabase) {
-      console.warn('Supabase client not found on window');
-      return;
-    }
+  try {
+    const supabase = getTestSupabaseClient();
 
-    try {
-      // Get all test user IDs (e2e test users)
-      const testUserEmails = [
-        'e2e-test@example.com',
-        'e2e-admin@example.com',
-        'e2e-google@example.com',
-      ];
+    // Clear data for the current test user
+    const tablesToClear: Array<keyof Database['public']['Tables']> = [
+      'trip_people',
+      'trips',
+      'user_people',
+      'default_item_rules',
+      'rule_packs',
+      'trip_default_item_rules',
+      'trip_items',
+      'sync_changes',
+      'user_profiles',
+      'trip_rule_overrides',
+    ] as const;
 
-      // Clear data for all test users
-      for (const email of testUserEmails) {
-        try {
-          // Find user by email
-          const { data: users } = await supabase
-            .from('auth.users')
-            .select('id')
-            .eq('email', email);
+    for (const table of tablesToClear) {
+      try {
+        const { error } = await supabase
+          .from(table)
+          .delete()
+          .not('id', 'is', null); // Delete all rows where id is not null
 
-          if (users && users.length > 0) {
-            const userId = users[0].id;
-
-            // Use the same clearing logic as clearUserData
-            const tablesToClear = [
-              'packing_items',
-              'trip_people',
-              'trip_destinations',
-              'trip_events',
-              'trips',
-              'user_people',
-              'user_preferences',
-              'user_settings',
-            ];
-
-            for (const table of tablesToClear) {
-              try {
-                await supabase.from(table).delete().eq('user_id', userId);
-              } catch (err) {
-                console.warn(`Error clearing ${table} for ${email}:`, err);
-              }
-            }
-          }
-        } catch (err) {
-          console.warn(`Error processing test user ${email}:`, err);
+        if (error) {
+          console.warn(`Error clearing ${table}:`, error.message);
         }
+      } catch (err) {
+        console.warn(`Exception clearing ${table}:`, err);
       }
-    } catch (error) {
-      console.error('Error during all test data cleanup:', error);
     }
-  });
+  } catch (error) {
+    console.error('Error during test data cleanup:', error);
+  }
 }
 
 /**
@@ -82,8 +64,6 @@ export async function clearAllTestData(page: Page): Promise<void> {
 export async function setupCleanTestUser(page: Page): Promise<void> {
   // Import here to avoid circular dependencies
   const { signInWithEmail, waitForAuthReady } = await import('./auth-utils');
-
-  console.log('🚀 Starting clean test user setup...');
 
   // Sign in first
   await signInWithEmail(page);
@@ -113,7 +93,6 @@ export async function setupCleanTestUser(page: Page): Promise<void> {
   });
 
   // Force reload to ensure clean hydration
-  console.log('🔄 Reloading page for clean hydration...');
   await page.reload();
   await page.waitForLoadState('networkidle');
 
@@ -143,13 +122,4 @@ export async function setupCleanTestUser(page: Page): Promise<void> {
       uiAuthenticated: false,
     };
   });
-
-  console.log('Clean test user setup completed', verificationResult);
-
-  // Additional check for Redux auth state
-  if (verificationResult.uiAuthenticated && !verificationResult.isSignedIn) {
-    console.log(
-      '⚠️ Redux auth state not set but UI shows authenticated, continuing...'
-    );
-  }
 }

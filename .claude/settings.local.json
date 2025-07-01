@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(pnpm test:*)",
+      "Bash(rg:*)",
+      "Bash(npm run test:e2e:*)",
+      "Bash(npx playwright test:*)"
+    ],
+    "deny": []
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "command": "cat .claude/commands/aw.md"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "command": "cat .claude/commands/aw.md"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "command": "cat .claude/commands/aw.md"
+          }
+        ]
+      }
+    ]
+  }
+}

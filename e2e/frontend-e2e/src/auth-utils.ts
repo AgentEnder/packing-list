@@ -118,7 +118,6 @@ export async function signInWithEmail(
   try {
     await errorElement.waitFor({ state: 'visible', timeout: 2000 });
     const errorText = (await errorElement.textContent()) || 'Unknown error';
-    console.log(`Authentication may have failed: ${errorText}`);
     // Don't throw immediately - let the calling test handle it
   } catch {
     // No error found, which is good
@@ -133,7 +132,6 @@ export async function signOut(page: Page): Promise<void> {
   const authState = await getAuthState(page);
 
   if (!authState.isAuthenticated) {
-    console.log('User is already signed out');
     return;
   }
 
@@ -143,7 +141,6 @@ export async function signOut(page: Page): Promise<void> {
   try {
     await userProfile.waitFor({ state: 'visible', timeout: 3000 });
   } catch {
-    console.log('User profile not visible, assuming already signed out');
     return;
   }
 
@@ -154,10 +151,7 @@ export async function signOut(page: Page): Promise<void> {
     // Look for and click sign out button
     const signOutButton = getSignOutButton(page);
     await signOutButton.click({ timeout: 5000 });
-
-    console.log('Successfully signed out');
   } catch (error) {
-    console.log('Sign out attempt failed, but continuing:', error);
     // Don't throw - just log and continue since this is often used in cleanup
   }
 }

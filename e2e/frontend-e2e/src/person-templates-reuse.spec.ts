@@ -16,9 +16,11 @@ test.describe('Person Templates and Reuse', () => {
     peoplePage = new PeoplePage(page);
     tripManager = new TripManager(page);
 
-    // Capture console logs
-    page.on('console', (msg) => {
-      console.log(`🌐 BROWSER: ${msg.type()}: ${msg.text()}`);
+    // People page is not fleshed out if no trip selected.
+    await tripManager.createTrip({
+      template: 'vacation',
+      title: 'Initial Trip',
+      skipDates: true,
     });
 
     // Ensure clean state by clearing all templates and trips
@@ -116,7 +118,7 @@ test.describe('Person Templates and Reuse', () => {
         gender: 'male',
       });
 
-      await tripManager.createFirstTrip({
+      await tripManager.createTrip({
         template: 'vacation',
         title: 'Template Test Trip',
         skipDates: true,
@@ -183,7 +185,7 @@ test.describe('Person Templates and Reuse', () => {
 
   test.describe('Save Trip Person as Template', () => {
     test.beforeEach(async ({ page }) => {
-      await tripManager.createFirstTrip({
+      await tripManager.createTrip({
         template: 'business',
         title: 'Save Template Trip',
         skipDates: true,
@@ -272,7 +274,7 @@ test.describe('Person Templates and Reuse', () => {
         gender: 'male',
       });
 
-      await tripManager.createFirstTrip({
+      await tripManager.createTrip({
         template: 'weekend',
         title: 'Search Test Trip',
         skipDates: true,
@@ -354,7 +356,7 @@ test.describe('Person Templates and Reuse', () => {
         gender: 'male',
       });
 
-      await tripManager.createFirstTrip({
+      await tripManager.createTrip({
         template: 'business',
         title: 'Consistency Trip',
         skipDates: true,
@@ -382,7 +384,7 @@ test.describe('Person Templates and Reuse', () => {
         age: 25,
       });
 
-      await tripManager.createFirstTrip({
+      await tripManager.createTrip({
         template: 'vacation',
         title: 'First Trip',
         skipDates: true,
@@ -427,7 +429,7 @@ test.describe('Person Templates and Reuse', () => {
         gender: 'female',
       });
 
-      await tripManager.createFirstTrip({
+      await tripManager.createTrip({
         template: 'vacation',
         title: 'Mixed People Trip',
         skipDates: true,
@@ -454,7 +456,7 @@ test.describe('Person Templates and Reuse', () => {
         age: 32,
       });
 
-      await tripManager.createFirstTrip({
+      await tripManager.createTrip({
         template: 'business',
         title: 'Profile Test Trip',
         skipDates: true,

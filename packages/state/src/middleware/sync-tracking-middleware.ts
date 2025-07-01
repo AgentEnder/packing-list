@@ -47,8 +47,20 @@ async function reloadFromIndexedDB(
     console.log(
       `✅ [SYNC_MIDDLEWARE] Successfully loaded offline state for ${
         Object.keys(offlineState.trips.byId).length
-      } trips`
+      } trips and ${offlineState.userPeople?.people?.length || 0} user people`
     );
+
+    console.log(
+      `🔄 [SYNC_MIDDLEWARE] User people loaded:`,
+      offlineState.userPeople?.people?.map((p) => ({
+        id: p.id,
+        name: p.name,
+        isUserProfile: p.isUserProfile,
+        updatedAt: p.updatedAt,
+      })) || []
+    );
+
+    console.log(`🔄 [SYNC_MIDDLEWARE] Dispatching HYDRATE_OFFLINE action`);
 
     dispatch({
       type: 'HYDRATE_OFFLINE',
@@ -60,7 +72,7 @@ async function reloadFromIndexedDB(
     );
   } catch (error) {
     console.error(
-      '❌ [SYNC_MIDDLEWARE] Failed to reload from IndexedDB:',
+      `❌ [SYNC_MIDDLEWARE] Failed to reload from IndexedDB:`,
       error
     );
   }
@@ -324,6 +336,9 @@ function trackUserPeopleChanges(
         })`
       );
 
+      // Actually delete from IndexedDB storage
+      void UserPersonStorage.deleteUserPersonById(prevPerson.id);
+
       void trackAndPushChange(
         {
           userId,
@@ -371,6 +386,20 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
       );
       void reloadFromIndexedDB(next, userId);
       void startSyncService(next, userId);
+      return result;
+    }
+
+    // Handle forced reload requests from components
+    if ((action as UnknownAction).type === 'FORCE_RELOAD_USER_PEOPLE') {
+      const requestUserId = (
+        action as { type: string; payload?: { userId: string } }
+      ).payload?.userId;
+      if (requestUserId) {
+        console.log(
+          `🔄 [SYNC_MIDDLEWARE] Force reload requested for user: ${requestUserId}`
+        );
+        void reloadFromIndexedDB(next, requestUserId);
+      }
       return result;
     }
 
