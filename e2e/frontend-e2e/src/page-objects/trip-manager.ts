@@ -13,14 +13,11 @@ export class TripManager {
     startDate?: string;
     endDate?: string;
   }) {
+    // Always navigate to the trips page first via direct URL
+    // This is more reliable than trying to find specific selectors
     if (this.page.url() !== '/trips') {
-      await this.page
-        .getByTestId('trip-selector')
-        .or(this.page.getByTestId('no-trip-selected'))
-        .filter({
-          visible: true,
-        })
-        .click();
+      await this.page.goto('/trips');
+      await this.page.waitForLoadState('networkidle');
     }
     await this.page
       .locator('a[href="/trips/new"]')

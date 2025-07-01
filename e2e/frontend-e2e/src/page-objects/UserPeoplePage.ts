@@ -34,13 +34,10 @@ export class UserPeoplePage {
    * Navigate to the people management page
    */
   async gotoPeopleManagement() {
-    await this.page
-      .getByRole('link', { name: 'People' })
-      .filter({
-        visible: true,
-      })
-      .click();
-    await this.page.getByRole('link', { name: 'Manage Templates' }).click();
+    // Direct navigation to the manage page is more reliable than clicking through links
+    // because the "Manage Templates" link only appears when a trip is selected
+    await this.page.goto('/people/manage');
+    await this.page.waitForLoadState('networkidle');
     await expect(this.page).toHaveURL(/\/people\/manage\/?/);
   }
 
