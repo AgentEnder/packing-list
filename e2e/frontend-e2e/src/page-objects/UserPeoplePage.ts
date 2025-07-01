@@ -34,9 +34,29 @@ export class UserPeoplePage {
    * Navigate to the people management page
    */
   async gotoPeopleManagement() {
-    // Direct navigation to the manage page is more reliable than clicking through links
-    // because the "Manage Templates" link only appears when a trip is selected
-    await this.page.goto('/people/manage');
+    // Use the in-app navigation by clicking on the People link first
+    await this.page
+      .getByRole('link', { name: 'People' })
+      .filter({
+        visible: true,
+      })
+      .click();
+    
+    // Wait for the people page to load
+    await this.page.waitForLoadState('networkidle');
+    
+    // Look for and click the "Manage Templates" link if it exists
+    // If not, navigate directly to the manage page as a fallback
+    const manageTemplatesLink = this.page.getByRole('link', { name: 'Manage Templates' });
+    const isManageLinkVisible = await manageTemplatesLink.isVisible().catch(() => false);
+    
+    if (isManageLinkVisible) {
+      await manageTemplatesLink.click();
+    } else {
+      // Fallback: navigate directly if the link isn't available
+      await this.page.goto('/people/manage');
+    }
+    
     await this.page.waitForLoadState('networkidle');
     await expect(this.page).toHaveURL(/\/people\/manage\/?/);
   }
@@ -172,12 +192,10 @@ export class UserPeoplePage {
     // Wait for network to settle after save
     await this.page.waitForLoadState('networkidle');
 
-    // Additional wait to allow Redux state updates to complete
-    await this.page.waitForTimeout(2000);
-
     // Verify we're back on the management page by checking for the add button
+    // This is more reliable than a fixed timeout
     await this.page.waitForSelector('[data-testid="add-template-button"]', {
-      timeout: 5000,
+      timeout: 10000,
     });
   }
 
