@@ -247,6 +247,14 @@ test.describe('Enhanced People Management with Reusable Features', () => {
   });
 
   test.describe('Complex Scenarios', () => {
+    test.beforeEach(async ({ page }) => {
+      await clearAllTestData(page);
+      await setupCleanTestUser(page);
+      tripManager = new TripManager(page);
+      userPeoplePage = new UserPeoplePage(page);
+      peoplePage = new PeoplePage(page);
+    });
+
     test('profile + templates + regular people all work together', async ({
       page,
     }) => {

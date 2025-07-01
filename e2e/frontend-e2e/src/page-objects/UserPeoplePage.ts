@@ -309,11 +309,18 @@ export class UserPeoplePage {
    * Use person template when adding people to trip
    */
   async addPersonFromTemplate(templateName: string) {
-    // Assume we're already on trip people page
-    await this.page.getByRole('button', { name: 'Add Person' }).click();
+    // Check if the form is already open (person-name-input is visible)
+    const nameInput = this.page.getByTestId('person-name-input');
+    const isFormOpen = await nameInput.isVisible().catch(() => false);
+
+    if (!isFormOpen) {
+      // Form is not open, click the Add Person button
+      await this.page.getByTestId('add-person-button').click();
+      // Wait for the form to appear
+      await this.page.waitForSelector('[data-testid="person-name-input"]', { timeout: 10000 });
+    }
 
     // Type the template name to trigger autocomplete
-    const nameInput = this.page.getByTestId('person-name-input');
     await nameInput.fill(templateName.substring(0, 3)); // Type partial name
 
     // Wait for the dropdown to appear and find the template suggestion
@@ -360,10 +367,19 @@ export class UserPeoplePage {
     partialName: string,
     expectedTemplates: string[]
   ) {
-    await this.page.getByRole('button', { name: 'Add Person' }).click();
-
-    // Type partial name in the name input
+    // Check if the form is already open (person-name-input is visible)
     const nameInput = this.page.getByTestId('person-name-input');
+    const isFormOpen = await nameInput.isVisible().catch(() => false);
+
+    if (!isFormOpen) {
+      // Form is not open, click the Add Person button
+      await this.page.getByTestId('add-person-button').click();
+      // Wait for the form to appear
+      await this.page.waitForSelector('[data-testid="person-name-input"]', { timeout: 10000 });
+    }
+
+    // Clear any existing content and type partial name
+    await nameInput.clear();
     await nameInput.fill(partialName);
 
     // Wait for the dropdown to appear
