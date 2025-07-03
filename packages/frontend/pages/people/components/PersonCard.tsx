@@ -6,7 +6,14 @@ import {
 } from '@packing-list/model';
 import { useState } from 'react';
 import { PersonForm } from './PersonForm';
-import { UserCheck, User, MoreVertical, Bookmark } from 'lucide-react';
+import {
+  UserCheck,
+  User,
+  MoreVertical,
+  Bookmark,
+  Pencil,
+  Trash,
+} from 'lucide-react';
 import {
   useAppSelector,
   selectUserProfile,
@@ -127,6 +134,7 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
                     }}
                     data-testid="edit-person-button"
                   >
+                    <Pencil className="h-3 w-3" />
                     Edit
                   </button>
                 )}
@@ -151,6 +159,7 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
                     }}
                     data-testid="delete-person-button"
                   >
+                    <Trash className="h-3 w-3" />
                     Delete
                   </button>
                 )}
