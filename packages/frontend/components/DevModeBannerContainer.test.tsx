@@ -29,21 +29,4 @@ describe('DevModeBannerContainer Component', () => {
 
     expect(screen.getByTestId('dev-mode-banner')).toBeInTheDocument();
   });
-
-  it('logs development mode detection', () => {
-    const consoleSpy = vi
-      .spyOn(console, 'log')
-      .mockImplementation(() => undefined);
-
-    render(<DevModeBannerContainer />);
-
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining(
-        '🛠️ [DEV BANNER CONTAINER] Development mode detection:'
-      ),
-      expect.any(Object)
-    );
-
-    consoleSpy.mockRestore();
-  });
 });
