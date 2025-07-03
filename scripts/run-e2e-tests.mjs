@@ -2,10 +2,9 @@
 
 import { exec, execSync } from 'child_process';
 import { existsSync, renameSync, copyFileSync } from 'fs';
-import { resolve, join } from 'path';
+import { resolve } from 'path';
 import { platform } from 'os';
 import { workspaceRoot } from '@nx/devkit';
-import { execaSync } from 'execa';
 
 const ROOT_DIR = workspaceRoot;
 const ENV_FILE = resolve(ROOT_DIR, '.env');
@@ -184,29 +183,6 @@ function showPlaywrightReportInfo() {
   console.log('');
 }
 
-function resetDb() {
-  execSync('pnpm supabase db reset', {
-    stdio: 'inherit',
-    cwd: join(ROOT_DIR, 'packages', 'supabase'),
-  });
-}
-
-function isCI() {
-  return !!(
-    process.env.CI !== 'false' && // Bypass all checks if CI env is explicitly set to 'false'
-    (process.env.BUILD_ID || // Jenkins, Cloudbees
-      process.env.BUILD_NUMBER || // Jenkins, TeamCity
-      process.env.CI || // Travis CI, CircleCI, Cirrus CI, Gitlab CI, Appveyor, CodeShip, dsari, Cloudflare Pages
-      process.env.CI_APP_ID || // Appflow
-      process.env.CI_BUILD_ID || // Appflow
-      process.env.CI_BUILD_NUMBER || // Appflow
-      process.env.CI_NAME || // Codeship and others
-      process.env.CONTINUOUS_INTEGRATION || // Travis CI, Cirrus CI
-      process.env.RUN_ID || // TaskCluster, dsari
-      false)
-  );
-}
-
 async function main() {
   log('Starting e2e test run with environment swap...');
 
@@ -214,17 +190,6 @@ async function main() {
 
   try {
     if (!process.env.SKIP_E2E_SETUP) {
-      // On CI supabase should already be running
-      if (!isCI()) {
-        execaSync('nx', ['start', 'supabase'], {
-          stdio: 'inherit',
-          cwd: ROOT_DIR,
-        });
-      }
-
-      // Step 0: Reset the database
-      resetDb();
-
       // Step 1: Kill any process using port 3000
       await killProcessOnPort3000();
 

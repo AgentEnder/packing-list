@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 
 const { existsSync, writeFileSync, readFileSync } = require('fs');
 const { join } = require('path');
@@ -6,8 +7,7 @@ const { execa } = require('execa');
 
 process.env.SUPABASE_WORKDIR = join(__dirname, '../packages/supabase');
 
-const quiet =
-  process.argv.includes('--quiet') || process.env.NX_TASK_TARGET_PROJECT;
+const quiet = process.argv.includes('--quiet');
 
 // Colors for console output
 const colors = {
@@ -86,9 +86,11 @@ async function waitForSupabaseServices() {
       const result = await runCommand('pnpm', ['supabase', 'status'], {
         cwd: 'packages/supabase',
         preferLocal: true,
+        stdio: 'pipe',
       });
 
-      if (result.stdout?.includes('API URL:')) {
+      const stdout = /** @type { string } */ (result.stdout) || '';
+      if (stdout.includes('API URL:')) {
         colorLog('green', '✅ Supabase services are running');
         return true;
       }
@@ -118,7 +120,9 @@ async function getSupabaseAnonKey() {
     });
 
     if (result.stdout) {
-      const match = result.stdout.match(/anon key:\s*(.+)/);
+      const match = /** @type {string} */ (result.stdout).match(
+        /anon key:\s*(.+)/
+      );
       return match ? match[1].trim() : null;
     }
   } catch (_e) {
@@ -130,10 +134,20 @@ async function getSupabaseAnonKey() {
 }
 
 // Helper function to run commands with proper error handling
+/**
+ *
+ * @param {string} command
+ * @param {string[]} args
+ * @param {import('execa').Options} options
+ * @returns
+ */
 async function runCommand(command, args, options = {}) {
+  /**
+   * @type {import('execa').Options}
+   */
   const execOptions = {
-    ...options,
     stdio: quiet ? 'pipe' : 'inherit',
+    ...options,
   };
 
   try {
@@ -163,14 +177,15 @@ async function checkIfSupabaseIsRunning() {
     const result = await runCommand('pnpm', ['supabase', 'status'], {
       cwd: 'packages/supabase',
       preferLocal: true,
+      stdio: 'pipe',
     });
-    return result.stdout?.includes('API URL:');
+    return /** @type {string} */ (result.stdout).includes('API URL:');
   } catch {
     return false;
   }
 }
 
-async function main() {
+async function ensureSupabaseRuning() {
   const isSupabaseRunning = await checkIfSupabaseIsRunning();
   if (isSupabaseRunning) {
     colorLog('green', '✅ Supabase is already running');
@@ -280,6 +295,43 @@ async function main() {
   } catch {
     colorLog('yellow', '⚠️  Could not display status');
   }
+}
+
+async function ensureDbIsReset() {
+  let attempt = 0;
+  function incrementalBackoff(cb, retries = 5, delay = 1000) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        if (attempt > 0) {
+          log(`Attempt ${attempt + 1}: Retrying database reset...`);
+        }
+        attempt++;
+        cb()
+          .then(resolve)
+          .catch((err) => {
+            if (retries > 0) {
+              console.warn(`Retrying... (${retries} retries left)`);
+              incrementalBackoff(cb, retries - 1, delay * 2)
+                .then(resolve)
+                .catch(reject);
+            } else {
+              reject(err);
+            }
+          });
+      }, delay);
+    });
+  }
+  return incrementalBackoff(async () => {
+    await runCommand('pnpm', ['supabase', 'db', 'reset'], {
+      cwd: 'packages/supabase',
+      preferLocal: true,
+    });
+  });
+}
+
+async function main() {
+  await ensureSupabaseRuning();
+  await ensureDbIsReset();
 
   // Display seed data info
   log('');

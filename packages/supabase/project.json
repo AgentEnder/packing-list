@@ -2,13 +2,18 @@
   "name": "supabase",
   "targets": {
     "start": {
-      "command": "node scripts/setup-local-supabase.js"
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["supabase status || supabase start"],
+        "cwd": "{projectRoot}"
+      }
     },
     "reset": {
       "command": "supabase db reset",
       "options": {
         "cwd": "{projectRoot}"
-      }
+      },
+      "dependsOn": ["start"]
     },
     "clean": {
       "command": "node scripts/cleanup-supabase.js",
@@ -21,7 +26,7 @@
       "options": {
         "cwd": "{projectRoot}"
       },
-      "dependsOn": ["start"],
+      "dependsOn": ["reset"],
       "cache": true,
       "inputs": ["{projectRoot}/supabase/**/*"],
       "outputs": ["{projectRoot}/src/database-types.ts"]
