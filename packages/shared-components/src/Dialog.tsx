@@ -64,13 +64,15 @@ export function Modal({
 
   return (
     <div
-      className={`modal modal-open p-20 ${zIndex} ${className}`}
+      className={`modal modal-open ${zIndex} ${className}`}
       role="dialog"
       aria-modal="true"
       aria-labelledby={ariaLabelledBy || (title ? 'modal-title' : undefined)}
       data-testid={testId}
     >
-      <div className={`modal-box ${sizeClasses[size]} ${modalBoxClassName}`}>
+      <div
+        className={`modal-box max-h-[85vh] ${sizeClasses[size]} ${modalBoxClassName}`}
+      >
         {/* Header with title and close button */}
         {(title || showCloseButton) && (
           <div className="flex justify-between items-center mb-4">

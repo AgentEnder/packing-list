@@ -132,9 +132,14 @@ export class AuthService {
       const unsubscribe = this.localAuthService.subscribe((localState) => {
         if (!localState.loading) {
           if (localState.user) {
-            // Use the existing local user
+            // Check if this is the shared local user
+            const isShared =
+              localState.user.id === getSharedLocalUserId() ||
+              localState.user.email === 'shared@local.device';
+
+            // Use the existing local user, properly marking if it's shared
             this.updateState({
-              user: convertLocalUser(localState.user),
+              user: convertLocalUser(localState.user, isShared),
             });
           } else {
             // No local user, check if we need to create the shared user
@@ -270,20 +275,66 @@ export class AuthService {
   }
 
   private async ensureSharedLocalUser() {
-    // Create the shared local user if it doesn't exist
+    console.log('🔧 [AUTH SERVICE] Ensuring shared local user exists...');
+
     try {
+      // Check if we're in a build/SSR environment where storage might not be available
+      const isBuildTime =
+        typeof window === 'undefined' ||
+        (import.meta as { env?: { SSR?: boolean } }).env?.SSR;
+
+      if (isBuildTime) {
+        console.log(
+          '🔧 [AUTH SERVICE] Build/SSR environment detected, using in-memory shared user'
+        );
+        // In build/SSR environment, just use in-memory user without trying to persist
+        // The LocalAuthService will handle state properly for this environment
+        const sharedUserData = createSharedLocalUser();
+
+        // Set the user directly in local auth service state without storage
+        const localState = this.localAuthService.getState();
+        if (
+          !localState.user ||
+          localState.user.email !== 'shared@local.device'
+        ) {
+          // Create a proper LocalAuthUser object
+          const sharedLocalUser = {
+            id: sharedUserData.id,
+            email: sharedUserData.email,
+            name: sharedUserData.name || 'Shared Account',
+            created_at: sharedUserData.created_at || new Date().toISOString(),
+            password_hash: '',
+            passcode_hash: undefined,
+            avatar_url: undefined,
+          };
+
+          // Manually update the local auth service state for build time
+          this.localAuthService['updateState']?.({
+            user: sharedLocalUser,
+            session: {
+              user: sharedLocalUser,
+              expires_at: new Date(
+                Date.now() + 24 * 60 * 60 * 1000
+              ).toISOString(),
+            },
+            loading: false,
+            error: null,
+          });
+        }
+        return;
+      }
+
       const localUsers = await this.localAuthService.getLocalUsers();
       const sharedUser = localUsers.find(
-        (u) => u.id === getSharedLocalUserId()
+        (u) =>
+          u.id === getSharedLocalUserId() || u.email === 'shared@local.device'
       );
 
       if (!sharedUser) {
+        console.log('🔧 [AUTH SERVICE] Creating new shared local user...');
         const sharedUserData = createSharedLocalUser();
-        console.log(
-          '🔧 [AUTH SERVICE] Creating shared local user with deterministic ID:',
-          sharedUserData.id
-        );
-        await this.localAuthService.signUp(
+
+        const result = await this.localAuthService.signUp(
           sharedUserData.email, // Use email for signup
           'local-shared-password', // Default password for shared user
           {
@@ -291,16 +342,84 @@ export class AuthService {
             id: sharedUserData.id, // Use the deterministic ID
           }
         );
+
+        if (result.error) {
+          console.warn(
+            '🔧 [AUTH SERVICE] Failed to create shared user via signup:',
+            result.error
+          );
+          // Check if the user was actually created despite the error
+          const updatedUsers = await this.localAuthService.getLocalUsers();
+          const createdUser = updatedUsers.find(
+            (u) =>
+              u.id === getSharedLocalUserId() ||
+              u.email === 'shared@local.device'
+          );
+
+          if (!createdUser) {
+            throw new Error(`Failed to create shared user: ${result.error}`);
+          }
+          console.log(
+            '🔧 [AUTH SERVICE] Shared user was created despite error'
+          );
+        } else {
+          console.log('🔧 [AUTH SERVICE] Successfully created shared user');
+        }
+      } else {
+        console.log(
+          '🔧 [AUTH SERVICE] Shared user already exists:',
+          sharedUser.email
+        );
       }
 
-      // Sign in as shared user by email
-      await this.localAuthService.signInWithoutPassword(
+      // Always attempt to sign in as shared user - this ensures we're using it
+      console.log('🔧 [AUTH SERVICE] Signing in as shared user...');
+      const signInResult = await this.localAuthService.signInWithoutPassword(
         'shared@local.device',
-        true
-      ); // bypass passcode for shared account
+        true // bypass passcode for shared account
+      );
+
+      if (signInResult.error) {
+        console.warn(
+          '🔧 [AUTH SERVICE] Failed to sign in as shared user:',
+          signInResult.error
+        );
+
+        // Try to find the user by ID as fallback
+        const allUsers = await this.localAuthService.getLocalUsers();
+        const sharedUserById = allUsers.find(
+          (u) => u.id === getSharedLocalUserId()
+        );
+
+        if (sharedUserById) {
+          console.log(
+            '🔧 [AUTH SERVICE] Found shared user by ID, trying alternative sign-in...'
+          );
+          const altSignInResult =
+            await this.localAuthService.signInWithoutPassword(
+              sharedUserById.id,
+              true
+            );
+
+          if (altSignInResult.error) {
+            throw new Error(
+              `Failed to sign in as shared user: ${altSignInResult.error}`
+            );
+          }
+        } else {
+          throw new Error(
+            `Failed to sign in as shared user: ${signInResult.error}`
+          );
+        }
+      }
+
+      console.log('🔧 [AUTH SERVICE] Successfully signed in as shared user');
     } catch (error) {
-      console.warn('Failed to ensure shared local user:', error);
-      // Keep using the in-memory shared user
+      console.error(
+        '🔧 [AUTH SERVICE] Failed to ensure shared local user:',
+        error
+      );
+      throw error; // Re-throw so caller can handle fallback
     }
   }
 
@@ -513,19 +632,75 @@ export class AuthService {
   }
 
   private async switchToSharedLocalAccount() {
-    // Sign out from local auth and return to shared user
-    await this.localAuthService.signOut();
-    await this.ensureSharedLocalUser();
+    console.log(
+      '🔧 [AUTH SERVICE] Starting transition to shared local account...'
+    );
 
-    this.updateState({
-      user: createSharedLocalUser(),
-      session: null,
-      loading: false,
-      error: null,
-      isRemoteAuthenticated: false,
-    });
+    try {
+      // First, update state to indicate we're transitioning (not remotely authenticated)
+      this.updateState({
+        loading: true,
+        isRemoteAuthenticated: false,
+        session: null,
+        error: null,
+      });
 
-    console.log('🔧 [AUTH SERVICE] Switched to shared local account');
+      // Sign out from current local auth session
+      await this.localAuthService.signOut();
+      console.log('🔧 [AUTH SERVICE] Signed out from local auth service');
+
+      // Ensure shared local user exists
+      await this.ensureSharedLocalUser();
+      console.log('🔧 [AUTH SERVICE] Ensured shared local user exists');
+
+      // Wait a moment for the local auth service to complete the sign-in
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Get the current local auth state to ensure we have the shared user
+      const localState = this.localAuthService.getState();
+      if (localState.user && localState.user.email === 'shared@local.device') {
+        console.log('🔧 [AUTH SERVICE] Successfully signed in as shared user');
+
+        // Update state with the shared user
+        this.updateState({
+          user: convertLocalUser(localState.user, true), // Mark as shared
+          session: null,
+          loading: false,
+          error: null,
+          isRemoteAuthenticated: false,
+        });
+      } else {
+        // Fallback to creating the shared user in memory
+        console.log('🔧 [AUTH SERVICE] Fallback to in-memory shared user');
+        this.updateState({
+          user: createSharedLocalUser(),
+          session: null,
+          loading: false,
+          error: null,
+          isRemoteAuthenticated: false,
+        });
+      }
+
+      console.log(
+        '🔧 [AUTH SERVICE] Successfully switched to shared local account'
+      );
+    } catch (error) {
+      console.error(
+        '🔧 [AUTH SERVICE] Error switching to shared local account:',
+        error
+      );
+
+      // Fallback: ensure we at least have a shared user in memory
+      this.updateState({
+        user: createSharedLocalUser(),
+        session: null,
+        loading: false,
+        error: `Failed to switch to shared account: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+        isRemoteAuthenticated: false,
+      });
+    }
   }
 
   private updateState(newState: Partial<AuthState>) {

@@ -1,27 +1,33 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import type { SyncActions } from './types.js';
-import type {
-  SyncState,
-  SyncConflict,
-  Trip,
-  Person,
-  TripItem,
-  Change,
-  DefaultItemRule,
-  TripRule,
+import {
+  type SyncState,
+  type SyncConflict,
+  type Trip,
+  type Person,
+  type TripItem,
+  type Change,
+  type DefaultItemRule,
+  type TripRule,
+  type UserPerson,
+  type UserPreferences,
+  estimateBirthDateFromAge,
 } from '@packing-list/model';
 import { supabase, isSupabaseAvailable } from '@packing-list/supabase';
-import type { Json } from '@packing-list/supabase';
+import type { Json, Tables } from '@packing-list/supabase';
 import {
   TripStorage,
   PersonStorage,
   ItemStorage,
   DefaultItemRulesStorage,
   TripRuleStorage,
+  UserPersonStorage,
+  UserPreferencesStorage,
 } from '@packing-list/offline-storage';
 import { isLocalUser } from './utils.js';
 import { generateDetailedConflicts } from '@packing-list/shared-utils';
-
+import { upsertUserPerson } from '../../user-people-slice.js';
+import { createEntityCallbacks } from '../sync/sync-integration.js';
 /**
  * Batching system for collecting and pushing changes in bulk
  */
@@ -38,6 +44,8 @@ interface BatchManager {
   default_item_rule: BatchedChange[];
   trip_rule: BatchedChange[];
   rule_pack: BatchedChange[];
+  user_person: BatchedChange[];
+  user_preferences: BatchedChange[]; // Special case - only one per user, but keeping for consistency
 }
 
 // Global batch manager
@@ -48,6 +56,8 @@ const batchManager: BatchManager = {
   default_item_rule: [],
   trip_rule: [],
   rule_pack: [],
+  user_person: [],
+  user_preferences: [],
 };
 
 // Global timeout for processing all batches
@@ -57,12 +67,16 @@ let globalBatchTimeout: NodeJS.Timeout | null = null;
 const BATCH_DEBOUNCE_MS = 1000;
 
 // Processing order to respect foreign key dependencies
-// 1. trips (parent table)
-// 2. people, items (depend on trips)
-// 3. default_item_rule (needed before trip_rule)
-// 4. trip_rule (depends on trips and default_item_rule)
-// 5. rule_pack (local only, processed last)
+// 1. user_preferences (singleton, no dependencies)
+// 2. user_person (user-level data)
+// 3. trips (parent table)
+// 4. people, items (depend on trips)
+// 5. default_item_rule (needed before trip_rule)
+// 6. trip_rule (depends on trips and default_item_rule)
+// 7. rule_pack (local only, processed last)
 const PROCESSING_ORDER: (keyof BatchManager)[] = [
+  'user_preferences',
+  'user_person',
   'trip',
   'person',
   'item',
@@ -187,6 +201,18 @@ async function processBatchOperation(
         `🔄 [SYNC] Skipping rule pack batch sync (local only): ${batch.length} changes`
       );
       break;
+    case 'user_person':
+      await pushUserPersonChangesBatch(
+        batch.map((b) => b.change),
+        operation
+      );
+      break;
+    case 'user_preferences':
+      await pushUserPreferencesChangesBatch(
+        batch.map((b) => b.change),
+        operation
+      );
+      break;
     default:
       console.warn(`🔄 [SYNC] Unknown entity type for batch: ${entityType}`);
   }
@@ -290,9 +316,15 @@ export const syncFromServer = createAsyncThunk(
 
       // Pull all data in a single comprehensive query
       // Using unwrap() provides proper typing and automatically throws on rejection
-      const { trips, people, items, rules, tripRules } = await dispatch(
-        pullAllDataFromServer(params)
-      ).unwrap();
+      const {
+        trips,
+        people,
+        items,
+        rules,
+        tripRules,
+        userPeople,
+        userPreferences,
+      } = await dispatch(pullAllDataFromServer(params)).unwrap();
 
       // Update last sync timestamp
       dispatch(updateLastSyncTimestamp(Date.now()));
@@ -305,6 +337,8 @@ export const syncFromServer = createAsyncThunk(
         items,
         rules,
         tripRules,
+        userPeople,
+        userPreferences,
       };
     } catch (error) {
       console.error('❌ [SYNC] Comprehensive sync failed:', error);
@@ -335,13 +369,45 @@ export const pullAllDataFromServer = createAsyncThunk(
         items: [],
         rules: [],
         tripRules: [],
+        userPeople: [],
+        userPreferences: null,
         conflicts: [],
       };
     }
 
     const since = params.since || new Date(0).toISOString();
 
-    // Single comprehensive query using PostgREST joins
+    // Pull user preferences first
+    const { data: userPreferencesData, error: userPreferencesError } =
+      await supabase
+        .from('user_profiles')
+        .select('preferences, updated_at')
+        .eq('id', params.userId)
+        .single();
+
+    if (userPreferencesError && userPreferencesError.code !== 'PGRST116') {
+      console.error(
+        '❌ [SYNC] Error pulling user preferences:',
+        userPreferencesError
+      );
+      return rejectWithValue(userPreferencesError);
+    }
+
+    // Pull user profiles (people templates)
+    const { data: userPeopleData, error: userPeopleError } = await supabase
+      .from('user_people')
+      .select('*')
+      .eq('user_id', params.userId)
+      .gt('updated_at', since)
+      .eq('is_deleted', false)
+      .order('updated_at', { ascending: true });
+
+    if (userPeopleError) {
+      console.error('❌ [SYNC] Error pulling user profiles:', userPeopleError);
+      return rejectWithValue(userPeopleError);
+    }
+
+    // Single comprehensive query using PostgREST joins for trip data
     const { data: tripsWithRelations, error } = await supabase
       .from('trips')
       .select(
@@ -372,7 +438,9 @@ export const pullAllDataFromServer = createAsyncThunk(
     console.log(
       `✅ [SYNC] Pulled ${
         tripsWithRelations?.length || 0
-      } trips with relations from server`
+      } trips with relations and ${
+        userPeopleData?.length || 0
+      } user profiles from server`
     );
 
     // Process the comprehensive data
@@ -382,6 +450,121 @@ export const pullAllDataFromServer = createAsyncThunk(
     const upsertedItems: TripItem[] = [];
     const upsertedRules: DefaultItemRule[] = [];
     const upsertedTripRules: TripRule[] = [];
+    const upsertedUserPeople: UserPerson[] = [];
+    let upsertedUserPreferences: UserPreferences | null = null;
+
+    // Process user profiles first
+    for (const serverUserPerson of userPeopleData || []) {
+      // Handle both new birth_date and legacy age fields for migration compatibility
+      let birthDate: string | undefined = undefined;
+      if ('birth_date' in serverUserPerson && serverUserPerson.birth_date) {
+        birthDate = serverUserPerson.birth_date as string;
+      } else if (
+        'age' in serverUserPerson &&
+        typeof (serverUserPerson as unknown as { age?: number }).age ===
+          'number'
+      ) {
+        // Migrate from age to birthDate using utility function
+        birthDate = estimateBirthDateFromAge(
+          (serverUserPerson as unknown as { age: number }).age
+        );
+      }
+
+      const userPersonData: UserPerson = {
+        id: serverUserPerson.id,
+        userId: serverUserPerson.user_id,
+        name: serverUserPerson.name,
+        birthDate,
+        gender: (serverUserPerson.gender as UserPerson['gender']) || undefined,
+        settings:
+          (serverUserPerson.settings as UserPerson['settings']) || undefined,
+        isUserProfile: serverUserPerson.is_user_profile ?? true,
+        createdAt: serverUserPerson.created_at || new Date().toISOString(),
+        updatedAt: serverUserPerson.updated_at || new Date().toISOString(),
+        version: serverUserPerson.version || 1,
+        isDeleted: serverUserPerson.is_deleted || false,
+        autoAddToNewTrips: serverUserPerson.auto_add_to_new_trips ?? false,
+      };
+
+      // Check for user person conflicts by ID (not userId)
+      const localUserPerson = await UserPersonStorage.getUserPersonById(
+        serverUserPerson.id
+      );
+
+      if (
+        localUserPerson &&
+        localUserPerson.updatedAt !== userPersonData.updatedAt
+      ) {
+        const resolvedUserPerson = resolveTimestampOnlyConflict(
+          localUserPerson,
+          userPersonData
+        );
+        if (resolvedUserPerson) {
+          await UserPersonStorage.saveUserPerson(resolvedUserPerson);
+          upsertedUserPeople.push(resolvedUserPerson);
+
+          const entityCallbacks = createEntityCallbacks(dispatch);
+          if (entityCallbacks.onUserPersonUpsert) {
+            entityCallbacks.onUserPersonUpsert(resolvedUserPerson);
+          }
+        } else {
+          conflicts.push({
+            id: `user-person-${serverUserPerson.id}-${Date.now()}`,
+            entityType: 'user_person',
+            entityId: serverUserPerson.id,
+            localVersion: localUserPerson,
+            serverVersion: userPersonData,
+            conflictType: 'update_conflict',
+            timestamp: Date.now(),
+          });
+        }
+      } else {
+        await UserPersonStorage.saveUserPerson(userPersonData);
+        upsertedUserPeople.push(userPersonData);
+
+        const entityCallbacks = createEntityCallbacks(dispatch);
+        if (entityCallbacks.onUserPersonUpsert) {
+          entityCallbacks.onUserPersonUpsert(userPersonData);
+        }
+      }
+    }
+
+    // Process user preferences (singleton per user)
+    if (userPreferencesData?.preferences) {
+      const serverPreferences =
+        userPreferencesData.preferences as UserPreferences;
+
+      console.log(
+        '✅ [SYNC] Processing user preferences from server:',
+        serverPreferences
+      );
+
+      // Check for user preferences conflicts
+      const localPreferences = await UserPreferencesStorage.getPreferences();
+
+      if (localPreferences) {
+        // For user preferences, we use a simple last-write-wins strategy
+        // since they're singleton and typically small changes like lastSelectedTripId
+        console.log(
+          '🔄 [SYNC] Server preferences override local (last-write-wins)'
+        );
+        await UserPreferencesStorage.savePreferences(serverPreferences);
+        upsertedUserPreferences = serverPreferences;
+
+        // Dispatch to Redux state
+        dispatch({ type: 'SYNC_USER_PREFERENCES', payload: serverPreferences });
+      } else {
+        // No local preferences, save server version
+        console.log('🔄 [SYNC] No local preferences, saving server version');
+        await UserPreferencesStorage.savePreferences(serverPreferences);
+        upsertedUserPreferences = serverPreferences;
+
+        // Dispatch to Redux state
+        dispatch({ type: 'SYNC_USER_PREFERENCES', payload: serverPreferences });
+      }
+    } else {
+      console.log('📋 [SYNC] No user preferences found on server');
+    }
 
     // Create maps to deduplicate rules that might appear in multiple trips
     const processedRules = new Map<string, DefaultItemRule>();
@@ -414,9 +597,6 @@ export const pullAllDataFromServer = createAsyncThunk(
           await TripStorage.saveTrip(resolvedTrip);
           upsertedTrips.push(resolvedTrip);
 
-          const { createEntityCallbacks } = await import(
-            '../sync/sync-integration.js'
-          );
           const entityCallbacks = createEntityCallbacks(dispatch);
           entityCallbacks.onTripUpsert(resolvedTrip);
         } else {
@@ -433,10 +613,6 @@ export const pullAllDataFromServer = createAsyncThunk(
       } else {
         await TripStorage.saveTrip(tripData);
         upsertedTrips.push(tripData);
-
-        const { createEntityCallbacks } = await import(
-          '../sync/sync-integration.js'
-        );
         const entityCallbacks = createEntityCallbacks(dispatch);
         entityCallbacks.onTripUpsert(tripData);
       }
@@ -452,6 +628,7 @@ export const pullAllDataFromServer = createAsyncThunk(
             gender: (serverPerson.gender as Person['gender']) || undefined,
             settings:
               (serverPerson.settings as Person['settings']) || undefined,
+            userPersonId: serverPerson.user_person_id || undefined, // Sprint 2: Support userPersonId
             createdAt: serverPerson.created_at || new Date().toISOString(),
             updatedAt: serverPerson.updated_at || new Date().toISOString(),
             version: serverPerson.version || 1,
@@ -475,9 +652,6 @@ export const pullAllDataFromServer = createAsyncThunk(
               await PersonStorage.savePerson(resolvedPerson);
               upsertedPeople.push(resolvedPerson);
 
-              const { createEntityCallbacks } = await import(
-                '../sync/sync-integration.js'
-              );
               const entityCallbacks = createEntityCallbacks(dispatch);
               entityCallbacks.onPersonUpsert(resolvedPerson);
             } else {
@@ -495,9 +669,6 @@ export const pullAllDataFromServer = createAsyncThunk(
             await PersonStorage.savePerson(personData);
             upsertedPeople.push(personData);
 
-            const { createEntityCallbacks } = await import(
-              '../sync/sync-integration.js'
-            );
             const entityCallbacks = createEntityCallbacks(dispatch);
             entityCallbacks.onPersonUpsert(personData);
           }
@@ -547,9 +718,6 @@ export const pullAllDataFromServer = createAsyncThunk(
               await ItemStorage.saveItem(resolvedItem);
               upsertedItems.push(resolvedItem);
 
-              const { createEntityCallbacks } = await import(
-                '../sync/sync-integration.js'
-              );
               const entityCallbacks = createEntityCallbacks(dispatch);
               entityCallbacks.onItemUpsert(resolvedItem);
             } else {
@@ -567,9 +735,6 @@ export const pullAllDataFromServer = createAsyncThunk(
             await ItemStorage.saveItem(itemData);
             upsertedItems.push(itemData);
 
-            const { createEntityCallbacks } = await import(
-              '../sync/sync-integration.js'
-            );
             const entityCallbacks = createEntityCallbacks(dispatch);
             entityCallbacks.onItemUpsert(itemData);
           }
@@ -610,9 +775,6 @@ export const pullAllDataFromServer = createAsyncThunk(
               await TripRuleStorage.saveTripRule(resolvedTripRule);
               upsertedTripRules.push(resolvedTripRule);
 
-              const { createEntityCallbacks } = await import(
-                '../sync/sync-integration.js'
-              );
               const entityCallbacks = createEntityCallbacks(dispatch);
               entityCallbacks.onTripRuleUpsert(resolvedTripRule);
             } else {
@@ -632,9 +794,6 @@ export const pullAllDataFromServer = createAsyncThunk(
             await TripRuleStorage.saveTripRule(tripRuleData);
             upsertedTripRules.push(tripRuleData);
 
-            const { createEntityCallbacks } = await import(
-              '../sync/sync-integration.js'
-            );
             const entityCallbacks = createEntityCallbacks(dispatch);
             entityCallbacks.onTripRuleUpsert(tripRuleData);
           }
@@ -690,9 +849,6 @@ export const pullAllDataFromServer = createAsyncThunk(
                 processedRules.set(serverRule.id, resolvedRule);
                 upsertedRules.push(resolvedRule);
 
-                const { createEntityCallbacks } = await import(
-                  '../sync/sync-integration.js'
-                );
                 const entityCallbacks = createEntityCallbacks(dispatch);
                 entityCallbacks.onDefaultItemRuleUpsert({
                   rule: resolvedRule,
@@ -714,9 +870,6 @@ export const pullAllDataFromServer = createAsyncThunk(
               processedRules.set(serverRule.id, ruleData);
               upsertedRules.push(ruleData);
 
-              const { createEntityCallbacks } = await import(
-                '../sync/sync-integration.js'
-              );
               const entityCallbacks = createEntityCallbacks(dispatch);
               entityCallbacks.onDefaultItemRuleUpsert({
                 rule: ruleData,
@@ -734,7 +887,13 @@ export const pullAllDataFromServer = createAsyncThunk(
     }
 
     console.log(
-      `✅ [SYNC] Processed comprehensive data: ${upsertedTrips.length} trips, ${upsertedPeople.length} people, ${upsertedItems.length} items, ${upsertedRules.length} rules, ${upsertedTripRules.length} trip rules`
+      `✅ [SYNC] Processed comprehensive data: ${upsertedTrips.length} trips, ${
+        upsertedPeople.length
+      } people, ${upsertedItems.length} items, ${upsertedRules.length} rules, ${
+        upsertedTripRules.length
+      } trip rules, ${upsertedUserPeople.length} user people, ${
+        upsertedUserPreferences ? 'user preferences' : 'no user preferences'
+      }`
     );
 
     return {
@@ -743,6 +902,8 @@ export const pullAllDataFromServer = createAsyncThunk(
       items: upsertedItems,
       rules: upsertedRules,
       tripRules: upsertedTripRules,
+      userPeople: upsertedUserPeople,
+      userPreferences: upsertedUserPreferences,
       conflicts,
     };
   }
@@ -871,6 +1032,7 @@ async function pushPersonChangesBatch(
         age: person.age,
         gender: person.gender,
         settings: person.settings as Json,
+        user_person_id: person.userPersonId || null, // Sprint 2: Include userPersonId
         version: person.version,
         is_deleted: person.isDeleted || false,
         created_at: person.createdAt,
@@ -1049,6 +1211,159 @@ async function pushTripRuleChangesBatch(
   }
 }
 
+async function pushUserPersonChangesBatch(
+  changes: Change[],
+  operation: 'create' | 'update' | 'delete'
+): Promise<void> {
+  console.log(
+    `🔄 [SYNC] Processing ${changes.length} user person ${operation} operations`
+  );
+
+  for (const change of changes) {
+    const userPerson = change.data as UserPerson;
+
+    const [upsertChanges, deleteChanges] = changes.reduce(
+      ([up, del], change) => {
+        if (change.entityType === 'user_person') {
+          if (change.operation === 'create' || change.operation === 'update') {
+            up.push({
+              name: userPerson.name,
+              user_id: userPerson.userId,
+              birth_date: userPerson.birthDate ?? null,
+              gender: userPerson.gender ?? null,
+              settings: userPerson.settings as Json,
+              is_user_profile: userPerson.isUserProfile,
+              version: userPerson.version,
+              created_at: userPerson.createdAt,
+              updated_at: userPerson.updatedAt,
+              id: userPerson.id,
+              is_deleted: userPerson.isDeleted ?? false,
+              auto_add_to_new_trips: userPerson.autoAddToNewTrips ?? false,
+            });
+          } else if (change.operation === 'delete') {
+            del.push(change);
+          }
+        }
+        return [up, del];
+      },
+      [[], []] as [Tables<'user_people'>[], { id: string }[]]
+    );
+
+    try {
+      if (operation === 'create' || operation === 'update') {
+        // Note: Using existing user_profiles table as the backend storage
+        const { error } = await supabase
+          .from('user_people')
+          .upsert(upsertChanges);
+
+        if (error) {
+          console.error(
+            `❌ [SYNC] Error ${operation}ing user person ${userPerson.id}:`,
+            error
+          );
+          throw error;
+        }
+      } else if (operation === 'delete') {
+        const { error } = await supabase
+          .from('user_people')
+          .delete()
+          .in(
+            'id',
+            deleteChanges.map((c) => c.id)
+          );
+
+        if (error) {
+          console.error(
+            `❌ [SYNC] Error deleting user person ${userPerson.id}:`,
+            error
+          );
+          throw error;
+        }
+      }
+
+      console.log(
+        `✅ [SYNC] Successfully ${operation}d user person: ${userPerson.name}`
+      );
+    } catch (error) {
+      console.error(
+        `❌ [SYNC] Failed to ${operation} user person ${userPerson.id}:`,
+        error
+      );
+      throw error;
+    }
+  }
+}
+
+async function pushUserPreferencesChangesBatch(
+  changes: Change[],
+  operation: 'create' | 'update' | 'delete'
+): Promise<void> {
+  if (changes.length === 0) return;
+
+  console.log(
+    `🔄 [SYNC] Processing ${changes.length} user preferences ${operation} operations`
+  );
+
+  // User preferences are singleton - there should only be one per user
+  for (const change of changes) {
+    const userPreferences = change.data as UserPreferences;
+
+    try {
+      if (operation === 'create' || operation === 'update') {
+        const { error } = await supabase.from('user_profiles').upsert(
+          {
+            id: change.userId,
+            preferences: userPreferences as Json,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: 'id',
+          }
+        );
+
+        if (error) {
+          console.error(
+            `❌ [SYNC] Error ${operation}ing user preferences for ${change.userId}:`,
+            error
+          );
+          throw error;
+        }
+
+        console.log(
+          `✅ [SYNC] Successfully ${operation}d user preferences for user: ${change.userId}`
+        );
+      } else if (operation === 'delete') {
+        // For user preferences deletion, we set preferences to null rather than deleting the profile
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({
+            preferences: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', change.userId);
+
+        if (error) {
+          console.error(
+            `❌ [SYNC] Error deleting user preferences for ${change.userId}:`,
+            error
+          );
+          throw error;
+        }
+
+        console.log(
+          `✅ [SYNC] Successfully cleared user preferences for user: ${change.userId}`
+        );
+      }
+    } catch (error) {
+      console.error(
+        `❌ [SYNC] Failed to ${operation} user preferences for ${change.userId}:`,
+        error
+      );
+      throw error;
+    }
+  }
+}
+
 // Basic sync state actions
 export const setSyncState = (payload: Partial<SyncState>): SyncActions => ({
   type: 'SET_SYNC_STATE',
@@ -1126,6 +1441,11 @@ export const mergeSyncedItem = (payload: TripItem): SyncActions => ({
   payload,
 });
 
+export const mergeSyncedUserPerson = (payload: UserPerson): SyncActions => ({
+  type: 'MERGE_SYNCED_USER_PERSON',
+  payload,
+});
+
 // Change tracking action
 export const trackSyncChange = (
   payload: Omit<Change, 'id' | 'timestamp' | 'synced'>
@@ -1160,7 +1480,7 @@ export const resolveConflict = createAsyncThunk(
       // Determine what data to apply based on strategy
       switch (strategy) {
         case 'local':
-          // Keep local version - no need to update anything, just remove conflict
+          // Keep local version
           dataToApply = conflict.localVersion;
           break;
         case 'server':
@@ -1175,77 +1495,143 @@ export const resolveConflict = createAsyncThunk(
           throw new Error(`Unknown resolution strategy: ${strategy}`);
       }
 
-      // For non-local strategies, we need to apply the data to Redux and IndexedDB
-      if (strategy !== 'local') {
-        console.log(
-          `🔧 [RESOLVE_CONFLICT] Applying ${strategy} data for ${conflict.entityType}:${conflict.entityId}`
-        );
+      console.log(
+        `🔧 [RESOLVE_CONFLICT] Applying ${strategy} data for ${conflict.entityType}:${conflict.entityId}`
+      );
 
-        // Apply data based on entity type
-        switch (conflict.entityType) {
-          case 'trip': {
-            const tripData = dataToApply as Trip;
-            await TripStorage.saveTrip(tripData);
+      // Apply data based on entity type using proper Redux actions that trigger sync tracking
+      switch (conflict.entityType) {
+        case 'trip': {
+          const tripData = dataToApply as Trip;
+
+          // Save to IndexedDB first
+          await TripStorage.saveTrip(tripData);
+
+          // For server/manual strategies, use merge action (data from server)
+          // For local strategy, we don't need to update Redux since it's already there
+          if (strategy !== 'local') {
             dispatch(mergeSyncedTrip(tripData));
-            console.log(
-              `✅ [RESOLVE_CONFLICT] Applied trip data to IndexedDB and Redux`
-            );
-            break;
           }
 
-          case 'person': {
-            const personData = dataToApply as Person;
-            await PersonStorage.savePerson(personData);
-            dispatch(mergeSyncedPerson(personData));
-            console.log(
-              `✅ [RESOLVE_CONFLICT] Applied person data to IndexedDB and Redux`
-            );
-            break;
-          }
-
-          case 'item': {
-            const itemData = dataToApply as TripItem;
-            await ItemStorage.saveItem(itemData);
-            dispatch(mergeSyncedItem(itemData));
-            console.log(
-              `✅ [RESOLVE_CONFLICT] Applied item data to IndexedDB and Redux`
-            );
-            break;
-          }
-
-          case 'default_item_rule': {
-            const ruleData = dataToApply as DefaultItemRule;
-            await DefaultItemRulesStorage.saveDefaultItemRule(ruleData);
-            // Rules don't have a direct merge action, they're handled by recalculation
-            console.log(`✅ [RESOLVE_CONFLICT] Applied rule data to IndexedDB`);
-            break;
-          }
-
-          case 'trip_rule': {
-            const tripRuleData = dataToApply as TripRule;
-            await TripRuleStorage.saveTripRule(tripRuleData);
-            // Trip rules don't have a direct merge action, they're handled by recalculation
-            console.log(
-              `✅ [RESOLVE_CONFLICT] Applied trip rule data to IndexedDB`
-            );
-            break;
-          }
-
-          default:
-            console.warn(
-              `🔧 [RESOLVE_CONFLICT] Unknown entity type: ${conflict.entityType}`
-            );
+          console.log(
+            `✅ [RESOLVE_CONFLICT] Applied trip data to IndexedDB${
+              strategy !== 'local' ? ' and Redux' : ''
+            }`
+          );
+          break;
         }
+
+        case 'person': {
+          const personData = dataToApply as Person;
+
+          // Save to IndexedDB first
+          await PersonStorage.savePerson(personData);
+
+          // For all strategies, we need to update Redux properly
+          // Use UPDATE_PERSON action which will trigger sync tracking
+          dispatch({
+            type: 'UPDATE_PERSON',
+            payload: personData,
+          });
+
+          console.log(
+            `✅ [RESOLVE_CONFLICT] Applied person data to IndexedDB and Redux`
+          );
+          break;
+        }
+
+        case 'item': {
+          const itemData = dataToApply as TripItem;
+
+          // Save to IndexedDB first
+          await ItemStorage.saveItem(itemData);
+
+          // For server/manual strategies, use merge action
+          // For local strategy, we don't need to update Redux since it's already there
+          if (strategy !== 'local') {
+            dispatch(mergeSyncedItem(itemData));
+          }
+
+          console.log(
+            `✅ [RESOLVE_CONFLICT] Applied item data to IndexedDB${
+              strategy !== 'local' ? ' and Redux' : ''
+            }`
+          );
+          break;
+        }
+
+        case 'default_item_rule': {
+          const ruleData = dataToApply as DefaultItemRule;
+
+          // Save to IndexedDB
+          await DefaultItemRulesStorage.saveDefaultItemRule(ruleData);
+
+          // Rules don't have a direct Redux action, they're handled by recalculation
+          console.log(`✅ [RESOLVE_CONFLICT] Applied rule data to IndexedDB`);
+          break;
+        }
+
+        case 'trip_rule': {
+          const tripRuleData = dataToApply as TripRule;
+
+          // Save to IndexedDB
+          await TripRuleStorage.saveTripRule(tripRuleData);
+
+          // Trip rules don't have a direct Redux action, they're handled by recalculation
+          console.log(
+            `✅ [RESOLVE_CONFLICT] Applied trip rule data to IndexedDB`
+          );
+          break;
+        }
+
+        case 'user_person': {
+          const userPersonData = dataToApply as UserPerson;
+
+          // Save to IndexedDB first
+          await UserPersonStorage.saveUserPerson(userPersonData);
+
+          // Use the proper Redux action for user people
+          // This will trigger sync tracking and update the UI
+          dispatch(upsertUserPerson(userPersonData));
+
+          console.log(
+            `✅ [RESOLVE_CONFLICT] Applied user person data to IndexedDB and Redux`
+          );
+          break;
+        }
+
+        case 'user_preferences': {
+          const userPreferencesData = dataToApply as UserPreferences;
+
+          // Save to IndexedDB
+          await UserPreferencesStorage.savePreferences(userPreferencesData);
+
+          // Use the proper Redux action for user preferences
+          dispatch({
+            type: 'SYNC_USER_PREFERENCES',
+            payload: userPreferencesData,
+          });
+
+          console.log(
+            `✅ [RESOLVE_CONFLICT] Applied user preferences data to IndexedDB and Redux`
+          );
+          break;
+        }
+
+        default:
+          console.warn(
+            `🔧 [RESOLVE_CONFLICT] Unknown entity type: ${conflict.entityType}`
+          );
       }
 
       // Remove the conflict from Redux state
       dispatch(removeSyncConflict(conflictId));
 
       console.log(
-        `✅ [RESOLVE_CONFLICT] Successfully resolved conflict ${conflictId}`
+        `✅ [RESOLVE_CONFLICT] Successfully resolved conflict ${conflictId} using ${strategy} strategy`
       );
 
-      return { conflictId, strategy, applied: strategy !== 'local' };
+      return { conflictId, strategy, applied: true };
     } catch (error) {
       console.error(
         `❌ [RESOLVE_CONFLICT] Failed to resolve conflict ${conflictId}:`,

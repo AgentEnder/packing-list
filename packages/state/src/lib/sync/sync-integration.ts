@@ -7,12 +7,14 @@ import type {
   RulePack,
   TripRule,
   PackingListItem,
+  UserPerson,
 } from '@packing-list/model';
 import type { EntityExistence } from './types.js';
 import type { AllActions } from '../../actions.js';
 import {
   DefaultItemRulesStorage,
   ItemStorage,
+  UserPersonStorage,
 } from '@packing-list/offline-storage';
 import { createEmptyTripData } from '../../store.js';
 import { calculateDefaultItems } from '../../action-handlers/calculate-default-items.js';
@@ -61,6 +63,7 @@ let syncedEntities = {
   items: [] as TripItem[],
   defaultItemRules: [] as Array<{ rule: DefaultItemRule; tripId: string }>,
   rulePacks: [] as RulePack[],
+  userPeople: [] as UserPerson[],
 };
 
 /**
@@ -73,6 +76,7 @@ const queuedEntityIds = {
   items: new Set<string>(),
   defaultItemRules: new Set<string>(),
   rulePacks: new Set<string>(),
+  userPeople: new Set<string>(),
 };
 
 /**
@@ -112,7 +116,8 @@ export const processSyncedEntities = (
     syncedEntities.people.length > 0 ||
     syncedEntities.items.length > 0 ||
     syncedEntities.defaultItemRules.length > 0 ||
-    syncedEntities.rulePacks.length > 0;
+    syncedEntities.rulePacks.length > 0 ||
+    syncedEntities.userPeople.length > 0;
 
   if (!hasEntities) {
     console.log(`📦 [SYNC INTEGRATION] No synced entities to process`);
@@ -120,7 +125,7 @@ export const processSyncedEntities = (
   }
 
   console.log(
-    `📦 [SYNC INTEGRATION] Processing bulk synced entities: ${syncedEntities.trips.length} trips, ${syncedEntities.people.length} people, ${syncedEntities.items.length} items, ${syncedEntities.defaultItemRules.length} rules, ${syncedEntities.rulePacks.length} packs`
+    `📦 [SYNC INTEGRATION] Processing bulk synced entities: ${syncedEntities.trips.length} trips, ${syncedEntities.people.length} people, ${syncedEntities.items.length} items, ${syncedEntities.defaultItemRules.length} rules, ${syncedEntities.rulePacks.length} packs, ${syncedEntities.userPeople.length} user people`
   );
 
   // Log item details for debugging
@@ -131,7 +136,10 @@ export const processSyncedEntities = (
     );
   }
 
-  // Dispatch single bulk action with all entities
+  // User profile updates are handled by the bulk upsert handler
+  // which will dispatch appropriate user profile actions
+
+  // Dispatch single bulk action with remaining entities (excluding userPeople since handled above)
   dispatch({
     type: 'BULK_UPSERT_SYNCED_ENTITIES',
     payload: {
@@ -151,6 +159,10 @@ export const processSyncedEntities = (
         syncedEntities.rulePacks.length > 0
           ? [...syncedEntities.rulePacks]
           : undefined,
+      userPeople:
+        syncedEntities.userPeople.length > 0
+          ? [...syncedEntities.userPeople]
+          : undefined,
     },
   });
 
@@ -160,12 +172,14 @@ export const processSyncedEntities = (
   syncedEntities.items = [];
   syncedEntities.defaultItemRules = [];
   syncedEntities.rulePacks = [];
+  syncedEntities.userPeople = [];
 
   queuedEntityIds.trips.clear();
   queuedEntityIds.people.clear();
   queuedEntityIds.items.clear();
   queuedEntityIds.defaultItemRules.clear();
   queuedEntityIds.rulePacks.clear();
+  queuedEntityIds.userPeople.clear();
 };
 
 /**
@@ -285,6 +299,31 @@ export const createEntityCallbacks = (
       );
       syncedEntities.rulePacks.push(pack);
     },
+    onUserPersonUpsert: (userPerson: UserPerson) => {
+      // Store user person in IndexedDB for persistence
+      UserPersonStorage.saveUserPerson(userPerson).catch((error: unknown) => {
+        console.error(
+          `🚨 [SYNC INTEGRATION] Failed to save user person ${userPerson.id}:`,
+          error
+        );
+      });
+
+      // Check for duplicates using Set for O(1) performance
+      if (queuedEntityIds.userPeople.has(userPerson.id)) {
+        console.warn(
+          `⚠️ [SYNC INTEGRATION] Duplicate user person detected, skipping: ${userPerson.name} (${userPerson.id}) - queue size: ${syncedEntities.userPeople.length}`
+        );
+        return;
+      }
+
+      console.log(
+        `👤 [SYNC INTEGRATION] Queueing user person: ${userPerson.name} (${
+          userPerson.id
+        }) - queue size: ${syncedEntities.userPeople.length + 1}`
+      );
+      queuedEntityIds.userPeople.add(userPerson.id);
+      syncedEntities.userPeople.push(userPerson);
+    },
     onTripRuleUpsert: (tripRule: TripRule) => {
       console.log(
         `🔗 [SYNC INTEGRATION] Associating rule ${tripRule.ruleId} with trip ${tripRule.tripId}`
@@ -333,6 +372,7 @@ export type SyncIntegrationActions =
         items?: TripItem[];
         defaultItemRules?: Array<{ rule: DefaultItemRule; tripId: string }>;
         rulePacks?: RulePack[];
+        userPeople?: UserPerson[];
       };
     };
 
@@ -521,17 +561,21 @@ export const bulkUpsertSyncedEntitiesHandler = (
       items?: TripItem[];
       defaultItemRules?: Array<{ rule: DefaultItemRule; tripId: string }>;
       rulePacks?: RulePack[];
+      userPeople?: UserPerson[];
     };
   }
 ): StoreType => {
-  const { trips, people, items, defaultItemRules, rulePacks } = action.payload;
+  const { trips, people, items, defaultItemRules, rulePacks, userPeople } =
+    action.payload;
 
   console.log(
     `📦 [SYNC REDUCER] Bulk upserting entities: ${trips?.length || 0} trips, ${
       people?.length || 0
     } people, ${items?.length || 0} items, ${
       defaultItemRules?.length || 0
-    } rules, ${rulePacks?.length || 0} packs`
+    } rules, ${rulePacks?.length || 0} packs, ${
+      userPeople?.length || 0
+    } user people`
   );
 
   let updatedState = state;
@@ -632,6 +676,19 @@ export const bulkUpsertSyncedEntitiesHandler = (
         packs.push(pack);
       }
       updatedState = { ...updatedState, rulePacks: packs };
+    }
+  }
+
+  // Process user people (user profiles) - now handled by userProfile reducer
+  if (userPeople && userPeople.length > 0) {
+    for (const syncedUserPerson of userPeople) {
+      console.log(
+        `👤 [SYNC REDUCER] Processing user person: ${syncedUserPerson.name} (${syncedUserPerson.id}) for user ${syncedUserPerson.userId}`,
+        syncedUserPerson
+      );
+
+      // Note: User profile state updates are now handled by the userProfile reducer
+      // via extraReducers that listen for BULK_UPSERT_SYNCED_ENTITIES actions
     }
   }
 

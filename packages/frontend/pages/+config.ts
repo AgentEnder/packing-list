@@ -10,8 +10,9 @@ export default {
   Layout,
 
   // https://vike.dev/head-tags
-  title: 'My Vike App',
-  description: 'Demo showcasing Vike',
+  title: 'Smart Packing List',
+  description:
+    'Smart Packing List - An app to generate packing lists for your trips based on your rules and preferences',
 
   // Enable client-side routing
   clientRouting: true,

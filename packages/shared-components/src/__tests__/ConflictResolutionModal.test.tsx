@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { userEvent } from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ConflictResolutionModal } from '../ConflictResolutionModal.js';
 import type { SyncConflict } from '@packing-list/model';
@@ -248,7 +248,8 @@ describe('ConflictResolutionModal', () => {
       // Find the one with uppercase styling (text-xs text-gray-500 uppercase)
       const conflictTypeSpan = conflictTypeElements.find(
         (el) =>
-          el.className.includes('text-xs') && el.className.includes('uppercase')
+          (el as HTMLElement).className.includes('text-xs') &&
+          (el as HTMLElement).className.includes('uppercase')
       );
       expect(conflictTypeSpan).toBeInTheDocument();
 

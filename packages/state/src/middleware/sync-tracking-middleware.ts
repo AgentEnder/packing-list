@@ -15,6 +15,8 @@ import {
   DefaultItemRulesStorage,
   RulePacksStorage,
   TripRuleStorage,
+  UserPersonStorage,
+  UserPreferencesStorage,
   getDatabase,
 } from '@packing-list/offline-storage';
 import type { AllActions } from '../actions.js';
@@ -45,8 +47,20 @@ async function reloadFromIndexedDB(
     console.log(
       `✅ [SYNC_MIDDLEWARE] Successfully loaded offline state for ${
         Object.keys(offlineState.trips.byId).length
-      } trips`
+      } trips and ${offlineState.userPeople?.people?.length || 0} user people`
     );
+
+    console.log(
+      `🔄 [SYNC_MIDDLEWARE] User people loaded:`,
+      offlineState.userPeople?.people?.map((p) => ({
+        id: p.id,
+        name: p.name,
+        isUserProfile: p.isUserProfile,
+        updatedAt: p.updatedAt,
+      })) || []
+    );
+
+    console.log(`🔄 [SYNC_MIDDLEWARE] Dispatching HYDRATE_OFFLINE action`);
 
     dispatch({
       type: 'HYDRATE_OFFLINE',
@@ -58,7 +72,7 @@ async function reloadFromIndexedDB(
     );
   } catch (error) {
     console.error(
-      '❌ [SYNC_MIDDLEWARE] Failed to reload from IndexedDB:',
+      `❌ [SYNC_MIDDLEWARE] Failed to reload from IndexedDB:`,
       error
     );
   }
@@ -192,6 +206,155 @@ async function trackAndPushChange(
 }
 
 /**
+ * Track changes to user preferences
+ */
+function trackUserPreferencesChanges(
+  prevState: StoreType,
+  nextState: StoreType,
+  userId: string
+): void {
+  const prevPreferences = prevState.userPreferences;
+  const nextPreferences = nextState.userPreferences;
+
+  // Handle user preferences creation or update
+  if (!prevPreferences && nextPreferences) {
+    // User preferences created
+    console.log('🔄 [SYNC_MIDDLEWARE] User preferences created');
+
+    // Save to IndexedDB
+    void UserPreferencesStorage.savePreferences(nextPreferences);
+
+    void trackAndPushChange(
+      {
+        userId,
+        entityType: 'user_preferences',
+        entityId: userId, // Use userId as entityId for preferences
+        operation: 'create',
+        data: nextPreferences,
+        version: 1,
+      },
+      userId
+    );
+  } else if (
+    prevPreferences &&
+    nextPreferences &&
+    !deepEqual(prevPreferences, nextPreferences)
+  ) {
+    // User preferences updated
+    console.log('🔄 [SYNC_MIDDLEWARE] User preferences updated');
+
+    // Save to IndexedDB
+    void UserPreferencesStorage.savePreferences(nextPreferences);
+
+    void trackAndPushChange(
+      {
+        userId,
+        entityType: 'user_preferences',
+        entityId: userId, // Use userId as entityId for preferences
+        operation: 'update',
+        data: nextPreferences,
+        version: 1,
+      },
+      userId
+    );
+  }
+}
+
+/**
+ * Track changes to user people data (profiles and templates)
+ */
+function trackUserPeopleChanges(
+  prevState: StoreType,
+  nextState: StoreType,
+  userId: string
+): void {
+  const prevPeople = prevState.userPeople?.people || [];
+  const nextPeople = nextState.userPeople?.people || [];
+
+  // Create maps for efficient lookups
+  const prevPeopleMap = new Map(prevPeople.map((p) => [p.id, p]));
+  const nextPeopleMap = new Map(nextPeople.map((p) => [p.id, p]));
+
+  // Check for new or updated people
+  for (const nextPerson of nextPeople) {
+    const prevPerson = prevPeopleMap.get(nextPerson.id);
+
+    if (!prevPerson) {
+      // Person created
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] User person created: ${nextPerson.name} (${
+          nextPerson.isUserProfile ? 'profile' : 'template'
+        })`
+      );
+
+      // Save to IndexedDB
+      void UserPersonStorage.saveUserPerson(nextPerson);
+
+      void trackAndPushChange(
+        {
+          userId,
+          entityType: 'user_person',
+          entityId: nextPerson.id,
+          operation: 'create',
+          data: nextPerson,
+          version: nextPerson.version || 1,
+        },
+        userId
+      );
+    } else if (!deepEqual(prevPerson, nextPerson)) {
+      // Person updated
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] User person updated: ${nextPerson.name} (${
+          nextPerson.isUserProfile ? 'profile' : 'template'
+        })`
+      );
+
+      // Save to IndexedDB
+      void UserPersonStorage.saveUserPerson(nextPerson);
+
+      void trackAndPushChange(
+        {
+          userId,
+          entityType: 'user_person',
+          entityId: nextPerson.id,
+          operation: 'update',
+          data: nextPerson,
+          version: nextPerson.version || 1,
+        },
+        userId
+      );
+    }
+  }
+
+  // Check for deleted people
+  for (const prevPerson of prevPeople) {
+    if (!nextPeopleMap.has(prevPerson.id)) {
+      // Person deleted
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] User person deleted: ${prevPerson.name} (${
+          prevPerson.isUserProfile ? 'profile' : 'template'
+        })`
+      );
+
+      // Actually delete from IndexedDB storage
+      void UserPersonStorage.deleteUserPersonById(prevPerson.id);
+
+      void trackAndPushChange(
+        {
+          userId,
+          entityType: 'user_person',
+          entityId: prevPerson.id,
+          operation: 'delete',
+          data: { ...prevPerson, isDeleted: true },
+          version: prevPerson.version || 1,
+        },
+        userId
+      );
+    }
+  }
+}
+
+/**
  * Redux middleware that automatically tracks sync changes and handles sync operations.
  */
 export const syncTrackingMiddleware: Middleware<object, StoreType> =
@@ -200,9 +363,58 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
     const result = next(action);
     const nextState = store.getState();
 
+    const userId = nextState.auth.user?.id;
+
+    if (!userId) {
+      return result;
+    }
+
+    // Handle initialization actions
+    if ((action as UnknownAction).type === 'auth/loginSuccess' && userId) {
+      void reloadFromIndexedDB(next, userId);
+      void startSyncService(next, userId);
+      return result;
+    }
+
+    // Handle auth initialization with existing user (e.g., page reload with saved session)
+    if (
+      (action as UnknownAction).type === 'auth/initializeAuth/fulfilled' &&
+      userId !== prevState.auth.user?.id
+    ) {
+      console.log(
+        `🔄 [SYNC_MIDDLEWARE] Auth initialized with user ${userId}, reloading from IndexedDB`
+      );
+      void reloadFromIndexedDB(next, userId);
+      void startSyncService(next, userId);
+      return result;
+    }
+
+    // Handle forced reload requests from components
+    if ((action as UnknownAction).type === 'FORCE_RELOAD_USER_PEOPLE') {
+      const requestUserId = (
+        action as { type: string; payload?: { userId: string } }
+      ).payload?.userId;
+      if (requestUserId) {
+        console.log(
+          `🔄 [SYNC_MIDDLEWARE] Force reload requested for user: ${requestUserId}`
+        );
+        void reloadFromIndexedDB(next, requestUserId);
+      }
+      return result;
+    }
+
+    if ((action as UnknownAction).type === 'HYDRATE_OFFLINE') {
+      return result;
+    }
+
+    // Track user people changes (profiles and templates)
+    trackUserPeopleChanges(prevState, nextState, userId);
+
+    // Track user preferences changes
+    trackUserPreferencesChanges(prevState, nextState, userId);
+
     // Handle auth changes and sign-in to reload from IndexedDB and start sync
     const userChanged = prevState.auth.user?.id !== nextState.auth.user?.id;
-    const userId = nextState.auth.user?.id;
 
     if (userChanged && userId) {
       console.log(
@@ -276,24 +488,30 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
       'HYDRATE_OFFLINE',
       'sync/',
       'PROCESS_SYNCED_TRIP_ITEMS',
+      'BULK_UPSERT_SYNCED_ENTITIES',
     ];
 
     // Special handling for conflict resolution - allow it to pass through to IndexedDB
     if (
       (action as UnknownAction).type !== 'sync/resolveConflict/fulfilled' &&
+      // Special handling for merge actions - allow it to pass through to IndexedDB
+      !(action as UnknownAction).type.includes('MERGE_SYNCED_') &&
       skipActions.some((skip) => (action as UnknownAction).type.includes(skip))
     ) {
       return result;
     }
 
     // Check if we should track changes
-    const tripId = nextState.trips.selectedTripId;
+    const prevTripId = prevState.trips.selectedTripId;
+    const nextTripId = nextState.trips.selectedTripId;
 
-    if (!userId) {
-      return result;
-    }
+    console.log('🔄 [SYNC_MIDDLEWARE] Tracking changes', {
+      prevTripId,
+      nextTripId,
+    });
 
-    if (!tripId || userId === 'local-user') {
+    if (!nextTripId || userId === 'local-user') {
+      console.log('No trip selected or local user, skipping sync tracking');
       return result;
     }
 
@@ -303,7 +521,7 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
         handlePackingStatusChange(
           prevState,
           nextState,
-          tripId,
+          nextTripId,
           userId,
           action as { type: string; payload: { itemId: string } }
         );
@@ -312,7 +530,8 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
         trackAllChanges(
           prevState,
           nextState,
-          tripId,
+          prevTripId,
+          nextTripId,
           userId,
           action as { type: string }
         );
@@ -440,14 +659,15 @@ function updateItemInStorage(
 function trackAllChanges(
   prevState: StoreType,
   nextState: StoreType,
-  tripId: string,
+  prevTripId: string | null,
+  nextTripId: string | null,
   userId: string,
   action?: { type: string }
 ): void {
   // Track changes in different entity types
-  trackTripChanges(prevState, nextState, tripId, userId);
-  trackPersonChanges(prevState, nextState, tripId, userId);
-  trackRuleChanges(prevState, nextState, tripId, userId);
+  trackTripChanges(prevState, nextState, prevTripId, nextTripId, userId);
+  trackPersonChanges(prevState, nextState, nextTripId, userId);
+  trackRuleChanges(prevState, nextState, nextTripId, userId);
 
   // Only track trip rule changes for actual rule operations to prevent false deletions
   // Skip trip rule tracking for recalculation and sync operations
@@ -460,7 +680,7 @@ function trackAllChanges(
     'REMOVE_RULE_PACK',
   ];
   if (action && tripRuleActions.includes(action.type)) {
-    trackTripRuleChanges(prevState, nextState, tripId, userId);
+    trackTripRuleChanges(prevState, nextState, nextTripId, userId);
   }
 
   // Only track rule pack changes for actual rule pack operations
@@ -471,7 +691,7 @@ function trackAllChanges(
     'DELETE_RULE_PACK',
   ];
   if (action && rulePackActions.includes(action.type)) {
-    trackRulePackChanges(prevState, nextState, tripId, userId);
+    trackRulePackChanges(prevState, nextState, nextTripId, userId);
   }
 }
 
@@ -481,18 +701,19 @@ function trackAllChanges(
 function trackTripChanges(
   prevState: StoreType,
   nextState: StoreType,
-  tripId: string,
+  prevTripId: string | null,
+  nextTripId: string | null,
   userId: string
 ): void {
-  const prevTrip = prevState.trips.byId[tripId];
-  const nextTrip = nextState.trips.byId[tripId];
+  const prevTrip = nextTripId ? prevState.trips.byId[nextTripId] : null;
+  const nextTrip = nextTripId ? nextState.trips.byId[nextTripId] : null;
 
   if (!prevTrip && nextTrip) {
     // Trip created
-    console.log(`🔄 [SYNC_MIDDLEWARE] Trip created: ${tripId}`);
+    console.log(`🔄 [SYNC_MIDDLEWARE] Trip created: ${nextTripId}`);
 
     const tripData: Trip = {
-      id: tripId,
+      id: nextTripId ?? 'never',
       userId,
       title: nextTrip.trip.title,
       description: nextTrip.trip.description,
@@ -509,7 +730,7 @@ function trackTripChanges(
     // Save to storage
     TripStorage.saveTrip(tripData).catch((error) => {
       console.error(
-        `🚨 [SYNC_MIDDLEWARE] Failed to save trip ${tripId}:`,
+        `🚨 [SYNC_MIDDLEWARE] Failed to save trip ${nextTripId}:`,
         error
       );
     });
@@ -517,7 +738,7 @@ function trackTripChanges(
     // Track change
     const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
       entityType: 'trip',
-      entityId: tripId,
+      entityId: nextTripId ?? 'never',
       operation: 'create',
       userId,
       version: 1,
@@ -525,12 +746,17 @@ function trackTripChanges(
     };
 
     trackAndPushChange(change, userId);
-  } else if (prevTrip && nextTrip && !deepEqual(prevTrip.trip, nextTrip.trip)) {
+  } else if (
+    prevTripId === nextTripId &&
+    prevTrip &&
+    nextTrip &&
+    !deepEqual(prevTrip.trip, nextTrip.trip)
+  ) {
     // Trip updated
-    console.log(`🔄 [SYNC_MIDDLEWARE] Trip updated: ${tripId}`);
+    console.log(`🔄 [SYNC_MIDDLEWARE] Trip updated: ${nextTripId}`);
 
     const tripData: Trip = {
-      id: tripId,
+      id: nextTrip.trip.id,
       userId,
       title: nextTrip.trip.title,
       description: nextTrip.trip.description,
@@ -547,7 +773,7 @@ function trackTripChanges(
     // Save to storage
     TripStorage.saveTrip(tripData).catch((error) => {
       console.error(
-        `🚨 [SYNC_MIDDLEWARE] Failed to save trip ${tripId}:`,
+        `🚨 [SYNC_MIDDLEWARE] Failed to save trip ${nextTripId}:`,
         error
       );
     });
@@ -555,7 +781,7 @@ function trackTripChanges(
     // Track change
     const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
       entityType: 'trip',
-      entityId: tripId,
+      entityId: nextTrip.trip.id,
       operation: 'update',
       userId,
       version: tripData.version,
@@ -563,6 +789,41 @@ function trackTripChanges(
     };
 
     trackAndPushChange(change, userId);
+  } else {
+    // Maybe a trip was deleted?
+    const aTrips = Object.keys(prevState.trips.byId);
+    const bTrips = Object.keys(nextState.trips.byId);
+
+    if (aTrips.length > bTrips.length) {
+      // Trip deleted
+      const deletedTripId = aTrips.find((id) => !bTrips.includes(id));
+      if (deletedTripId) {
+        console.log(`🔄 [SYNC_MIDDLEWARE] Trip deleted: ${deletedTripId}`);
+
+        TripStorage.deleteTrip(deletedTripId).catch((error) => {
+          console.error(
+            `🚨 [SYNC_MIDDLEWARE] Failed to delete trip ${deletedTripId}:`,
+            error
+          );
+        });
+
+        // Track change
+        const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
+          entityType: 'trip',
+          entityId: deletedTripId,
+          operation: 'delete',
+          userId,
+          version: 1,
+          data: {
+            ...prevState.trips.byId[deletedTripId]?.trip,
+            isDeleted: true,
+            updatedAt: new Date().toISOString(),
+          },
+        };
+
+        trackAndPushChange(change, userId);
+      }
+    }
   }
 }
 
@@ -572,11 +833,11 @@ function trackTripChanges(
 function trackPersonChanges(
   prevState: StoreType,
   nextState: StoreType,
-  tripId: string,
+  tripId: string | null,
   userId: string
 ): void {
-  const prevPeople = prevState.trips.byId[tripId]?.people || [];
-  const nextPeople = nextState.trips.byId[tripId]?.people || [];
+  const prevPeople = tripId ? prevState.trips.byId[tripId]?.people || [] : [];
+  const nextPeople = tripId ? nextState.trips.byId[tripId]?.people || [] : [];
 
   // Check for new people
   for (const nextPerson of nextPeople) {
@@ -601,6 +862,10 @@ function trackPersonChanges(
           error
         );
       });
+
+      if (!tripId) {
+        throw new Error('Trip ID is required');
+      }
 
       // Track change
       const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
@@ -631,6 +896,10 @@ function trackPersonChanges(
           error
         );
       });
+
+      if (!tripId) {
+        throw new Error('Trip ID is required');
+      }
 
       // Track change
       const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
@@ -663,6 +932,10 @@ function trackPersonChanges(
         );
       });
 
+      if (!tripId) {
+        throw new Error('Trip ID is required');
+      }
+
       // Track change
       const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
         entityType: 'person',
@@ -689,12 +962,16 @@ function trackPersonChanges(
 function trackRuleChanges(
   prevState: StoreType,
   nextState: StoreType,
-  tripId: string,
+  tripId: string | null,
   userId: string
 ): void {
   // Track default item rules - these are stored at the trip level
-  const prevRules = prevState.trips.byId[tripId]?.trip?.defaultItemRules || [];
-  const nextRules = nextState.trips.byId[tripId]?.trip?.defaultItemRules || [];
+  const prevRules = tripId
+    ? prevState.trips.byId[tripId]?.trip?.defaultItemRules || []
+    : [];
+  const nextRules = tripId
+    ? nextState.trips.byId[tripId]?.trip?.defaultItemRules || []
+    : [];
 
   // Check for new or updated rules
   for (const nextRule of nextRules) {
@@ -722,7 +999,7 @@ function trackRuleChanges(
         entityId: nextRule.id,
         operation: 'create',
         userId,
-        tripId,
+        tripId: tripId ?? 'never',
         version: 1,
         data: nextRule,
       };
@@ -741,6 +1018,10 @@ function trackRuleChanges(
           error
         );
       });
+
+      if (!tripId) {
+        throw new Error('Trip ID is required');
+      }
 
       // Track change
       const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
@@ -779,6 +1060,10 @@ function trackRuleChanges(
         }
       );
 
+      if (!tripId) {
+        throw new Error('Trip ID is required');
+      }
+
       // Track change
       const change: Omit<Change, 'id' | 'timestamp' | 'synced'> = {
         entityType: 'default_item_rule',
@@ -801,11 +1086,15 @@ function trackRuleChanges(
 function trackTripRuleChanges(
   prevState: StoreType,
   nextState: StoreType,
-  tripId: string,
+  tripId: string | null,
   userId: string
 ): void {
-  const prevRules = prevState.trips.byId[tripId]?.trip?.defaultItemRules || [];
-  const nextRules = nextState.trips.byId[tripId]?.trip?.defaultItemRules || [];
+  const prevRules = tripId
+    ? prevState.trips.byId[tripId]?.trip?.defaultItemRules || []
+    : [];
+  const nextRules = tripId
+    ? nextState.trips.byId[tripId]?.trip?.defaultItemRules || []
+    : [];
 
   // Check for new rules (need to create trip-rule associations)
   for (const nextRule of nextRules) {
@@ -816,6 +1105,10 @@ function trackTripRuleChanges(
       console.log(
         `🔄 [SYNC_MIDDLEWARE] Trip rule association created: trip ${tripId} -> rule ${nextRule.id}`
       );
+
+      if (!tripId) {
+        throw new Error('Trip ID is required');
+      }
 
       const now = new Date().toISOString();
       const tripRuleData = {
@@ -863,6 +1156,10 @@ function trackTripRuleChanges(
           `🔄 [SYNC_MIDDLEWARE] Trip rule association deleted: trip ${tripId} -> rule ${prevRule.id}`
         );
 
+        if (!tripId) {
+          throw new Error('Trip ID is required');
+        }
+
         // Mark as deleted in storage
         TripRuleStorage.deleteTripRule(tripId, prevRule.id).catch((error) => {
           console.error(
@@ -906,11 +1203,15 @@ function trackTripRuleChanges(
 function trackRulePackChanges(
   prevState: StoreType,
   nextState: StoreType,
-  tripId: string,
+  tripId: string | null,
   userId: string
 ): void {
   const prevPacks = prevState.rulePacks || [];
   const nextPacks = nextState.rulePacks || [];
+
+  if (!tripId) {
+    throw new Error('Trip ID is required');
+  }
 
   console.log(
     `🔄 [SYNC_MIDDLEWARE] Tracking rule pack changes: ${prevPacks.length} -> ${nextPacks.length}`

@@ -306,6 +306,7 @@ export type Database = {
           settings: Json | null
           trip_id: string
           updated_at: string | null
+          user_person_id: string | null
           version: number | null
         }
         Insert: {
@@ -318,6 +319,7 @@ export type Database = {
           settings?: Json | null
           trip_id: string
           updated_at?: string | null
+          user_person_id?: string | null
           version?: number | null
         }
         Update: {
@@ -330,6 +332,7 @@ export type Database = {
           settings?: Json | null
           trip_id?: string
           updated_at?: string | null
+          user_person_id?: string | null
           version?: number | null
         }
         Relationships: [
@@ -338,6 +341,13 @@ export type Database = {
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_people_user_person_id_fkey"
+            columns: ["user_person_id"]
+            isOneToOne: false
+            referencedRelation: "user_people"
             referencedColumns: ["id"]
           },
         ]
@@ -422,6 +432,51 @@ export type Database = {
           settings?: Json | null
           title?: string
           trip_events?: Json | null
+          updated_at?: string | null
+          user_id?: string
+          version?: number | null
+        }
+        Relationships: []
+      }
+      user_people: {
+        Row: {
+          auto_add_to_new_trips: boolean | null
+          birth_date: string | null
+          created_at: string | null
+          gender: string | null
+          id: string
+          is_deleted: boolean | null
+          is_user_profile: boolean | null
+          name: string
+          settings: Json | null
+          updated_at: string | null
+          user_id: string
+          version: number | null
+        }
+        Insert: {
+          auto_add_to_new_trips?: boolean | null
+          birth_date?: string | null
+          created_at?: string | null
+          gender?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_user_profile?: boolean | null
+          name: string
+          settings?: Json | null
+          updated_at?: string | null
+          user_id: string
+          version?: number | null
+        }
+        Update: {
+          auto_add_to_new_trips?: boolean | null
+          birth_date?: string | null
+          created_at?: string | null
+          gender?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_user_profile?: boolean | null
+          name?: string
+          settings?: Json | null
           updated_at?: string | null
           user_id?: string
           version?: number | null

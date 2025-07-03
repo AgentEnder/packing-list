@@ -49,7 +49,6 @@ export class TripPage {
     // Step 2: Add destinations (if provided)
     if (options.destinations && options.destinations.length > 0) {
       for (const destination of options.destinations) {
-        console.log(`Adding destination: ${destination.location}`);
         await this.page
           .locator('input[name="location"]')
           .fill(destination.location);
@@ -69,14 +68,12 @@ export class TripPage {
 
     // Step 3: Save trip
     await this.page.getByRole('button', { name: 'Save Trip' }).click();
-
-    console.log('Trip configuration completed');
   }
 
   async getDayRowsCount() {
     // Don't navigate here to avoid state loss - assume we're already on the right page
     const count = await this.page.locator('[data-testid^="day-row-"]').count();
-    console.log(`Current day rows count: ${count}`);
+
     return count;
   }
 }

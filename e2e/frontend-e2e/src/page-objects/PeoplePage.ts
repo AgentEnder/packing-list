@@ -9,7 +9,13 @@ export class PeoplePage {
       return;
     }
     try {
-      const peopleLink = this.page.getByRole('link', { name: 'People' });
+      // Use exact match to avoid strict mode violation with trip names containing "People"
+      const peopleLink = this.page
+        .getByRole('link', {
+          name: 'People',
+          exact: true,
+        })
+        .filter({ visible: true });
       await peopleLink.waitFor({ state: 'visible', timeout: 10000 });
       await peopleLink.click({ force: true });
 
@@ -58,11 +64,51 @@ export class PeoplePage {
     for (let i = 0; i < count; i++) {
       const firstPerson = existingPeople.first();
       if (await firstPerson.isVisible()) {
+        // Open the menu first
+        const menuButton = firstPerson.locator(
+          '[data-testid="person-menu-button"]'
+        );
+        await menuButton.click();
+
+        // Then click the delete button
         const deleteButton = firstPerson.locator(
           '[data-testid="delete-person-button"]'
         );
-        await deleteButton.click();
+        await deleteButton.click({ force: true });
       }
     }
+  }
+
+  async editPerson(personName: string, newName: string, newAge?: number) {
+    const personCard = this.page.getByTestId(
+      `person-card-${personName.toLowerCase().replace(/\s+/g, '-')}`
+    );
+
+    // Open the menu first
+    await personCard.getByTestId('person-menu-button').click();
+
+    // Click edit button
+    await personCard.getByTestId('edit-person-button').click();
+
+    // Update fields
+    await this.page.getByTestId('person-name-input').fill(newName);
+    if (newAge !== undefined) {
+      await this.page.getByTestId('person-age-input').fill(newAge.toString());
+    }
+
+    // Save changes
+    await this.page.getByTestId('save-person-button').click();
+  }
+
+  async deletePerson(personName: string) {
+    const personCard = this.page.getByTestId(
+      `person-card-${personName.toLowerCase().replace(/\s+/g, '-')}`
+    );
+
+    // Open the menu first
+    await personCard.getByTestId('person-menu-button').click();
+
+    // Click delete button
+    await personCard.getByTestId('delete-person-button').click({ force: true });
   }
 }

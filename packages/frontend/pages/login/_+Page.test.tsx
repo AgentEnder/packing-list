@@ -7,16 +7,12 @@ import LoginPage from './+Page';
 vi.mock('@packing-list/shared-components', () => ({
   useAuth: vi.fn(),
   LoginForm: () => <div data-testid="login-form">Login Form</div>,
-}));
-
-// Mock Link component
-vi.mock('../../components/Link', () => ({
   Link: ({
     href,
     className,
     children,
   }: {
-    href: string;
+    href?: string;
     className?: string;
     children: React.ReactNode;
   }) => (

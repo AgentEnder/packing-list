@@ -1,8 +1,8 @@
 import { ChevronLeft } from 'lucide-react';
 import { useAppSelector, useAppDispatch, actions } from '@packing-list/state';
-import { Link } from './Link';
 import { navigate } from 'vike/client/router';
 import { applyBaseUrl } from '@packing-list/shared-utils';
+import { Link } from '@packing-list/shared-components';
 
 export function FlowBackButton() {
   const flow = useAppSelector((s) => s?.ui?.flow);
@@ -13,7 +13,6 @@ export function FlowBackButton() {
   }
 
   const prevStep = flow.steps[flow.current - 1];
-  console.log(prevStep.path);
   const handleClick = () => {
     // Calculate the target step before dispatching
     if (!flow.current) {

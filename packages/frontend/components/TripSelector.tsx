@@ -4,7 +4,7 @@ import {
   selectAccurateTripSummaries,
 } from '@packing-list/state';
 import { MapPin, Plus } from 'lucide-react';
-import { Link } from './Link';
+import { Link } from '@packing-list/shared-components';
 
 export const TripSelector: React.FC = () => {
   const tripSummaries = useAppSelector(selectAccurateTripSummaries);
