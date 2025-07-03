@@ -2,6 +2,7 @@ import {
   Person,
   isPersonFromUserProfile,
   isPersonFromTemplate,
+  estimateBirthDateFromAge,
 } from '@packing-list/model';
 import { useState } from 'react';
 import { PersonForm } from './PersonForm';
@@ -10,9 +11,11 @@ import {
   useAppSelector,
   selectUserProfile,
   useAppDispatch,
+  useAuth,
 } from '@packing-list/state';
 import { upsertUserPerson } from '@packing-list/state';
-import { uuid } from '@packing-list/shared-utils';
+import { applyBaseUrl, uuid } from '@packing-list/shared-utils';
+import { navigate } from 'vike/client/router';
 
 export type PersonCardProps = {
   person: Person;
@@ -22,6 +25,7 @@ export type PersonCardProps = {
 export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const { user } = useAuth();
   const dispatch = useAppDispatch();
   const userProfile = useAppSelector(selectUserProfile);
 
@@ -30,14 +34,14 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
     isPersonFromTemplate(person) && !isFromUserProfile;
 
   const handleSaveAsTemplate = async () => {
-    if (!userProfile || isFromUserProfile) return;
+    if (!user || isFromUserProfile) return;
 
     // Convert Person to UserPerson template
     const templateData = {
       id: uuid(),
-      userId: userProfile.userId,
+      userId: user.id,
       name: person.name,
-      birthDate: undefined, // We don't have birth date from Person, only age
+      birthDate: person.age ? estimateBirthDateFromAge(person.age) : undefined,
       gender: person.gender,
       settings: {},
       isUserProfile: false,
@@ -103,7 +107,12 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
                   <button
                     className="w-full px-3 py-2 text-left hover:bg-gray-100 text-sm"
                     onClick={() => {
-                      window.location.href = '/profile';
+                      navigate(
+                        applyBaseUrl(
+                          import.meta.env.PUBLIC_ENV__BASE_URL,
+                          '/profile'
+                        )
+                      );
                     }}
                     data-testid="view-profile-button"
                   >

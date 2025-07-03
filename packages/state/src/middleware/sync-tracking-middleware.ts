@@ -379,7 +379,7 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
     // Handle auth initialization with existing user (e.g., page reload with saved session)
     if (
       (action as UnknownAction).type === 'auth/initializeAuth/fulfilled' &&
-      userId
+      userId !== prevState.auth.user?.id
     ) {
       console.log(
         `🔄 [SYNC_MIDDLEWARE] Auth initialized with user ${userId}, reloading from IndexedDB`
@@ -511,6 +511,7 @@ export const syncTrackingMiddleware: Middleware<object, StoreType> =
     });
 
     if (!nextTripId || userId === 'local-user') {
+      console.log('No trip selected or local user, skipping sync tracking');
       return result;
     }
 
@@ -704,7 +705,7 @@ function trackTripChanges(
   nextTripId: string | null,
   userId: string
 ): void {
-  const prevTrip = prevTripId ? prevState.trips.byId[prevTripId] : null;
+  const prevTrip = nextTripId ? prevState.trips.byId[nextTripId] : null;
   const nextTrip = nextTripId ? nextState.trips.byId[nextTripId] : null;
 
   if (!prevTrip && nextTrip) {

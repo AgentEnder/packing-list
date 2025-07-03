@@ -118,14 +118,7 @@ test.describe('Profile Auto-Addition to Trips', () => {
       await expect(page.getByText('Multi Trip User')).toBeVisible();
 
       // Should have profile indicator in both trips - find by content
-      const profileCard = page
-        .locator('[data-testid^="person-card-"]')
-        .filter({
-          hasText: 'Multi Trip User',
-        })
-        .filter({
-          hasText: 'You',
-        });
+      const profileCard = page.getByTestId('person-card-multi-trip-user');
       await expect(profileCard.getByText('You')).toBeVisible();
     });
   });

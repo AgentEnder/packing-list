@@ -1,6 +1,7 @@
 import { FullConfig } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
-import { Database } from '../../../packages/supabase/src/database-types';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import type { Database } from '../../../packages/supabase/src/database-types';
 
 async function globalSetup(config: FullConfig) {
   console.log('🧹 Global E2E setup: Starting fresh database reset...');

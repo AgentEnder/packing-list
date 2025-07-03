@@ -15,7 +15,7 @@ export type { ModalProps, ConfirmDialogProps } from './Dialog.js';
 
 // Auth components
 export { AuthGuard } from './auth/AuthGuard.js';
-export { useAuth } from './auth/useAuth.js';
+export { useAuth, useAuthInitializer } from './auth/useAuth.js';
 export { UserProfile } from './auth/UserProfile.js';
 export { useLoginModal } from './auth/useLoginModal.js';
 export { Avatar } from './auth/Avatar.js';

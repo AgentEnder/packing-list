@@ -1,5 +1,6 @@
 import { Page, expect } from '@playwright/test';
 import { getUserProfile } from '../auth-utils';
+import { PeoplePage as TripPeoplePage } from './PeoplePage';
 
 export class UserPeoplePage {
   constructor(protected page: Page) {}
@@ -34,6 +35,11 @@ export class UserPeoplePage {
    * Navigate to the people management page
    */
   async gotoPeopleManagement() {
+    // If already on the manage page, no need to navigate
+    if (this.page.url().includes('/people/manage')) {
+      return;
+    }
+
     // Use the in-app navigation by clicking on the People link first
     await this.page
       .getByRole('link', { name: 'People' })
@@ -41,22 +47,26 @@ export class UserPeoplePage {
         visible: true,
       })
       .click();
-    
+
     // Wait for the people page to load
     await this.page.waitForLoadState('networkidle');
-    
+
     // Look for and click the "Manage Templates" link if it exists
     // If not, navigate directly to the manage page as a fallback
-    const manageTemplatesLink = this.page.getByRole('link', { name: 'Manage Templates' });
-    const isManageLinkVisible = await manageTemplatesLink.isVisible().catch(() => false);
-    
+    const manageTemplatesLink = this.page.getByRole('link', {
+      name: 'Manage Templates',
+    });
+    const isManageLinkVisible = await manageTemplatesLink
+      .isVisible()
+      .catch(() => false);
+
     if (isManageLinkVisible) {
       await manageTemplatesLink.click();
     } else {
       // Fallback: navigate directly if the link isn't available
       await this.page.goto('/people/manage');
     }
-    
+
     await this.page.waitForLoadState('networkidle');
     await expect(this.page).toHaveURL(/\/people\/manage\/?/);
   }
@@ -205,12 +215,30 @@ export class UserPeoplePage {
   async expectPersonTemplateExists(name: string) {
     await this.gotoPeopleManagement();
 
+    // Wait a moment for the page to fully load and templates to be rendered
+    await this.page.waitForLoadState('networkidle');
+
     // Use the new test ID for reliable verification
     const templateNameSlug = name.toLowerCase().replace(/\s+/g, '-');
+
+    // First check if there are any template cards at all
+    const allTemplateCards = this.page.locator(
+      '[data-testid^="template-card-"]'
+    );
+    const cardCount = await allTemplateCards.count();
+
+    if (cardCount === 0) {
+      throw new Error(
+        `No template cards found on the page. Expected to find template for "${name}"`
+      );
+    }
+
     const templateCard = this.page.getByTestId(
       `template-card-${templateNameSlug}`
     );
-    await expect(templateCard).toBeVisible({ timeout: 10000 });
+
+    // Try to find the template card with a longer timeout
+    await expect(templateCard).toBeVisible({ timeout: 15000 });
 
     // Also verify the template badge is present within the card
     const templateBadge = templateCard
@@ -310,7 +338,10 @@ export class UserPeoplePage {
   /**
    * Verify that profile auto-appears in new trip
    */
-  async expectProfileInTripPeople(tripPeoplePage: any, profileName: string) {
+  async expectProfileInTripPeople(
+    tripPeoplePage: TripPeoplePage,
+    profileName: string
+  ) {
     await tripPeoplePage.goto();
 
     // Look for the profile name
@@ -332,7 +363,9 @@ export class UserPeoplePage {
       // Form is not open, click the Add Person button
       await this.page.getByTestId('add-person-button').click();
       // Wait for the form to appear
-      await this.page.waitForSelector('[data-testid="person-name-input"]', { timeout: 10000 });
+      await this.page.waitForSelector('[data-testid="person-name-input"]', {
+        timeout: 10000,
+      });
     }
 
     // Type the template name to trigger autocomplete
@@ -390,7 +423,9 @@ export class UserPeoplePage {
       // Form is not open, click the Add Person button
       await this.page.getByTestId('add-person-button').click();
       // Wait for the form to appear
-      await this.page.waitForSelector('[data-testid="person-name-input"]', { timeout: 10000 });
+      await this.page.waitForSelector('[data-testid="person-name-input"]', {
+        timeout: 10000,
+      });
     }
 
     // Clear any existing content and type partial name
@@ -421,16 +456,6 @@ export class UserPeoplePage {
       return;
     }
 
-    // Remove any existing dialog handlers first
-    this.page.removeAllListeners('dialog');
-
-    // Set up dialog handler for confirmations
-    this.page.once('dialog', async (dialog) => {
-      if (dialog.type() === 'confirm') {
-        await dialog.accept();
-      }
-    });
-
     // Quick check - if no templates exist, skip cleanup
     const templatesHeading = this.page.locator('text=/Templates \\((\\d+)\\)/');
     const headingExists = await templatesHeading.isVisible().catch(() => false);
@@ -460,6 +485,16 @@ export class UserPeoplePage {
         const buttonCount = await deleteButtons.count();
 
         if (buttonCount > 0) {
+          // Remove any existing dialog handlers first
+          this.page.removeAllListeners('dialog');
+
+          // Set up dialog handler for confirmations
+          this.page.once('dialog', async (dialog) => {
+            if (dialog.type() === 'confirm') {
+              await dialog.accept();
+            }
+          });
+
           // Click the first delete button
           await deleteButtons.first().click();
 

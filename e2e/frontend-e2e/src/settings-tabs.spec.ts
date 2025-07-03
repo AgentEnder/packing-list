@@ -1,10 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { SettingsPage } from './page-objects/SettingsPage';
+import { setupCleanTestUser } from './test-db-utils';
 
 test.describe('Settings Page Tabs', () => {
   let settingsPage: SettingsPage;
 
   test.beforeEach(async ({ page }) => {
+    await setupCleanTestUser(page);
     settingsPage = new SettingsPage(page);
     await page.goto('/');
     await settingsPage.goto();

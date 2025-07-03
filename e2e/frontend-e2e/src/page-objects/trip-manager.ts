@@ -16,28 +16,18 @@ export class TripManager {
     // Use in-app navigation to get to trips page
     if (this.page.url() !== '/trips') {
       // Try to find trip selector or navigation element to get to trips
-      const tripSelectorButton = this.page.getByTestId('trip-selector');
-      const noTripSelected = this.page.getByTestId('no-trip-selected');
-      
-      // Check if we have a trip selector or no-trip-selected state
-      const hasTripSelector = await tripSelectorButton.isVisible().catch(() => false);
-      const hasNoTripSelected = await noTripSelected.isVisible().catch(() => false);
-      
-      if (hasTripSelector) {
-        await tripSelectorButton.click();
+      const tripSelectorButton = this.page.getByTestId('trip-selector').filter({
+        visible: true,
+      });
+      const noTripSelected = this.page.getByTestId('no-trip-selected').filter({
+        visible: true,
+      });
+
+      const nav = tripSelectorButton.or(noTripSelected);
+
+      if (await nav.count()) {
+        await nav.click();
         await this.page.waitForLoadState('networkidle');
-      } else if (hasNoTripSelected) {
-        // Click on "View My Trips" link from no-trip state
-        const viewTripsLink = this.page.getByRole('link', { name: 'View My Trips' });
-        const hasViewTripsLink = await viewTripsLink.isVisible().catch(() => false);
-        if (hasViewTripsLink) {
-          await viewTripsLink.click();
-          await this.page.waitForLoadState('networkidle');
-        } else {
-          // Fallback to direct navigation if no links are available
-          await this.page.goto('/trips');
-          await this.page.waitForLoadState('networkidle');
-        }
       } else {
         // Fallback to direct navigation
         await this.page.goto('/trips');

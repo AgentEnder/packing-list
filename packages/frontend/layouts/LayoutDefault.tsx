@@ -12,6 +12,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useConflictBanner } from '../hooks/useConflictBanner';
 import {
   useAuth,
+  useAuthInitializer,
   useLoginModal,
   UserProfile,
   LoginModal,
@@ -139,6 +140,9 @@ export default function LayoutDefault({
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const dispatch = useAppDispatch();
   const previousPathRef = useRef<string | null>(null);
+
+  // Initialize auth at app level - this should only happen once
+  useAuthInitializer();
 
   // Auth and login modal
   const {

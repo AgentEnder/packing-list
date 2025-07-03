@@ -1,41 +1,19 @@
 {
+  "env": {
+    "BASH_DEFAULT_TIMEOUT_MS": "300000"
+  },
   "permissions": {
     "allow": [
-      "Bash(find:*)",
-      "Bash(ls:*)",
       "Bash(pnpm test:*)",
       "Bash(rg:*)",
-      "Bash(npm run test:e2e:*)",
-      "Bash(npx playwright test:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(find:*)",
+      "Bash(nx run-many:*)",
+      "Bash(nx build:*)",
+      "Bash(nx test:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "command": "cat .claude/commands/aw.md"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "command": "cat .claude/commands/aw.md"
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "command": "cat .claude/commands/aw.md"
-          }
-        ]
-      }
-    ]
   }
 }
