@@ -20,6 +20,7 @@ vi.mock('@packing-list/state', () => ({
 
 vi.mock('@packing-list/shared-components', () => ({
   useAuth: vi.fn(),
+  useAuthInitializer: vi.fn(),
   useLoginModal: vi.fn(),
   UserProfile: () => <div data-testid="user-profile">User Profile</div>,
   LoginModal: () => <div data-testid="login-modal">Login Modal</div>,
