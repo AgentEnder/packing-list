@@ -4,7 +4,7 @@ import {
   isPersonFromTemplate,
   estimateBirthDateFromAge,
 } from '@packing-list/model';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { PersonForm } from './PersonForm';
 import {
   UserCheck,
@@ -35,6 +35,7 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
   const { user } = useAuth();
   const dispatch = useAppDispatch();
   const userProfile = useAppSelector(selectUserProfile);
+  const listenerRef = useRef<(() => void) | null>(null);
 
   const isFromUserProfile = isPersonFromUserProfile(person, userProfile);
   const isFromOtherTemplate =
@@ -67,17 +68,33 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
     (event: React.MouseEvent) => {
       setShowMenu(true);
 
+      // Remove previous listener if it exists
+      if (listenerRef.current) {
+        document.removeEventListener('click', listenerRef.current);
+      }
+
       // Close menu on outside click
       const listener = () => {
         setShowMenu(false);
         document.removeEventListener('click', listener);
+        listenerRef.current = null;
       };
 
+      listenerRef.current = listener;
       document.addEventListener('click', listener);
       return event.stopPropagation();
     },
-    [showMenu, setShowMenu]
+    []
   );
+
+  // Clean up event listener on component unmount
+  useEffect(() => {
+    return () => {
+      if (listenerRef.current) {
+        document.removeEventListener('click', listenerRef.current);
+      }
+    };
+  }, []);
 
   return isEditing ? (
     <PersonForm person={person} onCancel={() => setIsEditing(false)} />
