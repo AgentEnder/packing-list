@@ -96,7 +96,7 @@ test.describe('People Management', () => {
       const personCard = page.getByTestId('person-card-bob-johnson');
       await personCard.getByTestId('person-menu-button').click();
       await personCard.getByTestId('edit-person-button').click();
-      
+
       await page.getByTestId('person-name-input').fill('Robert Johnson');
       await page.getByTestId('person-age-input').fill('41');
       await page.getByTestId('save-person-button').click();
@@ -115,7 +115,9 @@ test.describe('People Management', () => {
       // Delete the person - first open the menu, then click delete
       const personCard = page.getByTestId('person-card-delete-me');
       await personCard.getByTestId('person-menu-button').click();
-      await personCard.getByTestId('delete-person-button').click({ force: true });
+      await personCard
+        .getByTestId('delete-person-button')
+        .click({ force: true });
 
       // Wait for deletion to process
       await page.waitForTimeout(1000);
@@ -130,7 +132,7 @@ test.describe('People Management', () => {
 
       // Save button should be disabled when name is empty
       await expect(page.getByTestId('save-person-button')).toBeDisabled();
-      
+
       // Form should still be visible
       await expect(page.getByTestId('person-name-input')).toBeVisible();
     });
@@ -141,7 +143,7 @@ test.describe('People Management', () => {
 
       // Save button should be enabled when name is filled (age is not required for button state)
       await expect(page.getByTestId('save-person-button')).toBeEnabled();
-      
+
       // Submit the form - it should create person with age 0 since PersonFormEnhanced allows this
       await page.getByTestId('save-person-button').click();
 
