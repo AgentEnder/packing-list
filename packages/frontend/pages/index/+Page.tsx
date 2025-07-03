@@ -6,11 +6,11 @@ import {
   selectSelectedTripId,
   selectAccurateTripSummaries,
 } from '@packing-list/state';
-import { Link } from '../../components/Link';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
 import { NoTripSelected } from '../../components/NoTripSelected';
+import { Link } from '@packing-list/shared-components';
 
 export default function Page() {
   const selectedTripId = useAppSelector(selectSelectedTripId);
@@ -35,7 +35,7 @@ export default function Page() {
     );
   }
 
-  const hasTrip = trip?.days.length > 0;
+  const hasTrip = trip && trip.days.length > 0;
   const hasPeople = people.length > 0;
   const hasDefaultItems = defaultItems.length > 0;
 

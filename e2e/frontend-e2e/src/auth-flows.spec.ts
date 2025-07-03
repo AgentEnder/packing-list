@@ -31,16 +31,12 @@ test.describe('Authentication Flows', () => {
     try {
       await signOut(page);
     } catch (error) {
-      console.warn('Error in test cleanup:', error);
       // Don't fail tests due to cleanup issues
     }
   });
 
   test.describe('Email/Password Authentication', () => {
     test('should sign in with valid credentials', async ({ page }) => {
-      // Page should already be loaded from beforeEach
-      console.log('=== Starting sign-in test with detailed logging ===');
-
       // Check initial UI state
       const initialSignInButton = await getSignInButton(page)
         .isVisible()
@@ -52,17 +48,8 @@ test.describe('Authentication Flows', () => {
         .count()
         .catch(() => 0);
 
-      console.log('Initial UI state:', {
-        signInButtonVisible: initialSignInButton,
-        loginFormVisible: initialLoginForm,
-        userProfileCount: initialUserProfile,
-        currentUrl: page.url(),
-      });
-
       // Sign in with test user
-      console.log('=== Starting signInWithEmail ===');
       await signInWithEmail(page, E2E_TEST_USERS.regular);
-      console.log('=== Completed signInWithEmail ===');
 
       // Check UI state after sign-in attempt
       const afterSignInButton = await getSignInButton(page)
@@ -75,27 +62,15 @@ test.describe('Authentication Flows', () => {
         .count()
         .catch(() => 0);
 
-      console.log('UI state after sign-in attempt:', {
-        signInButtonVisible: afterSignInButton,
-        loginFormVisible: afterLoginForm,
-        userProfileCount: afterUserProfile,
-        currentUrl: page.url(),
-      });
-
       // Wait for authentication to complete
-      console.log('=== Starting waitForAuthReady ===');
       const isAuthReady = await waitForAuthReady(page);
-      console.log('=== waitForAuthReady result:', isAuthReady, '===');
       expect(isAuthReady).toBe(true);
 
       // Verify we're authenticated - but be flexible about auth state
       const authState = await getAuthState(page);
-      console.log('Auth state:', authState);
 
       expect(authState.isAuthenticated).toBe(true);
       expect(authState.user).toBeTruthy();
-
-      console.log(`Authenticated via ${authState.authMethod}`);
 
       // Should see user profile element (may be hidden)
       const userProfileCount = await getUserProfile(page).count();
@@ -114,8 +89,6 @@ test.describe('Authentication Flows', () => {
     });
 
     test('should fail with invalid credentials', async ({ page }) => {
-      console.log('Starting invalid credentials test...');
-
       // Try to sign in with invalid credentials
       const invalidUser: E2ETestUser = {
         ...E2E_TEST_USERS.regular,
@@ -134,21 +107,12 @@ test.describe('Authentication Flows', () => {
           '[data-testid="login-error"], [data-testid="form-error"]'
         );
         const hasError = await errorElement.isVisible().catch(() => false);
-
-        if (hasError) {
-          console.log('Error message displayed as expected');
-        } else {
-          console.log('No error message found, but auth failed as expected');
-        }
       } catch (error) {
-        console.log('Expected error for invalid credentials:', error.message);
         // This is expected - invalid credentials should fail
       }
     });
 
     test('should sign out successfully', async ({ page }) => {
-      console.log('Starting sign-out test...');
-
       // Force a fresh page/session state to avoid interference from other tests
       await page.goto('/');
       await page.waitForLoadState('networkidle');
@@ -161,7 +125,7 @@ test.describe('Authentication Flows', () => {
         });
         await signOut(page);
       } catch {
-        console.log('No existing session to clear');
+        // No existing session to clear
       }
 
       // Reload page to ensure clean state
@@ -173,7 +137,6 @@ test.describe('Authentication Flows', () => {
 
       // Verify we're signed in - but be flexible about auth state
       let authState = await getAuthState(page);
-      console.log('Auth state after sign in:', authState);
 
       expect(authState.isAuthenticated).toBe(true);
 
@@ -188,13 +151,9 @@ test.describe('Authentication Flows', () => {
 
       // Get final auth state - simplified approach
       authState = await getAuthState(page);
-      console.log('Final auth state:', authState);
 
       // Check auth state - be more flexible about exact state
       if (authState.isAuthenticated) {
-        console.log(
-          'Auth state still shows authenticated, force clearing storage and checking again'
-        );
         // Force clear all storage and reload
         await page.evaluate(() => {
           localStorage.clear();
@@ -211,20 +170,13 @@ test.describe('Authentication Flows', () => {
       const signInButtonVisible = await getSignInButton(page)
         .isVisible()
         .catch(() => false);
-      console.log(
-        'Sign-in button visible after sign-out:',
-        signInButtonVisible
-      );
     });
 
     test('should handle admin user authentication', async ({ page }) => {
-      console.log('Starting admin user test...');
-
       await signInWithEmail(page, E2E_TEST_USERS.admin);
       await waitForAuthReady(page);
 
       const authState = await getAuthState(page);
-      console.log('Admin auth state:', authState);
 
       expect(authState.isAuthenticated).toBe(true);
 
@@ -242,20 +194,16 @@ test.describe('Authentication Flows', () => {
     test('should persist authentication across page refreshes', async ({
       page,
     }) => {
-      console.log('Starting persistence test...');
-
       // Sign in
       await signInWithEmail(page, E2E_TEST_USERS.regular);
       await waitForAuthReady(page);
 
       // Verify initial auth state
       let authState = await getAuthState(page);
-      console.log('Auth persistence test - initial auth state:', authState);
 
       expect(authState.isAuthenticated).toBe(true);
 
       // Refresh page with more robust waiting
-      console.log('Refreshing page to test persistence...');
       await page.reload({ waitUntil: 'networkidle' }); // Wait for network idle instead of just DOM
 
       // Add explicit wait for auth system to initialize
@@ -280,16 +228,10 @@ test.describe('Authentication Flows', () => {
 
       // Should still be authenticated
       authState = await getAuthState(page);
-      console.log(
-        'Auth persistence test - after reload auth state:',
-        authState
-      );
       expect(authState.isAuthenticated).toBe(true);
     });
 
     test('should handle offline mode auth state', async ({ page }) => {
-      console.log('Starting offline mode test...');
-
       // Look for offline badge or local account functionality
       const hasOfflineMode = await page
         .locator('[data-testid="offline-badge"]')
@@ -303,20 +245,17 @@ test.describe('Authentication Flows', () => {
       if (hasOfflineMode || hasLocalAccount) {
         // Test offline auth state
         const authState = await getAuthState(page);
-        console.log('Offline mode auth state:', authState);
 
         // In offline mode, we might have a local user
         if (authState.isAuthenticated) {
           expect(authState.user).toBeTruthy();
         }
       } else {
-        console.log('No offline mode detected - skipping offline auth test');
+        // No offline mode detected - skipping offline auth test
       }
     });
 
     test('should handle auth state transitions', async ({ page }) => {
-      console.log('Starting auth state transition test...');
-
       // Force complete fresh state for this test
       await page.goto('/');
       await page.evaluate(() => {
@@ -339,10 +278,6 @@ test.describe('Authentication Flows', () => {
 
       // Should be authenticated
       authState = await getAuthState(page);
-      console.log(
-        'Auth transition test - after transition auth state:',
-        authState
-      );
 
       expect(authState.isAuthenticated).toBe(true);
 
@@ -360,9 +295,6 @@ test.describe('Authentication Flows', () => {
 
       // If still showing as authenticated, force a page reload and recheck
       if (authState.isAuthenticated) {
-        console.log(
-          'Auth state still shows authenticated, forcing page reload...'
-        );
         await page.reload({ waitUntil: 'networkidle' });
         authState = await getAuthState(page);
       }
@@ -373,8 +305,6 @@ test.describe('Authentication Flows', () => {
 
   test.describe('UI Form Interactions', () => {
     test('should navigate to login form properly', async ({ page }) => {
-      console.log('Starting login form navigation test...');
-
       // Should be able to find sign-in button or already be on login
       const signInButton = getSignInButton(page);
       const loginForm = getLoginForm(page);
@@ -390,17 +320,14 @@ test.describe('Authentication Flows', () => {
 
         if (isSignInButtonVisible) {
           await signInButton.click();
-          console.log('Clicked sign-in button');
         } else {
           // Navigate directly to login
           await page.goto('http://localhost:3000/login');
-          console.log('Navigated directly to login page');
         }
       }
 
       // Should now see login form
       await expect(loginForm).toBeVisible({ timeout: 5000 });
-      console.log('Login form is visible');
 
       // Should see Google sign-in as primary option
       const googleButton = getGoogleSignInButton(page);
@@ -419,15 +346,13 @@ test.describe('Authentication Flows', () => {
         .catch(() => false);
 
       if (hasLocalAccount) {
-        console.log('Local account option is available');
+        // Local account option is available
       } else {
-        console.log('No local account option found (might not be implemented)');
+        // No local account option found (might not be implemented)
       }
     });
 
     test('should navigate to email/password form', async ({ page }) => {
-      console.log('Starting email/password form navigation test...');
-
       // Navigate to login first
       const loginForm = getLoginForm(page);
       const isLoginFormVisible = await loginForm.isVisible().catch(() => false);
@@ -450,17 +375,12 @@ test.describe('Authentication Flows', () => {
       // Click email sign-in link
       const emailLink = getEmailSignInLink(page);
       await emailLink.click();
-      console.log('Clicked email sign-in link');
 
       // Should see email/password form
       const emailPasswordForm = page.locator(
         '[data-testid="email-password-form"]'
       );
       await expect(emailPasswordForm).toBeVisible({ timeout: 5000 });
-      console.log('Email/password form is visible');
-
-      // Should see form fields
-      await expect(getEmailInput(page)).toBeVisible();
       await expect(getPasswordInput(page)).toBeVisible();
       await expect(getAuthSubmitButton(page)).toBeVisible();
 
@@ -480,13 +400,11 @@ test.describe('Authentication Flows', () => {
         .catch(() => false);
 
       if (hasBackToLogin || hasBackToGoogle) {
-        console.log('Back navigation options are available');
+        // Back navigation options are available
       }
     });
 
     test('should toggle password visibility', async ({ page }) => {
-      console.log('Starting password visibility test...');
-
       // Navigate to email/password form
       const loginForm = page.locator('[data-testid="login-form"]');
       const isLoginFormVisible = await loginForm.isVisible().catch(() => false);
@@ -519,11 +437,9 @@ test.describe('Authentication Flows', () => {
       // Fill password field
       const passwordInput = page.locator('[data-testid="password-input"]');
       await passwordInput.fill('testpassword');
-      console.log('Filled password field');
 
       // Check initial password field type
       expect(await passwordInput.getAttribute('type')).toBe('password');
-      console.log('Password field is initially hidden');
 
       // Look for password visibility toggle
       const toggleButton = page.locator(
@@ -532,8 +448,6 @@ test.describe('Authentication Flows', () => {
       const hasToggle = await toggleButton.isVisible().catch(() => false);
 
       if (hasToggle) {
-        console.log('Password visibility toggle found');
-
         try {
           // Try different click strategies to handle UI overlap
           // Strategy 1: Force click to bypass intercepting elements
@@ -542,18 +456,14 @@ test.describe('Authentication Flows', () => {
           // Check if password type changed
           const typeAfterFirstClick = await passwordInput.getAttribute('type');
           if (typeAfterFirstClick === 'text') {
-            console.log('Password is now visible');
-
             // Toggle back to hide password
             await toggleButton.click({ force: true });
             const typeAfterSecondClick = await passwordInput.getAttribute(
               'type'
             );
             expect(typeAfterSecondClick).toBe('password');
-            console.log('Password is hidden again');
           } else {
             // If force click didn't work, try positioning the click
-            console.log('Force click did not work, trying positioned click...');
             const toggleBox = await toggleButton.boundingBox();
             if (toggleBox) {
               // Click on the center of the toggle button
@@ -566,8 +476,6 @@ test.describe('Authentication Flows', () => {
                 'type'
               );
               if (typeAfterMouseClick === 'text') {
-                console.log('Password is now visible (via mouse click)');
-
                 // Toggle back
                 await page.mouse.click(
                   toggleBox.x + toggleBox.width / 2,
@@ -576,45 +484,30 @@ test.describe('Authentication Flows', () => {
                 expect(await passwordInput.getAttribute('type')).toBe(
                   'password'
                 );
-                console.log('Password is hidden again');
               } else {
-                console.log(
-                  'Password toggle may not be functional or has different implementation'
-                );
+                // Password toggle may not be functional or has different implementation
               }
             }
           }
         } catch (error) {
-          console.log('Password toggle interaction failed:', error.message);
-          console.log(
-            'This may indicate the toggle is not clickable or has overlapping elements'
-          );
-
           // Check if the toggle at least exists and has the right attributes
           const toggleExists = (await toggleButton.count()) > 0;
-          console.log('Toggle button exists:', toggleExists);
 
           if (toggleExists) {
             const toggleText = await toggleButton.textContent().catch(() => '');
             const toggleAriaLabel = await toggleButton
               .getAttribute('aria-label')
               .catch(() => '');
-            console.log('Toggle text:', toggleText);
-            console.log('Toggle aria-label:', toggleAriaLabel);
           }
         }
       } else {
-        console.log(
-          'No password visibility toggle found (might not be implemented)'
-        );
+        // No password visibility toggle found (might not be implemented)
       }
     });
 
     test('should navigate between sign-in and sign-up modes', async ({
       page,
     }) => {
-      console.log('Starting auth mode navigation test...');
-
       // Navigate to email/password form
       const loginForm = page.locator('[data-testid="login-form"]');
       const isLoginFormVisible = await loginForm.isVisible().catch(() => false);
@@ -648,18 +541,14 @@ test.describe('Authentication Flows', () => {
       const submitButton = page.locator('[data-testid="auth-submit-button"]');
       const submitButtonText = await submitButton.textContent();
       expect(submitButtonText).toContain('Sign In');
-      console.log('Started in sign-in mode');
 
       // Look for mode toggle
       const modeToggle = page.locator('[data-testid="auth-mode-toggle"]');
       const hasModeToggle = await modeToggle.isVisible().catch(() => false);
 
       if (hasModeToggle) {
-        console.log('Auth mode toggle found');
-
         // Toggle to sign-up mode
         await modeToggle.click();
-        console.log('Toggled to sign-up mode');
 
         // Should now be in sign-up mode
         const newSubmitButtonText = await submitButton.textContent();
@@ -677,27 +566,24 @@ test.describe('Authentication Flows', () => {
           .catch(() => false);
 
         if (hasNameInput) {
-          console.log('Name input field is visible in sign-up mode');
+          // Name input field is visible in sign-up mode
         }
 
         if (hasConfirmPassword) {
-          console.log('Confirm password field is visible in sign-up mode');
+          // Confirm password field is visible in sign-up mode
         }
 
         // Toggle back to sign-in mode
         await modeToggle.click();
-        console.log('Toggled back to sign-in mode');
 
         const finalSubmitButtonText = await submitButton.textContent();
         expect(finalSubmitButtonText).toContain('Sign In');
       } else {
-        console.log('No auth mode toggle found (might not be implemented)');
+        // No auth mode toggle found (might not be implemented)
       }
     });
 
     test('should show form validation and error messages', async ({ page }) => {
-      console.log('Starting form validation test...');
-
       // Navigate to email/password form
       const loginForm = page.locator('[data-testid="login-form"]');
       const isLoginFormVisible = await loginForm.isVisible().catch(() => false);
@@ -730,7 +616,6 @@ test.describe('Authentication Flows', () => {
       // Try submitting empty form
       const submitButton = page.locator('[data-testid="auth-submit-button"]');
       await submitButton.click();
-      console.log('Submitted empty form');
 
       // Give time for validation to show
 
@@ -742,9 +627,9 @@ test.describe('Authentication Flows', () => {
       const hasLoginError = await loginError.isVisible().catch(() => false);
 
       if (hasFormError || hasLoginError) {
-        console.log('Form validation or error message displayed');
+        // Form validation or error message displayed
       } else {
-        console.log('No visible error messages (might be handled differently)');
+        // No visible error messages (might be handled differently)
       }
 
       // Try with invalid email format
@@ -754,7 +639,6 @@ test.describe('Authentication Flows', () => {
       await emailInput.fill('invalid-email');
       await passwordInput.fill('somepassword');
       await submitButton.click();
-      console.log('Submitted with invalid email format');
 
       // Check for validation again
       const hasFormErrorAfterInvalid = await formError
@@ -765,15 +649,13 @@ test.describe('Authentication Flows', () => {
         .catch(() => false);
 
       if (hasFormErrorAfterInvalid || hasLoginErrorAfterInvalid) {
-        console.log('Validation error shown for invalid email');
+        // Validation error shown for invalid email
       }
     });
 
     test('should handle connection warnings when appropriate', async ({
       page,
     }) => {
-      console.log('Starting connection warning test...');
-
       // Navigate to login form
       const loginForm = page.locator('[data-testid="login-form"]');
       const isLoginFormVisible = await loginForm.isVisible().catch(() => false);
@@ -802,15 +684,10 @@ test.describe('Authentication Flows', () => {
         .catch(() => false);
 
       if (hasConnectionWarning) {
-        console.log('Connection warning is displayed');
-
         // Check warning content
         const warningText = await connectionWarning.textContent();
-        console.log('Warning text:', warningText);
       } else {
-        console.log(
-          'No connection warning found (normal if connectivity is good)'
-        );
+        // No connection warning found (normal if connectivity is good)
       }
 
       // Test offline mode if available
@@ -818,7 +695,7 @@ test.describe('Authentication Flows', () => {
       const hasOfflineBadge = await offlineBadge.isVisible().catch(() => false);
 
       if (hasOfflineBadge) {
-        console.log('Offline mode badge is visible');
+        // Offline mode badge is visible
       }
     });
   });

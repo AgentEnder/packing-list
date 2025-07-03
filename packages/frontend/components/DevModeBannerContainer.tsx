@@ -20,16 +20,17 @@ export const DevModeBannerContainer: React.FC = () => {
           window.location.hostname === '127.0.0.1' ||
           window.location.hostname.includes('local')));
 
-    // Log development mode detection for debugging
-    console.log('🛠️ [DEV BANNER CONTAINER] Development mode detection:', {
-      mode: import.meta.env.MODE,
-      dev: import.meta.env.DEV,
-      nodeEnv: process.env.NODE_ENV,
-      hasHMR: !!import.meta.hot,
-      hostname:
-        typeof window !== 'undefined' ? window.location.hostname : 'server',
-      isDev,
-    });
+    console.log(
+      '🛠️ [DEV BANNER CONTAINER] Development mode detection:',
+      {
+        MODE: import.meta.env.MODE,
+        DEV: import.meta.env.DEV,
+        NODE_ENV: process.env.NODE_ENV,
+        hmr: !!import.meta.hot,
+        hostname: typeof window !== 'undefined' ? window.location.hostname : 'SSR',
+        isDev,
+      }
+    );
 
     return isDev;
   }, []);

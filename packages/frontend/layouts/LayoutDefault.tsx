@@ -2,17 +2,17 @@ import './tailwind.css';
 import './style.css';
 import React, { useState, useEffect, useRef } from 'react';
 // import logoUrl from '../assets/logo.svg';
-import { Link } from '../components/Link';
 import { DemoBanner } from '../components/DemoBanner';
 import { DevModeBannerContainer } from '../components/DevModeBannerContainer';
 import { ToastContainer } from '../components/Toast';
 import { ConfettiBurst } from '../components/ConfettiBurst';
 import { TripSelector } from '../components/TripSelector';
+import { useTheme } from '../hooks/useTheme';
 
-import { SyncStatus } from '../components/SyncStatus';
 import { useConflictBanner } from '../hooks/useConflictBanner';
 import {
   useAuth,
+  useAuthInitializer,
   useLoginModal,
   UserProfile,
   LoginModal,
@@ -20,6 +20,8 @@ import {
   BannerProvider,
   OfflineBanner,
   useBannerHeight,
+  Link,
+  SyncStatusIndicator,
 } from '@packing-list/shared-components';
 import {
   Menu,
@@ -33,6 +35,8 @@ import {
 } from 'lucide-react';
 import { RulePackModal } from '../components/RulePackModal';
 import { useAppDispatch, useAppSelector, actions } from '@packing-list/state';
+import { navigate } from 'vike/client/router';
+import { applyBaseUrl } from '@packing-list/shared-utils';
 
 // Component that needs to be inside SyncProvider to access sync state
 const ConflictBannerContainer: React.FC = () => {
@@ -137,6 +141,9 @@ export default function LayoutDefault({
   const dispatch = useAppDispatch();
   const previousPathRef = useRef<string | null>(null);
 
+  // Initialize auth at app level - this should only happen once
+  useAuthInitializer();
+
   // Auth and login modal
   const {
     user,
@@ -188,15 +195,7 @@ export default function LayoutDefault({
     }
   }, [isRemotelyAuthenticated, closeLoginModal]);
 
-  // Show loading state during initialization - simplified condition
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="loading loading-spinner loading-lg"></div>
-        {authLoading ? 'Auth Loading...' : null}
-      </div>
-    );
-  }
+  const syncState = useAppSelector((state) => state.sync.syncState);
 
   const handleLinkClick = () => {
     setIsDrawerOpen(false);
@@ -206,14 +205,8 @@ export default function LayoutDefault({
     openLoginModal();
   };
 
-  // Early return for loading states
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="loading loading-spinner loading-lg"></div>
-      </div>
-    );
-  }
+  // Initialize theme management
+  useTheme();
 
   return (
     <BannerProvider>
@@ -225,7 +218,7 @@ export default function LayoutDefault({
           checked={isDrawerOpen}
           onChange={(e) => setIsDrawerOpen(e.target.checked)}
         />
-        <div className="drawer-content flex flex-col min-h-screen">
+        <div className="drawer-content flex flex-col min-h-screen z-1">
           {/* Navbar */}
           <div className="navbar bg-base-100 lg:hidden">
             <div className="flex-none">
@@ -237,17 +230,27 @@ export default function LayoutDefault({
               </label>
             </div>
             <div className="flex-1 flex items-center gap-2">
-              <Link
+              {/* <Link
                 href="/"
                 className="btn btn-ghost normal-case text-xl"
                 onClick={handleLinkClick}
               >
                 Packing List
-              </Link>
+              </Link> */}
               <TripSelector />
             </div>
             <div className="flex-none flex items-center gap-2">
-              <SyncStatus />
+              <SyncStatusIndicator
+                syncState={syncState}
+                onClick={() =>
+                  navigate(
+                    applyBaseUrl(
+                      import.meta.env.PUBLIC_ENV__BASE_URL,
+                      '/settings#sync'
+                    )
+                  )
+                }
+              />
               {shouldShowSignInOptions ? (
                 <button
                   className="btn btn-ghost btn-sm"
@@ -372,7 +375,17 @@ export default function LayoutDefault({
 
             {/* Sync Status at Bottom */}
             <div className="mt-4 p-2 bg-base-300 rounded-lg">
-              <SyncStatus />
+              <SyncStatusIndicator
+                syncState={syncState}
+                onClick={() =>
+                  navigate(
+                    applyBaseUrl(
+                      import.meta.env.PUBLIC_ENV__BASE_URL,
+                      '/settings#sync'
+                    )
+                  )
+                }
+              />
             </div>
           </SidenavWithBannerOffset>
         </div>

@@ -88,72 +88,16 @@ function useSSRSafeDispatch() {
   }
 }
 
-export function useAuth() {
+// App-level auth initialization hook - use once at app root
+export function useAuthInitializer() {
   const dispatch = useSSRSafeDispatch();
-
-  // Selectors with SSR-safe fallbacks
-  const user = useSSRSafeSelector(selectUser, null);
-  const session = useSSRSafeSelector(selectSession, null);
-  const isAuthenticated = useSSRSafeSelector(selectIsAuthenticated, false);
-  const loading = useSSRSafeSelector(selectIsLoading, true);
-  const isAuthenticating = useSSRSafeSelector(selectIsAuthenticating, false);
-  const error = useSSRSafeSelector(selectError, null);
-  const lastError = useSSRSafeSelector(selectLastError, null);
   const isOfflineMode = useSSRSafeSelector(selectIsOfflineMode, false);
   const forceOfflineMode = useSSRSafeSelector(selectForceOfflineMode, false);
-  const connectivityState = useSSRSafeSelector(selectConnectivityState, null);
-  const isOnline = useSSRSafeSelector(selectIsOnline, true);
-  const isConnected = useSSRSafeSelector(selectIsConnected, false);
-  const isInitialized = useSSRSafeSelector(selectIsInitialized, false);
-  const userEmail = useSSRSafeSelector(selectUserEmail, null);
-  const userName = useSSRSafeSelector(selectUserName, null);
-  const userAvatar = useSSRSafeSelector(selectUserAvatar, null);
-  const authStatus = useSSRSafeSelector(selectAuthStatus, {
-    isAuthenticated: false,
-    isLoading: true,
-    isInitialized: false,
-    isOfflineMode: false,
-  });
-  const connectivityStatus = useSSRSafeSelector(selectConnectivityStatus, {
-    isOnline: true,
-    isConnected: false,
-    isOfflineMode: false,
-    canUseRemoteAuth: false,
-  });
-  const offlineAccounts = useSSRSafeSelector(selectOfflineAccounts, []);
-  const hasOfflinePasscode = useSSRSafeSelector(
-    selectHasOfflinePasscode,
-    false
-  );
 
-  // Helper function to determine if sign-in options should be shown
-  const shouldShowSignInOptions = useMemo(() => {
-    if (!user) return true;
-
-    // Always show sign-in options for shared account
-    if (
-      user.id === 'local-shared-user' ||
-      user.email === 'shared@local.device' ||
-      user.isShared === true
-    ) {
-      return true;
-    }
-
-    // Don't show sign-in options for authenticated users
-    return false;
-  }, [user]);
-
-  // Track if user is remotely authenticated (signed in with Google)
-  const isRemotelyAuthenticated = useMemo(() => {
-    if (isServer || isOfflineMode) return false;
-    return user?.type === 'remote';
-  }, [isOfflineMode, user]);
-
-  // Initialize auth on mount and set up subscriptions (client-side only)
   useEffect(() => {
     if (isServer) return;
 
-    // Initialize auth state
+    // Initialize auth state ONCE at app level
     dispatch(initializeAuth(undefined));
 
     // Subscribe to auth service changes (only for online auth state)
@@ -219,7 +163,69 @@ export function useAuth() {
       unsubscribeLocalAuth();
       unsubscribeConnectivity();
     };
-  }, [dispatch, isOfflineMode]);
+  }, [dispatch, isOfflineMode, forceOfflineMode]);
+}
+
+export function useAuth() {
+  const dispatch = useSSRSafeDispatch();
+
+  // Selectors with SSR-safe fallbacks
+  const user = useSSRSafeSelector(selectUser, null);
+  const session = useSSRSafeSelector(selectSession, null);
+  const isAuthenticated = useSSRSafeSelector(selectIsAuthenticated, false);
+  const loading = useSSRSafeSelector(selectIsLoading, true);
+  const isAuthenticating = useSSRSafeSelector(selectIsAuthenticating, false);
+  const error = useSSRSafeSelector(selectError, null);
+  const lastError = useSSRSafeSelector(selectLastError, null);
+  const isOfflineMode = useSSRSafeSelector(selectIsOfflineMode, false);
+  const forceOfflineMode = useSSRSafeSelector(selectForceOfflineMode, false);
+  const connectivityState = useSSRSafeSelector(selectConnectivityState, null);
+  const isOnline = useSSRSafeSelector(selectIsOnline, true);
+  const isConnected = useSSRSafeSelector(selectIsConnected, false);
+  const isInitialized = useSSRSafeSelector(selectIsInitialized, false);
+  const userEmail = useSSRSafeSelector(selectUserEmail, null);
+  const userName = useSSRSafeSelector(selectUserName, null);
+  const userAvatar = useSSRSafeSelector(selectUserAvatar, null);
+  const authStatus = useSSRSafeSelector(selectAuthStatus, {
+    isAuthenticated: false,
+    isLoading: true,
+    isInitialized: false,
+    isOfflineMode: false,
+  });
+  const connectivityStatus = useSSRSafeSelector(selectConnectivityStatus, {
+    isOnline: true,
+    isConnected: false,
+    isOfflineMode: false,
+    canUseRemoteAuth: false,
+  });
+  const offlineAccounts = useSSRSafeSelector(selectOfflineAccounts, []);
+  const hasOfflinePasscode = useSSRSafeSelector(
+    selectHasOfflinePasscode,
+    false
+  );
+
+  // Helper function to determine if sign-in options should be shown
+  const shouldShowSignInOptions = useMemo(() => {
+    if (!user) return true;
+
+    // Always show sign-in options for shared account
+    if (
+      user.id === 'local-shared-user' ||
+      user.email === 'shared@local.device' ||
+      user.isShared === true
+    ) {
+      return true;
+    }
+
+    // Don't show sign-in options for authenticated users
+    return false;
+  }, [user]);
+
+  // Track if user is remotely authenticated (signed in with Google)
+  const isRemotelyAuthenticated = useMemo(() => {
+    if (isServer || isOfflineMode) return false;
+    return user?.type === 'remote';
+  }, [isOfflineMode, user]);
 
   const signInWithGooglePopupAuth = async () => {
     return dispatch(signInWithGooglePopup(undefined));

@@ -1,10 +1,12 @@
-import {
+import type {
   PackingListItem,
   DefaultItemRule,
   Day,
   Person,
+  PersonCondition,
+  RuleOverride,
+  DayCondition,
 } from '@packing-list/model';
-import type { RuleOverride } from '@packing-list/model';
 import { StoreType } from '../store.js';
 import {
   calculateRuleHash,
@@ -18,9 +20,11 @@ export type CalculatePackingListAction = {
 };
 
 // Condition evaluation functions
-function evaluatePersonCondition<
-  T extends keyof Pick<Person, 'age' | 'gender'>
->(person: Person, field: T, operator: string, value: Person[T]): boolean {
+function evaluatePersonCondition(
+  person: Person,
+  condition: PersonCondition
+): boolean {
+  const { field, operator, value } = condition;
   const personValue = person[field];
   if (value === undefined) {
     return false;
@@ -31,12 +35,8 @@ function evaluatePersonCondition<
   return compare(personValue, operator, value);
 }
 
-function evaluateDayCondition<T extends keyof Day>(
-  day: Day,
-  field: T,
-  operator: string,
-  value: Day[T]
-): boolean {
+function evaluateDayCondition(day: Day, condition: DayCondition): boolean {
+  const { field, operator, value } = condition;
   const dayValue = day[field];
   if (dayValue === undefined) {
     return false;
@@ -57,12 +57,7 @@ function getApplicablePeople(
     .filter((person) =>
       conditions.every((condition) => {
         if (condition.type === 'person') {
-          return evaluatePersonCondition(
-            person,
-            condition.field,
-            condition.operator,
-            condition.value
-          );
+          return evaluatePersonCondition(person, condition);
         }
         return true;
       })
@@ -81,12 +76,7 @@ function getApplicableDays(rule: DefaultItemRule, days: Day[]): number[] {
     .filter(({ day }) =>
       conditions.every((condition) => {
         if (condition.type === 'day') {
-          return evaluateDayCondition(
-            day,
-            condition.field,
-            condition.operator,
-            condition.value
-          );
+          return evaluateDayCondition(day, condition);
         }
         return true;
       })

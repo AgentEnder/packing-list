@@ -5,6 +5,7 @@ import {
   PersonStorage,
   ItemStorage,
   TripRuleStorage,
+  UserPersonStorage,
 } from '@packing-list/offline-storage';
 import type { Trip, Person, TripItem } from '@packing-list/model';
 
@@ -16,6 +17,10 @@ vi.mock('@packing-list/offline-storage', () => ({
   PersonStorage: { getTripPeople: vi.fn() },
   ItemStorage: { getTripItems: vi.fn() },
   TripRuleStorage: { getTripRulesWithDetails: vi.fn() },
+  UserPersonStorage: {
+    getUserPerson: vi.fn(),
+    getAllUserPeople: vi.fn(),
+  },
 }));
 
 type Mocked<T> = { [K in keyof T]: T[K] & Mock };
@@ -25,9 +30,15 @@ const itemStorage = ItemStorage as unknown as Mocked<typeof ItemStorage>;
 const tripRuleStorage = TripRuleStorage as unknown as Mocked<
   typeof TripRuleStorage
 >;
+const userPersonStorage = UserPersonStorage as unknown as Mocked<
+  typeof UserPersonStorage
+>;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Set default mock return values
+  userPersonStorage.getUserPerson.mockResolvedValue(null);
+  userPersonStorage.getAllUserPeople.mockResolvedValue([]);
 });
 
 describe('loadOfflineState', () => {

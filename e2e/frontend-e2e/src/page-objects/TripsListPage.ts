@@ -39,7 +39,7 @@ export class TripsListPage {
 
   async expectTripsGrid() {
     await expect(
-      this.page.locator('.grid.gap-6.md\\:grid-cols-2.lg\\:grid-cols-3')
+      this.page.locator('.grid.gap-6.md\\:grid-cols-2.xl\\:grid-cols-3')
     ).toBeVisible();
   }
 
@@ -221,6 +221,6 @@ export class TripsListPage {
   async expectResponsiveGrid() {
     const grid = this.page.locator('.grid.gap-6');
     await expect(grid).toHaveClass(/md:grid-cols-2/);
-    await expect(grid).toHaveClass(/lg:grid-cols-3/);
+    await expect(grid).toHaveClass(/xl:grid-cols-3/);
   }
 }

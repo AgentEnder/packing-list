@@ -1,7 +1,13 @@
 import { createSelector } from '@reduxjs/toolkit';
 import type { Selector } from '@reduxjs/toolkit';
 import type { StoreType, TripData } from './store.js';
-import type { Day, Person, TripSummary, RulePack } from '@packing-list/model';
+import type {
+  Day,
+  Person,
+  TripSummary,
+  RulePack,
+  UserPreferences,
+} from '@packing-list/model';
 
 // Multi-trip selectors
 export const selectTripSummaries: Selector<StoreType, TripSummary[]> = (
@@ -109,3 +115,29 @@ export const selectDefaultItemRules = createSelector(
 // UI selectors
 export const selectRulePackModalOpen: Selector<StoreType, boolean> = (state) =>
   state.ui.rulePackModal.isOpen;
+
+export const selectCurrentDefaultItemRules = createSelector(
+  [selectSelectedTripData],
+  (selectedTrip) => selectedTrip?.trip?.defaultItemRules || []
+);
+
+// User preferences selectors
+export const selectUserPreferences: Selector<
+  StoreType,
+  UserPreferences | null
+> = (state: StoreType) => state.userPreferences;
+
+export const selectLastSelectedTripId = createSelector(
+  [selectUserPreferences],
+  (preferences) => preferences?.lastSelectedTripId || null
+);
+
+export const selectUserTheme = createSelector(
+  [selectUserPreferences],
+  (preferences) => preferences?.theme || 'system'
+);
+
+export const selectAutoSyncEnabled = createSelector(
+  [selectUserPreferences],
+  (preferences) => preferences?.autoSyncEnabled ?? true
+);

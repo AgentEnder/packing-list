@@ -21,12 +21,12 @@ import {
   Users,
   ClipboardList,
 } from 'lucide-react';
-import { Link } from '../../../components/Link';
 import { PrintButton } from './PrintButton';
 import { getAllCategories } from '@packing-list/model';
 import { format } from 'date-fns';
 import { PageHeader } from '../../../components/PageHeader';
 import { useMousePosition } from '@packing-list/shared-utils';
+import { Link } from '@packing-list/shared-components';
 
 export const PackingList: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -122,7 +122,7 @@ export const PackingList: React.FC = () => {
     return (
       <li
         key={`${groupedItem.baseItem.id}-${groupedItem.displayName}`}
-        className="card bg-base-100 shadow-sm overflow-visible"
+        className="card bg-base-100 shadow-sm overflow-visible rounded-lg"
         data-testid="packing-item"
       >
         <div className="relative flex items-center h-full gap-1.5 p-1.5 overflow-visible rounded-lg">
