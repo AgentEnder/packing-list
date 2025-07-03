@@ -117,6 +117,11 @@ import {
   UpdateTripSummaryAction,
 } from './action-handlers/trip-management.js';
 import {
+  createPersonFromProfileHandler,
+  CreatePersonFromProfileAction,
+  createPersonFromProfile,
+} from './action-handlers/create-person-from-profile.js';
+import {
   InitFlowAction,
   AdvanceFlowAction,
   ResetFlowAction,
@@ -156,6 +161,17 @@ import {
   type SyncIntegrationActions,
 } from './lib/sync/sync-integration.js';
 
+import {
+  loadUserPreferencesHandler,
+  updateUserPreferencesHandler,
+  updateLastSelectedTripIdHandler,
+  syncUserPreferencesHandler,
+  LoadUserPreferencesAction,
+  UpdateUserPreferencesAction,
+  UpdateLastSelectedTripIdAction,
+  SyncUserPreferencesAction,
+} from './action-handlers/user-preferences-handlers.js';
+
 // Import sync actions and thunks
 import {
   syncFromServer,
@@ -184,6 +200,7 @@ export type AllActions =
   | AddPersonAction
   | RemovePersonAction
   | UpdatePersonAction
+  | CreatePersonFromProfileAction
   | CalculateDefaultItemsAction
   | UpdateTripEventsAction
   | CalculateDaysAction
@@ -220,6 +237,10 @@ export type AllActions =
   | SyncActions
   | SyncIntegrationActions
   | TriggerConfettiBurstAction
+  | LoadUserPreferencesAction
+  | UpdateUserPreferencesAction
+  | UpdateLastSelectedTripIdAction
+  | SyncUserPreferencesAction
   | {
       type: 'SYNC_UPDATE_TRIP_SUMMARIES';
       payload: {
@@ -242,6 +263,7 @@ export const Mutations: {
   ADD_PERSON: addPersonHandler,
   REMOVE_PERSON: removePersonHandler,
   UPDATE_PERSON: updatePersonHandler,
+  CREATE_PERSON_FROM_PROFILE: createPersonFromProfileHandler,
   CALCULATE_DEFAULT_ITEMS: calculateDefaultItems,
   UPDATE_TRIP_EVENTS: updateTripEventsHandler,
   CALCULATE_DAYS: calculateDaysHandler,
@@ -297,6 +319,10 @@ export const Mutations: {
   MERGE_SYNCED_TRIP: mergeSyncedTripHandler,
   MERGE_SYNCED_PERSON: mergeSyncedPersonHandler,
   MERGE_SYNCED_ITEM: mergeSyncedItemHandler,
+  MERGE_SYNCED_USER_PERSON: (s) => {
+    // TODO: This will be needed when we have more than just the user profile
+    return s;
+  },
   TRACK_SYNC_CHANGE: (state: StoreType) => state, // Placeholder - no-op for now
   PROCESS_SYNCED_TRIP_ITEMS: processSyncedTripItemsHandler,
   BULK_UPSERT_SYNCED_ENTITIES: bulkUpsertSyncedEntitiesHandler,
@@ -330,6 +356,12 @@ export const Mutations: {
       },
     };
   },
+
+  // User preferences handlers
+  LOAD_USER_PREFERENCES: loadUserPreferencesHandler,
+  UPDATE_USER_PREFERENCES: updateUserPreferencesHandler,
+  UPDATE_LAST_SELECTED_TRIP_ID: updateLastSelectedTripIdHandler,
+  SYNC_USER_PREFERENCES: syncUserPreferencesHandler,
 };
 
 export const actions = {
@@ -349,6 +381,7 @@ export const actions = {
   addPerson,
   createTrip,
   createItemRule,
+  createPersonFromProfile,
 
   // Sync actions and thunks
   syncFromServer,

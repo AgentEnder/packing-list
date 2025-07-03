@@ -1,7 +1,7 @@
 import { Person } from '@packing-list/model';
 import { useState } from 'react';
 import { PersonCard } from './PersonCard';
-import { PersonForm } from './PersonForm';
+import { PersonFormEnhanced } from './PersonFormEnhanced';
 import { useAppDispatch } from '@packing-list/state';
 
 export type PersonListProps = {
@@ -17,7 +17,7 @@ export const PersonList = ({ people }: PersonListProps) => {
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
       {people.length === 0 && !isAdding && (
         <div className="text-gray-500 col-span-full">No people added yet.</div>
       )}
@@ -29,7 +29,7 @@ export const PersonList = ({ people }: PersonListProps) => {
         />
       ))}
       {isAdding ? (
-        <PersonForm onCancel={() => setIsAdding(false)} />
+        <PersonFormEnhanced onCancel={() => setIsAdding(false)} />
       ) : (
         <button
           className="card bg-base-200 shadow-xl flex flex-col items-center justify-center border-2 border-dashed border-primary cursor-pointer min-h-[280px] hover:bg-primary hover:text-white transition col-span-1"

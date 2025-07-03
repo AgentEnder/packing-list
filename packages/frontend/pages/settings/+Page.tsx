@@ -8,6 +8,7 @@ import {
 import { PageContainer } from '../../components/PageContainer';
 import { PageHeader } from '../../components/PageHeader';
 import { ServiceWorkerStatus } from '../../components/ServiceWorkerStatus';
+import { ThemeSelector } from '../../components/ThemeSelector';
 import {
   Settings,
   AlertTriangle,
@@ -20,6 +21,7 @@ import {
   Bug,
   Activity,
   User,
+  Palette,
 } from 'lucide-react';
 import { showToast } from '../../components/Toast';
 import { HELP_ALL_KEY } from '../../components/HelpBlurb';
@@ -28,6 +30,8 @@ import { SyncDashboard } from '../../components/SyncDashboard.js';
 import { DatabaseResetUtility } from '../../components/DatabaseResetUtility';
 import { navigate } from 'vike/client/router';
 import { useUrlHash } from '../../hooks/useUrlHash';
+import { applyBaseUrl } from '@packing-list/shared-utils';
+import { useIsClient } from '../../hooks/useIsClient';
 
 // Simple interface to type offline accounts
 interface OfflineAccount {
@@ -53,7 +57,7 @@ export default function SettingsPage() {
     loading: authLoading,
     isInitialized: authIsInitialized,
   } = useAuth();
-
+  const isClient = useIsClient();
   // Use URL hash for tab state management
   const { hash, setHash } = useUrlHash('settings');
   const [activeTab, setActiveTab] = useState<
@@ -192,6 +196,21 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* Appearance & Theme */}
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title flex items-center gap-2">
+                <Palette className="w-5 h-5" />
+                Appearance & Theme
+              </h2>
+              <p className="text-base-content/70 mb-4">
+                Customize the look and feel of your app with different color
+                themes.
+              </p>
+              <ThemeSelector />
+            </div>
+          </div>
         </div>
       )}
 
@@ -300,7 +319,13 @@ export default function SettingsPage() {
                   You need to be signed in to manage your account settings.
                 </p>
                 <div className="card-actions justify-center">
-                  <a href="/login" className="btn btn-primary">
+                  <a
+                    href={applyBaseUrl(
+                      import.meta.env.PUBLIC_ENV__BASE_URL,
+                      '/login'
+                    )}
+                    className="btn btn-primary"
+                  >
                     Sign In
                   </a>
                 </div>
@@ -326,7 +351,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="card-title flex items-center gap-2">
-                    {isOnline ? (
+                    {isOnline || !isClient ? (
                       <Wifi className="w-5 h-5 text-success" />
                     ) : (
                       <WifiOff className="w-5 h-5 text-error" />
@@ -511,7 +536,10 @@ export default function SettingsPage() {
                 </button>
 
                 <a
-                  href="/version"
+                  href={applyBaseUrl(
+                    import.meta.env.PUBLIC_ENV__BASE_URL,
+                    '/version'
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn btn-sm btn-outline"

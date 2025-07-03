@@ -17,6 +17,10 @@ const baseURL = process.env['BASE_URL'] || 'http://localhost:3000';
 export default defineConfig({
   ...nxE2EPreset(__filename, { testDir: './e2e' }),
   testDir: './src',
+  /* Force single worker for better test isolation */
+  workers: 1,
+  /* Disable test parallelization within files */
+  fullyParallel: false,
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     baseURL,
@@ -27,12 +31,13 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
   /* Global setup for all tests */
-  globalSetup: undefined,
+  globalSetup: require.resolve('./src/global-setup.ts'),
   globalTeardown: undefined,
   // Snapshot tests are only checked on Linux to avoid issues with
   // screenshot tests. If you have added or modified a snapshot test,
   // running `nx update-snapshots frontend-e2e` will run in a linux container.
   ignoreSnapshots: process.env.CI ? false : process.platform !== 'linux',
+  timeout: 12000, // 12 seconds for each test
   /* Run your local dev server before starting the tests */
   webServer: {
     command: 'npx nx serve-static frontend',

@@ -18,6 +18,7 @@ import {
   formatDayInfo,
   splitInstancesByExtraStatus,
 } from '../utils/item-formatting';
+import { PackingListItem } from '@packing-list/model';
 
 interface PrintItem {
   name: string;
@@ -35,14 +36,7 @@ interface PrintItem {
 
 // Helper function to process instances and create print items
 const processInstances = (
-  instances: Array<{
-    dayIndex?: number;
-    quantity: number;
-    isExtra: boolean;
-    personName?: string;
-    dayStart?: number;
-    dayEnd?: number;
-  }>,
+  instances: Array<PackingListItem>,
   item: {
     displayName: string;
     baseItem: {
@@ -71,6 +65,7 @@ const processInstances = (
             person: instance.personName || personName,
             categoryId: item.baseItem.categoryId,
             subcategoryId: item.baseItem.subcategoryId,
+            packed: instance.isPacked,
           },
         ];
       }
@@ -93,6 +88,7 @@ const processInstances = (
             person: instance.personName || personName,
             categoryId: item.baseItem.categoryId,
             subcategoryId: item.baseItem.subcategoryId,
+            packed: instance.isPacked,
           },
         ];
       }
@@ -113,6 +109,7 @@ const processInstances = (
           dayEnd: instance.dayEnd,
           categoryId: item.baseItem.categoryId,
           subcategoryId: item.baseItem.subcategoryId,
+          packed: instance.isPacked,
         },
       ];
     }

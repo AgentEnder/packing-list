@@ -10,10 +10,5 @@ export default defineConfig({
       include: ['src/**/*.ts', 'src/**/*.tsx'],
     },
   },
-  resolve: {
-    // Handle TypeScript paths and module resolution
-    alias: {
-      '@packing-list/model': '../../packages/model/src/index.ts',
-    },
-  },
+  resolve: {},
 });

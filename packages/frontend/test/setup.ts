@@ -13,6 +13,19 @@ declare module 'vitest' {
 
 expect.extend(matchers);
 
+// Mock vike-react usePageContext globally
+vi.mock('vike-react/usePageContext', () => ({
+  usePageContext: vi.fn(() => ({
+    urlPathname: '/',
+    is404: false,
+  })),
+}));
+
+// Mock vike router navigate
+vi.mock('vike/client/router', () => ({
+  navigate: vi.fn(),
+}));
+
 // Mock import.meta.hot for HMR testing
 Object.defineProperty(import.meta, 'hot', {
   value: {

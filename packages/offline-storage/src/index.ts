@@ -7,3 +7,4 @@ export * from './lib/rule-override-storage.js';
 export * from './lib/default-item-rules-storage.js';
 export * from './lib/rule-packs-storage.js';
 export * from './lib/trip-rule-storage.js';
+export * from './lib/user-person-storage.js';

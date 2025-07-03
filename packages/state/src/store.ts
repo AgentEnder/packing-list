@@ -16,9 +16,13 @@ import {
   RulePack,
   TripSummary,
   SyncState,
+  UserPreferences,
 } from '@packing-list/model';
 import { DEFAULT_RULE_PACKS } from './default-rule-packs.js';
 import { syncTrackingMiddleware } from './middleware/sync-tracking-middleware.js';
+import userPeopleReducer, {
+  type UserPeopleState,
+} from './user-people-slice.js';
 
 // New multi-trip store structure
 export type StoreType = {
@@ -31,6 +35,9 @@ export type StoreType = {
 
   // Global state (not trip-specific)
   rulePacks: RulePack[];
+
+  // User preferences (persisted to IndexedDB and Supabase)
+  userPreferences: UserPreferences | null;
 
   // Sync state
   sync: {
@@ -64,6 +71,9 @@ export type StoreType = {
 
   // Auth state
   auth: AuthState;
+
+  // User people state (Sprint 3)
+  userPeople: UserPeopleState;
 };
 
 // Trip-specific data structure
@@ -132,6 +142,7 @@ export const initialState: StoreType = {
     byId: {},
   },
   rulePacks: DEFAULT_RULE_PACKS,
+  userPreferences: null,
   sync: {
     syncState: {
       lastSyncTimestamp: null,
@@ -165,6 +176,12 @@ export const initialState: StoreType = {
     },
   },
   auth: authInitialState,
+  userPeople: {
+    people: [],
+    isLoading: false,
+    error: null,
+    hasTriedToLoad: false,
+  },
 };
 
 function createAppReducer(
@@ -195,6 +212,8 @@ function createAppReducer(
     if ('type' in action && typeof action.type === 'string') {
       if (
         !action.type.startsWith('@@redux') &&
+        !action.type.startsWith('userProfile') &&
+        !action.type.startsWith('userPeople') &&
         !action.type.startsWith('auth') &&
         !action.type.startsWith('sync') &&
         !action.type.startsWith('UPSERT')
@@ -227,6 +246,10 @@ export function createStore(pageContext?: PageContext, _state?: StoreType) {
     return {
       ...appReducer(state, action),
       auth: authReducer(state?.auth, action as AuthActions),
+      userPeople: userPeopleReducer(
+        state?.userPeople,
+        action as Parameters<typeof userPeopleReducer>[1] // Properly type the action for userPeopleReducer
+      ),
     };
   };
 

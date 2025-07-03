@@ -57,13 +57,11 @@ export async function signInWithEmail(
   // Check if already signed in (but not with shared account)
   const authState = await getAuthState(page);
   if (authState.isAuthenticated && authState.user?.email === user.email) {
-    console.log('User already signed in with correct account');
     return;
   }
 
   // If signed in with wrong account, sign out first
   if (authState.isAuthenticated) {
-    console.log('Signing out wrong account first');
     await signOut(page);
     await page.waitForLoadState('networkidle');
   }
@@ -94,7 +92,6 @@ export async function signInWithEmail(
     await emailSignInLink.click();
   } catch {
     // Email link not found, might already be on email form
-    console.log('Email sign-in link not found, assuming already on email form');
   }
 
   // Wait for email/password form
@@ -121,13 +118,10 @@ export async function signInWithEmail(
   try {
     await errorElement.waitFor({ state: 'visible', timeout: 2000 });
     const errorText = (await errorElement.textContent()) || 'Unknown error';
-    console.log(`Authentication may have failed: ${errorText}`);
     // Don't throw immediately - let the calling test handle it
   } catch {
     // No error found, which is good
   }
-
-  console.log('Sign in completed');
 }
 
 /**
@@ -138,7 +132,6 @@ export async function signOut(page: Page): Promise<void> {
   const authState = await getAuthState(page);
 
   if (!authState.isAuthenticated) {
-    console.log('User is already signed out');
     return;
   }
 
@@ -148,7 +141,6 @@ export async function signOut(page: Page): Promise<void> {
   try {
     await userProfile.waitFor({ state: 'visible', timeout: 3000 });
   } catch {
-    console.log('User profile not visible, assuming already signed out');
     return;
   }
 
@@ -159,10 +151,7 @@ export async function signOut(page: Page): Promise<void> {
     // Look for and click sign out button
     const signOutButton = getSignOutButton(page);
     await signOutButton.click({ timeout: 5000 });
-
-    console.log('Successfully signed out');
   } catch (error) {
-    console.log('Sign out attempt failed, but continuing:', error);
     // Don't throw - just log and continue since this is often used in cleanup
   }
 }
@@ -282,15 +271,12 @@ export async function waitForAuthReady(
       ]);
 
       if (result === 'profile') {
-        console.log('Auth ready: Authenticated state detected');
         return true;
       } else if (result === 'signin') {
-        console.log('Auth ready: Unauthenticated state detected');
         return true;
       }
 
       // If we got timeout, continue the loop
-      console.log('Auth state not ready yet, continuing to wait...');
     } catch (error) {
       console.warn('Error during auth ready check:', error);
       // Small delay before retrying to avoid hammering the DOM

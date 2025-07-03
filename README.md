@@ -203,3 +203,120 @@ And join the Nx community:
 - [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
 - [Our Youtube channel](https://www.youtube.com/@nxdevtools)
 - [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+
+# Smart Packing List
+
+A full-stack application for intelligent trip packing with personalized suggestions and rule-based automation.
+
+## Features
+
+- **Trip Management**: Create and manage multiple trips with different templates
+- **Smart Packing Lists**: Automatically generated items based on trip type, duration, and destination
+- **Rule-Based Suggestions**: Customizable packing rules that adapt to your preferences
+- **Offline Support**: Full functionality even without internet connection
+- **Sync Across Devices**: Your data stays in sync across all your devices
+
+## New: Reusable People Features
+
+### Profile Management (Sprint 1)
+
+- Create and manage your user profile
+- Profile automatically appears in all new trips
+- Edit profile information at any time
+- Profile data persists across sessions
+
+### Profile Auto-Addition (Sprint 2)
+
+- User profile automatically added to new trips
+- Profile person distinguished from regular trip people
+- Profile cannot be deleted from trips (only edited via profile page)
+- Profile changes sync across all trips
+
+### Person Templates (Sprint 3)
+
+- Create reusable person templates for frequent travelers
+- Quick-add people from templates when adding to trips
+- Template suggestions when typing person names
+- Save trip people as templates for future use
+- Templates remain independent from trip-specific people
+
+## End-to-End Test Coverage
+
+We've added comprehensive e2e tests covering all reusable people features:
+
+### Test Files Created:
+
+- `user-profile-management.spec.ts` - Profile creation, editing, validation, and persistence
+- `profile-auto-trip-integration.spec.ts` - Profile auto-addition to trips and sync
+- `person-templates-reuse.spec.ts` - Template management and usage
+- `people-management-enhanced.spec.ts` - Integration tests for all features working together
+
+### Page Objects:
+
+- `UserPeoplePage.ts` - Comprehensive page object for profile and template management
+- Enhanced existing page objects for integration testing
+
+### Test Coverage:
+
+- ✅ Profile creation with full and minimal details
+- ✅ Profile editing and validation
+- ✅ Profile persistence across sessions
+- ✅ Profile auto-addition to new trips
+- ✅ Profile vs regular people distinction
+- ✅ Template creation, editing, and deletion
+- ✅ Template suggestions and quick-add
+- ✅ Save trip people as templates
+- ✅ Cross-trip template consistency
+- ✅ Profile + templates + regular people integration
+- ✅ Offline/online sync testing
+- ✅ Responsive design validation
+- ✅ Error handling and edge cases
+
+### Running the Tests:
+
+```bash
+# Run all new people management tests
+pnpm test:e2e user-profile-management.spec.ts
+pnpm test:e2e profile-auto-trip-integration.spec.ts
+pnpm test:e2e person-templates-reuse.spec.ts
+pnpm test:e2e people-management-enhanced.spec.ts
+
+# Or run all e2e tests
+pnpm test:e2e
+```
+
+**Note**: The new tests are currently failing as expected since the actual features haven't been implemented yet. The tests serve as:
+
+1. **Specification**: Clear definition of expected behavior
+2. **Development Guide**: Step-by-step requirements for implementation
+3. **Regression Prevention**: Automated verification once features are built
+4. **User Journey Validation**: Real user workflows and edge cases
+
+## Development
+
+```bash
+# Install dependencies
+pnpm install
+
+# Start development server
+pnpm dev
+
+# Run tests
+pnpm test
+pnpm test:e2e
+
+# Build for production
+pnpm build
+```
+
+## Tech Stack
+
+- **Frontend**: Vike + React + TypeScript + Tailwind CSS + DaisyUI
+- **Backend**: Supabase (PostgreSQL + Auth + Real-time + Storage)
+- **State Management**: Redux Toolkit + RTK Query
+- **Testing**: Vitest + Playwright + Testing Library
+- **Build Tools**: Nx monorepo + Vite + ESLint + Prettier
+
+## License
+
+MIT

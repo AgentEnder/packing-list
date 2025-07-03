@@ -314,7 +314,7 @@ export function ServiceWorkerStatus({
         </button>
 
         <a
-          href="/version"
+          href={applyBaseUrl(import.meta.env.PUBLIC_ENV__BASE_URL, '/version')}
           className="btn btn-sm btn-outline"
           target="_blank"
           rel="noopener noreferrer"
@@ -324,7 +324,7 @@ export function ServiceWorkerStatus({
 
         {status.isDevelopment && (
           <a
-            href="/sw.js"
+            href="/service-worker.js"
             className="btn btn-sm btn-outline"
             target="_blank"
             rel="noopener noreferrer"

@@ -1,5 +1,7 @@
 import { Condition } from '@packing-list/model';
 import { useState, useEffect } from 'react';
+import { useAppSelector } from '@packing-list/state';
+import { selectPeople } from '@packing-list/state';
 
 type ConditionFormProps = {
   initialCondition?: Condition;
@@ -16,6 +18,40 @@ const DEFAULT_CONDITION: Condition = {
   value: 0,
 };
 
+// Helper function to create a name condition
+const createNameCondition = (names: string[] = []): Condition => ({
+  type: 'person',
+  field: 'name',
+  operator: 'in',
+  value: names,
+});
+
+// Helper function to create age condition
+const createAgeCondition = (age = 0): Condition => ({
+  type: 'person',
+  field: 'age',
+  operator: '==',
+  value: age,
+});
+
+// Helper function to create gender condition
+const createGenderCondition = (gender = 'male'): Condition => ({
+  type: 'person',
+  field: 'gender',
+  operator: '==',
+  value: gender as 'male' | 'female' | 'other' | 'prefer-not-to-say',
+});
+
+// Helper function to create day condition
+const createDayCondition = (
+  field: 'location' | 'expectedClimate' = 'location'
+): Condition => ({
+  type: 'day',
+  field,
+  operator: '==',
+  value: '',
+});
+
 export const ConditionForm = ({
   initialCondition = DEFAULT_CONDITION,
   onSave,
@@ -24,6 +60,7 @@ export const ConditionForm = ({
   testIdPrefix = 'create-rule-',
 }: ConditionFormProps) => {
   const [condition, setCondition] = useState<Condition>(initialCondition);
+  const people = useAppSelector(selectPeople);
 
   useEffect(() => {
     setCondition(initialCondition);
@@ -31,13 +68,15 @@ export const ConditionForm = ({
 
   const operatorOptions =
     condition.type === 'person'
-      ? [
-          { value: '==', label: 'equals' },
-          { value: '>', label: 'greater than' },
-          { value: '<', label: 'less than' },
-          { value: '>=', label: 'greater than or equal' },
-          { value: '<=', label: 'less than or equal' },
-        ]
+      ? condition.field === 'name'
+        ? [{ value: 'in', label: 'includes any of' }]
+        : [
+            { value: '==', label: 'equals' },
+            { value: '>', label: 'greater than' },
+            { value: '<', label: 'less than' },
+            { value: '>=', label: 'greater than or equal' },
+            { value: '<=', label: 'less than or equal' },
+          ]
       : [
           { value: '==', label: 'equals' },
           { value: '>=', label: 'after or on' },
@@ -58,19 +97,9 @@ export const ConditionForm = ({
             onChange={(e) => {
               const type = e.target.value as 'person' | 'day';
               if (type === 'person') {
-                setCondition({
-                  type: 'person',
-                  field: 'age',
-                  operator: '==',
-                  value: 0,
-                });
+                setCondition(createAgeCondition());
               } else {
-                setCondition({
-                  type: 'day',
-                  field: 'location',
-                  operator: '==',
-                  value: '',
-                });
+                setCondition(createDayCondition());
               }
             }}
             data-testid={`${testIdPrefix}condition-type-select`}
@@ -89,19 +118,17 @@ export const ConditionForm = ({
             value={condition.field}
             onChange={(e) => {
               if (condition.type === 'person') {
-                const field = e.target.value as 'age' | 'gender';
-                setCondition({
-                  ...condition,
-                  field,
-                  value: field === 'gender' ? 'male' : 0,
-                });
+                const field = e.target.value as 'age' | 'gender' | 'name';
+                if (field === 'gender') {
+                  setCondition(createGenderCondition());
+                } else if (field === 'name') {
+                  setCondition(createNameCondition());
+                } else {
+                  setCondition(createAgeCondition());
+                }
               } else {
                 const field = e.target.value as 'location' | 'expectedClimate';
-                setCondition({
-                  ...condition,
-                  field,
-                  value: '',
-                });
+                setCondition(createDayCondition(field));
               }
             }}
             data-testid={`${testIdPrefix}condition-field-select`}
@@ -110,6 +137,7 @@ export const ConditionForm = ({
               <>
                 <option value="age">Age</option>
                 <option value="gender">Gender</option>
+                <option value="name">Name</option>
               </>
             ) : (
               <>
@@ -128,12 +156,22 @@ export const ConditionForm = ({
             className="select select-bordered w-full"
             value={condition.operator}
             onChange={(e) => {
+              if (condition.field === 'name') {
+                return;
+              }
+              const newOperator = e.target.value as
+                | '<'
+                | '>'
+                | '=='
+                | '>='
+                | '<=';
               setCondition({
                 ...condition,
-                operator: e.target.value as '<' | '>' | '==' | '>=' | '<=',
+                operator: newOperator,
               });
             }}
             data-testid={`${testIdPrefix}condition-operator-select`}
+            disabled={condition.field === 'name'}
           >
             {operatorOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -154,7 +192,11 @@ export const ConditionForm = ({
               onChange={(e) =>
                 setCondition({
                   ...condition,
-                  value: e.target.value,
+                  value: e.target.value as
+                    | 'male'
+                    | 'female'
+                    | 'other'
+                    | 'prefer-not-to-say',
                 })
               }
               data-testid={`${testIdPrefix}condition-value-input`}
@@ -163,6 +205,45 @@ export const ConditionForm = ({
               <option value="female">Female</option>
               <option value="other">Other</option>
             </select>
+          ) : condition.field === 'name' ? (
+            <div className="space-y-2">
+              <div className="text-sm text-gray-600">
+                Select people who need this item:
+              </div>
+              {people.length === 0 ? (
+                <div className="text-sm text-gray-500 italic">
+                  No people added to this trip yet
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {people.map((person) => (
+                    <label
+                      key={person.id}
+                      className="flex items-center space-x-2 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        className="checkbox checkbox-sm"
+                        checked={(condition.value as string[]).includes(
+                          person.name
+                        )}
+                        onChange={(e) => {
+                          const currentNames = condition.value as string[];
+                          const newNames = e.target.checked
+                            ? [...currentNames, person.name]
+                            : currentNames.filter(
+                                (name) => name !== person.name
+                              );
+                          setCondition(createNameCondition(newNames));
+                        }}
+                        data-testid={`${testIdPrefix}condition-name-checkbox-${person.id}`}
+                      />
+                      <span className="text-sm">{person.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           ) : condition.type === 'person' ? (
             <input
               type="number"
@@ -181,12 +262,14 @@ export const ConditionForm = ({
               type="text"
               className="input input-bordered w-full"
               value={condition.value as string}
-              onChange={(e) =>
-                setCondition({
-                  ...condition,
-                  value: e.target.value,
-                })
-              }
+              onChange={(e) => {
+                if (condition.type === 'day') {
+                  setCondition({
+                    ...condition,
+                    value: e.target.value,
+                  });
+                }
+              }}
               data-testid={`${testIdPrefix}condition-value-input`}
             />
           )}

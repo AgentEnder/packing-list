@@ -5,6 +5,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { authSlice, type AuthState } from './auth-slice.js';
 import {
   useAuth,
+  useAuthInitializer,
   useAuthUser,
   useAuthSession,
   useIsAuthenticated,
@@ -141,10 +142,10 @@ describe('Auth Hooks', () => {
       const wrapper = createWrapper(store);
       const { result } = renderHook(() => useAuth(), { wrapper });
 
-      // Check state values - note that loading defaults to true in SSR-safe mode
+      // Check state values - should use actual store state, not SSR fallbacks
       expect(result.current.user).toBeDefined();
       expect(result.current.isAuthenticated).toBe(true);
-      expect(result.current.loading).toBe(true); // SSR-safe fallback is true
+      expect(result.current.loading).toBe(false); // Store state loading is false
       expect(result.current.signInWithGooglePopup).toBeInstanceOf(Function);
       expect(result.current.signOut).toBeInstanceOf(Function);
     });
@@ -196,6 +197,31 @@ describe('Auth Hooks', () => {
       expect(() => result.current.signOut()).not.toThrow();
       expect(() => result.current.clearError()).not.toThrow();
       expect(() => result.current.setForceOfflineMode(true)).not.toThrow();
+    });
+  });
+
+  describe('useAuthInitializer', () => {
+    it('should initialize auth without returning any values', () => {
+      const wrapper = createWrapper(store);
+      const { result } = renderHook(() => useAuthInitializer(), { wrapper });
+
+      // useAuthInitializer should not return anything
+      expect(result.current).toBeUndefined();
+    });
+
+    it('should handle SSR environment gracefully', () => {
+      // Mock SSR environment
+      const originalEnv = (import.meta as any).env;
+      (import.meta as any).env = { SSR: true };
+
+      const wrapper = createWrapper(store);
+      const { result } = renderHook(() => useAuthInitializer(), { wrapper });
+
+      // Should not throw in SSR
+      expect(result.current).toBeUndefined();
+
+      // Restore environment
+      (import.meta as any).env = originalEnv;
     });
   });
 
@@ -305,7 +331,7 @@ describe('Auth Hooks', () => {
       const wrapper = createWrapper(store);
       const { result } = renderHook(() => useAuth(), { wrapper });
 
-      expect(result.current.loading).toBe(true); // SSR-safe fallback is true
+      expect(result.current.loading).toBe(false); // Initial store state loading is false
 
       // Update store state using a proper action
       act(() => {

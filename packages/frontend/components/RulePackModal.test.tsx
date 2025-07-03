@@ -27,6 +27,23 @@ vi.mock('@packing-list/shared-components', () => ({
       {children}
     </div>
   ),
+  Link: ({
+    href,
+    children,
+    className,
+  }: {
+    href?: string;
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    <a
+      href={href}
+      className={className}
+      data-testid={`link-${href || 'no-href'}`}
+    >
+      {children}
+    </a>
+  ),
 }));
 
 interface EditorProps {
