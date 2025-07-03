@@ -371,7 +371,7 @@ export class PackingItem {
       // Try to find the tooltip content within this specific element
       const tooltip = this.element.locator('.tooltip');
       if (await tooltip.isVisible()) {
-        return tooltip.getAttribute('data-tip');
+        return tooltip.locator('.tooltip-content').textContent();
       }
     }
     return null;

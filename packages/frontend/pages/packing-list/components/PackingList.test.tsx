@@ -245,7 +245,8 @@ describe('PackingList', () => {
 
     const infoIcon = screen.getByTestId('info-icon');
     expect(infoIcon).toBeInTheDocument();
-    expect(infoIcon.closest('.tooltip')).toHaveAttribute('data-tip', 'SPF 50+');
+    fireEvent.mouseOver(infoIcon);
+    expect(screen.getByText('SPF 50+')).toBeInTheDocument();
   });
 
   it('shows packing progress for items', () => {
