@@ -211,8 +211,8 @@ describe('Auth Hooks', () => {
 
     it('should handle SSR environment gracefully', () => {
       // Mock SSR environment
-      const originalEnv = (import.meta as any).env;
-      (import.meta as any).env = { SSR: true };
+      const originalEnv = (import.meta as { env: Record<string, unknown> }).env;
+      (import.meta as { env: Record<string, unknown> }).env = { SSR: true };
 
       const wrapper = createWrapper(store);
       const { result } = renderHook(() => useAuthInitializer(), { wrapper });
@@ -221,7 +221,7 @@ describe('Auth Hooks', () => {
       expect(result.current).toBeUndefined();
 
       // Restore environment
-      (import.meta as any).env = originalEnv;
+      (import.meta as { env: Record<string, unknown> }).env = originalEnv;
     });
   });
 
