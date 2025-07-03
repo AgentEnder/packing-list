@@ -6,7 +6,14 @@ import {
 } from '@packing-list/model';
 import { useState } from 'react';
 import { PersonForm } from './PersonForm';
-import { UserCheck, User, MoreVertical, Bookmark } from 'lucide-react';
+import {
+  UserCheck,
+  User,
+  MoreVertical,
+  Bookmark,
+  Pencil,
+  Trash,
+} from 'lucide-react';
 import {
   useAppSelector,
   selectUserProfile,
@@ -120,13 +127,14 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
                   </button>
                 ) : (
                   <button
-                    className="w-full px-3 py-2 text-left hover:bg-gray-100 text-sm"
+                    className="w-full px-3 py-2 text-left hover:bg-gray-100 text-sm flex items-center gap-2"
                     onClick={() => {
                       setIsEditing(true);
                       setShowMenu(false);
                     }}
                     data-testid="edit-person-button"
                   >
+                    <Pencil className="h-3 w-3" />
                     Edit
                   </button>
                 )}
@@ -144,13 +152,14 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
 
                 {!isFromUserProfile && (
                   <button
-                    className="w-full px-3 py-2 text-left hover:bg-gray-100 text-sm text-red-600"
+                    className="w-full px-3 py-2 text-left hover:bg-gray-100 text-sm flex items-center gap-2 text-red-600"
                     onClick={() => {
                       onDelete();
                       setShowMenu(false);
                     }}
                     data-testid="delete-person-button"
                   >
+                    <Trash className="h-3 w-3" />
                     Delete
                   </button>
                 )}

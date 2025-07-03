@@ -383,7 +383,7 @@ export const pullAllDataFromServer = createAsyncThunk(
         .from('user_profiles')
         .select('preferences, updated_at')
         .eq('id', params.userId)
-        .single();
+        .maybeSingle();
 
     if (userPreferencesError && userPreferencesError.code !== 'PGRST116') {
       console.error(

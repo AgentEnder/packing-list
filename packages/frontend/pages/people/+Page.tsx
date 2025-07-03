@@ -11,6 +11,7 @@ import { NoTripSelected } from '../../components/NoTripSelected';
 import { FlowContinueButton } from '../../components/FlowContinueButton';
 // import { Link } from '../../components/Link';
 import { Settings } from 'lucide-react';
+import { Link } from '@packing-list/shared-components';
 
 export default function PeoplePage() {
   const selectedTripId = useAppSelector(selectSelectedTripId);
@@ -36,14 +37,14 @@ export default function PeoplePage() {
       <PageHeader
         title="People on this Trip"
         actions={
-          <a
+          <Link
             href="/people/manage"
             className="btn btn-outline btn-sm ml-auto"
             title="Manage Templates"
           >
             <Settings className="w-4 h-4" />
             Manage Templates
-          </a>
+          </Link>
         }
       />
       <HelpBlurb storageKey="travelers" title="Managing Travelers">
