@@ -150,10 +150,10 @@ export const PackingList: React.FC = () => {
                 {groupedItem.displayName}
               </button>
               {groupedItem.baseItem.notes && (
-                <div
-                  className="tooltip tooltip-right before:z-[100]"
-                  data-tip={groupedItem.baseItem.notes}
-                >
+                <div className="tooltip tooltip-right before:z-[100]">
+                  <div className="tooltip-content">
+                    {groupedItem.baseItem.notes}
+                  </div>
                   <Info
                     className="w-3.5 h-3.5 stroke-current opacity-60 shrink-0"
                     data-testid="info-icon"

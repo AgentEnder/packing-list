@@ -317,10 +317,9 @@ describe('ConditionsList Component', () => {
       .getByText('📅 location >= Paris')
       .closest('.badge');
     expect(conditionWithNotes).toHaveClass('tooltip', 'tooltip-right');
-    expect(conditionWithNotes).toHaveAttribute(
-      'data-tip',
-      'Exclude Paris days'
-    );
+    const contentNode = conditionWithNotes?.querySelector('.tooltip-content');
+    expect(contentNode).toBeInTheDocument();
+    expect(contentNode).toHaveTextContent('Exclude Paris days');
   });
 
   it('does not add tooltip class for conditions without notes', () => {

@@ -248,9 +248,11 @@ export const RuleCard = ({ rule, people, days }: RuleCardProps) => {
                       className={`badge badge-outline gap-1 ${
                         condition.notes ? 'tooltip tooltip-right' : ''
                       }`}
-                      data-tip={condition.notes}
                       data-testid={`rule-condition-${index}`}
                     >
+                      {condition.notes ? (
+                        <div className="tooltip-content">{condition.notes}</div>
+                      ) : null}
                       {condition.type === 'person' ? '👤' : '📅'}{' '}
                       {condition.field} {condition.operator} {condition.value}
                     </div>
