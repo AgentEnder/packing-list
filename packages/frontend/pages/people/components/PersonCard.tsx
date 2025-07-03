@@ -4,7 +4,7 @@ import {
   isPersonFromTemplate,
   estimateBirthDateFromAge,
 } from '@packing-list/model';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { PersonForm } from './PersonForm';
 import {
   UserCheck,
@@ -63,6 +63,22 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
     setShowMenu(false);
   };
 
+  const showMenuHandler = useCallback(
+    (event: React.MouseEvent) => {
+      setShowMenu(true);
+
+      // Close menu on outside click
+      const listener = () => {
+        setShowMenu(false);
+        document.removeEventListener('click', listener);
+      };
+
+      document.addEventListener('click', listener);
+      return event.stopPropagation();
+    },
+    [showMenu, setShowMenu]
+  );
+
   return isEditing ? (
     <PersonForm person={person} onCancel={() => setIsEditing(false)} />
   ) : (
@@ -102,7 +118,7 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
           <div className="relative">
             <button
               className="btn btn-ghost btn-sm"
-              onClick={() => setShowMenu(!showMenu)}
+              onClick={showMenuHandler}
               data-testid="person-menu-button"
             >
               <MoreVertical className="h-4 w-4" />
@@ -130,7 +146,6 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
                     className="w-full px-3 py-2 text-left hover:bg-gray-100 text-sm flex items-center gap-2"
                     onClick={() => {
                       setIsEditing(true);
-                      setShowMenu(false);
                     }}
                     data-testid="edit-person-button"
                   >
