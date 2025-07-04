@@ -6,7 +6,7 @@ import * as state from '@packing-list/state';
 import * as Toast from './Toast';
 
 vi.mock('@packing-list/shared-components', () => ({
-  ConfirmDialog: ({ isOpen, onConfirm, onClose }: any) =>
+  ConfirmDialog: ({ isOpen, onConfirm, onClose }: { isOpen: boolean; onConfirm: () => void; onClose: () => void }) =>
     isOpen ? (
       <div data-testid="confirm-dialog">
         <button onClick={onConfirm} data-testid="confirm" />

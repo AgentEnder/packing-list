@@ -13,13 +13,13 @@ vi.mock('@packing-list/shared-components', () => ({
   ConflictList: ({
     onResolveConflict,
   }: {
-    onResolveConflict: (c: any) => void;
+    onResolveConflict: (c: { id: string }) => void;
   }) => (
     <div data-testid="conflict-list">
       <button onClick={() => onResolveConflict({ id: 'c1' })}>Select</button>
     </div>
   ),
-  ConflictResolutionModal: ({ isOpen, onClose, onResolve, conflict }: any) =>
+  ConflictResolutionModal: ({ isOpen, onClose, onResolve, conflict }: { isOpen: boolean; onClose: () => void; onResolve: (resolution: string) => void; conflict: { id: string } }) =>
     isOpen ? (
       <div data-testid="resolution-modal">
         <span>{conflict.id}</span>
