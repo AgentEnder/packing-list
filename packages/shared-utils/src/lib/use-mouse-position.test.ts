@@ -4,11 +4,25 @@ import { JSDOM } from 'jsdom';
 import { useMousePosition } from './use-mouse-position.js';
 
 describe('useMousePosition', () => {
-  const dom = new JSDOM('<!doctype html><html><body></body></html>');
-  // Assign jsdom window and document to global
-  const { window } = dom;
-  globalThis.window = window as unknown as typeof globalThis.window;
-  globalThis.document = window.document;
+  let originalWindow: typeof globalThis.window;
+  let originalDocument: typeof globalThis.document;
+
+  beforeAll(() => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>');
+    const { window } = dom;
+    originalWindow = globalThis.window;
+    originalDocument = globalThis.document;
+    globalThis.window = window as unknown as typeof globalThis.window;
+    globalThis.document = window.document;
+  });
+
+  afterAll(() => {
+    globalThis.window = originalWindow;
+    globalThis.document = originalDocument;
+  });
+
+  // ... existing tests ...
+});
 
   it('updates position on mousemove and cleans up listener', () => {
     const addSpy = vi.spyOn(window, 'addEventListener');
