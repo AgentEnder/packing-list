@@ -29,14 +29,12 @@ describe('BannerProvider and Banner', () => {
       </BannerProvider>
     );
 
-    const banner1 = screen.getByText('Banner 1').parentElement?.parentElement
-      ?.parentElement as HTMLElement;
-    const banner2 = screen.getByText('Banner 2').parentElement?.parentElement
-      ?.parentElement as HTMLElement;
+    const banner1 = screen.getByText('Banner 1').closest('.banner-one') as HTMLElement;
+    const banner2 = screen.getByText('Banner 2').closest('.banner-two') as HTMLElement;
 
     await waitFor(() => {
-      expect(banner1.style.bottom).toBe('0px');
-      expect(banner2.style.bottom).toBe('20px');
+      expect(banner1.getAttribute('style')).toContain('bottom: 0px');
+      expect(banner2.getAttribute('style')).toContain('bottom: 20px');
       expect(screen.getByTestId('total-height')).toHaveTextContent('40');
     });
   });
