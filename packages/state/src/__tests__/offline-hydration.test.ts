@@ -21,6 +21,10 @@ vi.mock('@packing-list/offline-storage', () => ({
     getUserPerson: vi.fn(),
     getAllUserPeople: vi.fn(),
   },
+  UserPreferencesStorage: {
+    getPreferences: vi.fn(),
+    savePreferences: vi.fn(),
+  },
 }));
 
 type Mocked<T> = { [K in keyof T]: T[K] & Mock };
