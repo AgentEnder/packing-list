@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import {
   isDemoMode,
   shouldSkipPersistence,
@@ -7,7 +7,11 @@ import {
 } from './demo-mode-detector.js';
 
 const { sessionStorage } = globalThis as unknown as {
-  sessionStorage: Storage;
+  sessionStorage: {
+    getItem: (key: string) => string | null;
+    setItem: (key: string, value: string) => void;
+    clear: () => void;
+  };
 };
 
 describe('demo mode detector', () => {
