@@ -29,11 +29,16 @@ describe('DatabaseResetUtility Component', () => {
     (state.useAppDispatch as unknown as Mock).mockReturnValue(mockDispatch);
   });
 
-  it('opens confirm dialog and handles reset', () => {
+  it('opens confirm dialog and handles reset', async () => {
     render(<DatabaseResetUtility />);
     fireEvent.click(screen.getByRole('button', { name: /Reset Database/i }));
     expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument();
+    
     fireEvent.click(screen.getByTestId('confirm'));
+    
+    // Wait for async operations to complete
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
     expect(mockDispatch).toHaveBeenCalledWith({ type: 'CLEAR_ALL_DATA' });
     expect(state.resetSyncService).toHaveBeenCalled();
     expect(Toast.showToast).toHaveBeenCalled();
