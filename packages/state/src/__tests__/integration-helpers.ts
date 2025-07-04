@@ -35,13 +35,12 @@ export async function seedIndexedDB(options: {
   }
 }
 
-export function mockSupabase(
-  data: {
-    userPreferences?: UserPreferences | null;
-    userPeople?: UserPerson[];
-    trips?: unknown[];
-  } = {}
-) {
+// Create a global supabaseClient to avoid hoisting issues
+const createMockSupabaseClient = (data: {
+  userPreferences?: UserPreferences | null;
+  userPeople?: UserPerson[];
+  trips?: unknown[];
+}) => {
   const fromMock = vi.fn((table: string) => {
     const chain: Record<string, ReturnType<typeof vi.fn>> = {
       select: vi.fn().mockReturnThis(),
@@ -76,7 +75,7 @@ export function mockSupabase(
     return chain;
   });
 
-  const supabaseClient = {
+  return {
     from: fromMock,
     auth: {
       getUser: vi.fn(async () => ({
@@ -85,6 +84,16 @@ export function mockSupabase(
       })),
     },
   } as const;
+};
+
+export function mockSupabase(
+  data: {
+    userPreferences?: UserPreferences | null;
+    userPeople?: UserPerson[];
+    trips?: unknown[];
+  } = {}
+) {
+  const supabaseClient = createMockSupabaseClient(data);
 
   vi.mock('@packing-list/supabase', () => ({
     supabase: supabaseClient,
