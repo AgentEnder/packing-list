@@ -35,9 +35,13 @@ describe('TripStorage', () => {
 
   it('updates last synced timestamp', async () => {
     await TripStorage.saveTrip(baseTrip);
-    const original = (await TripStorage.getTrip('trip-1'))!.lastSyncedAt;
+    const originalTrip = await TripStorage.getTrip('trip-1');
+    expect(originalTrip).toBeDefined();
+    const original = originalTrip?.lastSyncedAt;
     await TripStorage.updateLastSynced('trip-1');
-    const updated = (await TripStorage.getTrip('trip-1'))!.lastSyncedAt;
+    const updatedTrip = await TripStorage.getTrip('trip-1');
+    expect(updatedTrip).toBeDefined();
+    const updated = updatedTrip?.lastSyncedAt;
     expect(updated).not.toBe(original);
   });
 
