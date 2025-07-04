@@ -5,7 +5,7 @@ import {
   createIntegrationStore,
 } from './integration-helpers.js';
 import { loadOfflineState } from '../offline-hydration.js';
-  TripStorage,
+import {
   PersonStorage,
   closeDatabase,
 } from '@packing-list/offline-storage';
@@ -36,9 +36,9 @@ afterEach(async () => {
 });
 
 describe('Redux and offline storage integration', () => {
-    const store = createIntegrationStore(offline as Record<string, unknown>);
+  it('persists actions to IndexedDB', async () => {
     const offline = await loadOfflineState('user-1');
-    const store = createIntegrationStore(offline as any);
+    const store = createIntegrationStore(offline as Record<string, unknown>);
 
     store.dispatch({
       type: 'ADD_PERSON',
@@ -58,8 +58,8 @@ describe('Redux and offline storage integration', () => {
   });
 
   it('hydrates store from IndexedDB', async () => {
+    const offline = await loadOfflineState('user-1');
     const store = createIntegrationStore(offline as Record<string, unknown>);
-    const store = createIntegrationStore(offline as any);
 
     const state = store.getState();
     expect(state.trips.summaries).toHaveLength(1);
