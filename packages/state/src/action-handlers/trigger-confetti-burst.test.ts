@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { triggerConfettiBurstHandler } from './trigger-confetti-burst.js';
 import { createTestTripState } from '../__tests__/test-helpers.js';
 
