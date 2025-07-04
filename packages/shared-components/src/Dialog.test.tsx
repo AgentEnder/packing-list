@@ -1,6 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import React from 'react';
 import { Modal, ConfirmDialog } from './Dialog.js';
 
 // Mock icons used in the modal
@@ -23,21 +22,21 @@ describe('Modal component', () => {
 
   it('calls onClose when close button clicked', () => {
     const onClose = vi.fn();
-    render(<Modal isOpen onClose={onClose} title="Close Test" />);
+    render(<Modal isOpen onClose={onClose} title="Close Test"><div>Test content</div></Modal>);
     fireEvent.click(screen.getByLabelText('Close modal'));
     expect(onClose).toHaveBeenCalled();
   });
 
   it('closes on escape key', () => {
     const onClose = vi.fn();
-    render(<Modal isOpen onClose={onClose} />);
+    render(<Modal isOpen onClose={onClose}><div>Test content</div></Modal>);
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalled();
   });
 
   it('closes on backdrop click', () => {
     const onClose = vi.fn();
-    render(<Modal isOpen onClose={onClose} />);
+    render(<Modal isOpen onClose={onClose}><div>Test content</div></Modal>);
     const backdrop = screen.getByRole('button', { name: 'close' });
     fireEvent.click(backdrop);
     expect(onClose).toHaveBeenCalled();

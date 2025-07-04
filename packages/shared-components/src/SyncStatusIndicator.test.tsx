@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import React from 'react';
 import { SyncStatusBadge } from './SyncStatusIndicator.js';
 import type { SyncState } from '@packing-list/model';
 
@@ -80,7 +79,7 @@ describe('SyncStatusBadge', () => {
           entityId: 't',
           localVersion: {},
           serverVersion: {},
-          conflictType: 'update_conflict',
+          conflictType: 'update_conflict' as const,
           timestamp: 0,
         },
       ],

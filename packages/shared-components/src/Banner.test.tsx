@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import React from 'react';
 import { BannerProvider, Banner, useBannerHeight } from './Banner.js';
 
 // Helper component to expose total banner height

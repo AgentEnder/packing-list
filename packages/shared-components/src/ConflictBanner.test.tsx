@@ -1,6 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import React from 'react';
 import { ConflictBanner } from './ConflictBanner.js';
 import { BannerProvider } from './Banner.js';
 import type { SyncConflict } from '@packing-list/model';
