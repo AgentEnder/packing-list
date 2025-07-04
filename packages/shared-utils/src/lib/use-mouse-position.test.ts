@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { JSDOM } from 'jsdom';
 import { useMousePosition } from './use-mouse-position.js';
@@ -20,9 +20,6 @@ describe('useMousePosition', () => {
     globalThis.window = originalWindow;
     globalThis.document = originalDocument;
   });
-
-  // ... existing tests ...
-});
 
   it('updates position on mousemove and cleans up listener', () => {
     const addSpy = vi.spyOn(window, 'addEventListener');
