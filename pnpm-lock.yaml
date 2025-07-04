@@ -293,7 +293,11 @@ importers:
         specifier: ^6.4.0
         version: 6.4.0(react@19.1.0)
 
-  packages/model: {}
+  packages/model:
+    dependencies:
+      '@packing-list/shared-utils':
+        specifier: workspace:*
+        version: link:../shared-utils
 
   packages/offline-storage:
     dependencies:
