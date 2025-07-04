@@ -23,7 +23,7 @@ describe('rule pack modal handlers', () => {
     const state = createTestTripState({});
     const action = {
       type: 'OPEN_RULE_PACK_MODAL' as const,
-      payload: { tab: 'manage', packId: 'p1' },
+      payload: { tab: 'manage' as const, packId: 'p1' },
     };
     const result = openRulePackModalHandler(state, action);
     expect(result.ui.rulePackModal).toEqual({
@@ -36,9 +36,7 @@ describe('rule pack modal handlers', () => {
   it('closes the modal and resets state', () => {
     const state = createTestTripState({});
     state.ui.rulePackModal.isOpen = true;
-    const result = closeRulePackModalHandler(state, {
-      type: 'CLOSE_RULE_PACK_MODAL',
-    });
+    const result = closeRulePackModalHandler(state);
     expect(result.ui.rulePackModal).toEqual({
       isOpen: false,
       activeTab: 'browse',
@@ -51,7 +49,7 @@ describe('rule pack modal handlers', () => {
     state.ui.rulePackModal.isOpen = true;
     const action = {
       type: 'SET_RULE_PACK_MODAL_TAB' as const,
-      payload: { tab: 'details', packId: 'p2' },
+      payload: { tab: 'details' as const, packId: 'p2' },
     };
     const result = setRulePackModalTabHandler(state, action);
     expect(result.ui.rulePackModal).toEqual({
