@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getSupabaseClient, isSupabaseAvailable } from './supabase-client.js';
 import { createClient } from '@supabase/supabase-js';
 
