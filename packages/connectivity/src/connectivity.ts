@@ -184,9 +184,12 @@ export class ConnectivityService {
     return this.currentState;
   }
 
-  // Manual connectivity check (also respects throttling)
+  // Manual connectivity check (bypasses throttling for immediate check)
   async checkNow(): Promise<ConnectivityState> {
-    await this.checkConnectivityWithThrottling();
+    // First update the online status based on navigator.onLine
+    this.updateOnlineStatus(navigator.onLine);
+    // Then do the connectivity check bypassing throttling
+    await this.checkConnectivity();
     return this.currentState;
   }
 
