@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import {
   isDemoMode,
   shouldSkipPersistence,
@@ -31,7 +31,7 @@ Object.defineProperty(globalThis, 'sessionStorage', {
   writable: true,
 });
 
-const { sessionStorage } = globalThis as {
+const { sessionStorage } = globalThis as unknown as {
   sessionStorage: {
     getItem: (key: string) => string | null;
     setItem: (key: string, value: string) => void;
