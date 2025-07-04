@@ -25,7 +25,7 @@ describe('Sync service network interruptions', () => {
     const service = await initializeSyncService();
     
     // Force an immediate connectivity check by bypassing throttling
-    await (connectivity as any).checkConnectivity();
+    await connectivity.checkNow();
     const offlineState = await service.getSyncState();
     expect(offlineState.isOnline).toBe(false);
 
@@ -35,7 +35,7 @@ describe('Sync service network interruptions', () => {
     });
     
     // Force another immediate connectivity check
-    await (connectivity as any).checkConnectivity();
+    await connectivity.checkNow();
     const onlineState = await service.getSyncState();
     expect(onlineState.isOnline).toBe(true);
   });
