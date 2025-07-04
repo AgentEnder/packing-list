@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import {
   isDemoMode,
   shouldSkipPersistence,
@@ -6,7 +6,32 @@ import {
   isDemoEntityId,
 } from './demo-mode-detector.js';
 
-const { sessionStorage } = globalThis as unknown as {
+// Mock sessionStorage for testing
+const mockSessionStorage = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => {
+      store[key] = value;
+    },
+    clear: () => {
+      store = {};
+    },
+  };
+})();
+
+// Mock window object and sessionStorage
+Object.defineProperty(globalThis, 'window', {
+  value: {},
+  writable: true,
+});
+
+Object.defineProperty(globalThis, 'sessionStorage', {
+  value: mockSessionStorage,
+  writable: true,
+});
+
+const { sessionStorage } = globalThis as {
   sessionStorage: {
     getItem: (key: string) => string | null;
     setItem: (key: string, value: string) => void;
