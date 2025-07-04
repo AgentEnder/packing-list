@@ -17,7 +17,6 @@ describe('Sync service network interruptions', () => {
   it('updates online status when connectivity changes', async () => {
     const connectivity = getConnectivityService();
     const service = await initializeSyncService();
-    let lastOnline = service.getSyncState().then((s) => s.isOnline);
     await service.getSyncState();
 
     Object.defineProperty(globalThis, 'navigator', {

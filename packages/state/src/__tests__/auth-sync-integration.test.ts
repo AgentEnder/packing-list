@@ -1,10 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   seedIndexedDB,
   mockSupabase,
   createIntegrationStore,
 } from './integration-helpers.js';
-import { loadOfflineState } from '../offline-hydration.js';
 import { closeDatabase } from '@packing-list/offline-storage';
 import authReducer, { authSlice } from '@packing-list/auth-state';
 
@@ -25,8 +24,8 @@ describe('Auth state changes during sync', () => {
     });
 
     const syncPromise = store.dispatch(
-      (dispatch: any) =>
-        new Promise((resolve) => {
+      (dispatch: (action: { type: string; payload?: unknown }) => void) =>
+        new Promise<boolean>((resolve) => {
           setTimeout(() => {
             dispatch({
               type: 'SET_SYNC_STATE',
@@ -43,7 +42,7 @@ describe('Auth state changes during sync', () => {
             resolve(true);
           }, 50);
         })
-    ) as Promise<any>;
+    ) as Promise<boolean>;
 
     store.dispatch(authSlice.actions.updateAuthState({ user: null }));
     await syncPromise;

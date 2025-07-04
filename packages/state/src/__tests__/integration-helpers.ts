@@ -1,6 +1,5 @@
 import {
   initializeDatabase,
-  closeDatabase,
   TripStorage,
   PersonStorage,
   ItemStorage,
@@ -44,7 +43,7 @@ export function mockSupabase(
   } = {}
 ) {
   const fromMock = vi.fn((table: string) => {
-    const chain: any = {
+    const chain: Record<string, ReturnType<typeof vi.fn>> = {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       gt: vi.fn().mockReturnThis(),
@@ -85,7 +84,7 @@ export function mockSupabase(
         error: null,
       })),
     },
-  } as any;
+  } as const;
 
   vi.mock('@packing-list/supabase', () => ({
     supabase: supabaseClient,
@@ -95,7 +94,7 @@ export function mockSupabase(
   return supabaseClient;
 }
 
-export function createIntegrationStore(state?: any) {
+export function createIntegrationStore(state?: Record<string, unknown>) {
   const { createStore } = require('../store.js');
   return createStore({ isClient: true, redux: { ssrState: state } });
 }
