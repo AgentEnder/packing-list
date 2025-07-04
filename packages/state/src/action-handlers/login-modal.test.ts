@@ -13,8 +13,15 @@ describe('login modal handlers', () => {
   });
 
   it('closes the login modal', () => {
-    const state = createTestTripState({});
-    state.ui.loginModal.isOpen = true;
+    const state = {
+      ...createTestTripState({}),
+      ui: {
+        ...createTestTripState({}).ui,
+        loginModal: {
+          isOpen: true,
+        },
+      },
+    };
     const result = closeLoginModalHandler(state);
     expect(result.ui.loginModal.isOpen).toBe(false);
   });
