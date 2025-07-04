@@ -5,7 +5,7 @@ import {
   createIntegrationStore,
 } from './integration-helpers.js';
 import { closeDatabase } from '@packing-list/offline-storage';
-import authReducer, { authSlice, authInitialState } from '@packing-list/auth-state';
+import { authSlice, authInitialState } from '@packing-list/auth-state';
 
 mockSupabase();
 

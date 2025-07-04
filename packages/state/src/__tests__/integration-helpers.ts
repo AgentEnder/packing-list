@@ -103,13 +103,7 @@ export async function seedIndexedDB(options: {
   }
 }
 
-export function mockSupabase(
-  data: {
-    userPreferences?: UserPreferences | null;
-    userPeople?: UserPerson[];
-    trips?: unknown[];
-  } = {}
-) {
+export function mockSupabase() {
   // Mock is now hoisted at the top of the file, this function is kept for API compatibility
   // but doesn't actually do anything since the mock is global
   return null;
