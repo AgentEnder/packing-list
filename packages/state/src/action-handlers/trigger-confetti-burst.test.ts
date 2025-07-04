@@ -20,7 +20,7 @@ describe('triggerConfettiBurstHandler', () => {
   it('updates confetti state when motion allowed', () => {
     globalThis.window = {
       matchMedia: vi.fn().mockReturnValue({ matches: false }),
-    } as unknown as Window;
+    } as unknown as Window & typeof globalThis;
 
     const state = createTestTripState({});
     const result = triggerConfettiBurstHandler(state, {

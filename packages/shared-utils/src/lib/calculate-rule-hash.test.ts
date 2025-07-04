@@ -8,7 +8,7 @@ describe('calculateRuleHash', () => {
     originalRuleId: '1',
     name: 'Test',
     calculation: { baseQuantity: 1 },
-    conditions: [{ property: 'test', operator: 'equals', value: 'value' }],
+    conditions: [{ type: 'person', field: 'age', operator: '==', value: 25 }],
   };
 
   it('produces stable hashes for identical rules', () => {
