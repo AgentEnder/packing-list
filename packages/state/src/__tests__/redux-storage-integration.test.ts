@@ -39,6 +39,15 @@ describe('Redux and offline storage integration', () => {
   it('persists actions to IndexedDB', async () => {
     const offline = await loadOfflineState('user-1');
     const store = createIntegrationStore(offline as Record<string, unknown>);
+    
+    // Set up authenticated user for sync tracking middleware
+    store.dispatch({
+      type: 'auth/updateAuthState',
+      payload: {
+        user: { id: 'user-1', email: 'test@example.com' },
+        session: null,
+      },
+    });
 
     store.dispatch({
       type: 'ADD_PERSON',
@@ -52,6 +61,9 @@ describe('Redux and offline storage integration', () => {
         isDeleted: false,
       } as Person,
     });
+
+    // Wait for async persistence
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     const people = await PersonStorage.getTripPeople('t1');
     expect(people.some((p) => p.id === 'p1')).toBe(true);
