@@ -109,8 +109,8 @@ export function mockSupabase() {
   return null;
 }
 
-import { createStore } from '../store.js';
+import { createStore, type StoreType } from '../store.js';
 
-export function createIntegrationStore(state?: Record<string, unknown>) {
+export function createIntegrationStore(state?: StoreType) {
   return createStore({ isClient: true, redux: { ssrState: state } });
 }

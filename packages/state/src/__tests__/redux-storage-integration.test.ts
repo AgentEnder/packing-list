@@ -10,6 +10,7 @@ import {
   closeDatabase,
 } from '@packing-list/offline-storage';
 import type { Trip, Person } from '@packing-list/model';
+import type { StoreType } from '../store.js';
 
 mockSupabase();
 
@@ -38,7 +39,7 @@ afterEach(async () => {
 describe('Redux and offline storage integration', () => {
   it('persists actions to IndexedDB', async () => {
     const offline = await loadOfflineState('user-1');
-    const store = createIntegrationStore(offline as Record<string, unknown>);
+    const store = createIntegrationStore(offline as StoreType);
     
     // Set up authenticated user for sync tracking middleware
     store.dispatch({
@@ -71,7 +72,7 @@ describe('Redux and offline storage integration', () => {
 
   it('hydrates store from IndexedDB', async () => {
     const offline = await loadOfflineState('user-1');
-    const store = createIntegrationStore(offline as Record<string, unknown>);
+    const store = createIntegrationStore(offline as StoreType);
 
     const state = store.getState();
     expect(state.trips.summaries).toHaveLength(1);
