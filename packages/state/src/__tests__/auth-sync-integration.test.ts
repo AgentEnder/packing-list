@@ -5,7 +5,7 @@ import {
   createIntegrationStore,
 } from './integration-helpers.js';
 import { closeDatabase } from '@packing-list/offline-storage';
-import authReducer, { authSlice } from '@packing-list/auth-state';
+import authReducer, { authSlice, authInitialState } from '@packing-list/auth-state';
 
 mockSupabase();
 
@@ -20,7 +20,7 @@ afterEach(async () => {
 describe('Auth state changes during sync', () => {
   it('maintains sign-out state while sync thunk resolves', async () => {
     const store = createIntegrationStore({
-      auth: authReducer(undefined, { type: 'init' }),
+      auth: authInitialState,
     });
 
     const syncPromise = store.dispatch(
