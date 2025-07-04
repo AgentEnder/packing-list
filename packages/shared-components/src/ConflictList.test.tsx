@@ -38,9 +38,10 @@ describe('ConflictList', () => {
     render(
       <ConflictList conflicts={[conflict]} onResolveConflict={onResolve} />
     );
-    fireEvent.click(
-      screen.getByText('Trip Conflict').parentElement!.parentElement!
-    );
+    const element = screen.getByText('Trip Conflict').parentElement?.parentElement;
+    if (element) {
+      fireEvent.click(element);
+    }
     expect(onResolve).toHaveBeenCalledWith(conflict);
   });
 

@@ -29,10 +29,10 @@ describe('BannerProvider and Banner', () => {
       </BannerProvider>
     );
 
-    const banner1 = screen.getByText('Banner 1').parentElement!.parentElement!
-      .parentElement as HTMLElement;
-    const banner2 = screen.getByText('Banner 2').parentElement!.parentElement!
-      .parentElement as HTMLElement;
+    const banner1 = screen.getByText('Banner 1').parentElement?.parentElement
+      ?.parentElement as HTMLElement;
+    const banner2 = screen.getByText('Banner 2').parentElement?.parentElement
+      ?.parentElement as HTMLElement;
 
     await waitFor(() => {
       expect(banner1.style.bottom).toBe('0px');
