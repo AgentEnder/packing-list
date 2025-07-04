@@ -30,8 +30,10 @@ export class LocalAuthService {
   };
   private db: IDBDatabase | null = null;
 
+  private initPromise: Promise<void>;
+
   constructor() {
-    this.initializeDB().then(() => this.initializeAuth());
+    this.initPromise = this.initializeDB().then(() => this.initializeAuth());
   }
 
   private async initializeDB(): Promise<void> {
@@ -285,6 +287,7 @@ export class LocalAuthService {
     password: string,
     metadata?: { name?: string; id?: string }
   ): Promise<{ user?: LocalAuthUser; error?: string }> {
+    await this.initPromise;
     try {
       // Check if user already exists
       const existingUser = await this.getUserByEmail(email);
@@ -331,6 +334,7 @@ export class LocalAuthService {
     email: string,
     password: string
   ): Promise<{ user?: LocalAuthUser; error?: string }> {
+    await this.initPromise;
     try {
       const user = await this.getUserByEmail(email);
 
@@ -370,6 +374,7 @@ export class LocalAuthService {
   }
 
   async signOut(): Promise<{ error?: string }> {
+    await this.initPromise;
     try {
       await this.clearSession();
       this.updateState({
