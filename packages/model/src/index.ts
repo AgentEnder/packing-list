@@ -19,3 +19,4 @@ export * from './lib/SyncTypes.js';
 export * from './lib/TripSummary.js';
 export * from './lib/TripItem.js';
 export * from './lib/TripRule.js';
+export * from './lib/TripUser.js';
