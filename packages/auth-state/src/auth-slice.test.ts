@@ -36,7 +36,7 @@ describe('Auth Slice', () => {
       it('should enable force offline mode', () => {
         store.dispatch(authSlice.actions.setForceOfflineMode(true));
         const state = store.getState().auth;
-        
+
         expect(state.forceOfflineMode).toBe(true);
         expect(state.isOfflineMode).toBe(true);
       });
@@ -44,11 +44,11 @@ describe('Auth Slice', () => {
       it('should disable force offline mode and recalculate offline mode', () => {
         // First enable force offline mode
         store.dispatch(authSlice.actions.setForceOfflineMode(true));
-        
+
         // Then disable it
         store.dispatch(authSlice.actions.setForceOfflineMode(false));
         const state = store.getState().auth;
-        
+
         expect(state.forceOfflineMode).toBe(false);
         // Should be false since connectivity is good by default
         expect(state.isOfflineMode).toBe(false);
@@ -57,11 +57,13 @@ describe('Auth Slice', () => {
 
     describe('updateConnectivityState', () => {
       it('should update connectivity and trigger offline mode when disconnected', () => {
-        store.dispatch(authSlice.actions.updateConnectivityState({
-          isOnline: false,
-          isConnected: false,
-        }));
-        
+        store.dispatch(
+          authSlice.actions.updateConnectivityState({
+            isOnline: false,
+            isConnected: false,
+          })
+        );
+
         const state = store.getState().auth;
         expect(state.connectivityState.isOnline).toBe(false);
         expect(state.connectivityState.isConnected).toBe(false);
@@ -69,11 +71,13 @@ describe('Auth Slice', () => {
       });
 
       it('should maintain online mode when connectivity is good', () => {
-        store.dispatch(authSlice.actions.updateConnectivityState({
-          isOnline: true,
-          isConnected: true,
-        }));
-        
+        store.dispatch(
+          authSlice.actions.updateConnectivityState({
+            isOnline: true,
+            isConnected: true,
+          })
+        );
+
         const state = store.getState().auth;
         expect(state.connectivityState.isOnline).toBe(true);
         expect(state.connectivityState.isConnected).toBe(true);
@@ -83,13 +87,15 @@ describe('Auth Slice', () => {
       it('should respect force offline mode over good connectivity', () => {
         // Enable force offline mode first
         store.dispatch(authSlice.actions.setForceOfflineMode(true));
-        
+
         // Then update with good connectivity
-        store.dispatch(authSlice.actions.updateConnectivityState({
-          isOnline: true,
-          isConnected: true,
-        }));
-        
+        store.dispatch(
+          authSlice.actions.updateConnectivityState({
+            isOnline: true,
+            isConnected: true,
+          })
+        );
+
         const state = store.getState().auth;
         expect(state.connectivityState.isOnline).toBe(true);
         expect(state.connectivityState.isConnected).toBe(true);
@@ -101,18 +107,20 @@ describe('Auth Slice', () => {
     describe('clearError', () => {
       it('should clear error and lastError', () => {
         // First set an error using updateAuthState
-        store.dispatch(authSlice.actions.updateAuthState({
-          error: 'Test error',
-          lastError: 'Test error'
-        }));
-        
+        store.dispatch(
+          authSlice.actions.updateAuthState({
+            error: 'Test error',
+            lastError: 'Test error',
+          })
+        );
+
         // Verify error is set
         expect(store.getState().auth.error).toBe('Test error');
         expect(store.getState().auth.lastError).toBe('Test error');
-        
+
         // Clear the error
         store.dispatch(authSlice.actions.clearError(null));
-        
+
         const state = store.getState().auth;
         expect(state.error).toBe(null);
         expect(state.lastError).toBe(null);
@@ -123,17 +131,21 @@ describe('Auth Slice', () => {
       it('should reset auth state while preserving connectivity', () => {
         // Set up some state
         store.dispatch(authSlice.actions.setForceOfflineMode(true));
-        store.dispatch(authSlice.actions.updateAuthState({
-          error: 'Test error',
-        }));
-        store.dispatch(authSlice.actions.updateConnectivityState({
-          isOnline: false,
-          isConnected: false,
-        }));
-        
+        store.dispatch(
+          authSlice.actions.updateAuthState({
+            error: 'Test error',
+          })
+        );
+        store.dispatch(
+          authSlice.actions.updateConnectivityState({
+            isOnline: false,
+            isConnected: false,
+          })
+        );
+
         // Reset
         store.dispatch(authSlice.actions.resetAuthState(null));
-        
+
         const state = store.getState().auth;
         expect(state.user).toBe(null);
         expect(state.error).toBe(null);
@@ -147,12 +159,14 @@ describe('Auth Slice', () => {
 
     describe('updateAuthState', () => {
       it('should update partial auth state', () => {
-        store.dispatch(authSlice.actions.updateAuthState({
-          loading: false,
-          error: 'Authentication failed',
-          lastError: 'Authentication failed',
-        }));
-        
+        store.dispatch(
+          authSlice.actions.updateAuthState({
+            loading: false,
+            error: 'Authentication failed',
+            lastError: 'Authentication failed',
+          })
+        );
+
         const state = store.getState().auth;
         expect(state.loading).toBe(false);
         expect(state.error).toBe('Authentication failed');
@@ -169,7 +183,7 @@ describe('Auth Slice', () => {
         };
 
         store.dispatch(authSlice.actions.updateAuthState({ user }));
-        
+
         const state = store.getState().auth;
         expect(state.user).toEqual(user);
       });
@@ -179,39 +193,47 @@ describe('Auth Slice', () => {
   describe('Offline Mode Logic', () => {
     it('should be offline when forceOfflineMode is true', () => {
       store.dispatch(authSlice.actions.setForceOfflineMode(true));
-      store.dispatch(authSlice.actions.updateConnectivityState({
-        isOnline: true,
-        isConnected: true,
-      }));
-      
+      store.dispatch(
+        authSlice.actions.updateConnectivityState({
+          isOnline: true,
+          isConnected: true,
+        })
+      );
+
       expect(store.getState().auth.isOfflineMode).toBe(true);
     });
 
     it('should be offline when not connected', () => {
-      store.dispatch(authSlice.actions.updateConnectivityState({
-        isOnline: true,
-        isConnected: false,
-      }));
-      
+      store.dispatch(
+        authSlice.actions.updateConnectivityState({
+          isOnline: true,
+          isConnected: false,
+        })
+      );
+
       expect(store.getState().auth.isOfflineMode).toBe(true);
     });
 
     it('should be offline when not online', () => {
-      store.dispatch(authSlice.actions.updateConnectivityState({
-        isOnline: false,
-        isConnected: true,
-      }));
-      
+      store.dispatch(
+        authSlice.actions.updateConnectivityState({
+          isOnline: false,
+          isConnected: true,
+        })
+      );
+
       expect(store.getState().auth.isOfflineMode).toBe(true);
     });
 
     it('should be online when all conditions are met', () => {
       store.dispatch(authSlice.actions.setForceOfflineMode(false));
-      store.dispatch(authSlice.actions.updateConnectivityState({
-        isOnline: true,
-        isConnected: true,
-      }));
-      
+      store.dispatch(
+        authSlice.actions.updateConnectivityState({
+          isOnline: true,
+          isConnected: true,
+        })
+      );
+
       expect(store.getState().auth.isOfflineMode).toBe(false);
     });
   });
@@ -227,7 +249,7 @@ describe('Auth Slice', () => {
       };
 
       store.dispatch(authSlice.actions.updateAuthState({ user: sharedUser }));
-      
+
       const state = store.getState().auth;
       expect(state.user?.id).toBe('local-shared-user');
       // The slice should identify this as a shared account
@@ -243,7 +265,7 @@ describe('Auth Slice', () => {
       };
 
       store.dispatch(authSlice.actions.updateAuthState({ user: sharedUser }));
-      
+
       const state = store.getState().auth;
       expect(state.user?.email).toBe('shared@local.device');
     });
@@ -258,7 +280,7 @@ describe('Auth Slice', () => {
       };
 
       store.dispatch(authSlice.actions.updateAuthState({ user: regularUser }));
-      
+
       const state = store.getState().auth;
       expect(state.user).toEqual(regularUser);
     });
@@ -267,9 +289,11 @@ describe('Auth Slice', () => {
   describe('Session Management', () => {
     it('should update session state', () => {
       const mockSession = { user: { id: 'test' }, access_token: 'token123' };
-      
-      store.dispatch(authSlice.actions.updateAuthState({ session: mockSession }));
-      
+
+      store.dispatch(
+        authSlice.actions.updateAuthState({ session: mockSession })
+      );
+
       const state = store.getState().auth;
       expect(state.session).toEqual(mockSession);
     });
@@ -277,11 +301,13 @@ describe('Auth Slice', () => {
     it('should clear session', () => {
       // First set a session
       const mockSession = { user: { id: 'test' }, access_token: 'token123' };
-      store.dispatch(authSlice.actions.updateAuthState({ session: mockSession }));
-      
+      store.dispatch(
+        authSlice.actions.updateAuthState({ session: mockSession })
+      );
+
       // Then clear it
       store.dispatch(authSlice.actions.updateAuthState({ session: null }));
-      
+
       const state = store.getState().auth;
       expect(state.session).toBe(null);
     });
@@ -291,12 +317,16 @@ describe('Auth Slice', () => {
     it('should maintain consistent state during complex operations', () => {
       // Simulate a complex flow
       store.dispatch(authSlice.actions.updateAuthState({ loading: true }));
-      store.dispatch(authSlice.actions.updateAuthState({ isAuthenticating: true }));
-      store.dispatch(authSlice.actions.updateConnectivityState({
-        isOnline: true,
-        isConnected: true,
-      }));
-      
+      store.dispatch(
+        authSlice.actions.updateAuthState({ isAuthenticating: true })
+      );
+      store.dispatch(
+        authSlice.actions.updateConnectivityState({
+          isOnline: true,
+          isConnected: true,
+        })
+      );
+
       const user = {
         id: 'remote-user-123',
         email: 'user@example.com',
@@ -304,12 +334,18 @@ describe('Auth Slice', () => {
         type: 'remote' as const,
         created_at: '2023-01-01',
       };
-      
+
       store.dispatch(authSlice.actions.updateAuthState({ user }));
-      store.dispatch(authSlice.actions.updateAuthState({ session: { access_token: 'token' } }));
+      store.dispatch(
+        authSlice.actions.updateAuthState({
+          session: { access_token: 'token' },
+        })
+      );
       store.dispatch(authSlice.actions.updateAuthState({ loading: false }));
-      store.dispatch(authSlice.actions.updateAuthState({ isAuthenticating: false }));
-      
+      store.dispatch(
+        authSlice.actions.updateAuthState({ isAuthenticating: false })
+      );
+
       const state = store.getState().auth;
       expect(state.user).toEqual(user);
       expect(state.session).toEqual({ access_token: 'token' });

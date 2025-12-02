@@ -93,7 +93,9 @@ describe('ItemStorage', () => {
     };
 
     await ItemStorage.saveItem(item);
-    const itemsBeforeDelete = await ItemStorage.getTripItems('test-trip-abc123');
+    const itemsBeforeDelete = await ItemStorage.getTripItems(
+      'test-trip-abc123'
+    );
     expect(itemsBeforeDelete).toHaveLength(1);
 
     await ItemStorage.deleteItem('test-item-abc123');

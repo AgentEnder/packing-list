@@ -81,11 +81,15 @@ describe('PersonStorage', () => {
     };
 
     await PersonStorage.savePerson(person);
-    const peopleBeforeDelete = await PersonStorage.getTripPeople('test-trip-abc123');
+    const peopleBeforeDelete = await PersonStorage.getTripPeople(
+      'test-trip-abc123'
+    );
     expect(peopleBeforeDelete).toHaveLength(1);
 
     await PersonStorage.deletePerson('test-person-abc123');
-    const peopleAfterDelete = await PersonStorage.getTripPeople('test-trip-abc123');
+    const peopleAfterDelete = await PersonStorage.getTripPeople(
+      'test-trip-abc123'
+    );
     expect(peopleAfterDelete).toHaveLength(0);
   });
 
