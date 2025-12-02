@@ -100,6 +100,24 @@ INSERT INTO auth.users (
   '',
   '',
   ''
+), (
+  '00000000-0000-0000-0000-000000000000',
+  '44444444-4444-4444-4444-444444444444',
+  'authenticated',
+  'authenticated',
+  'manual-test2@gmail.com',
+  crypt('BAY6gcx-pgd6dka5qzb', gen_salt('bf')),
+  NOW(),
+  NULL,
+  NOW(),
+  '{"provider": "email", "providers": ["email"]}',
+  '{"name": "Manual Test User 2", "full_name": "Manual Test User 2"}',
+  NOW(),
+  NOW(),
+  '',
+  '',
+  '',
+  ''
 );
 
 -- Insert corresponding identities for each user
@@ -173,6 +191,20 @@ INSERT INTO auth.identities (
   NOW(),
   NOW(),
   '99999999-9999-9999-9999-999999999999'
+), (
+  '88888888-8888-8888-8888-888888888888',
+  '44444444-4444-4444-4444-444444444444',
+  jsonb_build_object(
+    'sub', '44444444-4444-4444-4444-444444444444',
+    'email', 'manual-test2@gmail.com',
+    'email_verified', true,
+    'phone_verified', false
+  ),
+  'email',
+  NOW(),
+  NOW(),
+  NOW(),
+  '44444444-4444-4444-4444-444444444444'
 );
 
 -- Function to create a new e2e test user

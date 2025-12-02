@@ -183,30 +183,30 @@ export type Database = {
           created_at: string | null
           id: string
           is_deleted: boolean | null
+          last_modified_by: string | null
           rule_id: string
           trip_id: string
           updated_at: string | null
-          user_id: string
           version: number | null
         }
         Insert: {
           created_at?: string | null
           id?: string
           is_deleted?: boolean | null
+          last_modified_by?: string | null
           rule_id: string
           trip_id: string
           updated_at?: string | null
-          user_id: string
           version?: number | null
         }
         Update: {
           created_at?: string | null
           id?: string
           is_deleted?: boolean | null
+          last_modified_by?: string | null
           rule_id?: string
           trip_id?: string
           updated_at?: string | null
-          user_id?: string
           version?: number | null
         }
         Relationships: [
@@ -233,6 +233,7 @@ export type Database = {
           day_index: number | null
           id: string
           is_deleted: boolean | null
+          last_modified_by: string | null
           name: string
           notes: string | null
           packed: boolean | null
@@ -250,6 +251,7 @@ export type Database = {
           day_index?: number | null
           id?: string
           is_deleted?: boolean | null
+          last_modified_by?: string | null
           name: string
           notes?: string | null
           packed?: boolean | null
@@ -267,6 +269,7 @@ export type Database = {
           day_index?: number | null
           id?: string
           is_deleted?: boolean | null
+          last_modified_by?: string | null
           name?: string
           notes?: string | null
           packed?: boolean | null
@@ -302,6 +305,7 @@ export type Database = {
           gender: string | null
           id: string
           is_deleted: boolean | null
+          last_modified_by: string | null
           name: string
           settings: Json | null
           trip_id: string
@@ -315,6 +319,7 @@ export type Database = {
           gender?: string | null
           id?: string
           is_deleted?: boolean | null
+          last_modified_by?: string | null
           name: string
           settings?: Json | null
           trip_id: string
@@ -328,6 +333,7 @@ export type Database = {
           gender?: string | null
           id?: string
           is_deleted?: boolean | null
+          last_modified_by?: string | null
           name?: string
           settings?: Json | null
           trip_id?: string
@@ -357,6 +363,7 @@ export type Database = {
           created_at: string | null
           id: string
           is_deleted: boolean | null
+          last_modified_by: string | null
           override_data: Json
           rule_id: string
           trip_id: string
@@ -367,6 +374,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_deleted?: boolean | null
+          last_modified_by?: string | null
           override_data: Json
           rule_id: string
           trip_id: string
@@ -377,6 +385,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_deleted?: boolean | null
+          last_modified_by?: string | null
           override_data?: Json
           rule_id?: string
           trip_id?: string
@@ -437,6 +446,60 @@ export type Database = {
           version?: number | null
         }
         Relationships: []
+      }
+      trip_users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_deleted: boolean
+          role: string
+          status: string
+          trip_id: string
+          updated_at: string
+          user_id: string | null
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_deleted?: boolean
+          role: string
+          status?: string
+          trip_id: string
+          updated_at?: string
+          user_id?: string | null
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_deleted?: boolean
+          role?: string
+          status?: string
+          trip_id?: string
+          updated_at?: string
+          user_id?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_users_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_users_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_people: {
         Row: {
