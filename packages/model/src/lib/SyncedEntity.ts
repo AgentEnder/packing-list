@@ -1,10 +1,7 @@
-export type TripRule = {
+export interface SyncedEntity {
   id: string;
-  tripId: string;
-  ruleId: string;
-  lastModifiedBy?: string;
   createdAt: string;
   updatedAt: string;
   version: number;
   isDeleted: boolean;
-};
+}

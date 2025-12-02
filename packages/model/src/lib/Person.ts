@@ -13,6 +13,9 @@ export type Person = {
   // Sprint 2: Reference to user person template
   userPersonId?: string; // Reference to UserPerson for profile-based people
 
+  // Audit tracking
+  lastModifiedBy?: string;
+
   // Sync tracking
   createdAt: string;
   updatedAt: string;

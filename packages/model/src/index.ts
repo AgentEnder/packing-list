@@ -12,6 +12,7 @@ export * from './lib/UserPerson.js';
 export * from './lib/Calculation.js';
 export * from './lib/PackingListView.js';
 export * from './lib/Category.js';
+export * from './lib/SyncedEntity.js';
 
 // New multi-trip types
 export * from './lib/UserPreferences.js';
@@ -19,3 +20,4 @@ export * from './lib/SyncTypes.js';
 export * from './lib/TripSummary.js';
 export * from './lib/TripItem.js';
 export * from './lib/TripRule.js';
+export * from './lib/TripUser.js';

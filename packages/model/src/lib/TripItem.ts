@@ -13,6 +13,9 @@ export type TripItem = {
   ruleId?: string; // ID of the rule that generated this item
   ruleHash?: string; // Hash of the rule for matching calculated items
 
+  // Audit tracking
+  lastModifiedBy?: string;
+
   // Sync tracking
   createdAt: string;
   updatedAt: string;

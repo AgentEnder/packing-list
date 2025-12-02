@@ -5,4 +5,5 @@ export type RuleOverride = {
   dayIndex?: number; // If null, applies to all days
   overrideCount?: number;
   isExcluded: boolean;
+  lastModifiedBy?: string;
 };
