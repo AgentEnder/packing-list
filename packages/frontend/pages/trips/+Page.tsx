@@ -10,6 +10,7 @@ import { PageContainer } from '../../components/PageContainer';
 import { Calendar } from '../../components/Calendar';
 import { Link, Modal } from '@packing-list/shared-components';
 import { uuid } from '@packing-list/shared-utils';
+import { PendingInvitationsCard } from '../../components/PendingInvitationsCard';
 import {
   Plus,
   MapPin,
@@ -36,6 +37,9 @@ export default function TripsPage() {
   const [tripToDelete, setTripToDelete] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const tripDataById = useAppSelector((state) => state.trips.byId);
+  const pendingInvitations = useAppSelector(
+    (state) => state.tripUsers.pendingInvitations
+  );
 
   const handleSelectTrip = (tripId: string) => {
     dispatch({
@@ -146,6 +150,13 @@ export default function TripsPage() {
           </div>
         }
       />
+
+      {/* Show pending invitations if any */}
+      {pendingInvitations.length > 0 && (
+        <div className="mb-6">
+          <PendingInvitationsCard />
+        </div>
+      )}
 
       <div className="mb-6">
         <p className="text-base-content/70">

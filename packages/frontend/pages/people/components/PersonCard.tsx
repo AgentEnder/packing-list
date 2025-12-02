@@ -3,6 +3,7 @@ import {
   isPersonFromUserProfile,
   isPersonFromTemplate,
   estimateBirthDateFromAge,
+  TripUser,
 } from '@packing-list/model';
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { PersonForm } from './PersonForm';
@@ -13,12 +14,14 @@ import {
   Bookmark,
   Pencil,
   Trash,
+  Users,
 } from 'lucide-react';
 import {
   useAppSelector,
   selectUserProfile,
   useAppDispatch,
   useAuth,
+  selectSelectedTripId,
 } from '@packing-list/state';
 import { upsertUserPerson } from '@packing-list/state';
 import { applyBaseUrl, uuid } from '@packing-list/shared-utils';
@@ -35,11 +38,28 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
   const { user } = useAuth();
   const dispatch = useAppDispatch();
   const userProfile = useAppSelector(selectUserProfile);
+  const selectedTripId = useAppSelector(selectSelectedTripId);
+  const tripUsers = useAppSelector(
+    (state) => state.tripUsers.tripUsers
+  ) as Record<string, TripUser>;
   const listenerRef = useRef<(() => void) | null>(null);
 
   const isFromUserProfile = isPersonFromUserProfile(person, userProfile);
   const isFromOtherTemplate =
     isPersonFromTemplate(person) && !isFromUserProfile;
+
+  // Check if this person represents a trip member
+  // This would be the case if the person was created from a user who joined the trip
+  const isTripMember =
+    selectedTripId && person.userPersonId
+      ? Object.values(tripUsers).some(
+          (tu) =>
+            tu.tripId === selectedTripId &&
+            tu.userId && // User has accepted the invitation
+            tu.status === 'accepted' &&
+            !tu.isDeleted
+        )
+      : false;
 
   const handleSaveAsTemplate = async () => {
     if (!user || isFromUserProfile) return;
@@ -64,28 +84,25 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
     setShowMenu(false);
   };
 
-  const showMenuHandler = useCallback(
-    (event: React.MouseEvent) => {
-      setShowMenu(true);
+  const showMenuHandler = useCallback((event: React.MouseEvent) => {
+    setShowMenu(true);
 
-      // Remove previous listener if it exists
-      if (listenerRef.current) {
-        document.removeEventListener('click', listenerRef.current);
-      }
+    // Remove previous listener if it exists
+    if (listenerRef.current) {
+      document.removeEventListener('click', listenerRef.current);
+    }
 
-      // Close menu on outside click
-      const listener = () => {
-        setShowMenu(false);
-        document.removeEventListener('click', listener);
-        listenerRef.current = null;
-      };
+    // Close menu on outside click
+    const listener = () => {
+      setShowMenu(false);
+      document.removeEventListener('click', listener);
+      listenerRef.current = null;
+    };
 
-      listenerRef.current = listener;
-      document.addEventListener('click', listener);
-      return event.stopPropagation();
-    },
-    []
-  );
+    listenerRef.current = listener;
+    document.addEventListener('click', listener);
+    return event.stopPropagation();
+  }, []);
 
   // Clean up event listener on component unmount
   useEffect(() => {
@@ -125,6 +142,15 @@ export const PersonCard = ({ person, onDelete }: PersonCardProps) => {
               >
                 <User className="h-3 w-3" />
                 From Template
+              </div>
+            )}
+            {isTripMember && !isFromUserProfile && (
+              <div
+                className="flex items-center gap-1 bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium"
+                data-testid="trip-member-indicator"
+              >
+                <Users className="h-3 w-3" />
+                Trip Member
               </div>
             )}
           </div>

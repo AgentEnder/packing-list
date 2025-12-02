@@ -188,12 +188,15 @@ export default function LayoutDefault({
     });
   }, [authLoading, authIsInitialized, user, authStatus]);
 
-  // Close login modal when user becomes remotely authenticated
+  // Close login modal and load pending invitations when user becomes remotely authenticated
   useEffect(() => {
     if (isRemotelyAuthenticated) {
       closeLoginModal();
+      // First populate any email-based invitations with the user_id, then load pending invitations
+      dispatch(actions.populatePendingInvitations());
+      dispatch(actions.loadPendingInvitations());
     }
-  }, [isRemotelyAuthenticated, closeLoginModal]);
+  }, [isRemotelyAuthenticated, closeLoginModal, dispatch]);
 
   const syncState = useAppSelector((state) => state.sync.syncState);
 

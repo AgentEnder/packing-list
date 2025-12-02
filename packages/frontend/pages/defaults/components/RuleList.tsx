@@ -5,9 +5,15 @@ type RuleListProps = {
   rules: DefaultItemRule[];
   people: Person[];
   days: Day[];
+  canEdit?: boolean;
 };
 
-export const RuleList = ({ rules, people, days }: RuleListProps) => {
+export const RuleList = ({
+  rules,
+  people,
+  days,
+  canEdit = true,
+}: RuleListProps) => {
   return (
     <div className="card bg-base-100 shadow-xl">
       <div className="card-body">
@@ -20,7 +26,12 @@ export const RuleList = ({ rules, people, days }: RuleListProps) => {
               data-testid={`rule-item-${rule.id}`}
             >
               <div className="card-body">
-                <RuleCard rule={rule} people={people} days={days} />
+                <RuleCard
+                  rule={rule}
+                  people={people}
+                  days={days}
+                  canEdit={canEdit}
+                />
               </div>
             </div>
           ))}

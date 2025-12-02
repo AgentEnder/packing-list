@@ -6,7 +6,7 @@ import {
   selectDefaultItemRules,
 } from '@packing-list/state';
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, AlertTriangle } from 'lucide-react';
 import { RuleFormModal } from './components/RuleFormModal';
 import { RuleList } from './components/RuleList';
 import { PageHeader } from '../../components/PageHeader';
@@ -15,12 +15,14 @@ import { HelpBlurb } from '../../components/HelpBlurb';
 import { NoTripSelected } from '../../components/NoTripSelected';
 import { RulePackSelector } from '../../components/RulePackSelector';
 import { FlowContinueButton } from '../../components/FlowContinueButton';
+import { usePermissions } from '../../hooks/usePermissions';
 
 export default function DefaultsPage() {
   const selectedTripId = useAppSelector(selectSelectedTripId);
   const defaultItemRules = useAppSelector(selectDefaultItemRules);
   const people = useAppSelector(selectPeople);
   const days = useAppSelector(selectTripDays);
+  const { canView, canEdit } = usePermissions(selectedTripId || undefined);
 
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
 
@@ -35,6 +37,24 @@ export default function DefaultsPage() {
           actionText="View My Trips"
           actionHref="/trips"
         />
+      </PageContainer>
+    );
+  }
+
+  // Check permissions
+  if (!canView) {
+    return (
+      <PageContainer>
+        <PageHeader title="Packing Rules" />
+        <div className="card bg-base-200 shadow-lg mt-6">
+          <div className="card-body text-center">
+            <AlertTriangle className="w-16 h-16 mx-auto text-warning mb-4" />
+            <h2 className="card-title justify-center">Access Denied</h2>
+            <p className="text-base-content/70">
+              You don't have permission to view this trip's packing rules.
+            </p>
+          </div>
+        </div>
       </PageContainer>
     );
   }
@@ -92,24 +112,31 @@ export default function DefaultsPage() {
         </div>
       </HelpBlurb>
 
-      <RulePackSelector className="mb-8" />
+      {canEdit && <RulePackSelector className="mb-8" />}
 
       {/* Add Rule Button */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">Your Rules</h2>
-        <button
-          className="btn btn-primary gap-2"
-          onClick={() => setIsRuleModalOpen(true)}
-          data-testid="add-rule-button"
-        >
-          <Plus className="w-4 h-4" />
-          Add Rule
-        </button>
+        {canEdit && (
+          <button
+            className="btn btn-primary gap-2"
+            onClick={() => setIsRuleModalOpen(true)}
+            data-testid="add-rule-button"
+          >
+            <Plus className="w-4 h-4" />
+            Add Rule
+          </button>
+        )}
       </div>
 
-      <RuleList rules={defaultItemRules} people={people} days={days} />
+      <RuleList
+        rules={defaultItemRules}
+        people={people}
+        days={days}
+        canEdit={canEdit}
+      />
 
-      <FlowContinueButton />
+      {canEdit && <FlowContinueButton />}
 
       {/* Rule Form Modal */}
       <RuleFormModal

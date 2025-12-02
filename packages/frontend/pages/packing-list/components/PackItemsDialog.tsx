@@ -25,12 +25,14 @@ interface PackItemsDialogProps {
     packedCount: number;
     metadata: GroupMetadata;
   };
+  canEdit?: boolean;
 }
 
 export const PackItemsDialog: React.FC<PackItemsDialogProps> = ({
   isOpen,
   onClose,
   groupedItem,
+  canEdit = true,
 }) => {
   const dispatch = useAppDispatch();
   const viewMode = useAppSelector(selectPackingListViewMode);
@@ -85,6 +87,7 @@ export const PackItemsDialog: React.FC<PackItemsDialogProps> = ({
           className="checkbox"
           checked={item.isPacked}
           onChange={() => handleToggleItem(item)}
+          disabled={!canEdit}
         />
         <div className="flex flex-col gap-0.5">
           <span>

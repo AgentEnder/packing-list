@@ -22,6 +22,7 @@ type RuleCardProps = {
   rule: DefaultItemRule;
   people: Person[];
   days: Day[];
+  canEdit?: boolean;
 };
 
 const formatDayPattern = (pattern: { every: number; roundUp: boolean }) => {
@@ -29,7 +30,12 @@ const formatDayPattern = (pattern: { every: number; roundUp: boolean }) => {
   return `every ${pattern.every} days${pattern.roundUp ? ' (rounded up)' : ''}`;
 };
 
-export const RuleCard = ({ rule, people, days }: RuleCardProps) => {
+export const RuleCard = ({
+  rule,
+  people,
+  days,
+  canEdit = true,
+}: RuleCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const dispatch = useAppDispatch();
@@ -263,22 +269,24 @@ export const RuleCard = ({ rule, people, days }: RuleCardProps) => {
           )}
         </div>
 
-        <div className="col-span-2 flex justify-end gap-2">
-          <button
-            onClick={handleEdit}
-            className="btn btn-primary btn-sm"
-            data-testid="edit-rule-button"
-          >
-            Edit
-          </button>
-          <button
-            onClick={handleDelete}
-            className="btn btn-error btn-sm"
-            data-testid="delete-rule-button"
-          >
-            Delete
-          </button>
-        </div>
+        {canEdit && (
+          <div className="col-span-2 flex justify-end gap-2">
+            <button
+              onClick={handleEdit}
+              className="btn btn-primary btn-sm"
+              data-testid="edit-rule-button"
+            >
+              Edit
+            </button>
+            <button
+              onClick={handleDelete}
+              className="btn btn-error btn-sm"
+              data-testid="delete-rule-button"
+            >
+              Delete
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Edit Rule Modal */}

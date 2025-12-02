@@ -28,7 +28,11 @@ import { PageHeader } from '../../../components/PageHeader';
 import { useMousePosition } from '@packing-list/shared-utils';
 import { Link } from '@packing-list/shared-components';
 
-export const PackingList: React.FC = () => {
+interface PackingListProps {
+  canEdit?: boolean;
+}
+
+export const PackingList: React.FC<PackingListProps> = ({ canEdit = true }) => {
   const dispatch = useAppDispatch();
   const viewState = useAppSelector(selectPackingListViewState);
   const { groupedItems, groupedGeneralItems } =
@@ -131,20 +135,23 @@ export const PackingList: React.FC = () => {
             style={{ width: `${progress}%` }}
           />
           <div className="relative z-10 flex items-center gap-1.5 min-w-0 flex-1 hover:z-15">
-            <button
-              className="btn btn-xs sm:btn-sm btn-square shrink-0"
-              onClick={() => handleOpenPackDialog(groupedItem)}
-              aria-label="Pack"
-              aria-description={`Pack ${groupedItem.displayName}`}
-              data-testid="pack-button"
-            >
-              <PackagePlus className="w-3.5 h-3.5" />
-            </button>
+            {canEdit && (
+              <button
+                className="btn btn-xs sm:btn-sm btn-square shrink-0"
+                onClick={() => handleOpenPackDialog(groupedItem)}
+                aria-label="Pack"
+                aria-description={`Pack ${groupedItem.displayName}`}
+                data-testid="pack-button"
+              >
+                <PackagePlus className="w-3.5 h-3.5" />
+              </button>
+            )}
 
             <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
               <button
                 className="hover:text-primary transition-colors duration-200 truncate text-xs sm:text-sm"
-                onClick={() => handleOpenOverrideDialog(groupedItem)}
+                onClick={() => canEdit && handleOpenOverrideDialog(groupedItem)}
+                disabled={!canEdit}
                 data-testid="item-name"
               >
                 {groupedItem.displayName}
@@ -231,7 +238,7 @@ export const PackingList: React.FC = () => {
   const hasAnyItems =
     groupedItems.some((group) => group.items.length > 0) ||
     groupedGeneralItems.length > 0;
-  const hasTrip = trip?.days.length;
+  const hasTrip = !!trip?.days.length;
   const hasPeople = people.length > 0;
   const hasRules = defaultItemRules.length > 0;
 
@@ -479,6 +486,7 @@ export const PackingList: React.FC = () => {
               setSelectedItem(null);
             }}
             groupedItem={selectedItem}
+            canEdit={canEdit}
           />
         </>
       )}
