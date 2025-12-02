@@ -9,6 +9,7 @@ import type {
   RulePack,
   Change,
   UserPerson,
+  TripUser,
 } from '@packing-list/model';
 
 // Core sync state structure
@@ -42,6 +43,14 @@ export type SyncActions =
   | {
       type: 'MERGE_SYNCED_USER_PERSON';
       payload: UserPerson;
+    }
+  | {
+      type: 'MERGE_SYNCED_TRIP_USER';
+      payload: TripUser;
+    }
+  | {
+      type: 'TRACK_TRIP_USER_CHANGE';
+      payload: Omit<Change, 'id' | 'timestamp' | 'synced'>;
     };
 
 // Callback types for integration with different state management systems
@@ -58,6 +67,7 @@ export interface EntityCallbacks {
   onTripRuleUpsert?: (link: TripRule) => void;
   onDefaultItemRuleUpsert?: (rule: DefaultItemRule) => void;
   onRulePackUpsert?: (pack: RulePack) => void;
+  onTripUserUpsert?: (tripUser: TripUser) => void;
 }
 
 // Helper type for determining if an entity exists
@@ -65,6 +75,7 @@ export interface EntityExistence {
   tripExists: (tripId: string) => boolean;
   personExists: (personId: string, tripId: string) => boolean;
   itemExists: (itemId: string, tripId: string) => boolean;
+  tripUserExists: (tripUserId: string) => boolean;
 }
 
 // Sync Service Options

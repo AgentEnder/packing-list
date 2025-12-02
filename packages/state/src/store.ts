@@ -23,6 +23,7 @@ import { syncTrackingMiddleware } from './middleware/sync-tracking-middleware.js
 import userPeopleReducer, {
   type UserPeopleState,
 } from './user-people-slice.js';
+import tripUsersReducer, { type TripUsersState } from './trip-users-slice.js';
 
 // New multi-trip store structure
 export type StoreType = {
@@ -74,6 +75,9 @@ export type StoreType = {
 
   // User people state (Sprint 3)
   userPeople: UserPeopleState;
+
+  // Trip users state (multi-user collaboration)
+  tripUsers: TripUsersState;
 };
 
 // Trip-specific data structure
@@ -182,6 +186,14 @@ export const initialState: StoreType = {
     error: null,
     hasTriedToLoad: false,
   },
+  tripUsers: {
+    tripUsers: {},
+    tripMemberships: {},
+    userTrips: {},
+    pendingInvitations: [],
+    loading: false,
+    error: null,
+  },
 };
 
 function createAppReducer(
@@ -216,7 +228,8 @@ function createAppReducer(
         !action.type.startsWith('userPeople') &&
         !action.type.startsWith('auth') &&
         !action.type.startsWith('sync') &&
-        !action.type.startsWith('UPSERT')
+        !action.type.startsWith('UPSERT') &&
+        !action.type.startsWith('tripUsers')
       ) {
         console.warn(`🏪 [STORE] Unknown action: ${action.type}`);
       }
@@ -249,6 +262,10 @@ export function createStore(pageContext?: PageContext, _state?: StoreType) {
       userPeople: userPeopleReducer(
         state?.userPeople,
         action as Parameters<typeof userPeopleReducer>[1] // Properly type the action for userPeopleReducer
+      ),
+      tripUsers: tripUsersReducer(
+        state?.tripUsers,
+        action as Parameters<typeof tripUsersReducer>[1]
       ),
     };
   };

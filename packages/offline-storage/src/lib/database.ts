@@ -11,6 +11,7 @@ import type {
   DefaultItemRule,
   RulePack,
   UserPerson,
+  TripUser,
 } from '@packing-list/model';
 
 // Declare global window type for database instance
@@ -31,6 +32,7 @@ export interface OfflineDB {
   tripItems: TripItem;
   tripRuleOverrides: RuleOverride;
   tripDefaultItemRules: TripRule;
+  trip_users: TripUser;
 
   // User rules data
   defaultItemRules: DefaultItemRule;
@@ -48,7 +50,7 @@ export interface OfflineDB {
 }
 
 const DB_NAME = 'PackingListOfflineDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 let dbInstance: IDBPDatabase<OfflineDB> | null = null;
 
@@ -200,6 +202,19 @@ export async function initializeDatabase(): Promise<IDBPDatabase<OfflineDB>> {
         // Initialize with default values
         syncMetadataStore.put(0, 'lastSyncTimestamp');
         syncMetadataStore.put(generateDeviceId(), 'deviceId');
+      }
+
+      // Trip users store (for multi-user collaboration)
+      if (!db.objectStoreNames.contains('trip_users')) {
+        const tripUsersStore = db.createObjectStore('trip_users', {
+          keyPath: 'id',
+        });
+        tripUsersStore.createIndex('tripId', 'tripId');
+        tripUsersStore.createIndex('userId', 'userId');
+        tripUsersStore.createIndex('email', 'email');
+        tripUsersStore.createIndex('status', 'status');
+        tripUsersStore.createIndex('activeByTrip', ['tripId', 'isDeleted']);
+        console.log('[OfflineDB] Created trip_users object store');
       }
 
       console.log('[OfflineDB] Database schema initialized successfully');

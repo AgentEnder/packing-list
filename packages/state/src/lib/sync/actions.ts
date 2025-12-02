@@ -28,6 +28,20 @@ import { isLocalUser } from './utils.js';
 import { generateDetailedConflicts } from '@packing-list/shared-utils';
 import { upsertUserPerson } from '../../user-people-slice.js';
 import { createEntityCallbacks } from '../sync/sync-integration.js';
+
+/**
+ * Helper function to get trip IDs where the user is an accepted member
+ */
+async function getUserMemberTripIds(userId: string): Promise<string[]> {
+  const { data: memberTrips } = await supabase
+    .from('trip_users')
+    .select('trip_id')
+    .eq('user_id', userId)
+    .eq('status', 'accepted')
+    .eq('is_deleted', false);
+  
+  return memberTrips?.map(tu => tu.trip_id) || [];
+}
 /**
  * Batching system for collecting and pushing changes in bulk
  */
@@ -407,8 +421,11 @@ export const pullAllDataFromServer = createAsyncThunk(
       return rejectWithValue(userPeopleError);
     }
 
-    // Single comprehensive query using PostgREST joins for trip data
-    const { data: tripsWithRelations, error } = await supabase
+    // Get trip IDs where the user is an accepted member
+    const memberTripIds = await getUserMemberTripIds(params.userId);
+    
+    // Build the query to include both owned trips and member trips
+    let tripsQuery = supabase
       .from('trips')
       .select(
         `
@@ -421,7 +438,6 @@ export const pullAllDataFromServer = createAsyncThunk(
         )
       `
       )
-      .eq('user_id', params.userId)
       .gt('updated_at', since)
       .eq('is_deleted', false)
       .eq('trip_people.is_deleted', false)
@@ -429,6 +445,15 @@ export const pullAllDataFromServer = createAsyncThunk(
       .eq('trip_default_item_rules.is_deleted', false)
       .eq('trip_default_item_rules.default_item_rules.is_deleted', false)
       .order('updated_at', { ascending: true });
+
+    // Add filter for owned trips or member trips
+    if (memberTripIds.length > 0) {
+      tripsQuery = tripsQuery.or(`user_id.eq.${params.userId},id.in.(${memberTripIds.join(',')})`);
+    } else {
+      tripsQuery = tripsQuery.eq('user_id', params.userId);
+    }
+
+    const { data: tripsWithRelations, error } = await tripsQuery;
 
     if (error) {
       console.error('❌ [SYNC] Error pulling comprehensive data:', error);
@@ -1193,7 +1218,7 @@ async function pushTripRuleChangesBatch(
       return {
         trip_id: tripRule.tripId,
         rule_id: tripRule.ruleId,
-        user_id: change.userId,
+        last_modified_by: change.userId,
         version: tripRule.version,
         is_deleted: tripRule.isDeleted || false,
         created_at: tripRule.createdAt,

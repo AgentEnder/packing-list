@@ -141,3 +141,14 @@ export const selectAutoSyncEnabled = createSelector(
   [selectUserPreferences],
   (preferences) => preferences?.autoSyncEnabled ?? true
 );
+
+// Trip users selectors
+export {
+  selectTripMembers,
+  selectAllTripUsers,
+  selectUserTrips,
+  selectPendingInvitations,
+  selectUserRoleInTrip,
+  selectCanEditTrip,
+  selectCanEditItems,
+} from './trip-users-slice.js';

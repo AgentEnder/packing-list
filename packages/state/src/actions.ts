@@ -171,6 +171,16 @@ import {
   UpdateLastSelectedTripIdAction,
   SyncUserPreferencesAction,
 } from './action-handlers/user-preferences-handlers.js';
+// Trip invitation thunks
+import {
+  inviteUserToTripThunk,
+  acceptTripInvitationThunk,
+  declineTripInvitationThunk,
+  removeUserFromTripThunk,
+  loadTripMembersThunk,
+  loadPendingInvitationsThunk,
+  populatePendingInvitationsThunk,
+} from './action-handlers/trip-invitation-thunks.js';
 
 // Import sync actions and thunks
 import {
@@ -188,6 +198,8 @@ import {
   setSyncError,
   resetSyncState,
 } from './lib/sync/actions.js';
+
+// Trip invitation action types removed - now using thunks
 
 export type ActionHandler<T extends AllActions> = (
   state: StoreType,
@@ -241,6 +253,7 @@ export type AllActions =
   | UpdateUserPreferencesAction
   | UpdateLastSelectedTripIdAction
   | SyncUserPreferencesAction
+  // Trip invitation actions removed - now using thunks
   | {
       type: 'SYNC_UPDATE_TRIP_SUMMARIES';
       payload: {
@@ -323,7 +336,9 @@ export const Mutations: {
     // TODO: This will be needed when we have more than just the user profile
     return s;
   },
+  MERGE_SYNCED_TRIP_USER: (state: StoreType) => state, // Placeholder - no-op for now
   TRACK_SYNC_CHANGE: (state: StoreType) => state, // Placeholder - no-op for now
+  TRACK_TRIP_USER_CHANGE: (state: StoreType) => state, // Placeholder - no-op for now
   PROCESS_SYNCED_TRIP_ITEMS: processSyncedTripItemsHandler,
   BULK_UPSERT_SYNCED_ENTITIES: bulkUpsertSyncedEntitiesHandler,
   SYNC_UPDATE_TRIP_SUMMARIES: (
@@ -362,6 +377,8 @@ export const Mutations: {
   UPDATE_USER_PREFERENCES: updateUserPreferencesHandler,
   UPDATE_LAST_SELECTED_TRIP_ID: updateLastSelectedTripIdHandler,
   SYNC_USER_PREFERENCES: syncUserPreferencesHandler,
+
+  // Trip invitation handlers removed - now using thunks
 };
 
 export const actions = {
@@ -397,4 +414,13 @@ export const actions = {
   setSyncPendingChanges,
   setSyncError,
   resetSyncState,
+
+  // Trip invitation thunks
+  inviteUserToTrip: inviteUserToTripThunk,
+  acceptTripInvitation: acceptTripInvitationThunk,
+  declineTripInvitation: declineTripInvitationThunk,
+  removeUserFromTrip: removeUserFromTripThunk,
+  loadTripMembers: loadTripMembersThunk,
+  loadPendingInvitations: loadPendingInvitationsThunk,
+  populatePendingInvitations: populatePendingInvitationsThunk,
 };

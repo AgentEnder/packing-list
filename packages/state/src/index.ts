@@ -44,3 +44,4 @@ export {
 
 // Re-export auth-state for convenience
 export * from '@packing-list/auth-state';
+export * from './trip-users-slice.js';
