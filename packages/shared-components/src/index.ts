@@ -44,3 +44,7 @@ export type {
   SyncStatusIndicatorProps,
   SyncStatusBadgeProps,
 } from './SyncStatusIndicator.js';
+
+// Permission components
+export { PermissionGuard } from './permissions/PermissionGuard.js';
+export { usePermissions } from './permissions/usePermissions.js';
