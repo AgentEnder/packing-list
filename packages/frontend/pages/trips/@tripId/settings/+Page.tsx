@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAppSelector, useAppDispatch } from '@packing-list/state';
+import { useAppSelector, useAppDispatch, actions } from '@packing-list/state';
 import { usePageContext } from 'vike-react/usePageContext';
 import { PageHeader } from '../../../../components/PageHeader';
 import { PageContainer } from '../../../../components/PageContainer';
@@ -16,12 +16,19 @@ import {
   Users,
   Eye,
   AlertTriangle,
+  UserPlus,
+  LogIn,
 } from 'lucide-react';
+import { TripMembersList } from '../../../../components/TripMembersList';
+import { TripInviteModal } from '../../../../components/TripInviteModal';
+import { usePermissions } from '../../../../hooks/usePermissions';
+import { useAuth } from '@packing-list/auth-state';
 
 export default function TripSettingsPage() {
   const pageContext = usePageContext();
   const tripId = pageContext.routeParams?.tripId as string;
   const dispatch = useAppDispatch();
+  const { isRemotelyAuthenticated } = useAuth();
 
   const tripSummaries = useAppSelector((state) => state.trips.summaries);
   const tripData = useAppSelector((state) => state.trips.byId[tripId]);
@@ -42,7 +49,17 @@ export default function TripSettingsPage() {
   });
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const { canManageMembers, isOwner } = usePermissions(tripId);
+
+  // Load trip members when component mounts
+  useEffect(() => {
+    if (tripId && isRemotelyAuthenticated) {
+      dispatch(actions.loadTripMembers(tripId));
+    }
+  }, [tripId, isRemotelyAuthenticated, dispatch]);
 
   // If trip doesn't exist, redirect to trips page
   useEffect(() => {
@@ -390,17 +407,62 @@ export default function TripSettingsPage() {
                 View Trip Details
               </Link>
 
-              <div className="divider"></div>
+              {isOwner && (
+                <>
+                  <div className="divider"></div>
 
-              <button
-                onClick={() => setDeleteModalOpen(true)}
-                className="btn btn-error btn-outline w-full gap-2"
-                data-testid="delete-trip-button"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete Trip
-              </button>
+                  <button
+                    onClick={() => setDeleteModalOpen(true)}
+                    className="btn btn-error btn-outline w-full gap-2"
+                    data-testid="delete-trip-button"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Trip
+                  </button>
+                </>
+              )}
             </div>
+          </div>
+        </div>
+
+        {/* Team Members */}
+        <div className="card bg-base-100 shadow-lg lg:col-span-2">
+          <div className="card-body">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="card-title flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                Team Members
+              </h3>
+              {isRemotelyAuthenticated && canManageMembers && (
+                <button
+                  onClick={() => setInviteModalOpen(true)}
+                  className="btn btn-primary btn-sm gap-2"
+                  data-testid="invite-member-button"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Invite Member
+                </button>
+              )}
+            </div>
+            {isRemotelyAuthenticated ? (
+              <TripMembersList
+                tripId={tripId}
+                canManageMembers={canManageMembers}
+              />
+            ) : (
+              <div className="text-center py-8">
+                <LogIn className="w-16 h-16 mx-auto text-base-content/30 mb-4" />
+                <h4 className="text-lg font-semibold mb-2">Login Required</h4>
+                <p className="text-base-content/70 mb-4">
+                  Team collaboration features are only available when logged in.
+                  Other trips are not synced to the server and can&apos;t be
+                  shared.
+                </p>
+                <p className="text-sm text-base-content/50">
+                  Sign in to invite team members and collaborate on trips.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -417,6 +479,16 @@ export default function TripSettingsPage() {
         onConfirm={handleDeleteTrip}
         data-testid="delete-trip-confirm-dialog"
       />
+
+      {/* Invite Member Modal */}
+      {isRemotelyAuthenticated && (
+        <TripInviteModal
+          isOpen={inviteModalOpen}
+          onClose={() => setInviteModalOpen(false)}
+          tripId={tripId}
+          tripName={trip.title}
+        />
+      )}
     </PageContainer>
   );
 }

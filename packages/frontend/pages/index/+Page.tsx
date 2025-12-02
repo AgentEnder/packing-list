@@ -1,30 +1,48 @@
 import {
   useAppSelector,
+  useAppDispatch,
   selectPeople,
   selectCurrentTrip,
   selectCalculatedItems,
   selectSelectedTripId,
   selectAccurateTripSummaries,
+  actions,
 } from '@packing-list/state';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
 import { NoTripSelected } from '../../components/NoTripSelected';
-import { Link } from '@packing-list/shared-components';
+import { Link, useAuth } from '@packing-list/shared-components';
+import { PendingInvitationsCard } from '../../components/PendingInvitationsCard';
+import { useEffect } from 'react';
 
 export default function Page() {
+  const dispatch = useAppDispatch();
+  const { user } = useAuth();
   const selectedTripId = useAppSelector(selectSelectedTripId);
   const tripSummaries = useAppSelector(selectAccurateTripSummaries);
   const people = useAppSelector(selectPeople);
   const trip = useAppSelector(selectCurrentTrip);
   const calculatedItems = useAppSelector(selectCalculatedItems);
   const defaultItems = calculatedItems?.defaultItems || [];
+  const pendingInvitations = useAppSelector(
+    (state) => state.tripUsers.pendingInvitations
+  );
+
 
   // If no trip is selected or no trips exist, show the no trip selected state
   if (!selectedTripId || tripSummaries.length === 0) {
     return (
       <PageContainer>
         <PageHeader title="Smart Packing List" />
+        
+        {/* Show pending invitations even when no trip is selected */}
+        {pendingInvitations.length > 0 && (
+          <div className="mb-6">
+            <PendingInvitationsCard />
+          </div>
+        )}
+        
         <NoTripSelected
           title="Welcome to Smart Packing List!"
           message="Get started by selecting an existing trip, creating a new one, or trying our demo to see how smart packing recommendations work."
@@ -42,6 +60,13 @@ export default function Page() {
   return (
     <PageContainer>
       <PageHeader title="Smart Packing List" />
+
+      {/* Show pending invitations if any */}
+      {pendingInvitations.length > 0 && (
+        <div className="mb-6">
+          <PendingInvitationsCard />
+        </div>
+      )}
 
       <HelpBlurb storageKey="overview" title="How It Works">
         <p>
