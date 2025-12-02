@@ -100,19 +100,19 @@ function apiAndServiceWorkerPlugin(): Plugin {
           const targetFile = join(distDir, 'service-worker.js');
 
           let contents = readFileSync(sourceFile, 'utf-8');
-          
+
           // Replace environment variable
           contents = contents.replace(
             'import.meta.env.PUBLIC_ENV__BASE_URL',
             "'" + process.env.PUBLIC_ENV__BASE_URL + "'"
           );
-          
+
           // Fix import paths for chunks - change relative imports to absolute paths
           contents = contents.replace(
             /from\s+["']\.\/([^"']+)["']/g,
             'from "./assets/$1"'
           );
-          
+
           writeFileSync(targetFile, contents);
           console.log('📦 Build: Moved service worker to root:', targetFile);
 

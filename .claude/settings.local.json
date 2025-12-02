@@ -12,7 +12,11 @@
       "Bash(nx run-many:*)",
       "Bash(nx build:*)",
       "Bash(nx test:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(pnpm prettier:*)",
+      "Bash(nx lint:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx supabase migration:*)"
     ],
     "deny": []
   }
