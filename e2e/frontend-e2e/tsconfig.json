@@ -4,6 +4,9 @@
   "include": [],
   "references": [
     {
+      "path": "../../packages/supabase"
+    },
+    {
       "path": "./tsconfig.e2e.json"
     }
   ]

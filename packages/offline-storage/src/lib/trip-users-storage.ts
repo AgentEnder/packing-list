@@ -1,5 +1,5 @@
 import type { TripUser } from '@packing-list/model';
-import { getDatabase } from './database';
+import { getDatabase } from './database.js';
 
 const STORE_NAME = 'trip_users';
 
@@ -17,7 +17,7 @@ export async function getTripUsersByTripId(
   tripId: string
 ): Promise<TripUser[]> {
   const db = await getDatabase();
-  const allTripUsers = await db.getAll(STORE_NAME);
+  const allTripUsers: TripUser[] = await db.getAll(STORE_NAME);
   return allTripUsers.filter((tu) => tu.tripId === tripId && !tu.isDeleted);
 }
 
@@ -25,13 +25,13 @@ export async function getTripUsersByUserId(
   userId: string
 ): Promise<TripUser[]> {
   const db = await getDatabase();
-  const allTripUsers = await db.getAll(STORE_NAME);
+  const allTripUsers: TripUser[] = await db.getAll(STORE_NAME);
   return allTripUsers.filter((tu) => tu.userId === userId && !tu.isDeleted);
 }
 
 export async function getTripUsersByEmail(email: string): Promise<TripUser[]> {
   const db = await getDatabase();
-  const allTripUsers = await db.getAll(STORE_NAME);
+  const allTripUsers: TripUser[] = await db.getAll(STORE_NAME);
   return allTripUsers.filter((tu) => tu.email === email && !tu.isDeleted);
 }
 
@@ -39,7 +39,7 @@ export async function getPendingInvitationsByEmail(
   email: string
 ): Promise<TripUser[]> {
   const db = await getDatabase();
-  const allTripUsers = await db.getAll(STORE_NAME);
+  const allTripUsers: TripUser[] = await db.getAll(STORE_NAME);
   return allTripUsers.filter(
     (tu) => tu.email === email && tu.status === 'pending' && !tu.isDeleted
   );
