@@ -3,14 +3,18 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import Page from './+Page';
 
 // Mock state
-vi.mock('@packing-list/state', () => ({
-  useAppSelector: vi.fn(),
-  selectPeople: vi.fn(),
-  selectCurrentTrip: vi.fn(),
-  selectCalculatedItems: vi.fn(),
-  selectSelectedTripId: vi.fn(),
-  selectAccurateTripSummaries: vi.fn(),
-}));
+vi.mock('@packing-list/state', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    useAppSelector: vi.fn(),
+    selectPeople: vi.fn(),
+    selectCurrentTrip: vi.fn(),
+    selectCalculatedItems: vi.fn(),
+    selectSelectedTripId: vi.fn(),
+    selectAccurateTripSummaries: vi.fn(),
+  };
+});
 
 // Mock shared-components
 vi.mock('@packing-list/shared-components', () => ({
@@ -86,12 +90,24 @@ describe('Index Page Component', () => {
     vi.clearAllMocks();
   });
 
-  it('renders NoTripSelected when no trip is selected', () => {
-    vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
-      if (selector === selectSelectedTripId) return null;
-      if (selector === selectAccurateTripSummaries) return [];
+  // Helper to create mock selector with pendingInvitations support
+  const createMockSelector = (overrides: Record<string, unknown> = {}) => {
+    return (selector: unknown) => {
+      if (selector === selectSelectedTripId) return overrides.selectedTripId ?? null;
+      if (selector === selectAccurateTripSummaries) return overrides.tripSummaries ?? [];
+      if (selector === selectPeople) return overrides.people ?? [];
+      if (selector === selectCurrentTrip) return overrides.currentTrip ?? null;
+      if (selector === selectCalculatedItems) return overrides.calculatedItems ?? null;
+      // Handle direct state access for pendingInvitations
+      if (typeof selector === 'function') {
+        return selector({ tripUsers: { pendingInvitations: [] } });
+      }
       return null;
-    });
+    };
+  };
+
+  it('renders NoTripSelected when no trip is selected', () => {
+    vi.mocked(useAppSelector).mockImplementation(createMockSelector());
 
     render(<Page />);
 
@@ -108,11 +124,9 @@ describe('Index Page Component', () => {
   });
 
   it('renders NoTripSelected when no trips exist', () => {
-    vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
-      if (selector === selectSelectedTripId) return 'trip-123';
-      if (selector === selectAccurateTripSummaries) return []; // No trips exist
-      return null;
-    });
+    vi.mocked(useAppSelector).mockImplementation(createMockSelector({
+      selectedTripId: 'trip-123',
+    }));
 
     render(<Page />);
 
@@ -120,20 +134,16 @@ describe('Index Page Component', () => {
   });
 
   it('renders trip dashboard when trip is selected AND trips exist', () => {
-    vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
-      if (selector === selectSelectedTripId) return 'trip-123';
-      if (selector === selectAccurateTripSummaries)
-        return [{ id: 'trip-123', name: 'Test Trip' }]; // Trips exist
-      if (selector === selectPeople)
-        return [
-          { id: 'person1', name: 'John' },
-          { id: 'person2', name: 'Jane' },
-        ];
-      if (selector === selectCurrentTrip)
-        return { days: ['2023-01-01', '2023-01-02', '2023-01-03'] };
-      if (selector === selectCalculatedItems) return { defaultItems: [] };
-      return [];
-    });
+    vi.mocked(useAppSelector).mockImplementation(createMockSelector({
+      selectedTripId: 'trip-123',
+      tripSummaries: [{ id: 'trip-123', name: 'Test Trip' }],
+      people: [
+        { id: 'person1', name: 'John' },
+        { id: 'person2', name: 'Jane' },
+      ],
+      currentTrip: { days: ['2023-01-01', '2023-01-02', '2023-01-03'] },
+      calculatedItems: { defaultItems: [] },
+    }));
 
     render(<Page />);
 
@@ -144,22 +154,18 @@ describe('Index Page Component', () => {
   });
 
   it('displays correct trip statistics when dashboard is shown', () => {
-    vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
-      if (selector === selectSelectedTripId) return 'trip-123';
-      if (selector === selectAccurateTripSummaries) return [{ id: 'trip-123' }]; // Trips exist
-      if (selector === selectPeople)
-        return [{ id: 'person1' }, { id: 'person2' }];
-      if (selector === selectCurrentTrip)
-        return { days: ['day1', 'day2', 'day3'] };
-      if (selector === selectCalculatedItems)
-        return {
-          defaultItems: [
-            { name: 'T-shirt', quantity: 3 },
-            { name: 'Pants', quantity: 2 },
-          ],
-        };
-      return [];
-    });
+    vi.mocked(useAppSelector).mockImplementation(createMockSelector({
+      selectedTripId: 'trip-123',
+      tripSummaries: [{ id: 'trip-123' }],
+      people: [{ id: 'person1' }, { id: 'person2' }],
+      currentTrip: { days: ['day1', 'day2', 'day3'] },
+      calculatedItems: {
+        defaultItems: [
+          { name: 'T-shirt', quantity: 3 },
+          { name: 'Pants', quantity: 2 },
+        ],
+      },
+    }));
 
     render(<Page />);
 
@@ -174,15 +180,13 @@ describe('Index Page Component', () => {
   });
 
   it('shows progress steps with correct completion states', () => {
-    vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
-      if (selector === selectSelectedTripId) return 'trip-123';
-      if (selector === selectAccurateTripSummaries) return [{ id: 'trip-123' }]; // Trips exist
-      if (selector === selectPeople) return [{ id: 'person1' }];
-      if (selector === selectCurrentTrip) return { days: ['day1', 'day2'] };
-      if (selector === selectCalculatedItems)
-        return { defaultItems: [{ name: 'Item', quantity: 1 }] };
-      return [];
-    });
+    vi.mocked(useAppSelector).mockImplementation(createMockSelector({
+      selectedTripId: 'trip-123',
+      tripSummaries: [{ id: 'trip-123' }],
+      people: [{ id: 'person1' }],
+      currentTrip: { days: ['day1', 'day2'] },
+      calculatedItems: { defaultItems: [{ name: 'Item', quantity: 1 }] },
+    }));
 
     render(<Page />);
 
@@ -192,14 +196,13 @@ describe('Index Page Component', () => {
   });
 
   it('shows incomplete progress steps when conditions not met', () => {
-    vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
-      if (selector === selectSelectedTripId) return 'trip-123';
-      if (selector === selectAccurateTripSummaries) return [{ id: 'trip-123' }]; // Trips exist
-      if (selector === selectPeople) return []; // No people
-      if (selector === selectCurrentTrip) return { days: [] }; // No days
-      if (selector === selectCalculatedItems) return { defaultItems: [] }; // No items
-      return [];
-    });
+    vi.mocked(useAppSelector).mockImplementation(createMockSelector({
+      selectedTripId: 'trip-123',
+      tripSummaries: [{ id: 'trip-123' }],
+      people: [],
+      currentTrip: { days: [] },
+      calculatedItems: { defaultItems: [] },
+    }));
 
     render(<Page />);
 
@@ -209,21 +212,19 @@ describe('Index Page Component', () => {
   });
 
   it('renders packing list table when items exist', () => {
-    vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
-      if (selector === selectSelectedTripId) return 'trip-123';
-      if (selector === selectAccurateTripSummaries) return [{ id: 'trip-123' }]; // Trips exist
-      if (selector === selectPeople) return [{ id: 'person1' }];
-      if (selector === selectCurrentTrip) return { days: ['day1'] };
-      if (selector === selectCalculatedItems)
-        return {
-          defaultItems: [
-            { name: 'T-shirt', quantity: 3 },
-            { name: 'Pants', quantity: 2 },
-            { name: 'Socks', quantity: 5 },
-          ],
-        };
-      return [];
-    });
+    vi.mocked(useAppSelector).mockImplementation(createMockSelector({
+      selectedTripId: 'trip-123',
+      tripSummaries: [{ id: 'trip-123' }],
+      people: [{ id: 'person1' }],
+      currentTrip: { days: ['day1'] },
+      calculatedItems: {
+        defaultItems: [
+          { name: 'T-shirt', quantity: 3 },
+          { name: 'Pants', quantity: 2 },
+          { name: 'Socks', quantity: 5 },
+        ],
+      },
+    }));
 
     render(<Page />);
 
@@ -239,14 +240,13 @@ describe('Index Page Component', () => {
   });
 
   it('does not render packing list when no items', () => {
-    vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
-      if (selector === selectSelectedTripId) return 'trip-123';
-      if (selector === selectAccurateTripSummaries) return [{ id: 'trip-123' }]; // Trips exist
-      if (selector === selectPeople) return [{ id: 'person1' }];
-      if (selector === selectCurrentTrip) return { days: ['day1'] };
-      if (selector === selectCalculatedItems) return { defaultItems: [] };
-      return [];
-    });
+    vi.mocked(useAppSelector).mockImplementation(createMockSelector({
+      selectedTripId: 'trip-123',
+      tripSummaries: [{ id: 'trip-123' }],
+      people: [{ id: 'person1' }],
+      currentTrip: { days: ['day1'] },
+      calculatedItems: { defaultItems: [] },
+    }));
 
     render(<Page />);
 
@@ -254,17 +254,15 @@ describe('Index Page Component', () => {
   });
 
   it('renders navigation links correctly', () => {
-    vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
-      if (selector === selectSelectedTripId) return 'trip-123';
-      if (selector === selectAccurateTripSummaries) return [{ id: 'trip-123' }]; // Trips exist
-      if (selector === selectPeople) return [{ id: 'person1' }];
-      if (selector === selectCurrentTrip) return { days: ['day1'] };
-      if (selector === selectCalculatedItems)
-        return {
-          defaultItems: [{ name: 'Item', quantity: 1 }],
-        };
-      return [];
-    });
+    vi.mocked(useAppSelector).mockImplementation(createMockSelector({
+      selectedTripId: 'trip-123',
+      tripSummaries: [{ id: 'trip-123' }],
+      people: [{ id: 'person1' }],
+      currentTrip: { days: ['day1'] },
+      calculatedItems: {
+        defaultItems: [{ name: 'Item', quantity: 1 }],
+      },
+    }));
 
     render(<Page />);
 
@@ -275,14 +273,13 @@ describe('Index Page Component', () => {
   });
 
   it('renders help blurb with how-it-works content', () => {
-    vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
-      if (selector === selectSelectedTripId) return 'trip-123';
-      if (selector === selectAccurateTripSummaries) return [{ id: 'trip-123' }]; // Trips exist
-      if (selector === selectPeople) return [];
-      if (selector === selectCurrentTrip) return { days: [] };
-      if (selector === selectCalculatedItems) return { defaultItems: [] };
-      return [];
-    });
+    vi.mocked(useAppSelector).mockImplementation(createMockSelector({
+      selectedTripId: 'trip-123',
+      tripSummaries: [{ id: 'trip-123' }],
+      people: [],
+      currentTrip: { days: [] },
+      calculatedItems: { defaultItems: [] },
+    }));
 
     render(<Page />);
 
@@ -297,14 +294,13 @@ describe('Index Page Component', () => {
   });
 
   it('handles null calculatedItems gracefully in dashboard mode', () => {
-    vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
-      if (selector === selectSelectedTripId) return 'trip-123';
-      if (selector === selectAccurateTripSummaries) return [{ id: 'trip-123' }]; // Trips exist
-      if (selector === selectPeople) return [];
-      if (selector === selectCurrentTrip) return { days: [] };
-      if (selector === selectCalculatedItems) return null; // Null case
-      return [];
-    });
+    vi.mocked(useAppSelector).mockImplementation(createMockSelector({
+      selectedTripId: 'trip-123',
+      tripSummaries: [{ id: 'trip-123' }],
+      people: [],
+      currentTrip: { days: [] },
+      calculatedItems: null,
+    }));
 
     render(<Page />);
 
@@ -316,14 +312,13 @@ describe('Index Page Component', () => {
   });
 
   it('handles missing defaultItems array gracefully in dashboard mode', () => {
-    vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
-      if (selector === selectSelectedTripId) return 'trip-123';
-      if (selector === selectAccurateTripSummaries) return [{ id: 'trip-123' }]; // Trips exist
-      if (selector === selectPeople) return [];
-      if (selector === selectCurrentTrip) return { days: [] };
-      if (selector === selectCalculatedItems) return {}; // No defaultItems property
-      return [];
-    });
+    vi.mocked(useAppSelector).mockImplementation(createMockSelector({
+      selectedTripId: 'trip-123',
+      tripSummaries: [{ id: 'trip-123' }],
+      people: [],
+      currentTrip: { days: [] },
+      calculatedItems: {},
+    }));
 
     render(<Page />);
 
@@ -335,17 +330,15 @@ describe('Index Page Component', () => {
   });
 
   it('renders table headers correctly when items exist', () => {
-    vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
-      if (selector === selectSelectedTripId) return 'trip-123';
-      if (selector === selectAccurateTripSummaries) return [{ id: 'trip-123' }]; // Trips exist
-      if (selector === selectPeople) return [];
-      if (selector === selectCurrentTrip) return { days: [] };
-      if (selector === selectCalculatedItems)
-        return {
-          defaultItems: [{ name: 'Test Item', quantity: 1 }],
-        };
-      return [];
-    });
+    vi.mocked(useAppSelector).mockImplementation(createMockSelector({
+      selectedTripId: 'trip-123',
+      tripSummaries: [{ id: 'trip-123' }],
+      people: [],
+      currentTrip: { days: [] },
+      calculatedItems: {
+        defaultItems: [{ name: 'Test Item', quantity: 1 }],
+      },
+    }));
 
     render(<Page />);
 
@@ -354,11 +347,7 @@ describe('Index Page Component', () => {
   });
 
   it('renders NoTripSelected action link correctly', () => {
-    vi.mocked(useAppSelector).mockImplementation((selector: unknown) => {
-      if (selector === selectSelectedTripId) return null;
-      if (selector === selectAccurateTripSummaries) return [];
-      return null;
-    });
+    vi.mocked(useAppSelector).mockImplementation(createMockSelector());
 
     render(<Page />);
 

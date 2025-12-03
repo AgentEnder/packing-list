@@ -121,7 +121,7 @@ export const inviteUserToTripThunk = createAsyncThunk(
 
 export const acceptTripInvitationThunk = createAsyncThunk(
   'tripUsers/acceptInvitation',
-  async (params: AcceptInvitationParams, { getState, dispatch }) => {
+  async (params: AcceptInvitationParams, { dispatch }) => {
     const { tripId } = params;
 
     dispatch(setLoading(true));

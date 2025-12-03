@@ -3,10 +3,14 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import PackingListPage from './+Page';
 
 // Mock state
-vi.mock('@packing-list/state', () => ({
-  selectSelectedTripId: vi.fn(),
-  useAppSelector: vi.fn(),
-}));
+vi.mock('@packing-list/state', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    selectSelectedTripId: vi.fn(),
+    useAppSelector: vi.fn(),
+  };
+});
 
 // Mock components
 interface PageContainerProps {
@@ -28,6 +32,20 @@ vi.mock('./components/PackingList', () => ({
   PackingList: () => (
     <div data-testid="packing-list">Packing List Component</div>
   ),
+}));
+
+vi.mock('../../hooks/usePermissions', () => ({
+  usePermissions: vi.fn(() => ({
+    canView: true,
+    canEdit: true,
+    canManageMembers: false,
+    isOwner: false,
+    role: null,
+  })),
+}));
+
+vi.mock('lucide-react', () => ({
+  AlertTriangle: () => <div data-testid="alert-triangle-icon">Alert</div>,
 }));
 
 vi.mock('../../components/PageContainer', () => ({

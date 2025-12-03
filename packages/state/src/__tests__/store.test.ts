@@ -23,7 +23,7 @@ describe('store', () => {
       redux: { ssrState },
     });
 
-    // The store now includes userPeople slice, so we need to account for that
+    // The store now includes userPeople and tripUsers slices, so we need to account for that
     const expectedState = {
       ...ssrState,
       userPeople: {
@@ -31,6 +31,14 @@ describe('store', () => {
         isLoading: false,
         error: null,
         hasTriedToLoad: false,
+      },
+      tripUsers: {
+        tripUsers: {},
+        tripMemberships: {},
+        userTrips: {},
+        pendingInvitations: [],
+        loading: false,
+        error: null,
       },
     };
 

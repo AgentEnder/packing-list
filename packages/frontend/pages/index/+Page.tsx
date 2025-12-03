@@ -1,24 +1,19 @@
 import {
   useAppSelector,
-  useAppDispatch,
   selectPeople,
   selectCurrentTrip,
   selectCalculatedItems,
   selectSelectedTripId,
   selectAccurateTripSummaries,
-  actions,
 } from '@packing-list/state';
 import { PageHeader } from '../../components/PageHeader';
 import { PageContainer } from '../../components/PageContainer';
 import { HelpBlurb } from '../../components/HelpBlurb';
 import { NoTripSelected } from '../../components/NoTripSelected';
-import { Link, useAuth } from '@packing-list/shared-components';
+import { Link } from '@packing-list/shared-components';
 import { PendingInvitationsCard } from '../../components/PendingInvitationsCard';
-import { useEffect } from 'react';
 
 export default function Page() {
-  const dispatch = useAppDispatch();
-  const { user } = useAuth();
   const selectedTripId = useAppSelector(selectSelectedTripId);
   const tripSummaries = useAppSelector(selectAccurateTripSummaries);
   const people = useAppSelector(selectPeople);

@@ -51,7 +51,7 @@ export default function DefaultsPage() {
             <AlertTriangle className="w-16 h-16 mx-auto text-warning mb-4" />
             <h2 className="card-title justify-center">Access Denied</h2>
             <p className="text-base-content/70">
-              You don't have permission to view this trip's packing rules.
+              You don&apos;t have permission to view this trip&apos;s packing rules.
             </p>
           </div>
         </div>

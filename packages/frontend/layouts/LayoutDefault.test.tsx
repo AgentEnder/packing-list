@@ -3,20 +3,26 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import LayoutDefault from './LayoutDefault';
 
 // Mock all the dependencies
-vi.mock('@packing-list/state', () => ({
-  actions: {
-    resetFlow: vi.fn(),
-  },
-  useAppDispatch: vi.fn(),
-  useAppSelector: vi.fn(),
-  selectUserTheme: vi.fn(() => 'light'),
-  loadOfflineState: vi.fn(() =>
-    Promise.resolve({
-      trips: { summaries: [] },
-      ui: { flow: { current: null, steps: [] } },
-    })
-  ),
-}));
+vi.mock('@packing-list/state', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    actions: {
+      resetFlow: vi.fn(),
+      populatePendingInvitations: vi.fn(),
+      loadPendingInvitations: vi.fn(),
+    },
+    useAppDispatch: vi.fn(),
+    useAppSelector: vi.fn(),
+    selectUserTheme: vi.fn(() => 'light'),
+    loadOfflineState: vi.fn(() =>
+      Promise.resolve({
+        trips: { summaries: [] },
+        ui: { flow: { current: null, steps: [] } },
+      })
+    ),
+  };
+});
 
 vi.mock('@packing-list/shared-components', () => ({
   useAuth: vi.fn(),
