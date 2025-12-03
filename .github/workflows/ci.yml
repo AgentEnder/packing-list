@@ -61,7 +61,7 @@ jobs:
         run: |
           timeout=120
           while [ $timeout -gt 0 ]; do
-            if (cd packages/supabase && supabase status 2>/dev/null | grep -q "API URL"); then
+            if (cd packages/supabase && supabase status 2>/dev/null | grep -qE "(API URL|Project URL)"); then
               echo "✅ Supabase services are ready"
               break
             fi
