@@ -61,7 +61,7 @@ jobs:
         run: |
           timeout=120
           while [ $timeout -gt 0 ]; do
-            if cd packages/supabase && supabase status 2>/dev/null | grep -q "API URL"; then
+            if (cd packages/supabase && supabase status 2>/dev/null | grep -q "API URL"); then
               echo "✅ Supabase services are ready"
               break
             fi
@@ -71,7 +71,7 @@ jobs:
           done
           if [ $timeout -eq 0 ]; then
             echo "❌ Timeout waiting for Supabase services"
-            cd packages/supabase && supabase status || true
+            (cd packages/supabase && supabase status) || true
             docker ps || true
             exit 1
           fi
