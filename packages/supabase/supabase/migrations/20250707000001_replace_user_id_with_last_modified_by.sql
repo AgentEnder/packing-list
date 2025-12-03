@@ -33,9 +33,12 @@ CREATE INDEX IF NOT EXISTS idx_trip_default_item_rules_last_modified_by
 ON public.trip_default_item_rules(last_modified_by) 
 WHERE is_deleted = FALSE;
 
--- Drop old RLS policies
+-- Drop old RLS policies (all policies that reference user_id must be dropped)
 DROP POLICY IF EXISTS "Users can view their trip default item rules" ON public.trip_default_item_rules;
 DROP POLICY IF EXISTS "Users can modify their trip default item rules" ON public.trip_default_item_rules;
+DROP POLICY IF EXISTS "Users can insert their trip default item rules" ON public.trip_default_item_rules;
+DROP POLICY IF EXISTS "Users can update their trip default item rules" ON public.trip_default_item_rules;
+DROP POLICY IF EXISTS "Users can delete their trip default item rules" ON public.trip_default_item_rules;
 
 -- Create new trip-based RLS policies
 CREATE POLICY "Users can view trip default item rules in accessible trips" ON public.trip_default_item_rules
